@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "dlt-pipeline-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "dlt", "pipeline", "anthropic_admin", "mcp", "--stdio"]
+    }
+  }
+}

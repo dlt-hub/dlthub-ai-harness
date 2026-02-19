@@ -21,7 +21,7 @@ Run `ls -la` to see the current state before scaffolding.
 
 `dlt init` can be run multiple times in the same project — each run adds new files without overwriting existing pipeline scripts. It will update shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `requirements.txt`, `.gitignore`).
 
-Run the provided `dlt init` command in the active venv. Depending on the source type, this creates:
+Run the provided `dlt init` command in the active venv, always piping `Y` to it (e.g. `echo Y | uv run dlt init ...`). Depending on the source type, this creates:
 
 **dlthub context source** (`dlt init dlthub:<name> duckdb`):
 - `<source>_pipeline.py` — pipeline entry point with REST API template

@@ -1,0 +1,6 @@
+{
+  "enabledMcpjsonServers": [
+    "dlt-pipeline-mcp"
+  ],
+  "enableAllProjectMcpServers": true
+}
