@@ -1,0 +1,150 @@
+---
+name: create-pipeline
+description: Create a dlt REST API pipeline. Use for dlthub context sources (dlthub:*), the rest_api core source, or any generic REST/HTTP API source. Not for sql_database or filesystem sources.
+argument-hint: <dlt-init-command>
+---
+
+# Create a dlt pipeline
+
+Create the simplest pipeline with a single endpoint, no pagination, incremental loading etc. to make it run ASAP. Use `dlt init` command (typically provided by the find-source skill).
+
+Parse `$ARGUMENTS`:
+- `dlt-init-command` (required): the full `dlt init` command, e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`
+
+## Steps
+
+### 1. Snapshot current folder
+
+Run `ls -la` to see the current state before scaffolding.
+
+### 2. Run dlt init
+
+`dlt init` can be run multiple times in the same project — each run adds new files without overwriting existing pipeline scripts. It will update shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `requirements.txt`, `.gitignore`).
+
+Run the provided `dlt init` command in the active venv. Depending on the source type, this creates:
+
+**dlthub context source** (`dlt init dlthub:<name> duckdb`):
+- `<source>_pipeline.py` — pipeline entry point with REST API template
+- `<source>-docs.yaml` — API docs scaffold with endpoints, auth, params
+- `<source>.md` — LLM context file (ignore this, not helpful)
+
+**Core source** (`dlt init rest_api duckdb`, `sql_database`, `filesystem`):
+- `rest_api_pipeline.py` (or similar) — full working example with RESTAPIConfig, pagination, incremental loading
+
+**Generic fallback** (`dlt init <unknown_name> duckdb`):
+- `<name>_pipeline.py` — basic intro template (less useful, prefer core sources)
+
+**Shared files** (created on first init, updated on subsequent runs):
+- `.dlt/secrets.toml` — credentials template (may append new entries)
+- `.dlt/config.toml` — pipeline config
+- `requirements.txt` — Python dependencies
+- `.gitignore`
+
+Run `ls -la` again to confirm what was created.
+
+### 3. Read generated files
+
+Read the following files to understand the scaffold:
+- `<source>_pipeline.py` — the pipeline code template
+- `<source>-docs.yaml` — API endpoint scaffold with auth, endpoints, params, data selectors (if present)
+- `.dlt/secrets.toml` — source/destination secrets ie. `api_key`. **You are allowed to read and write this file**
+- `.dlt/config.toml` — source/destination config ie. `api_url`
+
+Do NOT read the `.md` file.
+
+### 4. Research before writing code
+
+Do these in parallel:
+
+**Read essential dlt docs upfront:**
+- REST API source (config, auth, pagination, processing_steps): `https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic.md`
+- Source & resource decorators, parameters: `https://dlthub.com/docs/general-usage/source.md` and `https://dlthub.com/docs/general-usage/resource.md`
+
+**Web search the data source:**
+- Confirm the scaffold is accurate, learn about auth method, available endpoints
+- How does the user get API keys/tokens for this service
+
+**Read additional docs as needed in later steps:**
+- How dlt works (extract → normalize → load): `https://dlthub.com/docs/reference/explainers/how-dlt-works.md`
+- CLI reference (trace, load-package, schema): `https://dlthub.com/docs/reference/command-line-interface.md`
+- File formats: `https://dlthub.com/docs/dlt-ecosystem/file-formats/`
+- Full docs index: `https://dlthub.com/docs/llms.txt`
+
+### 5. Present your findings
+Present your findings so user can pick **ONE** of the endpoints that you will implement. Answer questions, do more
+research if needed.
+
+### 6. Create pipeline with single endpoint
+
+Edit `<source>_pipeline.py` using information from the scaffold, API research, and dlt docs:
+
+- Focus on a single endpoint, ignore pagination and incremental loading for now
+- Configure `base_url` and `auth`
+- Add resources with `endpoint.path`, `data_selector`, `params`, `primary_key`
+- Use `dev_mode=True` on the pipeline (fresh dataset on every run during debugging)
+- Use `.add_limit(1)` on the source when calling `pipeline.run()` (load one page only)
+- Use `replace` write disposition to start
+- Remove `refresh="drop_sources"` if present — `dev_mode` handles the clean slate
+
+#### Optionally: parameterize the source function
+
+`@dlt.source` and `@dlt.resource` are regular Python function decorators — expose useful parameters:
+
+- **Credentials** (`dlt.secrets.value`): auto-loaded from secrets.toml, user can also pass explicitly
+- **Config** (`dlt.config.value`): auto-loaded from config.toml, user can also pass explicitly
+- **Runtime params** (plain defaults): date ranges, filters, granularity — give sensible defaults so the pipeline works out of the box
+
+Users will call the source both ways:
+```python
+pipeline.run(my_source())  # auto-inject from TOML
+pipeline.run(my_source(starting_at="2025-01-01T00:00:00Z", bucket_width="1h"))  # explicit
+```
+
+Add a docstring documenting parameters and example calls.
+
+#### Example
+
+```python
+@dlt.source
+def my_source(
+    access_token: str = dlt.secrets.value,
+    starting_at: str = None,
+):
+    """Load data from My API.
+
+    Args:
+        access_token: API token. Auto-loaded from secrets.toml.
+        starting_at: Start of range (ISO8601). Defaults to 7 days ago.
+    """
+    if starting_at is None:
+        starting_at = pendulum.now("UTC").subtract(days=7).start_of("day").to_iso8601_string()
+
+    config: RESTAPIConfig = {
+        "client": {"base_url": "https://api.example.com/v1/", ...},
+        "resources": [...],
+    }
+    yield from rest_api_resources(config)
+```
+
+
+### 6b. Set up config and secrets TOMLs
+
+**Essential Reading** Credentials & config resolution: `https://dlthub.com/docs/general-usage/credentials/setup.md` `https://dlthub.com/docs/general-usage/credentials/advanced`
+
+Create and TOML sections with config/secrets that your source/resources need (ie base url, api key). Fill those in `config.toml` and `secrets.toml`
+- Use real values if you have it
+- Use placeholders if you do not have it (ie. secrets). Make placeholder meaningful - ie. to look like redacted API KEY.
+
+For a single source, `[sources]` is the simplest. For multiple sources in one project, scope by module:
+```toml
+# .dlt/secrets.toml
+[sources]
+access_token = "ak-*******-cae"
+``` 
+
+### 7. First pipeline run
+
+**ALWAYS Get Feedback** before you run the pipeline for a first time. Show summary of files that you changed or generated.
+**ALWAYS use debug-pipeline** for first run to diagnose and guide credential setup
+**ALWAYS use validate-data** to inspect schema and data
+**NEVER add more endpoints** before that - keep it simple

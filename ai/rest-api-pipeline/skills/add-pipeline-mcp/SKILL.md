@@ -19,11 +19,22 @@ Parse `$ARGUMENTS`:
 dlt pipeline <pipeline_name> info
 ```
 
-If the pipeline doesn't exist or has no loaded packages, stop and tell the user to run the pipeline first.
+If the pipeline doesn't exist or has no loaded packages, stop and tell the user to run the pipeline first (`debug-pipeline`).
 
-### 2. Add MCP server to .mcp.json
+### 2. Find the .mcp.json location
 
-Read the existing `.mcp.json` in the project root (create if it doesn't exist). Add the dlt pipeline MCP server entry:
+The `.mcp.json` must be placed in the **same directory that contains the `.claude` symlink/folder** — that's the Claude Code project root.
+
+Find it:
+```
+ls -la .claude  # check if symlink — the directory containing it is the project root
+```
+
+### 3. Add MCP server to .mcp.json
+
+Read the existing `.mcp.json` at the project root (create if it doesn't exist). Add the dlt pipeline MCP server entry.
+
+The `.mcp.json` is shared with other developers — do NOT use hardcoded absolute paths.
 
 ```json
 {
@@ -38,9 +49,9 @@ Read the existing `.mcp.json` in the project root (create if it doesn't exist). 
 ```
 
 **Key points:**
-- Use `uv run` to ensure it runs in the project venv
-- The server name (`dlt-pipeline-mcp`) can be anything but keep it consistent
-- `--stdio` transport is required for Claude Code (not SSE)
+- Claude Code launches MCP servers from the project root (where `.mcp.json` lives)
+- `uv run` finds the venv relative to cwd — make sure `pyproject.toml` is at the project root
+- `--stdio` transport is required for Claude Code
 - One MCP server per pipeline — if the project has multiple pipelines, add multiple entries with different names
 
 **Multiple pipelines example:**
@@ -61,7 +72,7 @@ Read the existing `.mcp.json` in the project root (create if it doesn't exist). 
 }
 ```
 
-### 3. Inform the user
+### 4. Inform the user
 
 The MCP server will be available after Claude Code restarts (or on next session). Tell the user:
 

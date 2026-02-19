@@ -11,8 +11,8 @@
   },
   "plugins": [
     {
-      "name": "dlt-pipeline",
-      "source": "./dlt-pipeline",
+      "name": "rest-api-pipeline",
+      "source": "./rest-api-pipeline",
       "description": "Bootstrap and create data pipelines with dlt (data load tool). Find sources, create REST API pipelines, add endpoints, set up MCP for data inspection, and explore data with marimo notebooks.",
       "version": "0.1.0",
       "category": "data",

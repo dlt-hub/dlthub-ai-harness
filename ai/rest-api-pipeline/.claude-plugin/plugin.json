@@ -1,6 +1,6 @@
 {
-  "name": "dlt-pipeline",
-  "description": "Bootstrap and create data pipelines with dlt (data load tool)",
+  "name": "rest-api-pipeline",
+  "description": "Create REST API data pipelines with dlt (data load tool)",
   "version": "0.1.0",
   "author": {
     "name": "dlthub"
