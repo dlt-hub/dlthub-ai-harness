@@ -6,10 +6,12 @@ argument-hint: <dlt-init-command>
 
 # Create a dlt pipeline
 
-Create the simplest pipeline with a single endpoint, no pagination, incremental loading etc. to make it run ASAP. Use `dlt init` command (typically provided by the find-source skill).
+Scaffold and configure the simplest working dlt pipeline — single endpoint, no pagination or incremental loading — to get data flowing fast.
 
-Parse `$ARGUMENTS`:
-- `dlt-init-command` (required): the full `dlt init` command, e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`
+**Requires a `dlt init` command as the argument** (e.g. `dlt init dlthub:shopify_store duckdb`).
+If you don't have one yet, run `find-source` first to identify the right source.
+
+The argument is the full `dlt init` command to run (e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`).
 
 ## Steps
 

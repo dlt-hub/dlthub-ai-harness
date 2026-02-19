@@ -29,9 +29,9 @@ Always do this first before any pipeline debugging:
    http_show_error_body = true
    ```
 
-3. **Add progress logging** to the pipeline run call:
+3. **Add progress logging** to the `dlt.pipeline()` call (NOT `pipeline.run()` — that argument doesn't exist):
    ```python
-   pipeline.run(source(), progress="log")
+   pipeline = dlt.pipeline(..., progress="log")
    ```
 
 This shows HTTP requests being made, data extracted, pagination steps, and normalize/load progress. Essential for diagnosing any issue.
@@ -153,7 +153,7 @@ Before moving on, revert all debugging settings YOU introduced. Only revert what
 
 Checklist:
 - [ ] `.dlt/config.toml` — restore `log_level` to its previous value (e.g. `WARNING`). Remove `http_show_error_body`, `request_timeout`, `request_max_attempts` if you added them. Remove `[extract] next_item_mode` if you added it.
-- [ ] Pipeline script — remove `progress="log"` from `pipeline.run()` if you added it. Remove `.add_limit(N)` if you added it for debugging.
+- [ ] Pipeline script — remove `progress="log"` from `dlt.pipeline()` if you added it. Remove `.add_limit(N)` if you added it for debugging.
 
 Do NOT remove settings the user had before you started debugging.
 
