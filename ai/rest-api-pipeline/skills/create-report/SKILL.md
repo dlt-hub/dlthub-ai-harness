@@ -57,6 +57,12 @@ Create `<pipeline_name>_explore.py` as a marimo notebook. marimo notebooks are p
 
 Install if needed: `pip install "dlt[workspace]"` (includes marimo + ibis).
 
+**Before launching, verify the notebook runs without errors:**
+```
+uv run python <pipeline_name>_explore.py
+```
+Fix any errors before proceeding. Only launch once it runs cleanly.
+
 Launch with watch mode so edits auto-reload:
 ```
 marimo edit --watch --no-token <pipeline_name>_explore.py
@@ -106,13 +112,32 @@ def _(user_summary):
 
 ## 5. Add charts with altair
 
-Use `mo.ui.altair_chart()` for interactive charts with click-to-filter:
+Use `mo.ui.altair_chart()` for interactive charts with click-to-filter.
+
+**IMPORTANT — marimo naming rule:** Variable names must be unique across all cells. If you reuse a name like `chart` in multiple cells, marimo will raise a `MultipleDefinitionError` and break those cells. Use `_`-prefixed names (e.g. `_chart`) for cell-local variables — they are private and exempt from the uniqueness rule. The preferred pattern is to inline the chart as the last expression so no variable is needed at all:
+
 ```python
+# Preferred: inline as last expression — no naming conflict possible
 @app.cell
 def _(mo, alt, my_data):
-    chart = mo.ui.altair_chart(
+    mo.ui.altair_chart(
         alt.Chart(my_data.to_pandas()).mark_bar().encode(x="category", y="total")
     )
+    return
+
+# Also fine: use _ prefix to make the variable cell-local
+@app.cell
+def _(mo, alt, my_data):
+    _chart = mo.ui.altair_chart(
+        alt.Chart(my_data.to_pandas()).mark_bar().encode(x="category", y="total")
+    )
+    _chart
+    return
+
+# WRONG: reusing `chart` across cells causes MultipleDefinitionError
+@app.cell
+def _(mo, alt, my_data):
+    chart = mo.ui.altair_chart(...)  # breaks if another cell also defines `chart`
     chart
     return (chart,)
 ```
