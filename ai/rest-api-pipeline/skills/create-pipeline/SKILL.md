@@ -137,12 +137,19 @@ Create and TOML sections with config/secrets that your source/resources need (ie
 - Use real values if you have it
 - Use placeholders if you do not have it (ie. secrets). Make placeholder meaningful - ie. to look like redacted API KEY.
 
-For a single source, `[sources]` is the simplest. For multiple sources in one project, scope by module:
+Always scope credentials to the exact source:
+
 ```toml
 # .dlt/secrets.toml
-[sources]
+[sources.<section>.<name>]
 access_token = "ak-*******-cae"
-``` 
+```
+
+The path is always `sources.<section>.<name>`:
+- `<section>` = `section=` arg on `@dlt.source` if set; otherwise the module name (filename without `.py`)
+- `<name>` = `name=` arg on `@dlt.source` if set; otherwise the function name
+
+**IMPORTANT:** Never use `[sources.<name>]` — skipping the section/module level will NOT match.
 
 ### 7. First pipeline run
 
