@@ -13,6 +13,10 @@ If you don't have one yet, run `find-source` first to identify the right source.
 
 The argument is the full `dlt init` command to run (e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`).
 
+## Environment setup
+
+Before running any script, follow the environment setup from `bootstrap.md` — ensure dlt is installed with the correct extras (always include `workspace`).
+
 ## Steps
 
 ### 1. Snapshot current folder

@@ -37,6 +37,10 @@ Always do this first before any pipeline debugging:
 This shows HTTP requests being made, data extracted, pagination steps, and normalize/load progress. Essential for diagnosing any issue.
 **Essential reading if problems PERSIST**: https://dlthub.com/docs/general-usage/http/rest-client.md
 
+## Environment setup
+
+Before running any script, follow the environment setup from `bootstrap.md` — ensure dlt is installed with the correct extras (always include `workspace`).
+
 ## Run the pipeline
 
 ```

@@ -2,7 +2,7 @@
 * Use `uv`. Suggest and help to install if missing.
 * ALWAYS set up a Python venv for this project. Always use `uv run` to run Python in this venv.
 * ALWAYS set the cwd to this project.
-* Run `pip install dlt[workspace]` if `dlt` is not yet installed.
+* ALWAYS run `pip install dlt[workspace]` if `dlt` is not yet installed.
 
 # Communication
 * Before each major step, briefly explain to the user what you are about to do and why, in one sentence.
