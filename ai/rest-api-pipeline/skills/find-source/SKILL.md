@@ -47,20 +47,9 @@ If a match is found, fetch the page to extract the exact `dlt init dlthub:<sourc
 WebFetch: https://dlthub.com/workspace/source/<slug>
 ```
 
-### 4. Validate the match
+### 4. Validate and present
 
-Before reporting, verify the source actually covers what the user needs.
-
-**If a dlthub source was found (step 2 or 3):** briefly describe to the user what endpoints/resources the source provides so they can confirm it's what they want. Do NOT run `dlt init` yet — wait for user confirmation.
-
-```
-Source found: <source-name>
-  Init command: dlt init dlthub:<source_identifier> duckdb
-  Resources: <short list of endpoints/resources the source covers>
-  Page: <url>
-
-Does this match what you need?
-```
+Before reporting, assess everything found and determine how many genuinely distinct options the user has.
 
 **If the request maps to a core source (step 1):** report it directly — no confirmation needed.
 ```
@@ -69,6 +58,12 @@ Core source: <source_type>
   rest_api: declarative REST API connector with auth, pagination, and incremental loading
   filesystem: reads files (CSV, Parquet, JSONL) from local disk or cloud storage (S3, GCS, Azure)
 ```
+
+**Otherwise:** for each viable option, briefly describe what it provides, its init command, and what it requires (check the dlthub source page for dlthub source requirements and use knowledge of the underlying API for its own access model).
+
+A "viable option" is one that genuinely differs in tradeoffs — not every search result is a separate option. Only surface choices where the user's preference would actually matter (e.g. a paid dlthub source vs. a free public API they could hit directly). If one option is clearly best, just present that one.
+
+Do NOT run `dlt init` yet — wait for user confirmation.
 
 ### 5. Web search fallback
 
@@ -92,3 +87,4 @@ Report to the user:
 - What the actual API/service is (name, docs URL)
 - Which core source type fits and why (or `dlt init <source-name> duckdb` if nothing fits)
 - The `dlt init` command to run
+- One sentence on what credentials are needed, and ask if they have access or need help
