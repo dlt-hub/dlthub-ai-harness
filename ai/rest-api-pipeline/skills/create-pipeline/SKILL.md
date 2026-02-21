@@ -6,10 +6,16 @@ argument-hint: <dlt-init-command>
 
 # Create a dlt pipeline
 
-Create the simplest pipeline with a single endpoint, no pagination, incremental loading etc. to make it run ASAP. Use `dlt init` command (typically provided by the find-source skill).
+Scaffold and configure the simplest working dlt pipeline — single endpoint, no pagination or incremental loading — to get data flowing fast.
 
-Parse `$ARGUMENTS`:
-- `dlt-init-command` (required): the full `dlt init` command, e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`
+**Requires a `dlt init` command as the argument** (e.g. `dlt init dlthub:shopify_store duckdb`).
+If you don't have one yet, run `find-source` first to identify the right source.
+
+The argument is the full `dlt init` command to run (e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`).
+
+## Environment setup
+
+Before running any script, follow the environment setup from `bootstrap.md` — ensure dlt is installed with the correct extras (always include `workspace`).
 
 ## Steps
 
@@ -21,7 +27,7 @@ Run `ls -la` to see the current state before scaffolding.
 
 `dlt init` can be run multiple times in the same project — each run adds new files without overwriting existing pipeline scripts. It will update shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `requirements.txt`, `.gitignore`).
 
-Run the provided `dlt init` command in the active venv. Depending on the source type, this creates:
+Run the provided `dlt init` command in the active venv, always piping `Y` to it (e.g. `echo Y | uv run dlt init ...`). Depending on the source type, this creates:
 
 **dlthub context source** (`dlt init dlthub:<name> duckdb`):
 - `<source>_pipeline.py` — pipeline entry point with REST API template
@@ -135,12 +141,19 @@ Create and TOML sections with config/secrets that your source/resources need (ie
 - Use real values if you have it
 - Use placeholders if you do not have it (ie. secrets). Make placeholder meaningful - ie. to look like redacted API KEY.
 
-For a single source, `[sources]` is the simplest. For multiple sources in one project, scope by module:
+Always scope credentials to the exact source:
+
 ```toml
 # .dlt/secrets.toml
-[sources]
+[sources.<section>.<name>]
 access_token = "ak-*******-cae"
-``` 
+```
+
+The path is always `sources.<section>.<name>`:
+- `<section>` = `section=` arg on `@dlt.source` if set; otherwise the module name (filename without `.py`)
+- `<name>` = `name=` arg on `@dlt.source` if set; otherwise the function name
+
+**IMPORTANT:** Never use `[sources.<name>]` — skipping the section/module level will NOT match.
 
 ### 7. First pipeline run
 
