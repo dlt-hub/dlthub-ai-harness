@@ -6,17 +6,32 @@
   },
   "metadata": {
     "description": "Data engineering agent that creates, extends, and explores dlt data pipelines",
-    "version": "0.1.0",
-    "pluginRoot": "./ai"
+    "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "rest-api-pipeline",
-      "source": "./rest-api-pipeline",
-      "description": "Bootstrap and create data pipelines with dlt (data load tool). Find sources, create REST API pipelines, add endpoints, set up MCP for data inspection, and explore data with marimo notebooks.",
+      "source": "./workbench/rest-api-pipeline",
+      "description": "One shot REST API data pipelines with dlt (data load tool). Find sources, scaffold pipelines, debug, validate data, add endpoints, configure incremental loading, query data, and create interactive reports.",
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "etl", "data-pipeline", "python"]
+    },
+    {
+      "name": "bootstrap",
+      "source": "./workbench/bootstrap",
+      "description": "Prepare Python environment for dlthub workspace",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "workspace", "setup"]
+    },
+    {
+      "name": "data-exploration",
+      "source": "./workbench/data-exploration",
+      "description": "Explore data loaded by dlt pipelines with marimo, datasets, and ibis",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "marimo", "ibis", "data-exploration"]
     }
   ]
 }

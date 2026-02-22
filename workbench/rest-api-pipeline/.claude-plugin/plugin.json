@@ -1,0 +1,18 @@
+{
+  "name": "rest-api-pipeline",
+  "description": "One shot REST API pipelines with dlt: scope, debug and validate data",
+  "version": "0.1.0",
+  "author": {
+    "name": "dlthub"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlt-ai-dev-kit",
+  "license": "Apache-2.0",
+  "keywords": ["dlt", "etl", "data-pipeline", "python"],
+  "mcpServers": {
+    "dlt": {
+      "command": "uv",
+      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
+    }
+  }
+}

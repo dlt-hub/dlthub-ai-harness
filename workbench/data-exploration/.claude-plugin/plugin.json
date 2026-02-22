@@ -1,0 +1,12 @@
+{
+  "name": "data-exploration",
+  "description": "Explore data loaded by dlt pipelines with marimo, datasets, and ibis",
+  "version": "0.1.0",
+  "author": {
+    "name": "dlthub"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlt-ai-dev-kit",
+  "license": "Apache-2.0",
+  "keywords": ["dlt", "marimo", "ibis", "data-exploration"]
+}
