@@ -1,6 +1,6 @@
 ---
 name: validate-toolkits
-description: Validate toolkit components — check that external doc URLs are live and relevant, cross-references between skills/commands/rules resolve correctly, and fix what can be fixed. Use when the user asks to validate, review, or check toolkit quality.
+description: Validate toolkit components and project docs — check external doc URLs, cross-references between skills/commands/rules, and verify README.md and CLAUDE.md are in sync with actual toolkit state. Use when the user asks to validate, review, or check toolkit quality.
 argument-hint: <toolkit-path>
 ---
 
@@ -62,7 +62,26 @@ For each cross-reference found:
 
 Apply any fixes (broken URLs, renamed references) immediately before moving to the next file.
 
-## 3. Report
+## 3. Validate project docs against current state
+
+Check `README.md` and `CLAUDE.md` in the repo root for content that references toolkit state. Compare against the actual component map from step 1.
+
+### What to check
+
+- **Toolkit listings** — are all toolkits mentioned? Are descriptions accurate? Are any listed toolkits missing or renamed?
+- **Skill/command tables** — do skill names, step numbers, and descriptions match the actual SKILL.md frontmatter and workflow?
+- **CLI examples** — do `dlt ai` commands shown in the docs match the current CLI interface? Run `dlt ai --help` and `dlt ai toolkit --help` to verify.
+- **Architecture diagrams** — do mermaid diagrams reflect the current toolkit set and their relationships?
+- **Marketplace references** — does the marketplace.json content (names, descriptions, tags) match what README/CLAUDE.md say?
+
+### How to fix
+
+- If a toolkit was added, renamed, or removed: update the relevant tables/lists in README.md and CLAUDE.md.
+- If skills within a toolkit changed (added, removed, renamed): update any skill tables or workflow descriptions.
+- If CLI interface changed: update command examples.
+- Mark changes that can't be auto-resolved as WARNINGS (e.g., prose descriptions that may need human judgment).
+
+## 4. Report
 
 After all files are processed, output a summary:
 
@@ -71,6 +90,7 @@ Validated: <toolkit-name>
 Files scanned: N
 URLs checked: N (M broken)
 Cross-references checked: N (M broken)
+Project docs checked: README.md, CLAUDE.md
 
 FIXED:
   <file>: <old-ref> → <new-ref>
@@ -80,6 +100,9 @@ ERRORS:
 
 WARNINGS:
   <file>: <description of questionable content>
+
+PROJECT DOCS:
+  <file>: <what was updated or what is out of sync>
 ```
 
 Errors must be resolved by the user.

@@ -10,10 +10,10 @@ Works with **Claude Code**, **Cursor**, and **Codex**.
 
 If you don't have dlt or Python set up yet:
 
-1. Add the marketplace in Claude Code: `https://github.com/dlt-hub/dlt-ai-dev-kit`
+1. Add the marketplace in Claude Code: `https://github.com/dlt-hub/dlthub-ai-workbench`
 2. Install the bootstrap toolkit:
    ```
-   claude plugin install bootstrap@dlt-ai-dev-kit --scope project
+   claude plugin install bootstrap@dlthub-ai-workbench --scope project
    ```
 3. Run `/init-workspace` — it installs `uv`, creates a Python venv, installs `dlt`, and sets up AI agent support with `dlt ai init`.
 
@@ -121,7 +121,8 @@ dlt ai toolkit <name> info                     # show toolkit contents
 dlt ai toolkit <name> install [--agent] [--overwrite]
 dlt ai secrets list                            # show secret file locations
 dlt ai secrets view-redacted                   # print secrets with values masked
-dlt ai mcp [--stdio | --sse | --streamable-http]
+dlt ai mcp run [--stdio | --sse] [--features ...]
+dlt ai mcp install [--agent] [--features ...] [--name]
 ```
 
 Agent auto-detection and install paths:
@@ -130,14 +131,14 @@ Agent auto-detection and install paths:
 |---|---|---|---|
 | Skills | `.claude/skills/` | `.cursor/skills/` | `.agents/skills/` |
 | Commands | `.claude/commands/` | `.cursor/commands/` | converted to skills |
-| Rules | `.claude/rules/` | `.cursor/rules/`s| converted to skills |
+| Rules | `.claude/rules/` | `.cursor/rules/` | converted to skills |
 | MCP | `.mcp.json` | `.cursor/mcp.json` | `.codex/config.toml` |
 
 ### Option B: Anthropic marketplace and plugins
 
 Workbench toolkits are standard Claude Code plugins. You can browse and install them directly from the Anthropic marketplace in Claude Code — no `dlt` CLI needed.
 
-1. Add the marketplace: `https://github.com/dlt-hub/dlt-ai-dev-kit`
+1. Add the marketplace: `https://github.com/dlt-hub/dlthub-ai-workbench`
 2. Boostrap `dlthub` Workspace. Use `dlt ai init` to get workspace rules.
 3. Browse and install toolkits as plugins
 4. Skills and commands appear in your agent immediately
@@ -148,14 +149,16 @@ This is the easiest path for Claude Code users who want to get started without t
 
 Toolkits that need data access use the **dlt MCP server** — a read-only interface to your pipelines and destinations, installed automatically with each toolkit.
 
-| Tool | Description |
-|------|-------------|
-| `available_pipelines` | List all dlt pipelines in the project |
-| `available_tables` | List schemas and tables for a pipeline |
-| `table_schema` | Column names, types, and SQL identifiers |
-| `table_preview` | First 10 rows as markdown or JSONL |
-| `execute_sql_query` | Run read-only SQL against any destination |
-| `pipeline_trace` | Full trace of the last pipeline run |
+| Tool | Feature | Description |
+|------|---------|-------------|
+| `list_pipelines` | workspace | List all dlt pipelines in the project |
+| `list_tables` | pipeline | List schemas and tables for a pipeline |
+| `get_table_schema` | pipeline | Column names, types, and SQL identifiers |
+| `get_table_create_sql` | pipeline | Generate CREATE TABLE DDL in destination dialect |
+| `preview_table` | pipeline | First 10 rows as markdown or JSONL |
+| `execute_sql_query` | pipeline | Run read-only SQL against any destination |
+
+The MCP server uses a pluggy-based feature system. The `workspace` and `pipeline` features are built into dlt. External packages (like `dlt-mcp`) can add more features (e.g. `search-docs`) via `plug_mcp` hookimpls — see [dlt-mcp#30](https://github.com/dlt-hub/dlt-mcp/issues/30).
 
 ## Add and maintain Toolkits
 See [CLAUDE](CLAUDE.md)

@@ -6,13 +6,13 @@
     "name": "dlthub"
   },
   "homepage": "https://dlthub.com/docs",
-  "repository": "https://github.com/dlt-hub/dlt-ai-dev-kit",
-  "license": "Apache-2.0",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "ELv2",
   "keywords": ["dlt", "etl", "data-pipeline", "python"],
   "mcpServers": {
-    "dlt": {
+    "dlt-workspace": {
       "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
+      "args": ["run", "dlt", "ai", "mcp", "run", "--stdio"]
     }
   }
 }
