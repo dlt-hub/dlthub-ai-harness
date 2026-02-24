@@ -33,20 +33,7 @@ This opens a browser with table schemas, row counts, and sample data.
 
 ### For the agent: set up pipeline MCP server to query the data
 
-To query schemas and data programmatically, configure the dlt pipeline MCP server. Add to `.mcp.json` in the project root:
-```json
-{
-  "mcpServers": {
-    "dlt-pipeline-mcp": {
-      "type": "stdio",
-      "command": "uv",
-      "args": ["run", "dlt", "pipeline", "<pipeline_name>", "mcp", "--stdio"]
-    }
-  }
-}
-```
-
-The user must restart Claude Code to pick up new MCP servers. After restart, use the MCP tools to verify tables, columns, types, and sample data look correct.
+You have mcp with a right set of tools available
 
 ## 3. Review with user
 

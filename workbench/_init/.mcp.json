@@ -2,7 +2,7 @@
   "mcpServers": {
     "dlt-workspace": {
       "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "run", "--stdio"]
+      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
     }
   }
 }
