@@ -52,7 +52,7 @@ uv venv
 
 **Install dlt** (if missing or outdated):
 ```
-uv pip install --upgrade --pre dlt[workspace]
+uv pip install --upgrade dlt[workspace]==1.23.0a1
 ```
 
 This installs (or upgrades) dlt with marimo, ibis, and other workspace tools. `--pre` allows alpha/pre-release versions.

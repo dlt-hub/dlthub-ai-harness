@@ -15,9 +15,9 @@ workbench/                                # All toolkits live here
     .mcp.json                      # MCP servers (optional)
   _init/                           # Special toolkit: shared rules/skills, NOT in marketplace
 tools/                             # Dev tooling
-  validate_plugins.py              # Marketplace & plugin consistency checker
+  validate_toolkits.py              # Marketplace & plugin consistency checker
   extract_refs.py                  # Extract component map & external URLs from a toolkit
-Makefile                           # make validate-plugins
+Makefile                           # make validate-toolkits
 ```
 
 ## Toolkit conventions
@@ -46,7 +46,7 @@ procedure for humans - it will correctly guess marketplace location, duplicate s
 ### Quick check
 Run after any change to skills, rules, commands, or marketplace.json:
 ```
-make validate-plugins
+make validate-toolkits
 ```
 Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule format, command files, workflow.md references.
 

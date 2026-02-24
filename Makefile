@@ -1,7 +1,7 @@
-.PHONY: dev validate-plugins
+.PHONY: dev validate-toolkits
 
 dev:
 	uv sync
 
-validate-plugins:
-	uv run python tools/validate_plugins.py
+validate-toolkits:
+	uv run python tools/validate_toolkits.py

@@ -32,6 +32,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "marimo", "ibis", "data-exploration"]
+    },
+    {
+      "name": "dlthub-runtime",
+      "source": "./workbench/dlthub-runtime",
+      "description": "Deploy dlt workspace and pipelines to the dltHub platform",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "deploy", "dlthub", "platform"]
     }
   ]
 }

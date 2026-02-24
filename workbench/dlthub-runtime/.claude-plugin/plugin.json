@@ -1,0 +1,12 @@
+{
+  "name": "dlthub-runtime",
+  "description": "Deploy dlt workspace and pipelines to the dltHub platform",
+  "version": "0.1.0",
+  "author": {
+    "name": "dlthub"
+  },
+  "homepage": "https://dlthub.com/docs/hub/intro",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "ELv2",
+  "keywords": ["dlt", "deploy", "dlthub", "platform"]
+}

@@ -49,7 +49,7 @@ If the component is a skill or command referenced in:
 
 ## 5. Validate
 
-Run `make validate-plugins` to confirm everything is consistent after the rename.
+Run `make validate-toolkits` to confirm everything is consistent after the rename.
 
 ## 6. Report
 
