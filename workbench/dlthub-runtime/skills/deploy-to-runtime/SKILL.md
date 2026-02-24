@@ -59,7 +59,9 @@ Review each script being deployed and fix patterns that are safe locally but har
 3. **Verify `write_disposition`** — `"replace"` is fine for full-refresh pipelines, but confirm the user doesn't actually want `"merge"` or `"append"` for incremental loads.
 4. **Check `if __name__ == "__main__":` block** — every script must have one or the runtime job does nothing. The block should NOT contain interactive/debug-only code.
 5. **Pin the dlt version exactly** in `pyproject.toml` — use `==` not `>=` to prevent unexpected upgrades on runtime. If user has a pre-release (e.g. `1.23.0a1`), use `uv pip install` to install it and pin with `==` in pyproject (do NOT use `uv add` which may downgrade to latest stable).
-6. **Notebooks (`marimo` apps)**: verify they use `dlt.attach()` (not `dlt.pipeline()`) and that all visualization dependencies (`altair`, `ibis-framework`, `pandas`, etc.) are in `pyproject.toml`.
+6. **Notebooks (`marimo` apps)**:
+- verify they use `dlt.attach()` (not `dlt.pipeline()`) and that **destination** and **dataset_name** are explicitly passed (this is temporary limitation of the runtime)
+- all visualization dependencies (`altair`, `ibis-framework`, `pandas`, etc.) are in `pyproject.toml`. 
 
 ### Set up production destination
 Offer to setup a production destination. If user is using `duckdb` explain why the ingested data will not survive to be visible by notebooks (runtime erases ephemeral storage!). Explain the concept of named destination first!
