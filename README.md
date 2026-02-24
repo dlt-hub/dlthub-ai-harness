@@ -22,7 +22,7 @@ If you don't have dlt or Python set up yet:
 If you already have a Python project:
 
 ```bash
-uv pip install --upgrade --pre dlt[workspace]
+uv pip install --upgrade dlt[workspace]==1.23.0a1
 dlt ai init
 ```
 
