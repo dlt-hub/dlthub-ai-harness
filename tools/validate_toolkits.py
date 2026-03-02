@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Validate Claude Code plugin marketplace and verify plugin consistency.
 
+Usage:
+    python tools/validate_toolkits.py              # validate all toolkits
+    python tools/validate_toolkits.py <name>       # validate one toolkit by name
+
 Checks:
 - marketplace.json structure
 - Each plugin source points to a directory under ./workbench/ with last segment matching plugin name
@@ -8,10 +12,12 @@ Checks:
 - Skills have valid SKILL.md with frontmatter (name, description)
 - Skill frontmatter name matches directory name
 - Commands have valid frontmatter (name, description), name matches filename
+- argument-hint uses [bracket] convention per Anthropic docs
 - Rules are catch-all (no frontmatter allowed)
 - workflow.md (`skill-name`) references point to real skill directories
-- All workbench/ directories (except _init) must be listed in marketplace
-- _init toolkit is validated structurally but exempt from marketplace
+- workflow.md has required sections (Core workflow, Handover to other toolkits)
+- workflow.md handover references point to real toolkits in marketplace
+- All workbench/ directories must be listed in marketplace
 """
 
 import json
@@ -20,12 +26,27 @@ import sys
 from pathlib import Path
 
 AI_DIR = "workbench"
-INIT_TOOLKIT = "_init"  # special toolkit: validated but not in marketplace
+
+# argument-hint must be quoted and use [bracket] convention per Anthropic docs
+# valid: "[pipeline-name]", "[filename] [format]", "[pipeline-name] [query]"
+# invalid: <angle-brackets>, unquoted values with [, -- separators
+_ARGUMENT_HINT_TOKEN = re.compile(r"^\[[\w-]+\]$")
+
+# workflow.md section headings (case-insensitive match)
+_WORKFLOW_REQUIRED_SECTIONS = ["core workflow"]
+_WORKFLOW_OPTIONAL_SECTIONS = ["extend and harden"]
+_WORKFLOW_HANDOVER_SECTION = "handover to other toolkits"
+
+# (`skill-name`) references in workflow
+_WORKFLOW_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
+
+# **toolkit-name** references in handover section
+_WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 
 
 def parse_frontmatter(path: Path) -> dict:
     """Extract YAML-like frontmatter from a markdown file."""
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     match = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
     if not match:
         return {}
@@ -37,10 +58,83 @@ def parse_frontmatter(path: Path) -> dict:
     return fm
 
 
+def _extract_sections(text: str) -> dict[str, str]:
+    """Split markdown into {heading_lower: body} by ## headings."""
+    sections: dict[str, str] = {}
+    current_heading = None
+    current_lines: list[str] = []
+
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if current_heading is not None:
+                sections[current_heading] = "\n".join(current_lines)
+            current_heading = line[3:].strip().lower()
+            current_lines = []
+        else:
+            current_lines.append(line)
+
+    if current_heading is not None:
+        sections[current_heading] = "\n".join(current_lines)
+    return sections
+
+
+def validate_workflow(
+    pname: str,
+    plugin_dir: Path,
+    skill_names: set[str],
+    marketplace_names: set[str],
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate workflow.md structure, skill refs, and handover refs."""
+    workflow_path = plugin_dir / "rules" / "workflow.md"
+    if not workflow_path.exists():
+        return
+
+    text = workflow_path.read_text()
+
+    # --- skill references (across entire file) ---
+    workflow_refs = set(_WORKFLOW_SKILL_REF.findall(text))
+    for ref in sorted(workflow_refs):
+        if ref not in skill_names:
+            errors.append(f"[{pname}] workflow.md references '{ref}' but no skill directory exists")
+
+    # --- section structure ---
+    sections = _extract_sections(text)
+
+    for required in _WORKFLOW_REQUIRED_SECTIONS:
+        if required not in sections:
+            errors.append(
+                f"[{pname}] workflow.md missing required section: '## {required.title()}'"
+            )
+
+    if _WORKFLOW_HANDOVER_SECTION not in sections:
+        warnings.append(
+            f"[{pname}] workflow.md missing section: '## {_WORKFLOW_HANDOVER_SECTION.title()}'"
+        )
+
+    # --- handover references must point to real toolkits ---
+    handover_text = sections.get(_WORKFLOW_HANDOVER_SECTION, "")
+    if handover_text:
+        handover_refs = set(_WORKFLOW_HANDOVER_REF.findall(handover_text))
+        for ref in sorted(handover_refs):
+            if ref == pname:
+                warnings.append(f"[{pname}] workflow.md handover references itself")
+            elif ref not in marketplace_names:
+                errors.append(
+                    f"[{pname}] workflow.md handover references '{ref}' "
+                    f"but no such toolkit in marketplace"
+                )
+
+
 def validate_toolkit_content(
-    pname: str, plugin_dir: Path, errors: list[str], warnings: list[str]
+    pname: str,
+    plugin_dir: Path,
+    marketplace_names: set[str],
+    errors: list[str],
+    warnings: list[str],
 ) -> set[str]:
-    """Validate skills, commands, rules, and workflow refs. Returns skill names."""
+    """Validate skills, commands, rules, and workflow. Returns skill names."""
     # --- skills ---
     skills_dir = plugin_dir / "skills"
     skill_names: set[str] = set()
@@ -58,10 +152,7 @@ def validate_toolkit_content(
             fm_desc = fm.get("description", "")
 
             if not fm_name:
-                errors.append(
-                    f"[{pname}] {skill_dir.name}/SKILL.md "
-                    f"missing 'name' in frontmatter"
-                )
+                errors.append(f"[{pname}] {skill_dir.name}/SKILL.md missing 'name' in frontmatter")
             elif fm_name != skill_dir.name:
                 errors.append(
                     f"[{pname}] {skill_dir.name}/SKILL.md "
@@ -70,9 +161,22 @@ def validate_toolkit_content(
 
             if not fm_desc:
                 warnings.append(
-                    f"[{pname}] {skill_dir.name}/SKILL.md "
-                    f"missing 'description' in frontmatter"
+                    f"[{pname}] {skill_dir.name}/SKILL.md missing 'description' in frontmatter"
                 )
+
+            # argument-hint: must be quoted and use [bracket] tokens
+            hint = fm.get("argument-hint", "")
+            if hint:
+                # strip surrounding quotes from our simple parser
+                hint_val = hint.strip('"').strip("'")
+                tokens = hint_val.split()
+                bad = [t for t in tokens if not _ARGUMENT_HINT_TOKEN.match(t)]
+                if bad:
+                    errors.append(
+                        f"[{pname}] {skill_dir.name}/SKILL.md "
+                        f"argument-hint tokens must use [bracket] convention, "
+                        f"got: {' '.join(bad)}"
+                    )
 
             skill_names.add(skill_dir.name)
 
@@ -92,10 +196,7 @@ def validate_toolkit_content(
             fm_desc = fm.get("description", "")
 
             if not fm_name:
-                errors.append(
-                    f"[{pname}] commands/{cmd_file.name} "
-                    f"missing 'name' in frontmatter"
-                )
+                errors.append(f"[{pname}] commands/{cmd_file.name} missing 'name' in frontmatter")
             elif fm_name != cmd_file.stem:
                 errors.append(
                     f"[{pname}] commands/{cmd_file.name} "
@@ -104,9 +205,21 @@ def validate_toolkit_content(
 
             if not fm_desc:
                 errors.append(
-                    f"[{pname}] commands/{cmd_file.name} "
-                    f"missing 'description' in frontmatter"
+                    f"[{pname}] commands/{cmd_file.name} missing 'description' in frontmatter"
                 )
+
+            # argument-hint: must use [bracket] convention
+            hint = fm.get("argument-hint", "")
+            if hint:
+                hint_val = hint.strip('"').strip("'")
+                tokens = hint_val.split()
+                bad = [t for t in tokens if not _ARGUMENT_HINT_TOKEN.match(t)]
+                if bad:
+                    errors.append(
+                        f"[{pname}] commands/{cmd_file.name} "
+                        f"argument-hint tokens must use [bracket] convention, "
+                        f"got: {' '.join(bad)}"
+                    )
 
     # --- rules (must be catch-all, no frontmatter) ---
     rules_dir = plugin_dir / "rules"
@@ -116,26 +229,18 @@ def validate_toolkit_content(
             if fm:
                 rel = rule_file.relative_to(plugin_dir)
                 errors.append(
-                    f"[{pname}] {rel} has frontmatter — "
-                    f"rules must be catch-all (no frontmatter)"
+                    f"[{pname}] {rel} has frontmatter — rules must be catch-all (no frontmatter)"
                 )
 
-    # --- workflow.md references ---
-    workflow_path = plugin_dir / "rules" / "workflow.md"
-    if workflow_path.exists():
-        text = workflow_path.read_text()
-        workflow_refs = set(re.findall(r"\(`([a-z][\w-]*)`\)", text))
-        for ref in sorted(workflow_refs):
-            if ref not in skill_names:
-                errors.append(
-                    f"[{pname}] workflow.md references '{ref}' "
-                    f"but no skill directory exists"
-                )
+    # --- workflow.md ---
+    validate_workflow(pname, plugin_dir, skill_names, marketplace_names, errors, warnings)
 
     return skill_names
 
 
-def validate(root: Path) -> tuple[list[str], list[str], dict[str, set[str]]]:
+def validate(
+    root: Path, only: str | None = None
+) -> tuple[list[str], list[str], dict[str, set[str]]]:
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -145,6 +250,7 @@ def validate(root: Path) -> tuple[list[str], list[str], dict[str, set[str]]]:
         return errors, warnings, {}
 
     marketplace = json.loads(marketplace_path.read_text())
+    marketplace_names = {e.get("name") for e in marketplace.get("plugins", [])}
 
     all_skills: dict[str, set[str]] = {}
 
@@ -153,6 +259,10 @@ def validate(root: Path) -> tuple[list[str], list[str], dict[str, set[str]]]:
         pname = entry.get("name", "<unnamed>")
         source = entry.get("source", "")
         plugin_dir = root / source
+
+        # skip if filtering to a single toolkit
+        if only and pname != only:
+            continue
 
         # source must live under ./workbench/
         source_path = Path(source)
@@ -184,38 +294,39 @@ def validate(root: Path) -> tuple[list[str], list[str], dict[str, set[str]]]:
                     f"!= marketplace name '{pname}'"
                 )
 
-        all_skills[pname] = validate_toolkit_content(pname, plugin_dir, errors, warnings)
-
-    # --- _init toolkit (same validation, no marketplace/plugin.json required) ---
-    init_dir = root / AI_DIR / INIT_TOOLKIT
-    if init_dir.is_dir():
-        all_skills[INIT_TOOLKIT] = validate_toolkit_content(
-            INIT_TOOLKIT, init_dir, errors, warnings
+        all_skills[pname] = validate_toolkit_content(
+            pname, plugin_dir, marketplace_names, errors, warnings
         )
 
-    # --- all workbench/ dirs (except _init) must be in marketplace ---
-    marketplace_names = {e.get("name") for e in marketplace.get("plugins", [])}
-    ai_dir = root / AI_DIR
-    if ai_dir.is_dir():
-        for d in sorted(ai_dir.iterdir()):
-            if not d.is_dir() or d.name.startswith("."):
-                continue
-            if d.name == INIT_TOOLKIT:
-                continue
-            if d.name not in marketplace_names:
-                errors.append(
-                    f"[{d.name}] directory exists in {AI_DIR}/ "
-                    f"but is not listed in marketplace.json"
-                )
+    if only and only not in all_skills:
+        errors.append(f"Toolkit '{only}' not found in marketplace.json")
+
+    # --- all workbench/ dirs must be in marketplace (skip in single-toolkit mode) ---
+    if not only:
+        ai_dir = root / AI_DIR
+        if ai_dir.is_dir():
+            for d in sorted(ai_dir.iterdir()):
+                if not d.is_dir() or d.name.startswith("."):
+                    continue
+                if d.name not in marketplace_names:
+                    errors.append(
+                        f"[{d.name}] directory exists in {AI_DIR}/ "
+                        f"but is not listed in marketplace.json"
+                    )
 
     return errors, warnings, all_skills
 
 
 def main():
     root = Path(__file__).resolve().parent.parent
-    print(f"Validating plugins in {root}\n")
+    only = sys.argv[1] if len(sys.argv) > 1 else None
 
-    errors, warnings, all_skills = validate(root)
+    if only:
+        print(f"Validating toolkit '{only}' in {root}\n")
+    else:
+        print(f"Validating plugins in {root}\n")
+
+    errors, warnings, all_skills = validate(root, only)
 
     for w in warnings:
         print(f"  WARN  {w}")
@@ -227,9 +338,7 @@ def main():
 
     print()
     for pname, skills in sorted(all_skills.items()):
-        if pname == INIT_TOOLKIT:
-            print(f"  [{pname}] init toolkit (not in marketplace)")
-        elif skills:
+        if skills:
             print(f"  [{pname}] {len(skills)} skills: {', '.join(sorted(skills))}")
         else:
             print(f"  [{pname}] no skills (commands only)")

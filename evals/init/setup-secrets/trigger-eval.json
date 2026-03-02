@@ -1,0 +1,88 @@
+[
+  {
+    "query": "I need to set up my Stripe API key so the pipeline can authenticate, where do I put it?",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I configure postgres credentials for my dlt destination? I have host, port, username and password",
+    "should_trigger": true
+  },
+  {
+    "query": "dlt ai secrets view-redacted shows all stars for my github token but the pipeline still says 401 unauthorized, can you check what's wrong with my secrets?",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm writing a data validation script that needs to call the Stripe API to verify our loaded invoices match, but I need to use the same api_key from my pipeline's secrets without hardcoding it or reading the toml file directly",
+    "should_trigger": true
+  },
+  {
+    "query": "set up the BigQuery service account credentials, I downloaded the JSON key file from GCP console",
+    "should_trigger": true
+  },
+  {
+    "query": "I have multiple secrets files in my project and I'm confused about which one dlt actually reads — there's a dev.secrets.toml and the regular one, and I'm not sure if my API key ended up in the right place",
+    "should_trigger": true
+  },
+  {
+    "query": "I got ConfigFieldMissingException: Please set sources.my_api.api_key — where exactly should I put this value?",
+    "should_trigger": true
+  },
+  {
+    "query": "can you check if my database password is actually set or still a placeholder? don't show me the actual value though",
+    "should_trigger": true,
+    "disabled": true,
+    "reason": "undertrigger — Claude uses MCP secrets_view_redacted directly"
+  },
+  {
+    "query": "I need to add an OAuth2 client_id and client_secret for the Hubspot source, what's the right toml section format?",
+    "should_trigger": true,
+    "disabled": true,
+    "reason": "undertrigger — Claude knows TOML format without skill"
+  },
+  {
+    "query": "what's the right TOML section name for my source credentials? is it [sources.my_api] or [sources.my_api.credentials]?",
+    "should_trigger": true,
+    "disabled": true,
+    "reason": "undertrigger — Claude answers config questions directly"
+  },
+  {
+    "query": "the pipeline ran but loaded 0 rows, I think the data_selector is wrong because the API returns results under a 'data' key",
+    "should_trigger": false
+  },
+  {
+    "query": "add a new endpoint for /v2/customers to my existing stripe pipeline, I want to pull customer metadata too",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to build a pipeline to pull data from the GitHub API, can you help me find the right dlt source?",
+    "should_trigger": false
+  },
+  {
+    "query": "the paginator loops forever after removing .add_limit(1), I think the cursor config is wrong",
+    "should_trigger": false
+  },
+  {
+    "query": "create a pipeline that loads data from the Jira REST API into duckdb, start with just the issues endpoint",
+    "should_trigger": false
+  },
+  {
+    "query": "build me a pipeline that pulls issues from the Linear API",
+    "should_trigger": false
+  },
+  {
+    "query": "run dlt pipeline -vv my_pipeline trace and tell me why the last load failed",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to query the loaded payments data — what's the total revenue by month?",
+    "should_trigger": false
+  },
+  {
+    "query": "the pipeline keeps retrying with 429 too many requests, how do I configure rate limiting?",
+    "should_trigger": false
+  },
+  {
+    "query": "set up incremental loading on the events endpoint so we only pull records newer than the last run",
+    "should_trigger": false
+  }
+]

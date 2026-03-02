@@ -1,7 +1,7 @@
 ---
 name: create-rest-api-pipeline
 description: Create a dlt REST API pipeline. Use for dlthub context sources (dlthub:*), the rest_api core source, or any generic REST/HTTP API source. Not for sql_database or filesystem sources.
-argument-hint: <dlt-init-command>
+argument-hint: "[dlt-init-command]"
 ---
 
 # Create a rest api dlt pipeline
@@ -23,7 +23,7 @@ Run `ls -la` to see the current state before scaffolding.
 
 `dlt init` can be run multiple times in the same project — each run adds new files without overwriting existing pipeline scripts. It will update shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `requirements.txt`, `.gitignore`).
 
-Run the provided `dlt init` command in the active venv. Depending on the source type, this creates:
+Run the provided `dlt init` command with `--non-interactive` in the active venv. Depending on the source type, this creates:
 
 **dlthub context source** (`dlt init dlthub:<name> duckdb`):
 - `<source>_pipeline.py` — pipeline entry point with REST API template
@@ -140,14 +140,14 @@ def my_source(
 base_url = "https://api.example.com/v1/"
 ```
 
-**Secrets** (API keys, tokens, passwords): **never** read or write `secrets.toml` directly.
-- `dlt ai secrets view-redacted` — inspect what's already configured
-- `dlt ai secrets update-fragment` — add or update credentials
+**Secrets** (API keys, tokens, passwords): **never** read or write `secrets.toml` directly.  **Never** run commands that output secret values (e.g. `gh auth token`, `env | grep KEY`).
 
-```
-dlt ai secrets update-fragment '[sources.<name>]
+Use `secrets_view_redacted`, `secrets_list`, and `secrets_update_fragment` MCP tools (or equivalent `dlt ai secrets` CLI commands) — see `setup-secrets` skill for details.
+
+Use `secrets_list` to pick the target file, then `secrets_update_fragment` with the TOML fragment:
+```toml
+[sources.<name>]
 access_token = "ak-*******-cae"
-'
 ```
 - `<name>` = `name=` arg on `@dlt.source` if set; otherwise the function name
 - Use meaningful placeholders that hint at format (not generic `<configure me>`)

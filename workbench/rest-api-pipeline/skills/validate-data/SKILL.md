@@ -1,7 +1,7 @@
 ---
 name: validate-data
 description: Validate schema and data after a successful dlt pipeline load. Use when the user wants to check if loaded data looks correct, inspect table schemas, fix data types, flatten nested structures, or refine the data shape.
-argument-hint: [pipeline-name] [-- <hints>]
+argument-hint: "[pipeline-name] [concerns]"
 ---
 
 # Validate loaded data
@@ -69,3 +69,4 @@ Re-run the pipeline after changes (`dev_mode` gives a fresh dataset each time). 
 
 - **User is happy with data** → suggest `new-endpoint` for more resources, `view-data` for querying, or the `data-exploration` toolkit for interactive notebooks and reports
 - **Need to fix pipeline code** → edit and re-run with `debug-pipeline`
+- **User wants to see the data** -> Workspace Dashboard with command above

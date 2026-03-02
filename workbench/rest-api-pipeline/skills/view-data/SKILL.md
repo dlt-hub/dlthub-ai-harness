@@ -1,7 +1,7 @@
 ---
 name: view-data
 description: Query, explore, or view data loaded by a dlt pipeline. Use when the user asks to query data, explore loaded tables, check row counts, write Python that reads pipeline data, or asks questions like "show me the data", "what users are there", "how much did we spend". Covers dlt dataset API, ibis expressions, and ReadableRelation.
-argument-hint: [pipeline-name] [-- <hints>]
+argument-hint: "[pipeline-name] [query]"
 ---
 
 # View pipeline data

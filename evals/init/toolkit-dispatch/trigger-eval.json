@@ -1,0 +1,82 @@
+[
+  {
+    "query": "what can you do? I just set up dlt and I'm not sure what the next step is",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I build a data pipeline with dlt? I want to pull data from an API",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to create reports and dashboards from my loaded data, how does that work?",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I deploy my pipeline to production? what are my options?",
+    "should_trigger": true
+  },
+  {
+    "query": "what are toolkits and how do they work? I see dlt has some kind of workflow system",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm new to dlt, where do I start? I have a bunch of REST APIs I need to ingest data from",
+    "should_trigger": true
+  },
+  {
+    "query": "I finished setting up my workspace, what can I do now?",
+    "should_trigger": true
+  },
+  {
+    "query": "what data engineering workflows are available? can you walk me through what's possible?",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm confused, I ran dlt ai init but nothing happened, what am I supposed to do with this?",
+    "should_trigger": true
+  },
+  {
+    "query": "can dlt help me with ETL from Salesforce to BigQuery? what would that look like?",
+    "should_trigger": true
+  },
+  {
+    "query": "the pipeline loaded 500 rows into the customers table but some email columns are null, can you check the schema?",
+    "should_trigger": false
+  },
+  {
+    "query": "I just ran the pipeline and got a ConfigFieldMissingException for api_key — the trace says sources.stripe.api_key is missing",
+    "should_trigger": false
+  },
+  {
+    "query": "add a new endpoint for /v1/invoices to my existing stripe pipeline, it should pull invoice line items too",
+    "should_trigger": false
+  },
+  {
+    "query": "I need to set up my postgres credentials in secrets.toml for the destination",
+    "should_trigger": false
+  },
+  {
+    "query": "the paginator seems to loop forever when I remove .add_limit(1), I think the cursor pagination is wrong",
+    "should_trigger": false
+  },
+  {
+    "query": "run dlt pipeline -vv stripe_pipeline trace and show me what happened in the last load",
+    "should_trigger": false
+  },
+  {
+    "query": "set up incremental loading on the payments endpoint so we only pull new records each run",
+    "should_trigger": false
+  },
+  {
+    "query": "can you help me with my python project? I need to parse some CSV files and upload them to S3",
+    "should_trigger": false
+  },
+  {
+    "query": "write a unit test for the transform function in transforms.py",
+    "should_trigger": false
+  },
+  {
+    "query": "fix the TypeError on line 42 of my pipeline script, it says NoneType has no attribute get",
+    "should_trigger": false
+  }
+]

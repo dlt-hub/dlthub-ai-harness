@@ -1,0 +1,12 @@
+{
+  "name": "init",
+  "description": "Shared rules, secrets handling, and workspace MCP for dlt",
+  "version": "0.1.0",
+  "author": {
+    "name": "dlthub"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "ELv2",
+  "keywords": ["dlt", "init", "rules", "secrets", "mcp"]
+}

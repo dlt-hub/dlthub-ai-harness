@@ -40,6 +40,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "deploy", "dlthub", "platform"]
+    },
+    {
+      "name": "init",
+      "source": "./workbench/init",
+      "description": "Shared rules, secrets handling, and workspace MCP for dlt",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "init", "rules", "secrets", "mcp"]
     }
   ]
 }

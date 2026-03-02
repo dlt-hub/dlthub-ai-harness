@@ -11,7 +11,7 @@ import sys
 
 
 def dump_session(input_path, output=sys.stdout):
-    with open(input_path) as f:
+    with open(input_path, encoding="utf-8") as f:
         lines = f.readlines()
 
     for line in lines:
@@ -42,21 +42,19 @@ def dump_session(input_path, output=sys.stdout):
                     name = block.get("name", "")
                     inp = block.get("input", {})
                     if name == "Bash":
-                        parts.append(f'  >>> bash: {inp.get("command", "")[:120]}')
+                        parts.append(f"  >>> bash: {inp.get('command', '')[:120]}")
                     elif name == "Write":
-                        parts.append(f'  >>> write: {inp.get("file_path", "")}')
+                        parts.append(f"  >>> write: {inp.get('file_path', '')}")
                     elif name == "Edit":
-                        parts.append(f'  >>> edit: {inp.get("file_path", "")}')
+                        parts.append(f"  >>> edit: {inp.get('file_path', '')}")
                     elif name == "Read":
-                        parts.append(f'  >>> read: {inp.get("file_path", "")}')
+                        parts.append(f"  >>> read: {inp.get('file_path', '')}")
                     elif name == "Skill":
-                        parts.append(
-                            f'  >>> skill: {inp.get("skill", "")} {inp.get("args", "")}'
-                        )
+                        parts.append(f"  >>> skill: {inp.get('skill', '')} {inp.get('args', '')}")
                     elif name == "WebSearch":
-                        parts.append(f'  >>> search: {inp.get("query", "")}')
+                        parts.append(f"  >>> search: {inp.get('query', '')}")
                     elif name == "WebFetch":
-                        parts.append(f'  >>> fetch: {inp.get("url", "")}')
+                        parts.append(f"  >>> fetch: {inp.get('url', '')}")
                     else:
                         parts.append(f"  >>> {name}")
 
@@ -73,7 +71,7 @@ if __name__ == "__main__":
 
     input_path = sys.argv[1]
     if len(sys.argv) >= 3:
-        with open(sys.argv[2], "w") as out:
+        with open(sys.argv[2], "w", encoding="utf-8") as out:
             dump_session(input_path, out)
     else:
         dump_session(input_path)

@@ -1,7 +1,7 @@
 ---
 name: find-source
 description: Find a dlt source for a given API or data provider. Use when the user asks about a source, wants to find a connector, or asks to implement a pipeline for a specific data source.
-argument-hint: <source-name> [-- <description of data] 
+argument-hint: "[source-name] [context]"
 ---
 
 # Find a dlt source
@@ -28,7 +28,7 @@ If it matches a core source, skip to **step 5** and report the core source match
 
 If the request looks like a specific API/service name, run:
 ```
-dlt init --list-sources
+dlt --non-interactive init --list-sources
 ```
 Search the output (case-insensitive) for the source name. If found, skip to **step 5**
 

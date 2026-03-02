@@ -39,7 +39,7 @@ def extract_urls_with_context(text: str) -> list[dict]:
 
 def build_component_map(plugin_dir: Path) -> dict:
     """Build map of addressable components in a toolkit."""
-    components = {"skills": [], "commands": [], "rules": []}
+    components: dict[str, list[str]] = {"skills": [], "commands": [], "rules": []}
 
     skills_dir = plugin_dir / "skills"
     if skills_dir.is_dir():
