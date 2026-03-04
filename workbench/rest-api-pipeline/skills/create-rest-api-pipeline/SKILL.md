@@ -1,6 +1,6 @@
 ---
 name: create-rest-api-pipeline
-description: Create a dlt REST API pipeline. Use for dlthub context sources (dlthub:*), the rest_api core source, or any generic REST/HTTP API source. Not for sql_database or filesystem sources.
+description: Create a dlt REST API pipeline. Use for the rest_api core source, or any generic REST/HTTP API source. Not for sql_database or filesystem sources.
 argument-hint: "[dlt-init-command]"
 ---
 
@@ -8,10 +8,10 @@ argument-hint: "[dlt-init-command]"
 
 Create the simplest working dlt pipeline — single endpoint, no pagination or incremental loading — to get data flowing fast.
 
-**Requires a `dlt init` command as the argument** (e.g. `dlt init dlthub:shopify_store duckdb`).
+**Requires a `dlt init` command as the argument** (e.g. `dlt init shopify_store duckdb`).
 If you don't have one yet, run `find-source` first to identify the right source.
 
-The argument is the full `dlt init` command to run (e.g. `dlt init dlthub:shopify_store duckdb` or `dlt init sql_database postgres`).
+The argument is the full `dlt init` command to run (e.g. `dlt init shopify_store duckdb` or `dlt init sql_database postgres`).
 
 ## Steps
 
@@ -25,12 +25,7 @@ Run `ls -la` to see the current state before scaffolding.
 
 Run the provided `dlt init` command with `--non-interactive` in the active venv. Depending on the source type, this creates:
 
-**dlthub context source** (`dlt init dlthub:<name> duckdb`):
-- `<source>_pipeline.py` — pipeline entry point with REST API template
-- `<source>-docs.yaml` — API docs scaffold with endpoints, auth, params
-- `<source>.md` — LLM context file (ignore this, not helpful)
-
-**Core source** (`dlt init rest_api duckdb`, `sql_database`, `filesystem`):
+**Core source** (`dlt init rest_api duckdb`):
 - `rest_api_pipeline.py` (or similar) — full working example with RESTAPIConfig, pagination, incremental loading
 
 **Generic fallback** (`dlt init <unknown_name> duckdb`):

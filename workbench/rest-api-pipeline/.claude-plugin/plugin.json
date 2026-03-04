@@ -3,11 +3,11 @@
   "description": "One shot REST API pipelines with dlt: scope, debug and validate data",
   "version": "0.1.0",
   "author": {
-    "name": "dlthub"
+    "name": "dltHub, Inc."
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
-  "license": "ELv2",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
   "keywords": ["dlt", "etl", "data-pipeline", "python"],
   "mcpServers": {
     "dlt-workspace-mcp": {

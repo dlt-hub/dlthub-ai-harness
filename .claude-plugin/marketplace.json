@@ -6,7 +6,8 @@
   },
   "metadata": {
     "description": "Data engineering agent that creates, extends, and explores dlt data pipelines",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
   },
   "plugins": [
     {

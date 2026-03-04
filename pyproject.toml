@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI toolkits for data engineering with dlt"
 requires-python = ">=3.10"
 dependencies = [
-    "dlt[hub,workspace]>=1.23.0a2",
+    "dlt[hub,workspace]>=1.23.0a3",
 ]
 
 [dependency-groups]
@@ -13,8 +13,8 @@ lint = [
   "mypy>=1.8.0",
 ]
 
-[tool.uv.sources]
-dlt = { git = "https://github.com/dlt-hub/dlt", branch = "feat/ai-workbench-support" }
+# [tool.uv.sources]
+# dlt = { git = "https://github.com/dlt-hub/dlt", branch = "feat/ai-workbench-support" }
 
 [tool.ruff]
 preview = true

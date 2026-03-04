@@ -3,10 +3,10 @@
   "description": "Deploy dlt workspace and pipelines to the dltHub platform",
   "version": "0.1.1",
   "author": {
-    "name": "dlthub"
+    "name": "dltHub, Inc."
   },
   "homepage": "https://dlthub.com/docs/hub/intro",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
-  "license": "ELv2",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
   "keywords": ["dlt", "deploy", "dlthub", "platform"]
 }

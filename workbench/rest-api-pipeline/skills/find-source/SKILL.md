@@ -34,17 +34,8 @@ Search the output (case-insensitive) for the source name. If found, skip to **st
 
 ### 3. Search dlthub context
 
-**If not verified source**: Use web search:
-```
-query: dlthub.com source <source-name>
-```
-
-Look for results matching `dlthub.com/workspace/source/<slug>` or `dlthub.com/context/source/<slug>`.
-
-If a match is found, fetch the page to extract the exact `dlt init dlthub:<source_identifier> <destination>` command:
-```
-WebFetch: https://dlthub.com/workspace/source/<slug>
-```
+Use `search_dlthub_sources` mcp tool to look for sources. It is FTS based so pass only essential keywords to it
+ie. "claude analytics". You'll get description of the source and set of reference links to use in web search below.
 
 ### 4. Web search and validation
 

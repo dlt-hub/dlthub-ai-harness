@@ -9,6 +9,7 @@ Checks:
 - marketplace.json structure
 - Each plugin source points to a directory under ./workbench/ with last segment matching plugin name
 - plugin.json exists and name matches marketplace entry
+- plugin.json author.name is "dltHub, Inc." and license URL is correct
 - Skills have valid SKILL.md with frontmatter (name, description)
 - Skill frontmatter name matches directory name
 - Commands have valid frontmatter (name, description), name matches filename
@@ -26,6 +27,10 @@ import sys
 from pathlib import Path
 
 AI_DIR = "workbench"
+
+# Expected plugin.json author and license values
+_EXPECTED_AUTHOR = "dltHub, Inc."
+_EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
 
 # argument-hint must be quoted and use [bracket] convention per Anthropic docs
 # valid: "[pipeline-name]", "[filename] [format]", "[pipeline-name] [query]"
@@ -292,6 +297,23 @@ def validate(
                 errors.append(
                     f"[{pname}] plugin.json name '{pjson.get('name')}' "
                     f"!= marketplace name '{pname}'"
+                )
+
+            # author must be {"name": "dltHub, Inc."}
+            author = pjson.get("author", {})
+            author_name = author.get("name", "") if isinstance(author, dict) else ""
+            if author_name != _EXPECTED_AUTHOR:
+                errors.append(
+                    f"[{pname}] plugin.json author.name '{author_name}' "
+                    f"!= expected '{_EXPECTED_AUTHOR}'"
+                )
+
+            # license must point to the repo LICENSE
+            license_val = pjson.get("license", "")
+            if license_val != _EXPECTED_LICENSE:
+                errors.append(
+                    f"[{pname}] plugin.json license '{license_val}' "
+                    f"!= expected '{_EXPECTED_LICENSE}'"
                 )
 
         all_skills[pname] = validate_toolkit_content(

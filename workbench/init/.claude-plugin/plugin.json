@@ -3,10 +3,10 @@
   "description": "Shared rules, secrets handling, and workspace MCP for dlt",
   "version": "0.1.0",
   "author": {
-    "name": "dlthub"
+    "name": "dltHub, Inc."
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
-  "license": "ELv2",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
   "keywords": ["dlt", "init", "rules", "secrets", "mcp"]
 }
