@@ -15,7 +15,7 @@ Parse `$ARGUMENTS`:
 ## Workspace Dashboard UI if just exploring
 
 Tell the user to run Workspace Dashboard **if no precise query or instructions were give**, this
-assumes user wants to just look at the data. Otherise
+assumes user wants to just look at the data. Otherwise
 ```
 dlt pipeline <pipeline_name> show
 ```

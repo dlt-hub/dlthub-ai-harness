@@ -10,7 +10,7 @@ Locate the best dlt source for what the user wants to extract data from.
 
 Parse `$ARGUMENTS`:
 - `source-name` (required): what the user wants to extract data from (e.g., "alpaca markets", "stripe", "postgres", "csv files", "rest api")
-- everything after that: additional context ie. what data user wants
+- everything after that: additional context, i.e. which data the user wants to ingest. In case the user does not specify, ask them which data they want to ingest.
 
 ## Steps
 
