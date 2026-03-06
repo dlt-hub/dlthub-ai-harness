@@ -3,7 +3,7 @@
   "description": "Explore data loaded by dlt pipelines with marimo, datasets, and ibis",
   "version": "0.1.0",
   "author": {
-    "name": "dltHub, Inc."
+    "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",

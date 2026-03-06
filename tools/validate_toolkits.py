@@ -29,7 +29,7 @@ from pathlib import Path
 AI_DIR = "workbench"
 
 # Expected plugin.json author and license values
-_EXPECTED_AUTHOR = "dltHub, Inc."
+_EXPECTED_AUTHOR = "ScaleVector GmbH"
 _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
 
 # argument-hint must be quoted and use [bracket] convention per Anthropic docs
@@ -299,7 +299,7 @@ def validate(
                     f"!= marketplace name '{pname}'"
                 )
 
-            # author must be {"name": "dltHub, Inc."}
+            # author must be Scalevector
             author = pjson.get("author", {})
             author_name = author.get("name", "") if isinstance(author, dict) else ""
             if author_name != _EXPECTED_AUTHOR:

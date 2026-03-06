@@ -3,7 +3,7 @@
   "description": "Deploy dlt workspace and pipelines to the dltHub platform",
   "version": "0.1.1",
   "author": {
-    "name": "dltHub, Inc."
+    "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs/hub/intro",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
