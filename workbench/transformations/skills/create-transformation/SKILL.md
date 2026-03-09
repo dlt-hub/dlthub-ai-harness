@@ -1,7 +1,7 @@
 ---
 name: create-transformation
 description: Create dlt transformations that map source data to a Canonical Data Model (CDM). Use when the user wants to transform raw data into standardized CDM entities, map source tables to canonical structures, or build data transformations based on their ontology and CDM.
-argument-hint: [pipeline-name] [-- <entity-or-hints>]
+argument-hint: "[pipeline-name] [-- [entity-or-hints]]"
 ---
 
 # Create transformation to canonical model

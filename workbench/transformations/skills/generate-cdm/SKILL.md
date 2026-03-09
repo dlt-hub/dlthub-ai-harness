@@ -1,7 +1,7 @@
 ---
 name: generate-cdm
 description: Generate a Canonical Data Model (CDM) from a finalized ontology. Use when the user has completed their ontology and wants to create a standardized data model with entities, relationships, and validation rules. The CDM bridges the semantic ontology to implementation-ready data structures.
-argument-hint: [-- <entity-focus or hints>]
+argument-hint: "[-- [entity-focus or hints]]"
 ---
 
 # Generate Canonical Data Model from Ontology

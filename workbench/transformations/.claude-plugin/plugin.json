@@ -1,0 +1,18 @@
+{
+  "name": "transformations",
+  "description": "Build SQL and Python transformations on dlt datasets using @dlt.hub.transformation",
+  "version": "0.1.0",
+  "author": {
+    "name": "dlthub"
+  },
+  "homepage": "https://dlthub.com/docs/hub/features/transformations",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "ELv2",
+  "keywords": ["dlt", "transformations", "sql", "ibis", "data-pipeline"],
+  "mcpServers": {
+    "dlt-workspace": {
+      "command": "uv",
+      "args": ["?"]
+    }
+  }
+}

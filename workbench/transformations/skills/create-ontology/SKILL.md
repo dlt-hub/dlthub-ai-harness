@@ -1,7 +1,7 @@
 ---
 name: create-ontology
 description: Build or edit a data model ontology. Use when the user wants to create a data model, edit their data model, or asks how to get started with data modeling. Takes company name, a one-line business description, and main DB tables as input — then auto-completes the ontology using web research.
-argument-hint: <company name> | <one-line business description> | <comma-separated table names>
+argument-hint: "[company name] | [one-line business description] | [comma-separated table names]"
 ---
 
 # Create ontology from company context
