@@ -141,9 +141,7 @@ A001 Route "Route inferred as a separate entity — ride-hailing platforms reuse
 A002 Booking "Booking inferred as likely entity — platforms of this type track individual passenger reservations"
 ```
 
-### 8. Save ontology summary [MANDATORY]
-
-Write `.schema/ontology.md` with:
+Also write `.schema/ontology.md` (human-readable summary of the same data):
 - Company name and business description
 - Entity list with one-line descriptions
 - Relationship summary

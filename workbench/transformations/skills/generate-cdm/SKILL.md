@@ -11,24 +11,13 @@ argument-hint: [-- <entity-focus or hints>]
 Parse `$ARGUMENTS`:
 - `entity-focus` (optional, after `--`): specific entity to focus on (e.g., `-- Customer`) or hints about CDM priorities.
 
-## Prerequisites
-
-### 1. Check for ontology
-
-Read `.schema/ontology.jsonld` to understand the source semantic model.
-
-If the file doesn't exist or is empty:
-> No ontology found. The ontology defines your business semantics — the entities and relationships the CDM will formalize.
->
-> Run `create-ontology` first to define your business entities and relationships.
-
-**STOP and wait for ontology to be created.**
-
 ## Steps
 
 ### 1. Extract core business entities
 
-Read the ontology and list every noun defined as a real-world object. These become **CDM entities**.
+Read `.schema/ontology.ison`. If the file doesn't exist or is empty, stop and ask the user to run `create-ontology` first.
+
+From the ontology, list every noun defined as a real-world object. These become **CDM entities**.
 
 For each entity, extract:
 - Canonical name (from ontology, not source systems)

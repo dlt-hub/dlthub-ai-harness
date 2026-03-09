@@ -217,12 +217,7 @@ Look for gaps and ambiguities:
 - Source type incompatible with CDM type
 - Ask: "Source `properties__amount` is string but CDM expects float. Should we cast it, or handle parse errors?"
 
-**When a discrepancy suggests extending the ontology** (e.g., a source table has no CDM counterpart), apply the entity equivalence check before proposing a new entity:
-
-- Does the source table describe the same real-world object as an existing CDM entity, just under a different name? (e.g., `users` → `Customer`, `accounts` → `Company`, `profiles` → `Contact`)
-- Common aliases to watch: Contact/User/Profile/Member/Person/Lead, Company/Organization/Account/Firm/Client, Deal/Opportunity/Sale, Order/Transaction/Invoice/Purchase
-- If the concept maps to an existing entity: add an alias or note — do **not** create a duplicate entity
-- Only propose a new entity if the concept is genuinely distinct from everything in the CDM
+**If a source table has no CDM counterpart**, include it in the discrepancies list — do not extend the CDM unilaterally. CDM design is handled by `generate-cdm`.
 
 **Present all discrepancies to the user and STOP.** Resolve each before generating transformations.
 
@@ -248,7 +243,7 @@ After resolving discrepancies, create `transformations/<dataset>_to_cdm.py`.
 4. **Fact vs dimension table handling** — check `table_type` in `.schema/CDM.ison`:
 
    **Dimension tables** (`table_type = dimension`):
-   - Generate a surrogate key using `ibis.uuid()` or a hash of the natural key: `ibis.md5(table.natural_key.cast("string"))`
+   - Generate a surrogate key: prefer a stable source id (`t.id`); if no natural id exists, derive one via `key_expr.cast("string").hash().cast("string")` — see surrogate key patterns in Step 4a
    - Set `primary_key` to the surrogate key column name (from `surrogate_key` in CDM)
    - Set `write_disposition="merge"` on the surrogate key
    - For **SCD Type 2** dimensions (`scd_type = 2`): add `valid_from`, `valid_to`, `is_current` columns. Set `valid_from=ibis.now()`, `valid_to=ibis.null().cast("timestamp")`, `is_current=True` on insert; close previous rows by setting `valid_to` and `is_current=False` on change
@@ -499,9 +494,8 @@ After generating the script:
 
 1. **Dry run** — Check computed schema before execution:
 ```python
-dataset = source_pipeline.dataset()
-relation = dataset.table("contacts").to_ibis().select(...)
-print(dataset(relation).columns)
+relation = source_pipeline.dataset().table("contacts").to_ibis().select(...)
+print(relation.columns)
 ```
 
 2. **Run transformations** — Execute in the user's environment

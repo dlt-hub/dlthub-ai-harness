@@ -8,7 +8,7 @@
 4. **Transform to canonical model** — Use `create-transformation` to map source tables to CDM entities
 
 ```
-Business scenarios → create-ontology → ontology.jsonld
+Business scenarios → create-ontology → ontology.ison
                                             ↓
                                       generate-cdm → CDM.ison
                                             ↓
