@@ -1,24 +1,27 @@
 # Data exploration workflow
 
+## Workflow Entry
+**ALWAYS** start with **Connect and profile** (`connect-and-profile`) SKILL — discover available dlt pipelines, profile schemas and table stats, flag anomalies
+
 ## Core workflow
 
 ```
-connect-and-profile -> [dashboard type] -> (dlt dashboard | analyze-questions -> marimo-notebook -> launch -> [add another chart?] -> ... -> [remove cap?] -> redeploy)
+connect-and-profile -> [dashboard type] -> (dlt dashboard | analyze-questions (one chart) -> marimo-notebook -> launch -> [add another chart?] -> ... -> [remove cap?] -> redeploy)
 ```
 
 1. **Connect + profile** (`connect-and-profile`) — pipeline discovery, schema/stats gathering, anomaly flags
 2. **Dashboard routing** (workflow step) — offer quick dlt dashboard vs custom Marimo notebook
 3. *Quick path*: `dlt pipeline <name> show` — done
-4. *Custom path*: **Questions → charts** (`analyze-questions`) — interview, plan one chart per selected question, confirm each spec, generate all
+4. *Custom path*: **First chart** (`analyze-questions`) — interview, select questions, plan and confirm **one** chart for the top question
 5. *Custom path*: **Notebook generation** (`marimo-notebook`, external) — generates marimo notebook from chart spec
 6. *Custom path*: **Launch notebook** (workflow step) — offer to launch in browser
-7. *Custom path*: **Iterate** (workflow step) — offer to add another chart, re-invoking `analyze-questions`
+7. *Custom path*: **Add more charts** (workflow step) — offer to add another chart by re-invoking `analyze-questions` for the next question
 8. *Custom path*: **Finalize** (workflow step) — offer to remove row cap, regenerate notebook, and relaunch
 
 ## Dashboard type selection (MANDATORY after profiling)
 
 After `connect-and-profile` completes, ask the user to choose between:
-- **Quick dashboard** — opens the built-in dlt Workspace Dashboard (`dlt pipeline <name> show`). Workflow ends here.
+- **Quick dashboard** — opens the built-in dlt Workspace Dashboard (`dlt pipeline <name> show`) for inspecting the pipeline and the dataset, but not for generating insights from the data. Workflow ends here.
 - **Custom notebook** — continue with `analyze-questions` → `marimo-notebook` → launch → iterate.
 
 This routing applies whenever the user asks for a "dashboard", "visualization", "report", or wants to "see the data."
@@ -33,7 +36,7 @@ After the `marimo-notebook` skill completes and a notebook file exists, offer to
 
 ## Iteration loop
 
-After the notebook is launched (or the user skips launch), offer to add another chart (re-invoke `analyze-questions`) or stop. Hard cap: **10 charts total** across all iterations.
+After the notebook is launched (or the user skips launch), offer to add another chart (re-invoke `analyze-questions`) or stop. Recommended maximum: **10 charts total** across all iterations — but do not enforce this as a hard limit if the user wants more.
 
 ## Finalize: row-cap removal and redeploy
 
