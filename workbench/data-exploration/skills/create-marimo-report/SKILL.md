@@ -1,7 +1,7 @@
 ---
 name: create-marimo-report
 description: Create an interactive marimo notebook to visualize and report on pipeline data. Use when the user wants a dashboard, charts, visual analysis, or a marimo notebook for data exploration. For data access patterns, see explore-data skill.
-argument-hint: [pipeline-name] [-- <report-description>]
+argument-hint: "[pipeline-name] [report-description]"
 ---
 
 # Create a data report

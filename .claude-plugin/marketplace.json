@@ -6,7 +6,8 @@
   },
   "metadata": {
     "description": "Data engineering agent that creates, extends, and explores dlt data pipelines",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
   },
   "plugins": [
     {
@@ -48,6 +49,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "transformations", "sql", "ontology", "ison"]
+    },
+    {
+      "name": "init",
+      "source": "./workbench/init",
+      "description": "Shared rules, secrets handling, and workspace MCP for dlt",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "init", "rules", "secrets", "mcp"]
     }
   ]
 }

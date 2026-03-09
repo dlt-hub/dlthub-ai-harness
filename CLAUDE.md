@@ -8,12 +8,13 @@ A collection of **toolkits** (compatible with Claude Code plugins) for data engi
 .claude-plugin/marketplace.json    # Marketplace catalog listing all toolkits
 workbench/                                # All toolkits live here
   <toolkit-name>/                  # One directory per toolkit
-    .claude-plugin/plugin.json     # Plugin manifest (name must match directory)
+    .claude-plugin/plugin.json     # Plugin manifest (strict Claude schema, name must match directory)
+    .claude-plugin/toolkit.json    # dlt-specific metadata: dependencies, listed (optional)
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
     .mcp.json                      # MCP servers (optional)
-  _init/                           # Special toolkit: shared rules/skills, NOT in marketplace
+  init/                            # Shared rules, secrets handling, and workspace MCP
 tools/                             # Dev tooling
   validate_toolkits.py              # Marketplace & plugin consistency checker
   extract_refs.py                  # Extract component map & external URLs from a toolkit
@@ -22,7 +23,7 @@ Makefile                           # make validate-toolkits
 
 ## Toolkit conventions
 
-Every toolkit under `workbench/` must be listed in `marketplace.json` — except `_init`, which is a special toolkit for shared rules and skills that is not distributed via the marketplace. `_init` follows the same structure and validation rules as any other toolkit but has no `.claude-plugin/plugin.json`.
+Every toolkit under `workbench/` must be listed in `marketplace.json`.
 
 A toolkit is a Claude Code plugin. It may contain:
 
@@ -31,8 +32,40 @@ A toolkit is a Claude Code plugin. It may contain:
 - **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
 
-### Toolkit Workflow
-Each toolkit has a **workflow** rule that shows how skills should be used together.
+### Toolkit Workflow (`rules/workflow.md`)
+Each toolkit has a **workflow** rule that shows how skills should be used together. It is always loaded so the agent knows the intended skill sequence.
+
+#### Entry skill
+
+Every workflow toolkit MUST have an **entry skill** — the skill where the workflow starts. Declare it in `toolkit.json`:
+```json
+{"workflow_entry_skill": "find-source"}
+```
+
+The entry skill is triggered when:
+- The user invokes it explicitly with `/skill-name`
+- The user expresses intent matching the skill description (low-intent trigger — the skill's `description` frontmatter field drives matching)
+
+The workflow rule must open with a `## Workflow Entry` section referencing this skill. Example from `rest-api-pipeline`:
+```markdown
+## Workflow Entry
+**ALWAYS** start with **Find source** (`find-source`) SKILL — discover the right dlt source for the user's data provider
+```
+
+After install, `dlt ai status` and `dlt ai toolkit <name> install` display: `Use find-source skill to start!`
+
+#### Required sections
+
+1. **Workflow Entry** — declares which skill MUST run first (see above)
+2. **Core workflow** — numbered steps with skill references: `N. **Step name** (`skill-name`) — what it does`
+3. **Extend and harden** (optional) — additional steps for production readiness, iteration, or advanced use cases
+4. **Handover to other toolkits** — when to leave this toolkit. Each entry names the target toolkit, the trigger condition, and which local skill the user was in when the handover applies
+
+#### Linking conventions
+
+- **Internal skills/commands** — reference with backtick-parens: `(`skill-name`)`. The validator checks these resolve to real skill directories.
+- **Planned skills** (not yet implemented) — plain text, no `()` link. Add them to the workflow to show intent.
+- **Handover to external toolkits** — use `**toolkit-name**` (bold) and describe the trigger. Only reference toolkits that are NOT dependencies (dependencies like `init` are always loaded — their skills are local, not handovers).
 
 ### Refer to authoritative docs everywhere
 Embed links to authoritative docs (ie. dlt docs) in skills/commands/rules you write. They are useful when skill is used **AND TO AUTOMATICALLY REFRESH SKILLS IF AUTH SOURCE IS UPDATED**.

@@ -1,0 +1,7 @@
+{
+  ".eval-workspaces": {
+    "with-rest-api": {
+      "toolkits": ["rest-api-pipeline"]
+    }
+  }
+}

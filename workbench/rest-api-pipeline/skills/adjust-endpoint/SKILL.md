@@ -1,7 +1,7 @@
 ---
 name: adjust-endpoint
 description: Adjust a working dlt pipeline for production — remove dev limits, verify pagination, configure incremental loading, expand date ranges. Use when the user wants to remove .add_limit(), load more data, fix pagination, or set up incremental loading.
-argument-hint: [pipeline-name] [-- <hints>]
+argument-hint: "[pipeline-name] [adjustments]"
 ---
 
 # Adjust endpoint for production

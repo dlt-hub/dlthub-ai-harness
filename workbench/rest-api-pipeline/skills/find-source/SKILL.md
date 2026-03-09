@@ -1,7 +1,7 @@
 ---
 name: find-source
 description: Find a dlt source for a given API or data provider. Use when the user asks about a source, wants to find a connector, or asks to implement a pipeline for a specific data source.
-argument-hint: <source-name> [-- <description of data] 
+argument-hint: "[source-name] [context]"
 ---
 
 # Find a dlt source
@@ -10,7 +10,7 @@ Locate the best dlt source for what the user wants to extract data from.
 
 Parse `$ARGUMENTS`:
 - `source-name` (required): what the user wants to extract data from (e.g., "alpaca markets", "stripe", "postgres", "csv files", "rest api")
-- everything after that: additional context ie. what data user wants
+- everything after that: additional context, i.e. which data the user wants to ingest. In case the user does not specify, ask them which data they want to ingest.
 
 ## Steps
 
@@ -28,23 +28,14 @@ If it matches a core source, skip to **step 5** and report the core source match
 
 If the request looks like a specific API/service name, run:
 ```
-dlt init --list-sources
+dlt --non-interactive init --list-sources
 ```
 Search the output (case-insensitive) for the source name. If found, skip to **step 5**
 
 ### 3. Search dlthub context
 
-**If not verified source**: Use web search:
-```
-query: dlthub.com source <source-name>
-```
-
-Look for results matching `dlthub.com/workspace/source/<slug>` or `dlthub.com/context/source/<slug>`.
-
-If a match is found, fetch the page to extract the exact `dlt init dlthub:<source_identifier> <destination>` command:
-```
-WebFetch: https://dlthub.com/workspace/source/<slug>
-```
+Use `search_dlthub_sources` mcp tool to look for sources. It is FTS based so pass only essential keywords to it
+ie. "claude analytics". You'll get description of the source and set of reference links to use in web search below.
 
 ### 4. Web search and validation
 

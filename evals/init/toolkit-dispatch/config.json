@@ -1,0 +1,10 @@
+{
+  ".eval-workspaces": {
+    "init-only": {
+      "toolkits": []
+    },
+    "with-rest-api": {
+      "toolkits": ["rest-api-pipeline"]
+    }
+  }
+}

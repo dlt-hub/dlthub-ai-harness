@@ -64,7 +64,7 @@ Apply any fixes (broken URLs, renamed references) immediately before moving to t
 
 ## 3. Validate project docs against current state
 
-Check `README.md` and `CLAUDE.md` in the repo root for content that references toolkit state. Compare against the actual component map from step 1.
+Check `README.md`, `CLAUDE.md`, and `EVALS.md` in the repo root for content that references toolkit state. Compare against the actual component map from step 1.
 
 ### What to check
 
@@ -73,6 +73,7 @@ Check `README.md` and `CLAUDE.md` in the repo root for content that references t
 - **CLI examples** — do `dlt ai` commands shown in the docs match the current CLI interface? Run `dlt ai --help` and `dlt ai toolkit --help` to verify.
 - **Architecture diagrams** — do mermaid diagrams reflect the current toolkit set and their relationships?
 - **Marketplace references** — does the marketplace.json content (names, descriptions, tags) match what README/CLAUDE.md say?
+- **EVALS.md** — do the documented tools, directory structure, config format, and CLI examples match the actual scripts in `tools/` and skill files in `.claude/skills/`? Check that `create_eval_workspace.py`, `run_trigger_eval.py`, `list_skill_descriptions.py` usage examples are accurate.
 
 ### How to fix
 
@@ -90,7 +91,7 @@ Validated: <toolkit-name>
 Files scanned: N
 URLs checked: N (M broken)
 Cross-references checked: N (M broken)
-Project docs checked: README.md, CLAUDE.md
+Project docs checked: README.md, CLAUDE.md, EVALS.md
 
 FIXED:
   <file>: <old-ref> → <new-ref>

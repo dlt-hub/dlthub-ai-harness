@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I need to pull data from the Stripe API into duckdb, does dlt have a source for that?",
+    "should_trigger": true
+  },
+  {
+    "query": "is there a dlt connector for HubSpot? I want to load contacts and deals",
+    "should_trigger": true
+  },
+  {
+    "query": "we use Zendesk for support and I want to build a pipeline to extract ticket data, what are my options with dlt?",
+    "should_trigger": true
+  },
+  {
+    "query": "can dlt connect to the Shopify Admin API? specifically I need orders and products",
+    "should_trigger": true
+  },
+  {
+    "query": "I want to load data from our internal REST API at api.company.com/v2 — it uses bearer token auth and returns JSON",
+    "should_trigger": true
+  },
+  {
+    "query": "does dlt have a verified source for Google Analytics 4? or do I need to use the generic rest_api source?",
+    "should_trigger": true
+  },
+  {
+    "query": "my company uses Jira and I need to get all issues with their comments and attachments into our data warehouse",
+    "should_trigger": true
+  },
+  {
+    "query": "I found a source called dlthub:notion on the dlt website, can you check if it works for my use case? I need to extract database rows",
+    "should_trigger": true
+  },
+  {
+    "query": "what data sources does dlt support? I'm trying to decide between dlt and airbyte for our Salesforce data",
+    "should_trigger": true
+  },
+  {
+    "query": "I need to extract data from a GraphQL API, can dlt handle that or is it REST only?",
+    "should_trigger": true
+  },
+  {
+    "query": "the pipeline loaded 200 rows but I expected more, can you run the trace and check what happened?",
+    "should_trigger": false
+  },
+  {
+    "query": "I already have the stripe pipeline working, now add a new endpoint for /v1/charges with amount > 100 filter",
+    "should_trigger": false
+  },
+  {
+    "query": "set up my Stripe API key in secrets.toml, I got it from the dashboard",
+    "should_trigger": false
+  },
+  {
+    "query": "the paginator on the /v1/events endpoint loops forever, I think the cursor config needs fixing",
+    "should_trigger": false
+  },
+  {
+    "query": "show me all the tables that were loaded and their row counts",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to query the invoices table and get total revenue grouped by month",
+    "should_trigger": false
+  },
+  {
+    "query": "the schema shows amount as float but it should be decimal, how do I fix the data types?",
+    "should_trigger": false
+  },
+  {
+    "query": "remove .add_limit(1) and configure proper pagination for the customers endpoint before going to production",
+    "should_trigger": false
+  },
+  {
+    "query": "deploy my working stripe pipeline to the dlthub runtime so it runs on a schedule",
+    "should_trigger": false
+  },
+  {
+    "query": "I got ConfigFieldMissingException for sources.github.access_token, where do I put this?",
+    "should_trigger": false
+  }
+]
