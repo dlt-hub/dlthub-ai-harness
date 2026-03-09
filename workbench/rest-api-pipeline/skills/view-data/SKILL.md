@@ -77,3 +77,7 @@ joined = parent.join(child, parent._dlt_id == child._dlt_parent_id)
 ```python
 dataset("SELECT * FROM my_table WHERE amount > 100").df()
 ```
+
+## Custom charts and insights
+
+If the user wants to create custom charts or generate insights from their data, install the **data-exploration** toolkit (`dlt ai toolkit data-exploration install`) and follow the workflow there.

@@ -1,6 +1,6 @@
 {
   "name": "data-exploration",
-  "description": "Answer business questions about dlt pipeline data. Connect to pipelines, map business ontology, plan charts, and hand off to marimo-notebook for interactive reports.",
+  "description": "Answer business questions about dlt pipeline data. Connect to pipelines, plan charts from user questions, and hand off to marimo-notebook for interactive reports.",
   "version": "0.1.0",
   "author": {
     "name": "dltHub, Inc."
