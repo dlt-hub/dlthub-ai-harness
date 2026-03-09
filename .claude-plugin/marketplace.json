@@ -47,7 +47,7 @@
       "description": "Build SQL and Python transformations on dlt datasets using ontology-driven data modeling",
       "version": "0.1.0",
       "category": "data",
-      "tags": ["dlt", "transformations", "sql", "ontology", "json-ld"]
+      "tags": ["dlt", "transformations", "sql", "ontology", "ison"]
     }
   ]
 }
