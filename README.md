@@ -49,31 +49,13 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 | **dltHub context** | 9,700+ REST API source definitions the agent searches to find verified connectors | During `find-source`, via `search_dlthub_sources` |
 
 
-### How MCP context tools support the agent
+### MCP tools
 
-The workbench wires up two MCP servers that give the agent structured, real-time context at each step of the workflow — replacing manual copy-paste of CLI output with direct tool calls.
+Two MCP servers give the agent structured context throughout the workflow to avoid the need for manual copy-pasting.
 
-#### dlt-workspace-mcp (local)
+**dlt-workspace-mcp** (local, installed by `dlt ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
 
-Installed automatically by `dlt ai init`. Runs locally against your workspace and exposes three groups of tools:
-
-| Group | Tools | What the agent uses them for |
-|-------|-------|------------------------------|
-| **Data inspection** | `list_tables`, `get_table_schema`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state` | After a pipeline run: verify tables exist, preview rows, validate types, check incremental cursors, render schema as Mermaid/DBML |
-| **Secrets** | `secrets_list`, `secrets_view_redacted`, `secrets_update_fragment` | Configure credentials safely — agent writes placeholder templates, user fills in real values; raw secrets are never read |
-| **Toolkit discovery** | `list_toolkits`, `toolkit_info` | Find and describe available workflows without hardcoding them |
-
-#### dltHub context MCP (remote)
-
-The [`find-source`](workbench/rest-api-pipeline/skills/find-source/SKILL.md) skill uses `search_dlthub_sources` — a tool provided by the [dltHub context server](https://dlthub.com/context) — to search over **9,700+ REST API source definitions** before falling back to web search. Each result includes a source description and reference links the agent uses to locate authoritative API docs.
-
-The dltHub context MCP helps the agent with a feedback loop while building pipelines, without having to ask the user to past errors back into the conversation:
-
-1. **Find source** — `search_dlthub_sources` locates a verified source definition or confirms no connector exists yet
-2. **Create pipeline** — `secrets_update_fragment` scaffolds credential placeholders; no secret values enter the conversation
-3. **Debug** — after a run, `get_local_pipeline_state` checks incremental cursors; CLI traces cover step-level errors
-4. **Validate** — `preview_table` + `get_row_counts` + `display_schema` confirm the data landed correctly 
-5. **Explore** — `execute_sql_query` lets the agent answer data questions directly against the loaded tables
+**[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
 
 ### Available toolkits
 
