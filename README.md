@@ -48,7 +48,6 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 | **Rule** | Always-on context (conventions, constraints) | Every session, automatically |
 | **Workflow** | Ordered sequence of skills with a fixed entry point | Loaded as a rule — always active |
 | **MCP server** | Exposes pipelines, tables, and secrets as tools | During a session, via MCP protocol |
-| **dltHub context** | 9,700+ REST API source definitions the agent searches to find verified connectors | During `find-source`, via `search_dlthub_sources` |
 
 
 ### MCP tools
@@ -191,7 +190,7 @@ uv run dlt ai mcp run --stdio               # run in stdio mode (for assistants 
 uv run dlt ai mcp install                   # register the MCP server in the agent's config
 ```
 
-The MCP server allows the assistant to answer questions like "what tables were loaded?" or "show me the last pipeline trace" without you having to copy-paste output into the chat.
+The MCP server allows the assistant to answer questions like "what tables were loaded?" or "show me the schema" without you having to copy-paste output into the chat.
 
 ## License
 
