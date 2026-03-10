@@ -2,6 +2,8 @@
 
 **dlt** (data load tool) is an open-source Python library for loading data from APIs and databases into a warehouse or lakehouse. **dltHub** (paid platform) extends dlt with enterprise-grade features tailored to the needs of coding agents: transformations, data quality validation, managed runtime infrastructure, managed data apps, and an AI-powered workspace environment.
 
+![AI Workbench Components](images/ai_workbench_components.png)
+
 The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlt ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
 ![AI Workbench](images/ai_workbench.png)
