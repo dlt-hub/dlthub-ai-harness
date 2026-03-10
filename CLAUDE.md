@@ -21,6 +21,10 @@ tools/                             # Dev tooling
 Makefile                           # make validate-toolkits
 ```
 
+
+## Security
+CRITICAL: never ask for credentials in chat. Always let the user edit secrets directly and do not attempt to read them.
+
 ## Toolkit conventions
 
 Every toolkit under `workbench/` must be listed in `marketplace.json`.
@@ -86,7 +90,7 @@ Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule fo
 ### Maintenance skills
 - `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, or rule and update all cross-references within the toolkit.
 - `/validate-toolkits <toolkit-path>` — deep-validate a toolkit: check external doc URLs are live, cross-references resolve, and fix what can be fixed.
-- `improve-skills` (per-toolkit, in rest-api-pipeline) — capture session learnings back into skills. Run at the end of a session.
+- `improve-skills` (in `init`) — capture session learnings back into skills. Run at the end of a session.
 
 ### Helper scripts
 - `uv run python tools/extract_refs.py workbench/<toolkit>` — extract component map and external URLs for a toolkit.
