@@ -16,7 +16,7 @@ Parse `$ARGUMENTS`:
 
 ### 1. Check for CDM
 
-Read `.schema/CDM.ison` to understand the target canonical model structure.
+Read `.schema/CDM.dbml` to understand the target canonical model structure.
 
 If the file doesn't exist:
 > No CDM found. The CDM defines your canonical entities and how source data maps to them.
@@ -180,7 +180,7 @@ The output contains:
 
 ### 1. Analyze source-to-CDM mapping
 
-Compare the source schema (`.schema/<dataset>.ison`) against the CDM (`.schema/CDM.ison`):
+Compare the source schema (`.schema/<dataset>.ison`) against the CDM (`.schema/CDM.dbml`):
 
 For each CDM entity, identify:
 - Which source table(s) map to it
@@ -227,7 +227,7 @@ After resolving discrepancies, create `transformations/<dataset>_to_cdm.py`.
 
 **Structure guidelines:**
 
-1. **One transformation function per CDM entity** — Each CDM entity from `.schema/CDM.ison` gets its own `@dlt.hub.transformation` decorated function
+1. **One transformation function per CDM entity** — Each CDM entity from `.schema/CDM.dbml` gets its own `@dlt.hub.transformation` decorated function
 
 2. **Transformation function signature:**
    - Takes `dataset: dlt.Dataset` as input
@@ -240,7 +240,7 @@ After resolving discrepancies, create `transformations/<dataset>_to_cdm.py`.
    - Map each CDM attribute to its source column(s) using the mapping table from Step 1
    - Apply transforms (casting, concatenation, coalesce) as identified
 
-4. **Fact vs dimension table handling** — check `table_type` in `.schema/CDM.ison`:
+4. **Fact vs dimension table handling** — check `table_type` in `.schema/CDM.dbml`:
 
    **Dimension tables** (`table_type = dimension`):
    - Generate a surrogate key: prefer a stable source id (`t.id`); if no natural id exists, derive one via `key_expr.cast("string").hash().cast("string")` — see surrogate key patterns in Step 4a

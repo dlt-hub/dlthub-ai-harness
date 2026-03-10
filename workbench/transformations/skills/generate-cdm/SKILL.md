@@ -15,9 +15,9 @@ Parse `$ARGUMENTS`:
 
 ### 1. Extract core business entities
 
-Read `.schema/ontology.ison`. If the file doesn't exist or is empty, stop and ask the user to run `create-ontology` first.
+Read `.schema/ontology.ison` (Graph ISON format — `nodes.entity`, `nodes.attribute`, `edges.*`, `nodes.assumption`). If the file doesn't exist or is empty, stop and ask the user to run `create-ontology` first.
 
-From the ontology, list every noun defined as a real-world object. These become **CDM entities**.
+From the ontology, list every entry in `nodes.entity`. These become **CDM entities**.
 
 For each entity, extract:
 - Canonical name (from ontology, not source systems)
@@ -158,54 +158,50 @@ Compare ontology entities against available source data (if `.schema/<dataset>.i
 
 Present gaps to the user for resolution before finalizing CDM.
 
-### 8. Generate CDM in ISON format
+### 8. Generate CDM in DBML format
 
-Save the CDM to `.schema/CDM.ison` using ISON format ([spec](https://ison.dev/spec.html)):
+Save the CDM to `.schema/CDM.dbml` using DBML format ([spec](https://dbml.org/docs/)):
 
-```
-meta.cdm
-version created_from
-1.0 ontology.jsonld
+```dbml
+// meta: version=1.0 created_from=ontology.ison
 
-table.entities
-id:string name:string description:string table_type:string grain:string surrogate_key:string scd_type:string conformed:bool
-Customer Customer "A person or organization that purchases products" dimension "" customer_sk 1 true
-Order Order "A commercial transaction initiated by a customer" fact "One row per order line item per order" "" 0 false
-Product Product "An item available for purchase" dimension "" product_sk 2 true
+// Validation rules:
+// VR001 (Invoice,Order): cross_entity — invoice_date >= order_date — Invoice cannot precede order
+// VR002 (Customer): single_entity — status IN ('active','inactive','suspended') — Valid customer statuses
 
-table.attributes
-entity:ref name:string type:string nullable:bool description:string
-:Customer customer_sk int false "Surrogate key (system-generated, use as FK in facts)"
-:Customer customer_id string false "Natural/business key"
-:Customer email string false "Primary contact email"
-:Customer created_at datetime false "Account creation timestamp"
-:Customer status string false "Account status (active, inactive, suspended)"
-:Order order_id string false "Degenerate dimension — transaction identifier stored in fact"
-:Order customer_sk int false "FK to Customer dimension"
-:Order product_sk int false "FK to Product dimension"
-:Order order_date datetime false "When order was placed"
-:Order total float false "Order total amount"
-:Order currency string false "ISO 4217 currency code"
+// Null semantics:
+// Order.shipping_address: NOT_APPLICABLE — Digital products have no shipping
+// Customer.phone: UNKNOWN — Not collected at signup
 
-table.relationships
-from:ref to:ref type:string cardinality:string mandatory:bool description:string
-:Order :Customer :PLACED_BY many_to_one true "Fact references customer dimension"
-:Order :Product :CONTAINS many_to_one true "Fact references product dimension"
+Table Customer [note: 'table_type: dimension | surrogate_key: customer_sk | scd_type: 1 | conformed: true | A person or organization that purchases products'] {
+  customer_sk int [pk, not null, note: 'Surrogate key (system-generated, use as FK in facts)']
+  customer_id varchar [not null, note: 'Natural/business key']
+  email varchar [not null, note: 'Primary contact email']
+  created_at timestamp [not null, note: 'Account creation timestamp']
+  status varchar [not null, note: 'Account status (active, inactive, suspended)']
+}
 
-table.validation_rules
-id:string entities:string rule_type:string expression:string description:string
-VR001 "Invoice,Order" cross_entity "invoice_date >= order_date" "Invoice cannot precede order"
-VR002 Customer single_entity "status IN ('active','inactive','suspended')" "Valid customer statuses"
+Table Order [note: 'table_type: fact | grain: One row per order line item per order | scd_type: 0 | conformed: false | A commercial transaction initiated by a customer'] {
+  order_id varchar [not null, note: 'Degenerate dimension — transaction identifier stored in fact']
+  customer_sk int [not null, note: 'FK to Customer dimension']
+  product_sk int [not null, note: 'FK to Product dimension']
+  order_date timestamp [not null, note: 'When order was placed']
+  total float [not null, note: 'Order total amount']
+  currency varchar [not null, note: 'ISO 4217 currency code']
+}
 
-table.null_semantics
-entity:ref attribute:string sentinel:string reason:string
-:Order shipping_address NOT_APPLICABLE "Digital products have no shipping"
-:Customer phone UNKNOWN "Not collected at signup"
+Table Product [note: 'table_type: dimension | surrogate_key: product_sk | scd_type: 2 | conformed: true | An item available for purchase'] {
+  product_sk int [pk, not null, note: 'Surrogate key (system-generated, use as FK in facts)']
+}
+
+// Relationships
+Ref: Order.customer_sk > Customer.customer_sk [note: 'PLACED_BY | cardinality: many_to_one | mandatory: true | Fact references customer dimension']
+Ref: Order.product_sk > Product.product_sk [note: 'CONTAINS | cardinality: many_to_one | mandatory: true | Fact references product dimension']
 ```
 
-Key fields in `table.entities`:
+Key fields in the table `note`:
 - `table_type`: `fact` or `dimension`
-- `grain`: sentence describing one row (facts only; empty for dimensions)
+- `grain`: sentence describing one row (facts only; omit for dimensions)
 - `surrogate_key`: name of the system-generated PK column (dimensions only)
 - `scd_type`: `0`, `1`, `2`, or `3` (dimensions only; use `0` for facts)
 - `conformed`: `true` if this dimension is shared across multiple fact tables
@@ -213,7 +209,7 @@ Key fields in `table.entities`:
 ## Output
 
 ```
-CDM generated: .schema/CDM.ison
+CDM generated: .schema/CDM.dbml
 
 Entities: <count>
 - <Entity1>: <description>
@@ -228,7 +224,7 @@ Validation rules: <count>
 Semantic gaps identified: <count or "none">
 
 Next steps:
-- Review .schema/CDM.ison for accuracy
+- Review .schema/CDM.dbml for accuracy
 - Resolve any semantic gaps with domain experts
 - Use `create-transformation` to map source data to this CDM
 ```

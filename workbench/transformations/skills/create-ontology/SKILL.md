@@ -98,47 +98,48 @@ Default cardinality assumptions (override with web research):
 
 ### 6. State assumptions
 
-Collect every inference made — entity existence, attribute inclusion, cardinality choice — into the `table.assumptions` section. Be specific:
+Collect every inference made — entity existence, attribute inclusion, cardinality choice — into the `nodes.assumption` block. Be specific:
 
 > "Assumed Route is a separate entity from Ride because ride-hailing platforms typically reuse routes across many trip instances."
 > "Assumed Booking.fare is nullable — fare may not be settled at booking time."
 
-### 7. Generate ontology in ISON format
+### 7. Generate ontology in Graph ISON format
 
-Save to `.schema/ontology.ison` using ISON tabular format ([spec](https://ison.dev/spec.html)):
+Save to `.schema/ontology.ison` using Graph ISON format ([spec](https://graph.ison.dev/)):
 
 ```
-meta.ontology
-version company business_model
-1.0 "Acme Corp" "ride-sharing company"
+// meta: version=1.0 company="Acme Corp" business_model="ride-sharing company"
 
-table.entities
-id:string label:string description:string source_table:string inferred:bool
-Route Route "Reusable path template between origin and destination" "" true
-Ride Ride "A scheduled trip instance on a Route" rides false
-Captain Captain "A driver who operates Rides" captains false
+nodes.entity
+id       source_table  inferred  description
+Route    ""            true      "Reusable path template between origin and destination"
+Ride     rides         false     "A scheduled trip instance on a Route"
+Captain  captains      false     "A driver who operates Rides"
 
-table.attributes
-entity:ref name:string type:string nullable:bool inferred:bool description:string
-:Route route_id string false false "Unique route identifier"
-:Route name string false true "Human-readable route label"
-:Route origin string false true "Starting point"
-:Route destination string false true "Ending point"
-:Route status string false true "active | inactive | draft"
-:Ride ride_id string false false "Unique ride identifier"
-:Ride route_id string false true "FK → Route"
-:Ride status string false true "scheduled | in_progress | completed | cancelled"
-:Ride scheduled_at datetime false true "Planned departure time"
+nodes.attribute
+id                entity:ref       type      nullable  inferred  description
+Route.route_id    :entity:Route    string    false     false     "Unique route identifier"
+Route.name        :entity:Route    string    true      true      "Human-readable route label"
+Route.origin      :entity:Route    string    true      true      "Starting point"
+Route.destination :entity:Route    string    true      true      "Ending point"
+Route.status      :entity:Route    string    true      true      "active | inactive | draft"
+Ride.ride_id      :entity:Ride     string    false     false     "Unique ride identifier"
+Ride.route_id     :entity:Ride     string    true      true      "FK → Route"
+Ride.status       :entity:Ride     string    true      true      "scheduled | in_progress | completed | cancelled"
+Ride.scheduled_at :entity:Ride     datetime  true      true      "Planned departure time"
 
-table.relationships
-id:string label:string domain:ref range:ref cardinality:string mandatory:bool description:string
-R001 INSTANCE_OF Ride Route many_to_one true "Many rides occur on the same route at different times"
-R002 OPERATED_BY Ride Captain many_to_one true "Each ride is driven by one captain"
+edges.INSTANCE_OF
+source        target          cardinality  mandatory  description
+:entity:Ride  :entity:Route   many_to_one  true       "Many rides occur on the same route at different times"
 
-table.assumptions
-id:string entity:string assumption:string
-A001 Route "Route inferred as a separate entity — ride-hailing platforms reuse routes across many trip instances"
-A002 Booking "Booking inferred as likely entity — platforms of this type track individual passenger reservations"
+edges.OPERATED_BY
+source        target           cardinality  mandatory  description
+:entity:Ride  :entity:Captain  many_to_one  true       "Each ride is driven by one captain"
+
+nodes.assumption
+id    entity           assumption
+A001  :entity:Route    "Route inferred as a separate entity — ride-hailing platforms reuse routes across many trip instances"
+A002  :entity:Booking  "Booking inferred as likely entity — platforms of this type track individual passenger reservations"
 ```
 
 Also write `.schema/ontology.md` (human-readable summary of the same data):

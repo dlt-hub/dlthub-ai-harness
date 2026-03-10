@@ -14,7 +14,7 @@
 ```
 Business scenarios → create-ontology → ontology.ison
                                             ↓
-                                      generate-cdm → CDM.ison
+                                      generate-cdm → CDM.dbml
                                             ↓
 Raw source data → dlt pipeline(s) → create-transformation → Canonical dataset
 ```
