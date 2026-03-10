@@ -1,62 +1,65 @@
 # Data exploration workflow
 
 ## Workflow Entry
-**ALWAYS** start with **Connect and profile** (`connect-and-profile`) SKILL — discover available dlt pipelines, profile schemas and table stats, flag anomalies
+**ALWAYS** start with **Explore data** (`explore-data`) SKILL — connect to a dlt pipeline, understand the data, and plan charts
 
 ## Core workflow
 
 ```
-connect-and-profile -> [dashboard type] -> (dlt dashboard | analyze-questions (one chart) -> marimo-notebook -> launch -> [add another chart?] -> ... -> [remove cap?] -> redeploy)
+explore-data → analysis_plan.md → build-notebook → dashboard.py → [add another chart?] → explore-data → ...
 ```
 
-1. **Connect + profile** (`connect-and-profile`) — pipeline discovery, schema/stats gathering, anomaly flags
-2. **Dashboard routing** (workflow step) — offer quick dlt dashboard vs custom Marimo notebook
-3. *Quick path*: `dlt pipeline <name> show` — done
-4. *Custom path*: **First chart** (`analyze-questions`) — interview, select questions, plan and confirm **one** chart for the top question
-5. *Custom path*: **Notebook generation** (`marimo-notebook`, external) — generates marimo notebook from chart spec
-6. *Custom path*: **Launch notebook** (workflow step) — offer to launch in browser
-7. *Custom path*: **Add more charts** (workflow step) — offer to add another chart by re-invoking `analyze-questions` for the next question
-8. *Custom path*: **Finalize** (workflow step) — offer to remove row cap, regenerate notebook, and relaunch
+1. **Explore data** (`explore-data`) — connect to pipeline, plan one chart (high-intent or low-intent path), output `<date>_<pipeline>_analysis_plan.md`
+2. **Build notebook** (`build-notebook`) — assemble marimo notebook from analysis_plan.md, validate, launch
+3. **Iterate** (workflow step) — offer to add another chart or stop
 
-## Dashboard type selection (MANDATORY after profiling)
+## Intent detection
 
-After `connect-and-profile` completes, ask the user to choose between:
-- **Quick dashboard** — opens the built-in dlt Workspace Dashboard (`dlt pipeline <name> show`) for inspecting the pipeline and the dataset, but not for generating insights from the data. Workflow ends here.
-- **Custom notebook** — continue with `analyze-questions` → `marimo-notebook` → launch → iterate.
+`explore-data` handles two paths based on what the user provides:
 
-This routing applies whenever the user asks for a "dashboard", "visualization", "report", or wants to "see the data."
+- **High-intent** — user has a specific question ("What's the revenue trend?"). Schema scan only, no full profiling. Plan chart directly from schema + question.
+- **Low-intent** — user wants to explore ("What can I learn?", "Explore my data"). Broad profiling, generate candidate questions, user picks, then plan chart.
 
-## marimo-notebook dependency check
+The skill detects intent from the user's message. Do not ask "do you have a specific question?" — infer it.
 
-Before handing off to notebook generation, verify the `marimo-notebook` skill is installed (check `.claude/skills/`, `~/.claude/skills/`, or `.agents/skills/`). If not found, tell the user to install it with `npx skills add marimo-team/skills --skill marimo-notebook` and wait.
+## Iteration via analysis_plan.md
 
-## Launch notebook after generation
+After `build-notebook` launches the notebook, offer to add another chart:
 
-After the `marimo-notebook` skill completes and a notebook file exists, offer to launch it: `uv run marimo edit <notebook_file>.py --headless --no-token`. Tell the user the URL (localhost:2718).
+```
+question: "Want to add another chart?"
+options:
+  - label: "Yes — add another chart"
+  - label: "No — I'm done"
+  - label: "Remove row cap and finalize"
+```
 
-## Iteration loop
+If "Yes": re-invoke `explore-data`. The skill detects the existing analysis_plan.md, skips connection and profiling, and asks for the next question. Then re-invoke `build-notebook` to regenerate.
 
-After the notebook is launched (or the user skips launch), offer to add another chart (re-invoke `analyze-questions`) or stop. Recommended maximum: **10 charts total** across all iterations — but do not enforce this as a hard limit if the user wants more.
+If "Remove row cap": re-invoke `build-notebook` — it strips `.limit(1000)` calls, re-validates, and relaunches.
 
-## Finalize: row-cap removal and redeploy
-
-When the user is done adding charts, offer to remove the 1,000-row development cap. If the user opts to remove it:
-
-1. Strip all `limit(1000)` calls from the ibis queries in the notebook file.
-2. Re-invoke `marimo-notebook` to regenerate the notebook with uncapped queries.
-3. Relaunch the notebook (same as the launch step above).
+Recommended maximum: **10 charts total** — but don't enforce as a hard limit.
 
 ## Row-cap policy
 
-Default to **1,000 rows per query output** during development and notebook iteration. Prefer deterministic ordering (`order_by` on timestamp or stable key) before `limit(1000)`. Only remove when the user explicitly opts out at the end of the workflow.
+Default to **1,000 rows per query output** during development. Prefer deterministic ordering (`order_by` on timestamp or stable key) before `limit(1000)`. Only remove when the user opts out at the end of the workflow.
 
 ## Handover to other toolkits
 
-- **rest-api-pipeline** — when the user needs to build or fix a dlt pipeline before exploring data
-- **dlthub-runtime** — when the pipeline is production-ready and the user wants to deploy, schedule, or run it on the dltHub platform
+### Outgoing (from data-exploration)
+
+- **rest-api-pipeline** → `find-source` or `new-endpoint` — when `explore-data` identifies a data gap (needed columns don't exist in any table) and the user wants to extend the pipeline
+- **dlthub-runtime** → `setup-runtime` — when the pipeline and notebook are production-ready and the user wants to deploy or schedule
+
+### Incoming (to data-exploration)
+
+- From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
+- From **transformation** (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
+- From **dlthub-runtime** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 
 ## Self-check
 
 Critical invariants:
 - Connection uses `dlt.attach()` or explicit destination — never raw `duckdb` imports
 - Row cap (1,000) is active on all queries unless the user opted out
+- `analysis_plan.md` is the single source of truth between `explore-data` and `build-notebook`
