@@ -4,25 +4,6 @@ Complete cell templates for generating `<pipeline_name>_dashboard.py`.
 
 The templates below are dlt-dashboard-specific. For general marimo patterns, see the `marimo-notebook` skill (checked in SKILL.md).
 
-## PEP 723 header
-
-```python
-# /// script
-# requires-python = ">=3.12"
-# dependencies = [
-#     "marimo",
-#     "dlt[duckdb]",
-#     "pandas",
-#     "numpy",
-#     # "ibis-framework[duckdb]",  # uncomment if using ibis for complex joins
-#     "altair",
-#     "vl-convert-python",
-# ]
-# ///
-```
-
-Add dependencies only if chart queries use additional libraries (e.g., ibis for complex joins).
-
 ## App setup cell
 
 ```python
