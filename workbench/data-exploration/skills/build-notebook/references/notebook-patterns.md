@@ -99,6 +99,19 @@ Chart cells **must** end with `_chart` on a bare line followed by `return` — t
     return
 ```
 
+## Markdown header cells
+
+Use `mo.md()` for section titles and context. Keep text short — the data explorer does the heavy lifting.
+
+```python
+@app.cell
+def _(mo):
+    mo.md("## Cost by User and Model")
+    return
+```
+
+Place header cells before chart groups to organize the dashboard into logical sections.
+
 ## App entry point
 
 ```python
