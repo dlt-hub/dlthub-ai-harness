@@ -29,7 +29,7 @@
     {
       "name": "data-exploration",
       "source": "./workbench/data-exploration",
-      "description": "Answer business questions about dlt pipeline data. Connect to pipelines, map business ontology, plan charts, and hand off to marimo-notebook for interactive reports.",
+      "description": "Explore dlt pipeline data and build interactive dashboards. Connect to pipelines, profile tables, plan charts with ibis + altair, and assemble marimo notebooks — all driven by an analysis_plan.md artifact.",
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"]

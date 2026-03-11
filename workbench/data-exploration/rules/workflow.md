@@ -54,7 +54,7 @@ Default to **1,000 rows per query output** during development. Prefer determinis
 ### Incoming (to data-exploration)
 
 - From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
-- From **transformation** (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
+- From transformation toolkit (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **dlthub-runtime** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 
 ## Self-check

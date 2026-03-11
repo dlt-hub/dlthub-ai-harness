@@ -24,6 +24,7 @@ Before discovery, check what's already available:
 
 **High-intent** — the user has a specific question (passed as argument, or in their message):
 - Skip broad profiling. Schema scan is enough to plan a chart.
+- **One chart per invocation.** If the user asks multiple questions, pick the first one. Save the rest as `[ ]` pending questions in analysis_plan.md — they'll be charted in subsequent iterations.
 - Go directly to: Connect → Schema scan → Plan chart → Write code → Output analysis_plan.md
 
 **Low-intent** — the user wants to explore without a specific question ("explore my data", "what can I learn?"):
@@ -89,7 +90,9 @@ options:
 
 Avoid PII-flagged columns as chart dimensions or metrics.
 
-## Step 4: Plan chart
+## Step 4: Plan chart (one only)
+
+Plan exactly **one** chart per invocation. Do not batch multiple charts — the iteration loop handles additional charts.
 
 For the user's question (from argument or selection), decide:
 - **Source table(s)** and which columns to use

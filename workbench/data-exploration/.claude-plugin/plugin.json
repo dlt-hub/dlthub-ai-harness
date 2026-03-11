@@ -1,6 +1,6 @@
 {
   "name": "data-exploration",
-  "description": "Answer business questions about dlt pipeline data. Connect to pipelines, plan charts from user questions, and hand off to marimo-notebook for interactive reports.",
+  "description": "Explore dlt pipeline data and build interactive dashboards. Connect to pipelines, profile tables, plan charts with ibis + altair, and assemble marimo notebooks — all driven by an analysis_plan.md artifact.",
   "version": "0.1.0",
   "author": {
     "name": "dltHub, Inc."
@@ -10,9 +10,9 @@
   "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
   "keywords": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"],
   "mcpServers": {
-    "dlt-workspace": {
+    "dlt-workspace-mcp": {
       "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "run", "--stdio"]
+      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
     }
   }
 }
