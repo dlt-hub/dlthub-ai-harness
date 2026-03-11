@@ -157,4 +157,4 @@ Tell the user the plan was updated, then ask: "Ready to build the notebook — s
 ## Troubleshooting
 
 - **Pipeline not found** — check spelling (case-sensitive), run `list_pipelines`, or use explicit `.duckdb` path via `dlt.pipeline(..., destination=dlt.destinations.duckdb("<path>"))`.
-- **MCP tools unavailable** — fall back to Python path (`dlt.attach` / `dlt.pipeline`) and tell the user the MCP server may not be running.
+- **MCP tools unavailable** — run `uv run dlt ai status` to diagnose. If the MCP server is not running or misconfigured, attempt to fix it (e.g., `dlt ai init`). Only fall back to Python path (`dlt.attach` / `dlt.pipeline`) if MCP cannot be restored.
