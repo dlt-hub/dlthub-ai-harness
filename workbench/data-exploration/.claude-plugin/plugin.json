@@ -8,11 +8,5 @@
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
   "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
-  "keywords": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"],
-  "mcpServers": {
-    "dlt-workspace-mcp": {
-      "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
-    }
-  }
+  "keywords": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
 }
