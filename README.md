@@ -6,8 +6,6 @@
 
 The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlt ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
-![AI Workbench](images/ai_workbench.png)
-
 **Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code.
 
 The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI workbench.
@@ -16,7 +14,7 @@ The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex*
 
 Building data pipelines is iterative and covers two major phases — ingestion and transformations — each following the same inner loop:
 
-**Build loop (local development)**
+**Build (local development)**
 - Develop the pipeline iteratively — for ingestion: first REST API endpoint, then additional endpoints; for transformation: data model first, then the full transformation pipeline
 - Explore the loaded data and validate it after each step
 - Loop back to refine until the pipeline is solid
@@ -29,7 +27,7 @@ The outer loop connects the two phases: insights from the transformation and ser
 
 ![Data Development Lifecycle](images/data_development_lifecycle.png)
 
-## The AI Workbench
+## dltHub AI Workbench Toolkits
 
 The workbench gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
 
@@ -39,7 +37,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 ![AI Workbench](images/ai_workbench.png)
 
-### Workbench components
+### Toolkit components
 
 | Component | What it is | When it runs |
 |-----------|-----------|-------------|
@@ -48,6 +46,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 | **Rule** | Always-on context (conventions, constraints) | Every session, automatically |
 | **Workflow** | Ordered sequence of skills with a fixed entry point | Loaded as a rule — always active |
 | **MCP server** | Exposes pipelines, tables, and secrets as tools | During a session, via MCP protocol |
+| **[dltHub context](https://dlthub.com/context)** | 9,700+ REST API source definitions with verified connectors and pipeline patterns | During source discovery, via `search_dlthub_sources` |
 
 
 ### MCP tools
