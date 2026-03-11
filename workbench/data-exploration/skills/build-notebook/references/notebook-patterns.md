@@ -77,7 +77,18 @@ def _(alt, df_chart1, mo):
         y="revenue:Q",
         tooltip=["month:T", "revenue:Q"]
     ).properties(title="Monthly Revenue Trend")
-    return mo.ui.altair_chart(_chart)
+    _chart
+    return
+```
+### Critical: every chart cell MUST end with `return`
+
+Marimo displays whatever a cell returns. If a chart cell has no `return` statement, nothing renders — even if `_chart` is on a bare line. Marimo's auto-formatter may also strip bare expressions.
+
+
+**Never use:**
+```python
+_chart  # bare expression — will be stripped by formatter
+mo.ui.altair_chart(_chart)  # no return — nothing renders
 ```
 
 ## App entry point

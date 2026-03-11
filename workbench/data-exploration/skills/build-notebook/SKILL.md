@@ -45,14 +45,7 @@ If validation fails:
 
 ## Step 4: Launch
 
-After validation passes, offer to launch:
-
-```
-question: "Notebook is ready. Launch it?"
-options:
-  - label: "Yes — open in browser (Recommended)"
-  - label: "No — I'll open it later"
-```
+After validation passes, offer to launch in browser or skip.
 
 If yes:
 ```bash

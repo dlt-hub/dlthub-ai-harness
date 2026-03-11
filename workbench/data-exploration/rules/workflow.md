@@ -24,17 +24,9 @@ The skill detects intent from the user's message. Do not ask "do you have a spec
 
 ## Iteration via analysis_plan.md
 
-After `build-notebook` launches the notebook, offer to add another chart:
+After `build-notebook` launches the notebook, offer to add another chart, stop, or remove the row cap and finalize.
 
-```
-question: "Want to add another chart?"
-options:
-  - label: "Yes — add another chart"
-  - label: "No — I'm done"
-  - label: "Remove row cap and finalize"
-```
-
-If "Yes": re-invoke `explore-data`. The skill detects the existing analysis_plan.md, skips connection and profiling, and asks for the next question. Then re-invoke `build-notebook` to regenerate.
+If "add another chart": re-invoke `explore-data`. The skill detects the existing analysis_plan.md, skips connection and profiling, and asks for the next question. Then re-invoke `build-notebook` to regenerate.
 
 If "Remove row cap": re-invoke `build-notebook` — it strips `.limit(1000)` calls, re-validates, and relaunches.
 
@@ -56,6 +48,13 @@ Default to **1,000 rows per query output** during development. Prefer determinis
 - From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From transformation toolkit (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **dlthub-runtime** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
+
+## Bulk requests
+
+If the user asks for all questions at once (e.g., "all of them", "do everything"):
+- Plan all charts in a single `analysis_plan.md` (mark all `[x]`)
+- Hand off to `build-notebook` once with the full plan
+- Skip the one-at-a-time iteration loop — it exists for interactive exploration, not batch mode
 
 ## Self-check
 

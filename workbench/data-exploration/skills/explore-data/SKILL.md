@@ -22,14 +22,7 @@ Before discovery, check what's already available:
 
 ## Detect intent
 
-**High-intent** — the user has a specific question (passed as argument, or in their message):
-- Skip broad profiling. Schema scan is enough to plan a chart.
-- **One chart per invocation.** If the user asks multiple questions, pick the first one. Save the rest as `[ ]` pending questions in analysis_plan.md — they'll be charted in subsequent iterations.
-- Go directly to: Connect → Schema scan → Plan chart → Write code → Output analysis_plan.md
-
-**Low-intent** — the user wants to explore without a specific question ("explore my data", "what can I learn?"):
-- Broad profiling helps surface what's interesting.
-- Go to: Connect → Broad profiling → Generate candidate questions → User picks → Plan chart → Write code → Output analysis_plan.md
+See `workflow.md` for high-intent vs low-intent definitions. **One chart per invocation** — if the user asks multiple questions, pick the first one and save the rest as `[ ]` pending questions.
 
 ## Iteration: existing analysis_plan.md
 
@@ -74,19 +67,7 @@ Profile all tables relevant to the user's domain:
 
 ## Step 3: Generate questions (low-intent only)
 
-From the profiling evidence, infer 5-10 plain-language business questions the data can answer. Present as multi-select:
-
-```
-question: "What questions interest you? (Pick all — I'll chart one at a time)"
-multiSelect: true
-options:
-  - label: "How has order revenue changed over time?"
-    description: "orders table — monthly/weekly trends using created_at + amount"
-  - label: "Which categories generate the most revenue?"
-    description: "orders table — group by category, sum amount"
-  - label: "Other"
-    description: "Describe your own question"
-```
+From the profiling evidence, infer 5-10 plain-language business questions the data can answer. Present as multi-select with table/column hints for each option. Always include an "Other" option for custom questions.
 
 Avoid PII-flagged columns as chart dimensions or metrics.
 
@@ -115,24 +96,15 @@ If the columns needed for the question don't exist in any table:
 
 ### Confirm the spec
 
-Present the planned chart for confirmation:
+Show the chart spec and ask for confirmation or adjustment. Use this format:
 
 ```
-question: "Here's the chart I've planned. Look good?"
-options:
-  - label: "Yes (Recommended)"
-  - label: "Adjust"
-    description: "Change the chart type, metric, or grouping"
-```
-
-Show the spec above the toggle:
-```
-Chart: Monthly Revenue Trend
-Type: line chart
-X: orders.created_at (monthly)
-Y: sum(orders.amount)
-Source: orders table
-"Total order revenue over time, aggregated monthly"
+Chart: <title>
+Type: <chart type>
+X: <table.column> (<grain>)
+Y: <aggregation>(table.column)
+Source: <table>
+"<one-line description>"
 ```
 
 If "Adjust", ask one targeted follow-up — don't re-run the full interview.
@@ -141,45 +113,19 @@ If "Adjust", ask one targeted follow-up — don't re-run the full interview.
 
 After the spec is confirmed, generate both ibis query and altair chart code.
 
-### ibis query
-
-```python
-t = dataset["orders"].to_ibis()
-monthly = (
-    t.mutate(month=t.created_at.truncate("M"))
-    .group_by("month")
-    .aggregate(revenue=t.amount.sum())
-    .order_by("month")
-    .limit(1000)
-)
-```
-
-Rules:
+### ibis rules
 - Use `dataset["table"].to_ibis()` to get ibis expressions (see `dlt-relation-api` rule)
 - Execute back through the dataset: `dataset(expr).df()`
 - Apply development row cap (see row-cap policy in `workflow.md`)
 - Use exact column names from the schema
 
-### altair chart
-
-```python
-alt.Chart(df).mark_line().encode(
-    x="month:T",
-    y="revenue:Q",
-    tooltip=["month:T", "revenue:Q"]
-).properties(title="Monthly Revenue Trend")
-```
-
-Rules:
+### altair rules
 - Use altair type encodings (`:T` temporal, `:Q` quantitative, `:N` nominal, `:O` ordinal)
 - Always include tooltip
 - Set a descriptive title
-
-Altair encoding docs: https://altair-viz.github.io/user_guide/encodings/channels.html
+- Altair encoding docs: https://altair-viz.github.io/user_guide/encodings/channels.html
 
 ### Sanity check
-
-Before writing to analysis_plan.md, verify:
 - Does the ibis query produce the columns referenced in the altair chart?
 - Does the aggregation grain match the chart type (e.g., monthly for a monthly trend)?
 - Does the chart actually answer the user's question?
@@ -209,38 +155,5 @@ After writing analysis_plan.md, hand off to `build-notebook` with the analysis_p
 
 ## Troubleshooting
 
-### Pipeline not found
-`dlt.attach("<name>")` raises `PipelineNotFound`.
-1. Run `list_pipelines` MCP tool to see available pipelines.
-2. Check spelling — pipeline names are case-sensitive.
-3. If the user has a standalone `.duckdb` file, use `dlt.pipeline(..., destination=dlt.destinations.duckdb("<path>"))`.
-
-### MCP tools unavailable
-If `list_pipelines` or `list_tables` return connection errors:
-1. Fall back to Python path (`dlt.attach` / `dlt.pipeline`).
-2. Tell the user the MCP server may not be running.
-
-### Empty tables / no data loaded
-If row counts are all zeros:
-1. Confirm pipeline has been run: `dlt pipeline <name> info`.
-2. Tell user: "This pipeline has no loaded data yet. Run the pipeline first."
-
-### ibis expression errors
-If `.to_ibis()` raises errors:
-1. Fall back to raw SQL via `dataset("SELECT ...")`.
-2. Check that `ibis-framework[duckdb]` is installed.
-
-## Example
-
-**User says:** "What's the revenue trend in my orders pipeline?"
-
-**Actions (high-intent path):**
-1. `list_pipelines` → finds `orders_pipeline`
-2. `list_tables` → `orders`, `customers`, `orders__items`
-3. `get_table_schema` for `orders` → columns: id, amount, created_at, category, customer_id
-4. Plan chart: line chart, x=created_at (monthly), y=sum(amount)
-5. Confirm with user → "Yes"
-6. Write ibis query + altair chart code
-7. Output `2026-03-10_orders_pipeline_analysis_plan.md` with Chart 1
-
-**Result:** Analysis plan with connection info, minimal profile, one charted question with validated code. Hand off to `build-notebook`.
+- **Pipeline not found** — check spelling (case-sensitive), run `list_pipelines`, or use explicit `.duckdb` path via `dlt.pipeline(..., destination=dlt.destinations.duckdb("<path>"))`.
+- **MCP tools unavailable** — fall back to Python path (`dlt.attach` / `dlt.pipeline`) and tell the user the MCP server may not be running.
