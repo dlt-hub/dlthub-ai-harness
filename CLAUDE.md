@@ -22,8 +22,6 @@ Makefile                           # make validate-toolkits
 ```
 
 
-## Security
-CRITICAL: never ask for credentials in chat. Always let the user edit secrets directly and do not attempt to read them.
 
 ## Toolkit conventions
 
