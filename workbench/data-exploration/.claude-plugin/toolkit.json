@@ -1,3 +1,4 @@
 {
-  "dependencies": ["init"]
+  "dependencies": ["init"],
+  "workflow_entry_skill": "explore-data"
 }
