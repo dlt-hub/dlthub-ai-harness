@@ -12,7 +12,7 @@ explore-data → analysis_plan.md → build-notebook → dashboard.py → [add a
 ```
 
 1. **Explore data** (`explore-data`) — connect to pipeline, plan one chart (high-intent or low-intent path), output `<date>_<pipeline>_analysis_plan.md`
-2. **Build notebook** (`build-notebook`) — assemble marimo notebook from analysis_plan.md, validate, launch
+2. **Build notebook** (`build-notebook`) — assemble marimo notebook from analysis_plan.md, validate, install dependencies, launch
 3. **Iterate** (workflow step) — offer to add another chart or stop
 
 ## Intent detection

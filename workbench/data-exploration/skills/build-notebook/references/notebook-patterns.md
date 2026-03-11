@@ -12,6 +12,8 @@ The templates below are dlt-dashboard-specific. For general marimo patterns, see
 # dependencies = [
 #     "marimo",
 #     "dlt[duckdb]",
+#     "pandas",
+#     "numpy",
 #     # "ibis-framework[duckdb]",  # uncomment if using ibis for complex joins
 #     "altair",
 #     "vl-convert-python",

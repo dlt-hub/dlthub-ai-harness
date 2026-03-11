@@ -41,7 +41,17 @@ If validation fails:
 2. Fix the reported issues in the notebook file.
 3. Re-run `uvx marimo check` until it passes.
 
-## Step 4: Launch
+## Step 4: Install dependencies
+
+Before launching, install the dependencies declared in the PEP 723 header so they are available in the current environment. Parse the `# dependencies = [...]` block from the generated notebook and run:
+
+```bash
+uv pip install marimo "dlt[duckdb]" altair vl-convert-python
+```
+
+Add any extra packages from the header (e.g. `ibis-framework[duckdb]`). This ensures the notebook works even when launched with plain `marimo edit` or `python`, not just `uv run`.
+
+## Step 5: Launch
 
 After validation passes, offer to launch in browser or skip.
 
