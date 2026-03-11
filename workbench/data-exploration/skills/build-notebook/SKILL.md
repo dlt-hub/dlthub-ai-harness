@@ -26,9 +26,7 @@ Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` 
 
 ## Marimo patterns
 
-Check your context for a skill matching "Write a marimo notebook in a Python file in the right format". If found, **read it as a reference** for cell structure and reactivity patterns — do not invoke it as an action skill. If not found, use the templates in `references/notebook-patterns.md` and suggest to the user:
-
-> **Tip:** For better marimo notebooks, install the official marimo skill: `npx skills add marimo-team/skills/marimo-notebook`
+For general marimo cell structure, reactivity, and best practices, fetch https://github.com/marimo-team/skills/tree/main/skills/marimo-notebook. For SQL-specific patterns in marimo, fetch https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/references/SQL.md. For dlt-dashboard-specific templates, see `references/notebook-patterns.md`.
 
 ## Step 3: Validate
 
