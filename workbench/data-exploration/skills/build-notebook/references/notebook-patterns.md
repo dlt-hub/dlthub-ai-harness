@@ -80,15 +80,21 @@ def _(alt, df_chart1, mo):
     _chart
     return
 ```
-### Critical: every chart cell MUST end with `return`
+### Critical: every chart cell MUST end with `_chart` then `return`
 
-Marimo displays whatever a cell returns. If a chart cell has no `return` statement, nothing renders — even if `_chart` is on a bare line. Marimo's auto-formatter may also strip bare expressions.
+Chart cells **must** end with `_chart` on a bare line followed by `return` — this is what marimo displays. Without the bare `_chart` line, nothing renders.
 
-
-**Never use:**
+**Wrong** (missing `_chart` before `return`):
 ```python
-_chart  # bare expression — will be stripped by formatter
-mo.ui.altair_chart(_chart)  # no return — nothing renders
+    ).properties(title="Monthly Revenue Trend")
+    return
+```
+
+**Right** (`_chart` on its own line, then `return`):
+```python
+    ).properties(title="Monthly Revenue Trend")
+    _chart
+    return
 ```
 
 ## App entry point
@@ -105,4 +111,4 @@ No footer cell — marimo's linter flags trivial `mo.md()` cells as empty. The l
 - `df_chart1`, `df_chart2`, ... — dataframe variables, one per chart, avoids cross-cell conflicts
 - `_chart` — underscore prefix keeps the altair object cell-local (not exported)
 - Data cells return `(df_chartN,)` — tuple syntax exports the variable to dependent cells
-- Chart cells **must** `return mo.ui.altair_chart(_chart)` — marimo displays whatever a cell returns. Without `return`, nothing renders. Do not use bare expressions or `print()`
+- Chart cells **must** end with `_chart` on a bare line followed by `return` — without the bare `_chart` line, nothing renders. Do not use `print()` or skip the `_chart` line

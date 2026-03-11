@@ -22,7 +22,7 @@ If the analysis plan file is missing or has no charts, tell the user to run `exp
 
 ## Step 2: Assemble notebook
 
-Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` for the complete notebook structure, cell templates, and naming conventions before generating.
+Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` for the complete notebook structure, cell templates, and naming conventions before generating. Every chart cell must end with `_chart` on a bare line, then `return` — without the bare expression line, nothing renders.
 
 ## Marimo patterns
 
