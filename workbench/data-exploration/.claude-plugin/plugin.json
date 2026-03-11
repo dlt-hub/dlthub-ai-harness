@@ -1,6 +1,6 @@
 {
   "name": "data-exploration",
-  "description": "Explore dlt pipeline data and build interactive dashboards. Connect to pipelines, profile tables, plan charts with ibis + altair, and assemble marimo notebooks — all driven by an analysis_plan.md artifact.",
+  "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
   "version": "0.1.0",
   "author": {
     "name": "dltHub, Inc."
