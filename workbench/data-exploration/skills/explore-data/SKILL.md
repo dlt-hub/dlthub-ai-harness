@@ -147,11 +147,11 @@ For **low-intent** path: Profile Summary includes row counts, anomaly notes, and
 
 Mark the charted question with `[x]` in the Questions list. Remaining `[ ]` questions are available for the next iteration.
 
-## Handoff
+## Handoff — MUST propose notebook
 
-After writing analysis_plan.md, hand off to `build-notebook` with the analysis_plan.md path. Tell the user:
+After writing or appending to analysis_plan.md, you **MUST** propose building the notebook. Never end a session that produced a chart without this step.
 
-"Analysis plan written to `<date>_<pipeline_name>_analysis_plan.md`. Ready to build the notebook — invoking `build-notebook`."
+Tell the user the plan was updated, then ask: "Ready to build the notebook — shall I invoke `build-notebook`?" If they agree, invoke it. If they decline, remind them they can run `build-notebook` later.
 
 ## Troubleshooting
 

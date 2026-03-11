@@ -62,3 +62,4 @@ Critical invariants:
 - Connection uses `dlt.attach()` or explicit destination — never raw `duckdb` imports
 - Row cap (1,000) is active on all queries unless the user opted out
 - `analysis_plan.md` is the single source of truth between `explore-data` and `build-notebook`
+- **Every `explore-data` run that produces a chart MUST propose `build-notebook`** — never leave the user without a notebook offer
