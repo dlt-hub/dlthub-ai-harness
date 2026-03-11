@@ -7,30 +7,14 @@ This toolkit is for quick dashboards to inspect pipeline data — not for deep d
 
 ## Core workflow
 
-```
-explore-data → analysis_plan.md → build-notebook → dashboard.py → [add another chart?] → explore-data → ...
-```
+Infer intent from the user's message — never ask "do you have a specific question?"
 
-1. **Explore data** (`explore-data`) — connect to pipeline, plan one chart (high-intent or low-intent path), output `<date>_<pipeline>_analysis_plan.md`
+1. **Explore data** (`explore-data`) — connect to pipeline, plan one chart, output `<date>_<pipeline>_analysis_plan.md`
+   - **High-intent** (user has a specific question) — schema scan only, plan chart directly
+   - **Low-intent** (user wants to explore) — broad profiling, generate candidate questions, user picks one, then plan chart
+   - **Returning** (analysis_plan.md exists) — skip connection and profiling, pick next question or ask for a new one, append chart to plan
 2. **Build notebook** (`build-notebook`) — assemble marimo notebook from analysis_plan.md, validate, install dependencies, launch
-3. **Iterate** (workflow step) — offer to add another chart or stop
-
-## Intent detection
-
-`explore-data` handles two paths based on what the user provides:
-
-- **High-intent** — user has a specific question ("What's the revenue trend?"). Schema scan only, no full profiling. Plan chart directly from schema + question.
-- **Low-intent** — user wants to explore ("What can I learn?", "Explore my data"). Broad profiling, generate candidate questions, user picks, then plan chart.
-
-The skill detects intent from the user's message. Do not ask "do you have a specific question?" — infer it.
-
-## Iteration via analysis_plan.md
-
-After `build-notebook` launches the notebook, offer to add another chart or stop.
-
-If "add another chart": re-invoke `explore-data`. The skill detects the existing analysis_plan.md, skips connection and profiling, and asks for the next question. Then re-invoke `build-notebook` to regenerate.
-
-Recommended maximum: **10 charts total** — but don't enforce as a hard limit.
+3. **Iterate** — offer to add another chart or stop. If yes, re-invoke `explore-data` (enters **Returning** path). Max ~10 charts.
 
 ## Handover to other toolkits
 
