@@ -15,7 +15,7 @@ Parse `$ARGUMENTS`:
 
 Parse the analysis plan file for:
 - **Connection** section: pipeline name, dataset name, destination type
-- **Chart N** sections: each chart's question, type, ibis code, and altair code
+- **Chart N** sections: each chart's question, type, SQL code, and altair code
 - Count the total number of charts to assemble
 
 If the analysis plan file is missing or has no charts, tell the user to run `explore-data` first and stop.
@@ -26,7 +26,7 @@ Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` 
 
 ## Marimo patterns
 
-Check if `marimo-notebook` appears in the available skills list (system prompt). If installed, invoke it for general marimo guidance (cell structure, reactivity, script format, PEP 723). If **not** installed, continue with the templates in `references/notebook-patterns.md` — but include this recommendation in your output to the user:
+Check your context for a skill matching "Write a marimo notebook in a Python file in the right format". If found, **read it as a reference** for cell structure and reactivity patterns — do not invoke it as an action skill. If not found, use the templates in `references/notebook-patterns.md` and suggest to the user:
 
 > **Tip:** For better marimo notebooks, install the official marimo skill: `npx skills add marimo-team/skills/marimo-notebook`
 
@@ -67,7 +67,7 @@ Two cells export the same variable name. Fix: follow the naming conventions in `
 A dependency is missing from the PEP 723 header. Add it to the `dependencies` list and re-check.
 
 ### Notebook runs but charts are empty
-The ibis query returns no rows. Common causes:
+The SQL query returns no rows. Common causes:
 1. Filter is too restrictive — check `where` clauses.
 2. Column names don't match schema — verify against `get_table_schema`.
 3. Table is empty — check `row_counts`.

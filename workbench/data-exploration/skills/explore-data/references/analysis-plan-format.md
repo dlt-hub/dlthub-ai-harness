@@ -33,15 +33,13 @@ x: created_at (monthly)
 y: sum(amount)
 source: orders
 
-```ibis
-t = dataset["orders"].to_ibis()
-monthly = (
-    t.mutate(month=t.created_at.truncate("M"))
-    .group_by("month")
-    .aggregate(revenue=t.amount.sum())
-    .order_by("month")
-    .limit(1000)
-)
+```sql
+SELECT
+    DATE_TRUNC('month', created_at) AS month,
+    SUM(amount) AS revenue
+FROM orders
+GROUP BY 1
+ORDER BY 1
 ```
 
 ```altair
@@ -58,4 +56,4 @@ alt.Chart(df).mark_line().encode(
 - **Profile Summary** may be minimal (table/column names only) on the high-intent path; full stats on low-intent path.
 - Mark charted questions with `[x]`, remaining with `[ ]`.
 - Append new `## Chart N` sections for each subsequent chart — do not remove previous ones.
-- `build-notebook` parses `## Chart N` sections to generate cells; keep the ibis/altair code blocks labeled correctly.
+- `build-notebook` parses `## Chart N` sections to generate cells; keep the sql/altair code blocks labeled correctly.

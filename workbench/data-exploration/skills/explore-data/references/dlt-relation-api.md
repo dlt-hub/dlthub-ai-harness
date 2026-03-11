@@ -3,6 +3,10 @@
 Reference: https://dlthub.com/docs/api_reference/dlt/dataset/relation#relation-objects
 Dataset docs: https://dlthub.com/docs/general-usage/dataset-access/dataset.md
 
+## Query priority for charts
+
+For chart queries, prefer SQL — it's concise and readable for aggregations. Use ibis for complex joins or computed columns. Use the Relation API for simple discovery (row counts, column inspection, quick filters).
+
 ## Getting a dataset and table relations
 
 ```python
@@ -30,6 +34,30 @@ pipeline = dlt.pipeline(
 dataset = pipeline.dataset()
 dataset.row_counts().df()
 ```
+
+## SQL queries (preferred for charts)
+
+```python
+dataset("SELECT * FROM orders WHERE amount > 100").df()
+
+## ibis expressions (complex queries)
+
+Use `table.to_ibis()` when you need joins, group-by, computed columns, or complex boolean filters:
+
+```python
+t = dataset["orders"].to_ibis()
+expr = (
+    t.filter(t.amount > 100)
+    .group_by("category")
+    .aggregate(total=t.amount.sum(), count=t.id.count())
+    .order_by(ibis.desc("total"))
+)
+dataset(expr).df()  # execute ibis expression back through the dataset
+```
+
+Key ibis operations: `group_by/aggregate`, `filter`, `join`, `order_by(ibis.desc(...))`, `mutate`.
+
+Ibis docs: https://ibis-project.org/reference/expression-collections
 
 ## Chainable query methods
 
@@ -78,25 +106,6 @@ table.columns_schema               # dlt column schema dict
 
 No `join()`, `count()`, or `group_by()` — use `to_ibis()` or raw SQL for these.
 
-## Escalating to ibis
-
-Use `table.to_ibis()` when you need joins, group-by, computed columns, or complex boolean filters:
-
-```python
-t = dataset["orders"].to_ibis()
-expr = (
-    t.filter(t.amount > 100)
-    .group_by("category")
-    .aggregate(total=t.amount.sum(), count=t.id.count())
-    .order_by(ibis.desc("total"))
-)
-dataset(expr).df()  # execute ibis expression back through the dataset
-```
-
-Key ibis operations: `group_by/aggregate`, `filter`, `join`, `order_by(ibis.desc(...))`, `mutate`.
-
-Ibis docs: https://ibis-project.org/reference/expression-collections
-
 ## Joining parent/child tables (dlt nested data)
 
 dlt creates child tables for nested data (e.g., `orders__items`). Join on `_dlt_id` / `_dlt_parent_id`:
@@ -104,10 +113,4 @@ dlt creates child tables for nested data (e.g., `orders__items`). Join on `_dlt_
 parent = dataset["orders"].to_ibis()
 child = dataset["orders__items"].to_ibis()
 joined = parent.join(child, parent._dlt_id == child._dlt_parent_id)
-```
-
-## Raw SQL (escape hatch)
-
-```python
-dataset("SELECT * FROM orders WHERE amount > 100").df()
 ```

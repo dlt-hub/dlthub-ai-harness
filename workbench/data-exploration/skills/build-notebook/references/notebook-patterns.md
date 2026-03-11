@@ -12,14 +12,14 @@ The templates below are dlt-dashboard-specific. For general marimo patterns, see
 # dependencies = [
 #     "marimo",
 #     "dlt[duckdb]",
-#     "ibis-framework[duckdb]",
+#     # "ibis-framework[duckdb]",  # uncomment if using ibis for complex joins
 #     "altair",
 #     "vl-convert-python",
 # ]
 # ///
 ```
 
-Add dependencies only if the spec's ibis code uses additional libraries.
+Add dependencies only if chart queries use additional libraries (e.g., ibis for complex joins).
 
 ## App setup cell
 
@@ -33,10 +33,11 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
     import altair as alt
-    import ibis
     import dlt
-    return alt, dlt, ibis, mo
+    return alt, dlt, mo
 ```
+
+> If any chart uses ibis expressions, add `import ibis` in the specific data cell that needs it — not in the global setup cell.
 
 ## Connection cell
 
@@ -50,20 +51,19 @@ def _(dlt):
 
 ## Per-chart cells (two cells per Chart N in spec)
 
-### Data cell — executes the ibis query from the spec
+### Data cell — executes the SQL query from the spec
 
 ```python
 @app.cell
 def _(dataset):
-    t = dataset["orders"].to_ibis()
-    monthly = (
-        t.mutate(month=t.created_at.truncate("M"))
-        .group_by("month")
-        .aggregate(revenue=t.amount.sum())
-        .order_by("month")
-        .limit(1000)
-    )
-    df_chart1 = dataset(monthly).df()
+    df_chart1 = dataset("""
+        SELECT
+            DATE_TRUNC('month', created_at) AS month,
+            SUM(amount) AS revenue
+        FROM orders
+        GROUP BY 1
+        ORDER BY 1
+    """).df()
     return (df_chart1,)
 ```
 

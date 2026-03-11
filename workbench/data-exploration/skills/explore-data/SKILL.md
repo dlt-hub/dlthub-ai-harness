@@ -1,7 +1,7 @@
 ---
 name: explore-data
 argument-hint: "[pipeline-name] [question]"
-description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "what questions can I ask about my data", or wants to explore, profile, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use dlthub-runtime toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
+description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "analyze my data", "profile data quality", "what questions can I ask about my data", "map my data to business concepts", or wants to explore, profile, analyze, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use dlthub-runtime toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
 ---
 
 # Explore data and plan charts
@@ -111,13 +111,14 @@ If "Adjust", ask one targeted follow-up — don't re-run the full interview.
 
 ## Step 5: Write validated code
 
-After the spec is confirmed, generate both ibis query and altair chart code.
+After the spec is confirmed, generate the SQL query and altair chart code.
 
-### ibis rules
-- Use `dataset["table"].to_ibis()` to get ibis expressions (see `dlt-relation-api` rule)
-- Execute back through the dataset: `dataset(expr).df()`
-- Apply development row cap (see row-cap policy in `workflow.md`)
-- Use exact column names from the schema
+### Query rules (SQL-first)
+- Default to SQL: `dataset("SELECT ... FROM table_name ...").df()`
+- Chart queries produce aggregated data — always GROUP BY and aggregate rather than selecting raw rows
+- Use ibis (`dataset["table"].to_ibis()`) only for complex joins or computed columns
+- Use exact column names from the schema — verify against `get_table_schema`
+- See `references/dlt-relation-api.md` for full API reference
 
 ### altair rules
 - Use altair type encodings (`:T` temporal, `:Q` quantitative, `:N` nominal, `:O` ordinal)
@@ -126,7 +127,7 @@ After the spec is confirmed, generate both ibis query and altair chart code.
 - Altair encoding docs: https://altair-viz.github.io/user_guide/encodings/channels.html
 
 ### Sanity check
-- Does the ibis query produce the columns referenced in the altair chart?
+- Does the SQL query produce the columns referenced in the altair chart?
 - Does the aggregation grain match the chart type (e.g., monthly for a monthly trend)?
 - Does the chart actually answer the user's question?
 
@@ -139,7 +140,7 @@ The file has these sections:
 - **Profile Summary** — table/column/row overview with anomaly and PII notes
 - **Questions** — `[x]` charted, `[ ]` pending
 - **Data Gaps** — columns needed but missing from schema
-- **Chart N** — question, type, ibis query block, altair chart block
+- **Chart N** — question, type, SQL query block, altair chart block
 
 For **high-intent** path: Profile Summary may have minimal info (table/column names only). That's fine.
 

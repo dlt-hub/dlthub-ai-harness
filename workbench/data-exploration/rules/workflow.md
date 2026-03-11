@@ -3,6 +3,8 @@
 ## Workflow Entry
 **ALWAYS** start with **Explore data** (`explore-data`) SKILL — connect to a dlt pipeline, understand the data, and plan charts
 
+This toolkit is for quick dashboards to inspect pipeline data — not for deep data modeling or ontology building.
+
 ## Core workflow
 
 ```
@@ -24,17 +26,11 @@ The skill detects intent from the user's message. Do not ask "do you have a spec
 
 ## Iteration via analysis_plan.md
 
-After `build-notebook` launches the notebook, offer to add another chart, stop, or remove the row cap and finalize.
+After `build-notebook` launches the notebook, offer to add another chart or stop.
 
 If "add another chart": re-invoke `explore-data`. The skill detects the existing analysis_plan.md, skips connection and profiling, and asks for the next question. Then re-invoke `build-notebook` to regenerate.
 
-If "Remove row cap": re-invoke `build-notebook` — it strips `.limit(1000)` calls, re-validates, and relaunches.
-
 Recommended maximum: **10 charts total** — but don't enforce as a hard limit.
-
-## Row-cap policy
-
-Default to **1,000 rows per query output** during development. Prefer deterministic ordering (`order_by` on timestamp or stable key) before `limit(1000)`. Only remove when the user opts out at the end of the workflow.
 
 ## Handover to other toolkits
 
@@ -60,6 +56,7 @@ If the user asks for all questions at once (e.g., "all of them", "do everything"
 
 Critical invariants:
 - Connection uses `dlt.attach()` or explicit destination — never raw `duckdb` imports
-- Row cap (1,000) is active on all queries unless the user opted out
+- Chart queries use GROUP BY / aggregation — never select raw unaggregated rows for charts
+- SQL is the default query method; ibis only for complex joins or computed columns
 - `analysis_plan.md` is the single source of truth between `explore-data` and `build-notebook`
 - **Every `explore-data` run that produces a chart MUST propose `build-notebook`** — never leave the user without a notebook offer
