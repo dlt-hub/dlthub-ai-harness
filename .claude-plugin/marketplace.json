@@ -29,10 +29,10 @@
     {
       "name": "data-exploration",
       "source": "./workbench/data-exploration",
-      "description": "Explore data loaded by dlt pipelines with marimo, datasets, and ibis",
+      "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
       "version": "0.1.0",
       "category": "data",
-      "tags": ["dlt", "marimo", "ibis", "data-exploration"]
+      "tags": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
     },
     {
       "name": "dlthub-runtime",

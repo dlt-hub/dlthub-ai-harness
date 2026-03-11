@@ -206,5 +206,12 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Eval workspaces (generated test outputs)
+*-workspace/
+
 # macOS
 .DS_Store
+evals/data-exploration/analyze-questions/config.json
+evals/data-exploration/analyze-questions/trigger-eval.json
+evals/data-exploration/connect-and-profile/config.json
+evals/data-exploration/connect-and-profile/trigger-eval.json
