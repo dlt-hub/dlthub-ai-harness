@@ -49,6 +49,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "init", "rules", "secrets", "mcp"]
+    },
+    {
+      "name": "transformations",
+      "source": "./workbench/transformations",
+      "description": "Transform raw dlt pipeline data into a Canonical Data Model. Annotate sources, build an ontology, design a CDM with Kimball dimensional modeling, and write @dlt.hub.transformation functions.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
     }
   ]
 }
