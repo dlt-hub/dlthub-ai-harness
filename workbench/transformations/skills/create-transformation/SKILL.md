@@ -58,6 +58,34 @@ Build an execution order:
 
 One `@dlt.hub.transformation` function per CDM entity. Wrap all in a `@dlt.source`.
 
+**Use ibis for all transformation logic — never pandas DataFrames.**
+ibis expressions are lazy, push computation to the source database, and compose cleanly across unions, joins, and window functions. Falling back to `.to_pandas()` for merges defeats this — keep everything in ibis until dlt loads the result.
+
+**ibis requires a SQL-capable destination** (BigQuery, Snowflake, DuckDB with file-based access, etc.). If the user requests DuckDB as destination, check whether ibis can connect to it in the context — if not, switch to BigQuery or another cloud destination and inform the user.
+
+For **cross-source transformations** (data from multiple pipelines), ibis connections must be created **before** the CDM pipeline starts — creating `dlt.pipeline()` inside a `@dlt.resource` function conflicts with the outer pipeline's context. Use module-level connection variables initialised in a setup function called before `pipeline.run()`:
+
+```python
+_AC = None
+_LUMA = None
+
+def _init_connections() -> None:
+    global _AC, _LUMA
+    _AC = dlt.pipeline("active_campaigns", destination="bigquery", dataset_name="active_campaigns").dataset().ibis()
+    _LUMA = dlt.pipeline("luma_events_data", destination="bigquery", dataset_name="luma_events_data").dataset().ibis()
+
+@dlt.resource(write_disposition="replace")
+def dim_person():
+    contacts = _AC.table("contacts")
+    guests   = _LUMA.table("event_guests")
+    ...  # pure ibis — no .to_pandas()
+
+if __name__ == "__main__":
+    _init_connections()          # BEFORE pipeline is created
+    pipeline = dlt.pipeline(...)
+    pipeline.run(my_source())
+```
+
 **Decorator:**
 ```python
 @dlt.hub.transformation(
@@ -143,13 +171,20 @@ def dim_person(dataset: dlt.Dataset):
 
 if __name__ == "__main__":
     pipeline = dlt.pipeline(
-        pipeline_name="<dataset_name>_cdm",
+        pipeline_name="<business_domain>_pipeline",   # e.g. person_interactions_pipeline
         destination="<destination>",
-        dataset_name="<dataset_name>_cdm",
+        dataset_name="<business_domain>",             # no _pipeline suffix on dataset
     )
-    load_info = pipeline.run(<dataset_name>_to_cdm())
+    load_info = pipeline.run(<business_domain>_to_cdm())
     print(load_info)
 ```
+
+**Naming convention:** `pipeline_name` and `dataset_name` should reflect the **business domain and central fact**, not the source systems. Derive the name from:
+1. The central fact table in `.schema/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
+2. The primary dimension in `.schema/ontology.ison` (e.g. `Person`)
+3. The use cases in `.schema/taxonomy.ison`
+
+Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
 
 ### 6. Get feedback before running
 
