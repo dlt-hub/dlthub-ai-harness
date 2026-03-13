@@ -1,6 +1,6 @@
 ---
 name: annotate-sources
-description: Annotate dlt pipeline sources for transformation. Use when the user wants to transform data, describes their data sources and use cases, or wants to build a CDM from existing pipelines.
+description: Annotate dlt pipeline sources for transformation. Use when the user wants to transform data, do data modelling, design a data model, describes their data sources and use cases, or wants to build a CDM from existing pipelines.
 argument-hint: "[sources] [use-cases]"
 ---
 
@@ -15,7 +15,9 @@ Parse `$ARGUMENTS`:
 If not provided in arguments, ask the user for:
 1. Which data sources / dlt pipelines they have
 2. What they want to achieve (use cases, analytics goals, reports)
-3. how the sources relate to each other (important)
+3. How the sources relate to each other (important)
+
+**IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
 ## Steps
 
@@ -23,21 +25,68 @@ If not provided in arguments, ask the user for:
 
 Use `list_pipelines` MCP tool to list all local dlt pipelines.
 
-For each source the user mentioned:
-- **Found** → note the pipeline name, dataset name, and destination
-- **Not found** → first ask if it exists, if it does not: stop and hand over to **rest-api-pipeline** toolkit:
+For each source the user mentioned, one of three cases applies:
+
+**Case A — local pipeline found** → note the pipeline name, dataset name, and destination. Schema will be extracted via `export_schema` in step 2.
+
+**Case B — no local pipeline, but data already exists on a remote destination** → ask the user for:
+- The exact dataset name on the destination (e.g. `luma_events_data`)
+- The destination type (e.g. `bigquery`, `snowflake`)
+
+Schema will be extracted via a dlt ibis script in step 2. Do NOT hand off to rest-api-pipeline — the data is already there.
+
+**Case C — no pipeline and no remote dataset** → stop and hand over to **rest-api-pipeline** toolkit:
 
 ```
-Pipeline for "<source>" not found locally.
+Pipeline for "<source>" not found locally or remotely.
 You need to ingest it first — use the rest-api-pipeline toolkit to build a dlt pipeline for it.
 ```
-- If it does exist then ask for dataset name and destination, then connect to it via dlt ibis and get schema, write it as dbml.
 
-Only continue when **all stated sources have a corresponding pipeline or pre-existing dataset**.
+Only continue when **all stated sources are confirmed as Case A or Case B**.
 
 ### 2. Extract source schemas
 
-For each confirmed pipeline, call `export_schema` with `output_format: "dbml"` and `save_to_file: "<absolute_path>/.schema/<pipeline_name>.dbml"`.
+**For Case A (local pipeline):** call `export_schema` MCP tool with `output_format: "dbml"` and `save_to_file: "<absolute_path>/.schema/<pipeline_name>.dbml"`.
+
+**For Case B (remote dataset, no local pipeline):** write and run a Python script using dlt ibis to extract the schema and write it as DBML.
+
+Write the script to `tools/get_<source>_schema.py`:
+
+```python
+"""Get <source> schema from <destination> via dlt ibis and write as DBML."""
+import dlt
+
+pipeline = dlt.pipeline(
+    pipeline_name="<pipeline_name>",   # use the dataset name as pipeline name
+    destination="<destination>",        # e.g. "bigquery"
+    dataset_name="<dataset_name>",      # e.g. "luma_events_data"
+)
+
+dataset = pipeline.dataset()
+ibis_conn = dataset.ibis()
+tables = ibis_conn.list_tables()
+
+lines = []
+for table_name in tables:
+    if table_name.startswith("_dlt"):
+        continue
+    t = ibis_conn.table(table_name)
+    lines.append(f'Table "{table_name}" {{')
+    for name, dtype in zip(t.schema().names, t.schema().types):
+        nullable = "" if str(dtype).endswith("!") else ""
+        lines.append(f'    "{name}" {dtype}')
+    lines.append("}")
+    lines.append("")
+
+dbml = "\n".join(lines)
+output_path = "<absolute_path>/.schema/<pipeline_name>.dbml"
+with open(output_path, "w") as f:
+    f.write(dbml)
+print(f"Schema written to {output_path}")
+print("Tables found:", tables)
+```
+
+Run with `uv run python tools/get_<source>_schema.py`. Confirm the file was written before proceeding.
 
 This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and stitch keys are confirmed.
 
