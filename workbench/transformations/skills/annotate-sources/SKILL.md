@@ -88,7 +88,7 @@ print("Tables found:", tables)
 
 Run with `uv run python tools/get_<source>_schema.py`. Confirm the file was written before proceeding.
 
-This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and stitch keys are confirmed.
+This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and natural keys are confirmed.
 
 ### 3. Derive canonical concepts from use cases
 
@@ -115,7 +115,7 @@ Read the use cases the user stated. Using your knowledge of the domain and the s
     "use_cases": ["track event attendance", "link contacts to companies"],
     "references": ["guest", "contact", "attendee"],
     "tables": [],
-    "stitch_key": null,
+    "natural_key": null,
     "assumptions": ["'guest' and 'contact' collapsed into Person"]
   },
   "Company": {
@@ -123,7 +123,7 @@ Read the use cases the user stated. Using your knowledge of the domain and the s
     "use_cases": ["link contacts to companies"],
     "references": ["organization", "account"],
     "tables": [],
-    "stitch_key": null,
+    "natural_key": null,
     "assumptions": []
   },
   "_excluded": []
@@ -169,13 +169,13 @@ Add confirmed tables under each concept's `tables` array:
 }
 ```
 
-### 6. Identify cross-source stitching
+### 6. Identify cross-source natural keys
 
 Find all concepts whose `tables` array contains entries from **more than one source pipeline**.
 
 For each such concept:
 1. List the contributing tables
-2. Propose a **join key** (the column(s) that can union/link rows across sources)
+2. Propose a **natural key** (the column(s) that can union/link rows across sources)
    - Common candidates: `email`, `external_id`, `phone`, `name` (last resort)
    - Prefer stable, unique, non-nullable fields
 
@@ -184,19 +184,19 @@ Present proposals to the user:
 ```
 Concept: Person
   Sources: hubspot__contacts, luma__guests
-  Proposed stitch key: email
+  Proposed natural key: email
   Reason: both tables have email as a unique identifier
 ```
 
-- User may override the key or mark two tables as non-stitchable (separate sub-concepts)
+- User may override the key or mark two tables as not linkable (separate sub-concepts)
 - Wait for explicit confirmation
 
-Set the confirmed stitch key on the concept:
+Set the confirmed natural key on the concept:
 
 ```json
 "Person": {
   ...
-  "stitch_key": "email"
+  "natural_key": "email"
 }
 ```
 
@@ -204,18 +204,18 @@ Set the confirmed stitch key on the concept:
 
 After steps 5 and 6 are confirmed, edit each `.schema/<pipeline_name>.dbml` to embed semantic annotations as DBML `Note` blocks and inline comments.
 
-**Table-level note** — on every mapped table, add a `Note` with the canonical concept, role, and (if applicable) stitch key:
+**Table-level note** — on every mapped table, add a `Note` with the canonical concept, role, and (if applicable) natural key:
 
 ```dbml
-Table "contacts" [note: 'concept: Person | role: primary | stitch_key: email'] {
+Table "contacts" [note: 'concept: Person | role: primary | natural_key: email'] {
     ...
 }
 ```
 
-**Field-level note** — on the stitch key column, mark it explicitly:
+**Field-level note** — on the natural key column, mark it explicitly:
 
 ```dbml
-    "email" text [note: 'stitch_key']
+    "email" text [note: 'natural_key']
 ```
 
 **Excluded tables** — add a note so they are visually distinct:
@@ -228,16 +228,16 @@ Table "_dlt_loads" [note: 'excluded: dlt internal table'] {
 
 This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML without cross-referencing `taxonomy.ison`.
 
-### 7. Present all assumptions
+### 7. Confirm with user
 
-Collect and display all assumptions recorded in steps 3 and 4:
-- Concept definitions and synonym collapses
+Read `.schema/taxonomy.ison` and present a summary of all recorded decisions:
+- Concepts and their synonym collapses
 - Excluded tables and reasons
 
-Ask the user to review and correct anything before proceeding:
+Ask the user to review before proceeding:
 
 ```
-Assumptions made:
+Decisions recorded:
 1. "guest" and "contact" both map to Person concept
 2. hubspot__email_events__propertyhistory excluded — property change log, not a business entity
 3. ...
@@ -249,7 +249,7 @@ Apply any corrections to `taxonomy.ison`.
 
 ## Output
 
-- `.schema/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, stitch_key, exclusion)
-- `.schema/taxonomy.ison` — concept-keyed: references, table mappings, stitch keys, assumptions, exclusions
+- `.schema/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
+- `.schema/taxonomy.ison` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions
 
 Hand over to `create-ontology` skill.

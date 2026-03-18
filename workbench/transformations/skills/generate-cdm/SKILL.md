@@ -36,7 +36,7 @@ Example: "One row per person per event attended."
 
 The grain drives:
 - Which columns go in the fact table vs. a dimension
-- The natural key (used to detect duplicates)
+- The grain key (column combination used to detect duplicates)
 - The surrogate key definition
 
 Never proceed without a confirmed grain.
@@ -62,11 +62,9 @@ For each fact table:
 
 ### 5. Review entity equivalence
 
-Before finalising, check for aliases that should collapse into one table:
-- `Contact` / `User` / `Lead` → one `Person` dimension?
-- `Ticket` / `Issue` / `Case` → one `SupportCase` fact?
+Check for aliases that only become visible at the dimensional modeling stage — e.g. two ontology entities that would produce identical dimension tables. Do **not** re-open concept collapses already confirmed in `taxonomy.ison`; those are settled.
 
-Confirm collapses with the user.
+If a new collapse is warranted, confirm with the user before merging the tables.
 
 ### 6. Write CDM
 
@@ -75,7 +73,7 @@ Write `.schema/CDM.dbml` using DBML syntax. Encode metadata in `Table` notes:
 ```dbml
 Table dim_person [note: 'table_type:dimension; surrogate_key:person_sk; scd_type:1; conformed:true'] {
   person_sk bigint [pk, note: 'surrogate key']
-  source_id varchar [note: 'natural key from master source']
+  source_id varchar [note: 'source key — original ID from the upstream system, stored for lineage']
   source_pipeline varchar
   email varchar
   first_name varchar

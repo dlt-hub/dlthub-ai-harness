@@ -10,11 +10,11 @@ Build a formal entity graph from the confirmed source annotations and taxonomy, 
 **Requires** `.schema/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/taxonomy.ison` from `annotate-sources`.
 If either is missing, run `annotate-sources` first.
 
-### Key concept: stitch key
+### Key concept: natural key
 
-A **stitch key** is a column whose value is consistent across multiple source tables and can therefore be used to identify the same real-world entity across systems. For example, `email` appearing in both `contacts` (AC) and `event_guests` (Luma) means a single person can be matched and merged across both sources.
+A **natural key** is a column whose value is derived from the real-world domain and is therefore consistent across multiple source systems. For example, `email` appearing in both `contacts` (AC) and `event_guests` (Luma) means a single person can be matched and merged across both sources.
 
-When a concept has a stitch key, rows from different source tables that share the same stitch key value are treated as the **same entity** — they become one row in the CDM, not two. This determines:
+When a concept has a natural key, rows from different source tables that share the same natural key value are treated as the **same entity** — they become one row in the CDM, not two. This determines:
 - Which source "wins" for each attribute when both have a value (**master source**)
 - Whether rows that exist in only one source are still included (**union vs. intersection**)
 
@@ -27,15 +27,15 @@ Read `.schema/taxonomy.ison`. For each top-level key that is not prefixed with `
 - Name = concept key (PascalCase)
 - Mark as `inferred: false` (grounded in confirmed source mappings)
 
-### 2. Confirm stitch key handling
+### 2. Confirm natural key handling
 
-**Before deriving any attributes**, for every concept that has a `stitch_key` in `taxonomy.ison`, explicitly ask the user how they want conflicts resolved. Do not assume a strategy.
+**Before deriving any attributes**, for every concept that has a `natural_key` in `taxonomy.ison`, explicitly ask the user how they want conflicts resolved. Do not assume a strategy.
 
-Present the stitched concept, the contributing sources, and the three options:
+Present the concept with its natural key, the contributing sources, and the three options:
 
 ```
 Concept: Person
-Stitch key: email
+Natural key: email
 Sources: contacts (AC), event_guests (Luma)
 
 When the same person exists in both sources, how should attribute conflicts be resolved?
@@ -62,18 +62,18 @@ For each entity, collect all columns from **all source tables mapped to that con
 
 For each column:
 - Include column name, dlt type, source table, source pipeline
-- Apply the confirmed stitch key strategy from step 2 to flag the **master source** per attribute
+- Apply the confirmed natural key strategy from step 2 to flag the **master source** per attribute
 
-Where the same logical attribute appears in multiple sources under different names (e.g. `email` in contacts, `email_address` in guests):
+Where the same logical attribute appears in multiple sources under different names (e.g. `phone` in contacts, `phone_number` in guests):
 - Propose a canonical attribute name
 - Present conflicts to the user and confirm:
 
 ```
-Attribute conflict: email identity field for Person
-  hubspot__contacts.email       (master source candidate)
-  luma__guests.email_address
+Attribute conflict: phone field for Person
+  hubspot__contacts.phone       (master source candidate)
+  luma__guests.phone_number
 
-Proposed canonical name: email  |  Master source: hubspot__contacts
+Proposed canonical name: phone  |  Master source: hubspot__contacts
 Correct?
 ```
 
@@ -83,8 +83,8 @@ Wait for confirmation before proceeding.
 
 Two sources of relationships:
 
-**From stitch keys** (`taxonomy.ison` → `concept.stitch_key`):
-- Each stitch key defines a union relationship between tables of the same concept
+**From natural keys** (`taxonomy.ison` → `concept.natural_key`):
+- Each natural key defines a union relationship between tables of the same concept
 - Record as a `STITCHED_BY` edge with the key column
 
 **From structural FKs** in source schemas (`.schema/<pipeline_name>.dbml`):
@@ -110,12 +110,12 @@ Write `.schema/ontology.ison` in Graph ISON format (https://graph.ison.dev/) —
 ```ison
 nodes.Entity
 id       label    inferred  assumption
-Person   Person   false     Collapses hubspot contact + luma guest. Stitched by email.
+Person   Person   false     Collapses hubspot contact + luma guest. Natural key: email.
 Company  Company  false     Master source: hubspot__companies.
 
 nodes.Attribute
 entity           name        type       master_source          also_in          note
-:Entity:Person   email       text       hubspot__contacts      luma__guests     stitch_key
+:Entity:Person   email       text       hubspot__contacts      luma__guests     natural_key
 :Entity:Person   first_name  text       hubspot__contacts
 
 edges.BELONGS_TO
@@ -125,18 +125,21 @@ from              to               via                                        in
 edges.STITCHED_BY
 from            to              via    inferred
 :Entity:Person  :Entity:Person  email  false
-
-nodes.SemanticGap
-concept   use_case                       note
-Contract  track subscription billing     no source table found
 ```
 
 Rules:
 - One `nodes.<Type>` section per entity type; one `edges.<LABEL>` section per relationship label
 - Node references use `:Type:id` syntax (e.g. `:Entity:Person`)
 - Attributes are a separate `nodes.Attribute` section with an `entity` reference column
-- Omit `nodes.SemanticGap` section if there are no gaps
 - Tab-separate columns; use a blank line between sections
+
+If semantic gaps were found in step 5, append:
+
+```ison
+nodes.SemanticGap
+concept   use_case                       note
+Contract  track subscription billing     no source table found
+```
 
 ## Output
 

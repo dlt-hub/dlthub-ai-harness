@@ -10,7 +10,7 @@ Write `@dlt.hub.transformation` functions that map annotated source tables to CD
 
 **Requires:**
 - `.schema/annotated-sources.dbml` — source table schemas with concept annotations
-- `.schema/taxonomy.ison` — confirmed table→concept mappings and stitch keys
+- `.schema/taxonomy.ison` — confirmed table→concept mappings and natural keys
 - `.schema/CDM.dbml` — target CDM schema
 
 If any are missing, run the preceding skills first.
@@ -25,7 +25,7 @@ Parse `$ARGUMENTS`:
 
 Read in parallel:
 - `.schema/annotated-sources.dbml` — source columns and their concept mappings
-- `.schema/taxonomy.ison` — table mappings and stitch keys
+- `.schema/taxonomy.ison` — table mappings and natural keys
 - `.schema/CDM.dbml` — CDM entity definitions and column specs
 
 ### 2. Get actual source schema via ibis
@@ -63,7 +63,16 @@ ibis expressions are lazy, push computation to the source database, and compose 
 
 **ibis requires a SQL-capable destination** (BigQuery, Snowflake, DuckDB with file-based access, etc.). If the user requests DuckDB as destination, check whether ibis can connect to it in the context — if not, switch to BigQuery or another cloud destination and inform the user.
 
-For **cross-source transformations** (data from multiple pipelines), ibis connections must be created **before** the CDM pipeline starts — creating `dlt.pipeline()` inside a `@dlt.resource` function conflicts with the outer pipeline's context. Use module-level connection variables initialised in a setup function called before `pipeline.run()`:
+**Decorator (default pattern):**
+```python
+@dlt.hub.transformation(
+    write_disposition="replace",
+)
+def dim_person(dataset: dlt.Dataset):
+    ...
+```
+
+**Cross-source transformations only** (data from multiple pipelines): ibis connections must be created **before** the CDM pipeline starts. Use module-level connection variables initialised in a setup function called before `pipeline.run()`:
 
 ```python
 _AC = None
@@ -74,7 +83,6 @@ def _init_connections() -> None:
     _AC = dlt.pipeline("active_campaigns", destination="bigquery", dataset_name="active_campaigns").dataset().ibis()
     _LUMA = dlt.pipeline("luma_events_data", destination="bigquery", dataset_name="luma_events_data").dataset().ibis()
 
-@dlt.resource(write_disposition="replace")
 def dim_person():
     contacts = _AC.table("contacts")
     guests   = _LUMA.table("event_guests")
@@ -84,15 +92,6 @@ if __name__ == "__main__":
     _init_connections()          # BEFORE pipeline is created
     pipeline = dlt.pipeline(...)
     pipeline.run(my_source())
-```
-
-**Decorator:**
-```python
-@dlt.hub.transformation(
-    write_disposition="replace",
-)
-def dim_person(dataset: dlt.Dataset):
-    ...
 ```
 
 **ibis patterns:**
@@ -121,7 +120,7 @@ joined = contacts.join(companies, contacts.company_id == companies.id)
 # RIGHT: contacts.email  ← explicit
 ```
 
-Cross-source union (from `taxonomy[concept].stitch_key` + `taxonomy[concept].tables`):
+Cross-source union (from `taxonomy[concept].natural_key` + `taxonomy[concept].tables`):
 ```python
 persons = hubspot_contacts.select(...).union(luma_guests.select(...))
 ```
