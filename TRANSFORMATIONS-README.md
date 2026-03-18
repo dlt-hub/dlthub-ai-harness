@@ -1,6 +1,6 @@
 # Transformations Toolkit
 
-Transform raw dlt pipeline data into a [Canonical Data Model](https://dlthub.com/docs). Annotate sources, build an entity ontology, design a Kimball-style CDM, and write `@dlt.hub.transformation` ibis functions.
+Transform raw dlt pipeline data into a Canonical Data Model. Annotate sources, build an entity ontology, design a Kimball-style CDM, and write `@dlt.hub.transformation` ibis functions.
 
 ## Installation
 
@@ -26,5 +26,4 @@ Claude will walk you through the full workflow:
 
 ## Requirements
 
-- [dlt](https://dlthub.com/docs/installation) installed and at least one local pipeline run
-- Claude Code with `dlt ai` CLI
+- dlt installed as per main [README](https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/README.md) installed and at least one local pipeline run or dataset available to be transformed.
