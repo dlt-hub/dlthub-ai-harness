@@ -20,12 +20,27 @@ Read `.schema/ontology.ison`. For each entity, apply Kimball classification:
 
 | Signals | Classification |
 |---|---|
-| Describes a business event or transaction (e.g. EventAttendance, Order, PageView) | **Fact** |
-| Describes a stable business object (e.g. Person, Company, Product) | **Dimension** |
-| Can be shared across multiple fact tables | **Conformed dimension** |
+| Describes a business event or transaction (e.g. EventAttendance, Order, PageView) | **Fact table** |
+| Describes a stable business object (e.g. Person, Company, Product) | **Reference table** |
+| A reference table shared across multiple fact tables | **Shared reference table** |
 
-Present the classification to the user and confirm before proceeding.
-Agree on **conformed dimensions** early — they must be consistent across all fact tables.
+Present the classification to the user and confirm before proceeding:
+
+```
+Here's how I'd structure your data model:
+
+  Reference tables (who/what your data is about):
+    dim_person — Person (shared across all facts)
+    dim_company — Company (shared across all facts)
+    dim_event — Event
+
+  Fact tables (the events/transactions):
+    fact_event_attendance — one row per person per event attended
+
+Does this look right?
+```
+
+Agree on **shared reference tables** early — they must be consistent across all fact tables.
 
 ### 2. Define grain for every fact table
 

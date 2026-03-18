@@ -90,17 +90,29 @@ Run with `uv run python tools/get_<source>_schema.py`. Confirm the file was writ
 
 This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and natural keys are confirmed.
 
-### 3. Derive canonical concepts from use cases
+### 3. Identify core business entities
 
 Read the use cases the user stated. Using your knowledge of the domain and the source schemas:
 
-1. Propose a **canonical concept list** — the business entities the use cases revolve around.
+1. Propose the core **business entities** the use cases revolve around.
    - Collapse synonyms: `guest` → `Person`, `contact` → `Person`, `attendee` → `Person`
    - Use neutral, domain-agnostic names (PascalCase nouns): `Person`, `Company`, `Event`, `Order`
-   - Explain each concept and why it covers the stated use cases
+   - Explain each entity and why it covers the stated use cases
 
-2. Present the proposed concepts to the user and confirm:
-   - They may rename, merge, or add concepts
+2. Present the proposed entities to the user and confirm:
+
+```
+Here are the core business entities I see in your data:
+
+  Person — any individual (contact, guest, attendee, lead)
+    Covers: track event attendance, link contacts to companies
+
+  Company — an organisation
+    Covers: link contacts to companies
+
+Does this look right? You can rename, merge, or add anything.
+```
+
    - Wait for explicit confirmation before proceeding
 
 3. Write `.schema/taxonomy.ison` with the confirmed concepts.
@@ -142,13 +154,13 @@ Do NOT ask the user — apply your judgement. Record each exclusion under `_excl
 {"table": "hubspot__email_events__propertyhistory", "reason": "property change log, not a business entity"}
 ```
 
-### 5. Map relevant tables to canonical concepts
+### 5. Match source tables to business entities
 
-For each remaining (non-excluded) table, propose which canonical concept it maps to.
+For each remaining (non-excluded) table, propose which business entity it belongs to.
 
 Present a mapping table to the user:
 
-| Source table | Maps to concept | Confidence | Notes |
+| Source table | Represents | Confidence | Notes |
 |---|---|---|---|
 | hubspot__contacts | Person | high | primary contact record |
 | luma__guests | Person | high | event attendee |
@@ -182,13 +194,15 @@ For each such concept:
 Present proposals to the user:
 
 ```
-Concept: Person
-  Sources: hubspot__contacts, luma__guests
-  Proposed natural key: email
-  Reason: both tables have email as a unique identifier
+Person appears in HubSpot (contacts) and Luma (guests) — we can link them using a shared field.
+  Suggested link field: email
+  Reason: both sources have email as a unique identifier for the same person
+
+Does this work, or would you prefer a different field?
+(Say "keep separate" if these should not be merged across sources.)
 ```
 
-- User may override the key or mark two tables as not linkable (separate sub-concepts)
+- User may override the field or keep the two tables separate
 - Wait for explicit confirmation
 
 Set the confirmed natural key on the concept:
@@ -238,11 +252,11 @@ Ask the user to review before proceeding:
 
 ```
 Decisions recorded:
-1. "guest" and "contact" both map to Person concept
-2. hubspot__email_events__propertyhistory excluded — property change log, not a business entity
+1. "guest" and "contact" are both treated as Person
+2. hubspot__email_events__propertyhistory skipped — property change log, not a business entity
 3. ...
 
-Anything to correct before we proceed to ontology design?
+Anything to correct before we move on?
 ```
 
 Apply any corrections to `taxonomy.ison`.

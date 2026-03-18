@@ -188,9 +188,9 @@ Name the dataset after the grain of the star schema — what the data mart *is a
 ### 6. Get feedback before running
 
 Show a summary of:
-- CDM entities targeted
-- Source tables used per entity
-- Any `columns=` hints added and why
+- Output tables being created
+- Source tables used per output table
+- Any columns added with explicit type hints and why
 - Any source columns skipped and why
 
 Ask user to confirm before running the transformation.

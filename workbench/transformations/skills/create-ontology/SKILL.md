@@ -34,24 +34,22 @@ Read `.schema/taxonomy.ison`. For each top-level key that is not prefixed with `
 Present the concept with its natural key, the contributing sources, and the three options:
 
 ```
-Concept: Person
-Natural key: email
-Sources: contacts (AC), event_guests (Luma)
+Person appears in HubSpot (contacts) and Luma (event_guests), linked by email.
 
-When the same person exists in both sources, how should attribute conflicts be resolved?
+When the same person appears in both and their data conflicts, which should we trust?
 
-  A) COALESCE — prefer non-null values; if both have a value, pick a priority source
-     → "Use AC if available, fall back to Luma"
-  B) Strict master — always use one source; ignore the other source's values entirely
-     → "Always use AC, even if a field is null"
-  C) Source-specific — decide per attribute which source wins
-     → "Use AC for name/phone, Luma for registration date"
+  A) Prefer whichever source has a value — fall back to the other if blank
+     → "Use HubSpot if available, fall back to Luma"
+  B) Always use one source, ignore the other entirely
+     → "Always use HubSpot, even if a field is blank"
+  C) Decide field by field
+     → "Use HubSpot for name/phone, Luma for registration date"
 
-Also: should the entity include people who exist in only one source?
-  1) Union (recommended) — include everyone from both sources
-  2) Intersection — only include people who appear in both sources
+Also: what about people who only exist in one source?
+  1) Include everyone (recommended)
+  2) Only include people present in both sources
 
-Which option for conflict resolution (A/B/C) and scope (1/2)?
+Which combination (A/B/C) and (1/2)?
 ```
 
 Wait for explicit confirmation. Record the chosen strategy in the ontology `assumption` field before proceeding to attribute derivation.
@@ -69,12 +67,12 @@ Where the same logical attribute appears in multiple sources under different nam
 - Present conflicts to the user and confirm:
 
 ```
-Attribute conflict: phone field for Person
-  hubspot__contacts.phone       (master source candidate)
-  luma__guests.phone_number
+Both sources have a phone field for Person, but named differently:
+  HubSpot (contacts): phone
+  Luma (guests): phone_number
 
-Proposed canonical name: phone  |  Master source: hubspot__contacts
-Correct?
+Suggested unified name: phone  |  Primary source: HubSpot (contacts)
+OK?
 ```
 
 Wait for confirmation before proceeding.
