@@ -21,3 +21,7 @@ Parse `$ARGUMENTS`:
 ### Real example: OpenAI Usage API
 
 Pipeline worked with `.add_limit(1)`. After removing the limit, it hung forever — dlt's auto-detected paginator looped. Fix: added explicit `"paginator": {"type": "cursor", "cursor_path": "next_page", "cursor_param": "page"}`. Full load then completed in 5 seconds.
+
+## Next steps
+
+- Full load complete → invoke `explore-data` to chart and analyze the data
