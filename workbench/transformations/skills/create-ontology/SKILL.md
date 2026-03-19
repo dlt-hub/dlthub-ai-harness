@@ -56,6 +56,8 @@ Wait for explicit confirmation. Record the chosen strategy in the ontology `assu
 
 ### 3. Derive attributes per entity
 
+**SCOPE CONSTRAINT — no inference beyond source data:** Only include attributes that correspond to actual columns in the source schema. Do **not** add computed fields, business metrics, or domain concepts (e.g. `roi`, `is_icp`, `lead_score`, `lifetime_value`) unless a column with that data already exists in one of the source tables. If a useful attribute is missing from the data, record it as a semantic gap (step 5), not as an attribute.
+
 For each entity, collect all columns from **all source tables mapped to that concept** (from `taxonomy[concept].tables`).
 
 For each column:

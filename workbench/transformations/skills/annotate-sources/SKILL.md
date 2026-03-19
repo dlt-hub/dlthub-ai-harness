@@ -92,12 +92,14 @@ This produces one DBML file per pipeline. These files are the working artifacts 
 
 ### 3. Identify core business entities
 
-Read the use cases the user stated. Using your knowledge of the domain and the source schemas:
+Read the use cases the user stated. Using the source schemas and stated use cases only:
+
+**SCOPE CONSTRAINT — no inference beyond source data:** Entity names, descriptions, and use-case coverage must be grounded strictly in (a) columns that actually exist in the source schemas and (b) use cases the user explicitly stated. Do **not** add, suggest, or imply attributes, metrics, or business concepts that have no corresponding column in the source data. For example: if the source has a `contacts` table but no `roi`, `lead_score`, or `is_icp` columns, do not mention or include those concepts anywhere — not in descriptions, not in assumptions, not as "could be added later". Only record what the data actually contains.
 
 1. Propose the core **business entities** the use cases revolve around.
    - Collapse synonyms: `guest` → `Person`, `contact` → `Person`, `attendee` → `Person`
    - Use neutral, domain-agnostic names (PascalCase nouns): `Person`, `Company`, `Event`, `Order`
-   - Explain each entity and why it covers the stated use cases
+   - Explain each entity and why it covers the stated use cases — based only on columns present in the source schema
 
 2. Present the proposed entities to the user and confirm:
 
