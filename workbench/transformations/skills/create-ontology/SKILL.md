@@ -146,4 +146,12 @@ Contract  track subscription billing     no source table found
 - `.schema/ontology.ison` — entity graph with attributes, relationships, and gaps
 - `.schema/ontology.md` — human-readable summary (required). One section per entity with: a short description, attribute table (name | type | source | notes), relationships table, and a final assumptions & exclusions list.
 
-Hand over to `generate-cdm` skill.
+After writing both files, explicitly ask the user to open and review `.schema/ontology.md` before continuing:
+
+```
+Please review `.schema/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
+
+Let me know if anything looks wrong or needs changing before we move on.
+```
+
+Wait for explicit confirmation before handing over to `generate-cdm` skill.

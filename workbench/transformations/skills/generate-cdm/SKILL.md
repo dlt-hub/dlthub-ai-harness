@@ -113,4 +113,12 @@ Required `note` fields per table type:
 
 - `.schema/CDM.dbml` — implementation-ready CDM schema
 
-Hand over to `create-transformation` skill.
+After writing the file, explicitly ask the user to open and review `.schema/CDM.dbml` before continuing:
+
+```
+Please review `.schema/CDM.dbml` — it contains the full data model with all tables, columns, and relationships.
+
+Let me know if anything looks wrong or needs changing before we move on.
+```
+
+Wait for explicit confirmation before handing over to `create-transformation` skill.
