@@ -91,7 +91,7 @@ For the user's question (from argument or selection), decide:
 If the columns needed for the question don't exist in any table:
 - Tell the user: "The data doesn't have [missing column/concept]. You'd need to add this to your pipeline."
 - Record the gap in analysis_plan.md under `## Data Gaps`.
-- Suggest handoff to **rest-api-pipeline** toolkit if the user wants to extend the pipeline.
+- Suggest invoking `new-endpoint` (missing concept) or `adjust-endpoint` (data exists but looks truncated/stale) if the user wants to fix the pipeline.
 - Do not plan a chart for a question with missing data.
 
 ### Confirm the spec
