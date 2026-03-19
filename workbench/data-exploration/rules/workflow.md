@@ -20,12 +20,12 @@ Infer intent from the user's message — never ask "do you have a specific quest
 
 ### Outgoing (from data-exploration)
 
-- **rest-api-pipeline** → `find-source` or `new-endpoint` — when `explore-data` identifies a data gap (needed columns don't exist in any table) and the user wants to extend the pipeline
+- **rest-api-pipeline** → `new-endpoint` (missing column/concept) or `adjust-endpoint` (data exists but looks truncated/stale) — when `explore-data` finds a data gap and the user wants to fix the pipeline
 - **dlthub-runtime** → `setup-runtime` — when the pipeline and notebook are production-ready and the user wants to deploy or schedule
 
 ### Incoming (to data-exploration)
 
-- From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
+- From **rest-api-pipeline** (after `validate-data`, `view-data`, `new-endpoint`, or `adjust-endpoint`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From transformation toolkit (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **dlthub-runtime** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 
