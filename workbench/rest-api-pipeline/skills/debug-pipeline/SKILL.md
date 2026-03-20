@@ -160,6 +160,6 @@ Do NOT remove settings the user had before you started debugging.
 
 ## Next steps
 
-- **Load successful** → use `validate-data` to inspect schema and data
+- **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (data-exploration toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → check TOML sections, revisit `create-rest-api-pipeline` step 6b for credential setup
 - **No pipeline exists** → use `create-rest-api-pipeline` to scaffold one first
