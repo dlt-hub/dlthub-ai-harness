@@ -77,7 +77,7 @@ For each fact table:
 
 ### 5. Review entity equivalence
 
-Check for aliases that only become visible at the dimensional modeling stage — e.g. two ontology entities that would produce identical dimension tables. Do **not** re-open concept collapses already confirmed in `taxonomy.ison`; those are settled.
+Check for aliases that only become visible at the dimensional modeling stage — e.g. two ontology entities that would produce identical dimension tables. Do **not** re-open concept collapses already confirmed in `taxonomy.json`; those are settled.
 
 If a new collapse is warranted, confirm with the user before merging the tables.
 

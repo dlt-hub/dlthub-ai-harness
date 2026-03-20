@@ -7,7 +7,7 @@ description: Build a business entity graph (ontology) from annotated sources and
 
 Build a formal entity graph from the confirmed source annotations and taxonomy, ready for Kimball CDM design.
 
-**Requires** `.schema/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/taxonomy.ison` from `annotate-sources`.
+**Requires** `.schema/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/taxonomy.json` from `annotate-sources`.
 If either is missing, run `annotate-sources` first.
 
 ### Key concept: natural key
@@ -22,14 +22,14 @@ When a concept has a natural key, rows from different source tables that share t
 
 ### 1. Build entity list
 
-Read `.schema/taxonomy.ison`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
+Read `.schema/taxonomy.json`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
 - Create one ontology entity per canonical concept
 - Name = concept key (PascalCase)
 - Mark as `inferred: false` (grounded in confirmed source mappings)
 
 ### 2. Confirm natural key handling
 
-**Before deriving any attributes**, for every concept that has a `natural_key` in `taxonomy.ison`, explicitly ask the user how they want conflicts resolved. Do not assume a strategy.
+**Before deriving any attributes**, for every concept that has a `natural_key` in `taxonomy.json`, explicitly ask the user how they want conflicts resolved. Do not assume a strategy.
 
 Present the concept with its natural key, the contributing sources, and the three options:
 
@@ -83,7 +83,7 @@ Wait for confirmation before proceeding.
 
 Two sources of relationships:
 
-**From natural keys** (`taxonomy.ison` → `concept.natural_key`):
+**From natural keys** (`taxonomy.json` → `concept.natural_key`):
 - Each natural key defines a union relationship between tables of the same concept
 - Record as a `STITCHED_BY` edge with the key column
 
@@ -94,7 +94,7 @@ Two sources of relationships:
 
 ### 5. Flag semantic gaps
 
-Compare entity list against the user's stated use cases (from `taxonomy.ison` → `concept.use_cases`).
+Compare entity list against the user's stated use cases (from `taxonomy.json` → `concept.use_cases`).
 
 If a use case requires a concept that has **no contributing source table**:
 - Flag it as a semantic gap

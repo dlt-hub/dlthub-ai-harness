@@ -10,14 +10,14 @@ Write `@dlt.hub.transformation` functions that map annotated source tables to CD
 
 **Requires:**
 - `.schema/annotated-sources.dbml` — source table schemas with concept annotations
-- `.schema/taxonomy.ison` — confirmed table→concept mappings and natural keys
+- `.schema/taxonomy.json` — confirmed table→concept mappings and natural keys
 - `.schema/CDM.dbml` — target CDM schema
 
 If any are missing, run the preceding skills first.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name`: the dlt pipeline to transform from (e.g. `hubspot_crm_pipeline`)
-- If omitted, check `taxonomy.ison` for contributing pipelines and ask user which to target
+- If omitted, check `taxonomy.json` for contributing pipelines and ask user which to target
 
 ## Steps
 
@@ -25,7 +25,7 @@ Parse `$ARGUMENTS`:
 
 Read in parallel:
 - `.schema/annotated-sources.dbml` — source columns and their concept mappings
-- `.schema/taxonomy.ison` — table mappings and natural keys
+- `.schema/taxonomy.json` — table mappings and natural keys
 - `.schema/CDM.dbml` — CDM entity definitions and column specs
 
 ### 2. Get actual source schema via ibis
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 **Naming convention:** `pipeline_name` and `dataset_name` should reflect the **business domain and central fact**, not the source systems. Derive the name from:
 1. The central fact table in `.schema/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
 2. The primary dimension in `.schema/ontology.ison` (e.g. `Person`)
-3. The use cases in `.schema/taxonomy.ison`
+3. The use cases in `.schema/taxonomy.json`
 
 Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
 

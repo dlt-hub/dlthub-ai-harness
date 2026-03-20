@@ -117,7 +117,7 @@ Does this look right? You can rename, merge, or add anything.
 
    - Wait for explicit confirmation before proceeding
 
-3. Write `.schema/taxonomy.ison` with the confirmed concepts.
+3. Write `.schema/taxonomy.json` with the confirmed concepts.
 
 **Format:** top-level keys are canonical concept names (PascalCase). Each concept holds its references (source-system synonyms) and all related metadata. Excluded tables and version are stored under reserved `_excluded` and `_version` keys.
 
@@ -242,11 +242,11 @@ Table "_dlt_loads" [note: 'excluded: dlt internal table'] {
 }
 ```
 
-This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML without cross-referencing `taxonomy.ison`.
+This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML without cross-referencing `taxonomy.json`.
 
 ### 7. Confirm with user
 
-Read `.schema/taxonomy.ison` and present a summary of all recorded decisions:
+Read `.schema/taxonomy.json` and present a summary of all recorded decisions:
 - Concepts and their synonym collapses
 - Excluded tables and reasons
 
@@ -261,11 +261,11 @@ Decisions recorded:
 Anything to correct before we move on?
 ```
 
-Apply any corrections to `taxonomy.ison`.
+Apply any corrections to `taxonomy.json`.
 
 ## Output
 
 - `.schema/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
-- `.schema/taxonomy.ison` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions
+- `.schema/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions
 
 Hand over to `create-ontology` skill.
