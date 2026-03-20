@@ -58,8 +58,18 @@ Build an execution order:
 
 One `@dlt.hub.transformation` function per CDM entity. Wrap all in a `@dlt.source`.
 
-**Use ibis for all transformation logic — never pandas DataFrames.**
+**Use ibis for transformation logic — never pandas DataFrames.**
 ibis expressions are lazy, push computation to the source database, and compose cleanly across unions, joins, and window functions. Falling back to `.to_pandas()` for merges defeats this — keep everything in ibis until dlt loads the result.
+
+**Alternatively, pure SQL is supported** — pass a SQL string directly to `dataset()` instead of using ibis expressions (https://dlthub.com/docs/hub/features/transformations#31-alternatively-use-pure-sql-for-the-transformation). SQL can produce more predictable output schemas and may be preferable for simpler transformations or when the user is more comfortable with SQL:
+
+```python
+@dlt.hub.transformation
+def dim_person(dataset: dlt.Dataset):
+    yield dataset("SELECT email, first_name, last_name FROM hubspot__contacts ORDER BY email")
+```
+
+Use `query_dialect` if your SQL dialect differs from the destination.
 
 **ibis requires a SQL-capable destination** (BigQuery, Snowflake, DuckDB with file-based access, etc.). If the user requests DuckDB as destination, check whether ibis can connect to it in the context — if not, switch to BigQuery or another cloud destination and inform the user.
 
