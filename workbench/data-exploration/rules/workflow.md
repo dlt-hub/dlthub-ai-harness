@@ -20,7 +20,7 @@ Infer intent from the user's message — never ask "do you have a specific quest
 
 ### Outgoing (from data-exploration)
 
-- **rest-api-pipeline** → `new-endpoint` (missing column/concept) or `adjust-endpoint` (data exists but looks truncated/stale) — when `explore-data` finds a data gap and the user wants to fix the pipeline
+- **rest-api-pipeline** → `find-source` (new data source) or `new-endpoint` (missing column/concept) or `adjust-endpoint` (data exists but looks truncated/stale) — when `explore-data` finds a data gap and the user wants to extend or fix the pipeline
 - **dlthub-runtime** → `setup-runtime` — when the pipeline and notebook are production-ready and the user wants to deploy or schedule
 
 ### Incoming (to data-exploration)
