@@ -19,6 +19,8 @@ If not provided in arguments, ask the user for:
 
 **IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
+All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 3 below.
+
 ## Steps
 
 ### 1. Check dlt pipelines exist
@@ -44,9 +46,23 @@ You need to ingest it first — use the rest-api-pipeline toolkit to build a dlt
 
 Only continue when **all stated sources are confirmed as Case A or Case B**.
 
-### 2. Extract source schemas
+### 2. Confirm CDM folder name
 
-**For Case A (local pipeline):** call `export_schema` MCP tool with `output_format: "dbml"` and `save_to_file: "<absolute_path>/.schema/<pipeline_name>.dbml"`.
+Derive a folder name from the user's stated use cases using the same grain-based naming convention as `dataset_name` in `create-transformation` — what the data mart *is about* (e.g. `person_interactions`, `order_fulfillment`, `event_attendance`). Never use source system names or generic names.
+
+Propose the name and confirm with the user:
+
+```
+I'll store all schema files under .schema/person_interactions/
+
+Does this name work, or would you like to change it?
+```
+
+Wait for confirmation. This name will also be used as the `dataset_name` when the transformation script is written — so it's worth getting right now.
+
+### 3. Extract source schemas
+
+**For Case A (local pipeline):** call `export_schema` MCP tool with `output_format: "dbml"` and `save_to_file: "<project_root>/.schema/<cdm-name>/<pipeline_name>.dbml"`.
 
 **For Case B (remote dataset, no local pipeline):** write and run a Python script using dlt ibis to extract the schema and write it as DBML.
 
@@ -79,7 +95,7 @@ for table_name in tables:
     lines.append("")
 
 dbml = "\n".join(lines)
-output_path = "<absolute_path>/.schema/<pipeline_name>.dbml"
+output_path = "<project_root>/.schema/<cdm-name>/<pipeline_name>.dbml"
 with open(output_path, "w") as f:
     f.write(dbml)
 print(f"Schema written to {output_path}")
@@ -90,7 +106,7 @@ Run with `uv run python tools/get_<source>_schema.py`. Confirm the file was writ
 
 This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and natural keys are confirmed.
 
-### 3. Identify core business entities
+### 4. Identify core business entities
 
 Read the use cases the user stated. Using the source schemas and stated use cases only:
 
@@ -117,13 +133,14 @@ Does this look right? You can rename, merge, or add anything.
 
    - Wait for explicit confirmation before proceeding
 
-3. Write `.schema/taxonomy.json` with the confirmed concepts.
+3. Write `.schema/<cdm-name>/taxonomy.json` with the confirmed concepts.
 
-**Format:** top-level keys are canonical concept names (PascalCase). Each concept holds its references (source-system synonyms) and all related metadata. Excluded tables and version are stored under reserved `_excluded` and `_version` keys.
+**Format:** top-level keys are canonical concept names (PascalCase). Each concept holds its references (source-system synonyms) and all related metadata. Excluded tables, version, and CDM name are stored under reserved `_excluded`, `_version`, and `_name` keys.
 
 ```json
 {
   "_version": "1.0",
+  "_name": "person_interactions",
   "Person": {
     "description": "Any individual — contact, guest, attendee, or lead",
     "use_cases": ["track event attendance", "link contacts to companies"],
@@ -144,9 +161,9 @@ Does this look right? You can rename, merge, or add anything.
 }
 ```
 
-### 4. Filter source tables by relevance
+### 5. Filter source tables by relevance
 
-Read each `.schema/<pipeline_name>.dbml`. For each table, automatically judge relevance against the confirmed canonical concepts.
+Read each `.schema/<cdm-name>/<pipeline_name>.dbml`. For each table, automatically judge relevance against the confirmed canonical concepts.
 
 **Excluded** = tables with no plausible connection to any concept (e.g. internal audit logs, pipeline metadata, dlt system tables like `_dlt_loads`, `_dlt_pipeline_state`).
 
@@ -156,7 +173,7 @@ Do NOT ask the user — apply your judgement. Record each exclusion under `_excl
 {"table": "hubspot__email_events__propertyhistory", "reason": "property change log, not a business entity"}
 ```
 
-### 5. Match source tables to business entities
+### 6. Match source tables to business entities
 
 For each remaining (non-excluded) table, propose which business entity it belongs to.
 
@@ -183,7 +200,7 @@ Add confirmed tables under each concept's `tables` array:
 }
 ```
 
-### 6. Identify cross-source natural keys
+### 7. Identify cross-source natural keys
 
 Find all concepts whose `tables` array contains entries from **more than one source pipeline**.
 
@@ -216,9 +233,9 @@ Set the confirmed natural key on the concept:
 }
 ```
 
-### 6b. Annotate DBML files
+### 7b. Annotate DBML files
 
-After steps 5 and 6 are confirmed, edit each `.schema/<pipeline_name>.dbml` to embed semantic annotations as DBML `Note` blocks and inline comments.
+After steps 6 and 7 are confirmed, edit each `.schema/<cdm-name>/<pipeline_name>.dbml` to embed semantic annotations as DBML `Note` blocks and inline comments.
 
 **Table-level note** — on every mapped table, add a `Note` with the canonical concept, role, and (if applicable) natural key:
 
@@ -244,9 +261,9 @@ Table "_dlt_loads" [note: 'excluded: dlt internal table'] {
 
 This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML without cross-referencing `taxonomy.json`.
 
-### 7. Confirm with user
+### 8. Confirm with user
 
-Read `.schema/taxonomy.json` and present a summary of all recorded decisions:
+Read `.schema/<cdm-name>/taxonomy.json` and present a summary of all recorded decisions:
 - Concepts and their synonym collapses
 - Excluded tables and reasons
 
@@ -265,7 +282,7 @@ Apply any corrections to `taxonomy.json`.
 
 ## Output
 
-- `.schema/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
-- `.schema/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions
+- `.schema/<cdm-name>/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
+- `.schema/<cdm-name>/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions; `_name` holds the confirmed CDM folder name
 
 Hand over to `create-ontology` skill.

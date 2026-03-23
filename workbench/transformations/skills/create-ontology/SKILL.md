@@ -7,8 +7,10 @@ description: Build a business entity graph (ontology) from annotated sources and
 
 Build a formal entity graph from the confirmed source annotations and taxonomy, ready for Kimball CDM design.
 
-**Requires** `.schema/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/taxonomy.json` from `annotate-sources`.
+**Requires** `.schema/<cdm-name>/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/<cdm-name>/taxonomy.json` from `annotate-sources`.
 If either is missing, run `annotate-sources` first.
+
+Read `_name` from `taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
 
 ### Key concept: natural key
 
@@ -87,7 +89,7 @@ Two sources of relationships:
 - Each natural key defines a union relationship between tables of the same concept
 - Record as a `STITCHED_BY` edge with the key column
 
-**From structural FKs** in source schemas (`.schema/<pipeline_name>.dbml`):
+**From structural FKs** in source schemas (`.schema/<cdm-name>/<pipeline_name>.dbml`):
 - Identify foreign key columns (e.g. `company_id` on contacts → Company entity)
 - Map to inter-entity relationships
 - Use UPPER_SNAKE_CASE edge labels (e.g. `BELONGS_TO`, `ATTENDED`, `PLACED_BY`)
@@ -143,10 +145,10 @@ Contract  track subscription billing     no source table found
 
 ## Output
 
-- `.schema/ontology.ison` — entity graph with attributes, relationships, and gaps
-- `.schema/ontology.md` — human-readable summary (required). One section per entity with: a short description, attribute table (name | type | source | notes), relationships table, and a final assumptions & exclusions list.
+- `.schema/<cdm-name>/ontology.ison` — entity graph with attributes, relationships, and gaps
+- `.schema/<cdm-name>/ontology.md` — human-readable summary (required). One section per entity with: a short description, attribute table (name | type | source | notes), relationships table, and a final assumptions & exclusions list.
 
-After writing both files, explicitly ask the user to open and review `.schema/ontology.md` before continuing:
+After writing both files, explicitly ask the user to open and review `.schema/<cdm-name>/ontology.md` before continuing:
 
 ```
 Please review `.schema/ontology.md` — it summarises every entity, its attributes, and the relationships between them.

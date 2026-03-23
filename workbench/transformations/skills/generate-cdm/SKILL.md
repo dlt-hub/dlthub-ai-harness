@@ -7,8 +7,10 @@ description: Generate a Canonical Data Model (CDM) in DBML using Kimball dimensi
 
 Translate the ontology into an implementation-ready Canonical Data Model using Kimball dimensional modeling.
 
-**Requires** `.schema/ontology.ison` from `create-ontology`.
+**Requires** `.schema/<cdm-name>/ontology.ison` from `create-ontology`.
 If missing, run `create-ontology` first.
+
+Read `_name` from `.schema/<cdm-name>/taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
 
 Reference: DBML format — https://dbml.org/docs/
 
@@ -111,12 +113,12 @@ Required `note` fields per table type:
 
 ## Output
 
-- `.schema/CDM.dbml` — implementation-ready CDM schema
+- `.schema/<cdm-name>/CDM.dbml` — implementation-ready CDM schema
 
-After writing the file, explicitly ask the user to open and review `.schema/CDM.dbml` before continuing:
+After writing the file, explicitly ask the user to open and review `.schema/<cdm-name>/CDM.dbml` before continuing:
 
 ```
-Please review `.schema/CDM.dbml` — it contains the full data model with all tables, columns, and relationships.
+Please review `.schema/<cdm-name>/CDM.dbml` — it contains the full data model with all tables, columns, and relationships.
 
 Let me know if anything looks wrong or needs changing before we move on.
 ```

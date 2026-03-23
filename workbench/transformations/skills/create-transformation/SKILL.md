@@ -9,11 +9,13 @@ argument-hint: "[pipeline-name]"
 Write `@dlt.hub.transformation` functions that map annotated source tables to CDM entities using ibis.
 
 **Requires:**
-- `.schema/annotated-sources.dbml` — source table schemas with concept annotations
-- `.schema/taxonomy.json` — confirmed table→concept mappings and natural keys
-- `.schema/CDM.dbml` — target CDM schema
+- `.schema/<cdm-name>/taxonomy.json` — confirmed table→concept mappings and natural keys; read `_name` from this file to determine `<cdm-name>`
+- `.schema/<cdm-name>/<pipeline_name>.dbml` — annotated source schemas
+- `.schema/<cdm-name>/CDM.dbml` — target CDM schema
 
 If any are missing, run the preceding skills first.
+
+The `_name` value from `taxonomy.json` is also the `dataset_name` for the transformation pipeline — do not re-derive it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name`: the dlt pipeline to transform from (e.g. `hubspot_crm_pipeline`)
@@ -21,7 +23,13 @@ Parse `$ARGUMENTS`:
 
 ## Steps
 
-### 1. Read inputs
+### 1. Install dlt[hub]
+
+```
+uv add "dlt[hub]"
+```
+
+### 2. Read inputs
 
 Read in parallel:
 - `.schema/annotated-sources.dbml` — source columns and their concept mappings
