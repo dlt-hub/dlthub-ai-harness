@@ -29,6 +29,12 @@ Parse `$ARGUMENTS`:
 uv add "dlt[hub]"
 ```
 
+Ask the user if they have their dlthub license. If they do not, ask them to obtain one using:
+
+```
+dlt license issue dlt.hub.transformations
+```
+
 ### 2. Read inputs
 
 Read in parallel:
