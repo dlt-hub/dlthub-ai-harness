@@ -1,0 +1,18 @@
+{
+  "name": "transformations",
+  "description": "Transform raw dlt pipeline data into a Canonical Data Model. Build an ontology, design a CDM with Kimball dimensional modeling, write @dlt.hub.transformation functions, and validate the output.",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlt", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"],
+  "mcpServers": {
+    "dlt-workspace-mcp": {
+      "command": "uv",
+      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
+    }
+  }
+}
