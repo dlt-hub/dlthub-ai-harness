@@ -46,12 +46,13 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 ### Available toolkits
 
-| Toolkit | Phase | Workflow entry | What it does | Example prompts |
-|---------|-------|---------------|-------------|---------------|
+| Toolkit | Phase | Workflow entry | What it does                                                                                                           | Example prompts |
+|---------|-------|---------------|------------------------------------------------------------------------------------------------------------------------|---------------|
 | `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlt ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines | *"Use find-source to load data from the Stripe API into DuckDB"* |
 | `dlthub-runtime` | Run | `setup-runtime` | Deploy pipelines to the dltHub platform | *"Use setup-runtime to deploy my pipeline to dltHub"* |
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* |
+| `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlt transformation functions from existing pipelines                     | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* |
 
 > `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlt ai init` or as a separate plugin via the Claude marketplace.
 
@@ -68,6 +69,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install dlt with workspace support
 uv pip install --upgrade "dlt[workspace]"
+
+# If you intend to use the transformations toolkit, also install:
+uv pip install "dlt[hub]"
 
 # Set up your workspace (auto-detects your coding assistant)
 uv run dlt ai init
@@ -114,6 +118,7 @@ uv run dlt ai toolkit bootstrap install
 uv run dlt ai toolkit rest-api-pipeline install
 uv run dlt ai toolkit dlthub-runtime install
 uv run dlt ai toolkit data-exploration install
+uv run dlt ai toolkit transformations install
 ```
 
 ### Starting the workbench
@@ -139,6 +144,7 @@ The workbench is also available as a Claude Code plugin via the marketplace. Sta
 /plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
 /plugin install dlthub-runtime@dlthub-ai-workbench --scope project
 /plugin install data-exploration@dlthub-ai-workbench --scope project
+/plugin install transformations@dlthub-ai-workbench --scope project
 ```
 
 Start a new session — plugins take effect only after restarting Claude Code: `claude`
