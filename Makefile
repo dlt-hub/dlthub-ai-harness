@@ -1,4 +1,4 @@
-.PHONY: dev validate-toolkits lint lint-ruff lint-mypy format format-fix lint-install
+.PHONY: dev validate-toolkits lint lint-ruff lint-mypy format format-fix lint-install visualize-vocabulary
 
 dev:
 	uv sync --group lint --reinstall-package dlt
@@ -22,4 +22,10 @@ format-fix: format
 lint-install:
 	uv run python tools/lint_install.py
 
-lint: lint-ruff lint-mypy validate-toolkits lint-install
+validate-vocabulary:
+	uv run python tools/validate_glossary.py --check-skills
+
+visualize-vocabulary:
+	uv run python tools/visualize_vocabulary.py
+
+lint: lint-ruff lint-mypy validate-toolkits lint-install validate-vocabulary

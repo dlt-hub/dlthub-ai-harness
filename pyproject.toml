@@ -11,6 +11,7 @@ dependencies = [
 lint = [
   "ruff>=0.2.1",
   "mypy>=1.8.0",
+  "rdflib>=7.0.0",
 ]
 
 # [tool.uv.sources]
