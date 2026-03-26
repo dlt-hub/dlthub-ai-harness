@@ -1,0 +1,111 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dlt:  <https://dlthub.com/vocab/> .
+@prefix dltr: <https://dlthub.com/vocab/rest-api-pipeline/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+
+# =============================================================================
+# Toolkit overlay scheme — extends dlt:glossary for rest-api-pipeline context
+# =============================================================================
+
+dltr:glossary a skos:ConceptScheme ;
+    rdfs:label "rest-api-pipeline Terminology Overlay"@en ;
+    rdfs:comment "Context-specific terms and accepted alternatives for the rest-api-pipeline toolkit. Extends dlt:glossary."@en ;
+    rdfs:seeAlso <https://dlthub.com/vocab/glossary> .
+
+# =============================================================================
+# Accepted alternatives
+#
+# Promotes a base glossary hiddenLabel to altLabel within this toolkit context.
+# The base dlt:resource has skos:hiddenLabel "endpoint" — here we declare it
+# acceptable via a toolkit-scoped concept that exactMatches the base concept.
+# =============================================================================
+
+dltr:resource a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:exactMatch dlt:resource ;
+    skos:prefLabel "resource"@en ;
+    skos:altLabel "endpoint"@en ;
+    skos:scopeNote "In REST API context, each resource wraps a single API endpoint. Users discover and refer to data by endpoint path, not by dlt resource name."@en .
+
+# =============================================================================
+# Toolkit-specific terms
+# =============================================================================
+
+dltr:rest-api-config a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "RESTAPIConfig"@en ;
+    skos:altLabel "rest_api config"@en , "config dict"@en ;
+    skos:definition "Declarative Python dict configuring the rest_api source: client settings, auth, and resource list."@en ;
+    skos:related dlt:source .
+
+dltr:data-selector a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "data_selector"@en ;
+    skos:altLabel "data selector"@en , "json_path"@en ;
+    skos:definition "JSONPath expression pointing to the data array in an API response (e.g., 'data', 'results.items'). When omitted, dlt auto-detects."@en ;
+    skos:related dlt:resource , dlt:data-item .
+
+dltr:paginator a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "paginator"@en ;
+    skos:altLabel "pagination config"@en ;
+    skos:definition "Pagination strategy for a resource. Can be auto-detected or explicit (OffsetPaginator, PageNumberPaginator, JSONResponseCursorPaginator, HeaderLinkPaginator)."@en ;
+    skos:related dlt:resource .
+
+dltr:base-url a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "base_url"@en ;
+    skos:altLabel "base URL"@en ;
+    skos:definition "Root URL for all API requests in a RESTAPIConfig client (e.g., https://api.example.com/v1/)."@en ;
+    skos:related dltr:rest-api-config .
+
+dltr:auth a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "auth"@en ;
+    skos:altLabel "authentication"@en , "auth config"@en ;
+    skos:definition "Authentication configuration in RESTAPIConfig client. Supports BearerTokenAuth, APIKeyAuth, HttpBasicAuth, OAuth2ClientCredentials, and custom auth classes."@en ;
+    skos:related dltr:rest-api-config .
+
+dltr:processing-steps a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "processing_steps"@en ;
+    skos:altLabel "processing steps"@en ;
+    skos:definition "List of map, filter, or yield_map transforms applied to data items during extract, before normalization. Configured per resource."@en ;
+    skos:broader dlt:processing-step ;
+    skos:related dlt:resource , dlt:extract-step .
+
+dltr:add-limit a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "add_limit"@en ;
+    skos:altLabel ".add_limit()"@en , "page limit"@en ;
+    skos:definition "Development helper that caps the number of pages fetched per resource. Prevents runaway pagination during debugging."@en ;
+    skos:related dlt:dev-mode , dlt:resource .
+
+dltr:dev-mode a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "dev_mode"@en ;
+    skos:altLabel "dev mode"@en , "development mode"@en ;
+    skos:definition "Pipeline mode (dev_mode=True) that creates a fresh dataset on every run. Used during pipeline development."@en ;
+    skos:related dlt:dev-mode .
+
+dltr:docs-yaml a skos:Concept ;
+    owl:deprecated true ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "docs.yaml"@en ;
+    skos:altLabel "docs yaml"@en , "scaffold yaml"@en ;
+    skos:definition "DEPRECATED. Was: auto-generated YAML file with API endpoint scaffolding created by dlt init. No longer generated; endpoint config is inline in pipeline code."@en .
+
+dltr:verified-source a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "verified source"@en ;
+    skos:altLabel "verified dlt source"@en ;
+    skos:definition "Pre-built, maintained dlt source distributed via 'dlt init <source> <destination>'. Preferred over building from scratch when available."@en ;
+    skos:related dlt:source .
+
+dltr:core-source a skos:Concept ;
+    skos:inScheme dltr:glossary ;
+    skos:prefLabel "core source"@en ;
+    skos:altLabel "built-in source"@en ;
+    skos:definition "Source distributed with the dlt package (rest_api, sql_database, filesystem). Available without additional installation."@en ;
+    skos:related dlt:source , dltr:verified-source .

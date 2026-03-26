@@ -1,0 +1,480 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dlt:  <https://dlthub.com/vocab/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:  <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# Concept Scheme
+# =============================================================================
+
+dlt:glossary a skos:ConceptScheme ;
+    dct:title "dlt Controlled Vocabulary"@en ;
+    dct:description "Canonical terminology for dlt entities, workflow actions, and pipeline lifecycle."@en ;
+    dct:source <https://www.notion.so/dlthub/dlt-Glossary-ceb82df9f4ad44fa88cdc6d1baa892e0> ,
+               <https://www.notion.so/dlthub/dlt-Entities-their-Lifecycles-and-Relations-2679fb8e23cf80169921c4ea069bfff8> ,
+               <https://www.notion.so/dlthub/dltHub-Glossary-2679fb8e23cf80f4901feb468cdd327a> ;
+    skos:hasTopConcept dlt:pipeline , dlt:source , dlt:destination , dlt:dataset ,
+                       dlt:load-package , dlt:data-source .
+
+# =============================================================================
+# Collections (groupings — not hierarchy, just organizational)
+# =============================================================================
+
+dlt:core-entities a skos:Collection ;
+    skos:prefLabel "Core Entities"@en ;
+    skos:member dlt:pipeline , dlt:source , dlt:resource , dlt:destination ,
+                dlt:dataset , dlt:schema , dlt:data-source , dlt:data-resource .
+
+dlt:pipeline-execution a skos:Collection ;
+    skos:prefLabel "Pipeline Execution"@en ;
+    skos:member dlt:pipeline-run , dlt:pipeline-step , dlt:extract-step ,
+                dlt:normalize-step , dlt:load-step , dlt:run-trace .
+
+dlt:load-package-group a skos:Collection ;
+    skos:prefLabel "Load Package"@en ;
+    skos:member dlt:load-package , dlt:load-package-job .
+
+dlt:schema-group a skos:Collection ;
+    skos:prefLabel "Schema"@en ;
+    skos:member dlt:schema , dlt:schema-version , dlt:schema-table ,
+                dlt:schema-column , dlt:table-chain , dlt:child-table ,
+                dlt:hint , dlt:table-hint , dlt:column-hint , dlt:write-disposition .
+
+dlt:data-flow a skos:Collection ;
+    skos:prefLabel "Data Flow"@en ;
+    skos:member dlt:data-item , dlt:data-iterator , dlt:processing-step .
+
+dlt:pipeline-components a skos:Collection ;
+    skos:prefLabel "Pipeline Components"@en ;
+    skos:member dlt:extractor , dlt:normalizer , dlt:loader .
+
+dlt:workspace-actions a skos:Collection ;
+    skos:prefLabel "Workspace Actions"@en ;
+    skos:member dlt:action-create , dlt:action-run , dlt:action-find ,
+                dlt:action-debug , dlt:action-inspect , dlt:action-validate ,
+                dlt:action-show , dlt:action-add , dlt:action-adjust ,
+                dlt:action-deploy , dlt:action-maintain .
+
+# =============================================================================
+# Core Entities
+# =============================================================================
+
+dlt:pipeline a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "pipeline"@en ;
+    skos:hiddenLabel "ETL job"@en , "data flow"@en ;
+    skos:definition "Moves data from source into destination via extract, normalize, load steps according to schema instructions. Root entity identified by pipeline name."@en ;
+    skos:example "dlt.pipeline(pipeline_name=..., destination=..., dataset_name=...)" ;
+    skos:narrower dlt:pipeline-run , dlt:pipeline-state , dlt:schema , dlt:working-directory ;
+    skos:related dlt:source , dlt:destination , dlt:dataset .
+
+dlt:source a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "source"@en ;
+    skos:altLabel "dlt source"@en ;
+    skos:hiddenLabel "source connector"@en , "tap"@en , "data source connector"@en , "adapter"@en ;
+    skos:definition "Software component (@dlt.source) providing access to data from a data source as one or more resources, plus metadata as a schema."@en ;
+    skos:scopeNote "\"source\" = the @dlt.source component. Use \"data source\" for the external system."@en ;
+    skos:narrower dlt:resource , dlt:source-state , dlt:source-configuration ;
+    skos:related dlt:data-source , dlt:schema .
+
+dlt:data-source a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "data source"@en ;
+    skos:altLabel "API"@en , "external source"@en ;
+    skos:definition "External location holding data with structure, organized into data resources. Not a dlt object."@en ;
+    skos:example "Hubspot, Stripe, a PostgreSQL database, REST API, CSV files" ;
+    skos:narrower dlt:data-resource ;
+    skos:related dlt:source .
+
+dlt:resource a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "resource"@en ;
+    skos:altLabel "dlt resource"@en ;
+    skos:hiddenLabel "stream"@en , "endpoint"@en , "tap stream"@en ;
+    skos:definition "Software component (@dlt.resource) providing access to one data resource as a Python iterator of data items. Child of source."@en ;
+    skos:broader dlt:source ;
+    skos:narrower dlt:extraction-pipe , dlt:resource-hint , dlt:resource-state ;
+    skos:related dlt:data-resource .
+
+dlt:data-resource a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "data resource"@en ;
+    skos:altLabel "table"@en , "stream"@en , "collection"@en , "endpoint"@en , "topic"@en ;
+    skos:definition "A logical grouping of data within a data source (e.g., a database table, an API endpoint, a spreadsheet tab)."@en ;
+    skos:broader dlt:data-source ;
+    skos:related dlt:resource .
+
+dlt:destination a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "destination"@en ;
+    skos:altLabel "target"@en , "data store"@en ;
+    skos:hiddenLabel "database"@en , "data lake"@en , "data warehouse"@en ;
+    skos:definition "Where data is loaded. Root entity identified by destination name. Has capabilities and a fingerprint."@en ;
+    skos:example "dlt.pipeline(..., destination=\"bigquery\")" ;
+    skos:narrower dlt:destination-capabilities , dlt:dataset ;
+    skos:related dlt:pipeline .
+
+dlt:dataset a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "dataset"@en ;
+    skos:definition "Root entity identified by dataset name. Has a single schema, materialized on a single destination. Contains destination tables."@en ;
+    skos:example "pipeline.dataset()" ;
+    skos:broader dlt:destination ;
+    skos:narrower dlt:destination-table ;
+    skos:related dlt:schema .
+
+dlt:schema a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "schema"@en ;
+    skos:hiddenLabel "manifest"@en , "data contract"@en , "metadata"@en , "policy"@en ;
+    skos:definition "Describes structure of data from a source and provides hints on processing/loading. Child of pipeline, identified by schema name (= source name)."@en ;
+    skos:example "dlt pipeline <name> schema --format mermaid" ;
+    skos:broader dlt:pipeline ;
+    skos:narrower dlt:schema-version .
+
+# =============================================================================
+# Schema Sub-entities
+# =============================================================================
+
+dlt:schema-version a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "schema version"@en ;
+    skos:definition "Child of schema, identified by version hash. Transitions tracked via schema update."@en ;
+    skos:broader dlt:schema ;
+    skos:narrower dlt:schema-table , dlt:table-chain .
+
+dlt:schema-table a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "schema table"@en ;
+    skos:definition "Named entry in schema version. Has table hints and schema columns."@en ;
+    skos:broader dlt:schema-version ;
+    skos:narrower dlt:schema-column , dlt:table-hint , dlt:column-hint .
+
+dlt:schema-column a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "schema column"@en ;
+    skos:definition "Entry in schema table with data type and column hints."@en ;
+    skos:broader dlt:schema-table .
+
+dlt:table-chain a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "table chain"@en ;
+    skos:definition "Root table + all its nested/child tables, ordered by ancestry."@en ;
+    skos:broader dlt:schema-version .
+
+dlt:child-table a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "child table"@en ;
+    skos:altLabel "nested table"@en ;
+    skos:definition "Auto-created by normalizer for nested arrays. Named {parent_table}__{key_name}."@en ;
+    skos:related dlt:table-chain , dlt:normalizer .
+
+# =============================================================================
+# Hints
+# =============================================================================
+
+dlt:hint a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "hint"@en ;
+    skos:altLabel "processing instruction"@en , "loading instruction"@en ;
+    skos:definition "Additional information in schema that instructs normalizer/loader. Hints are interpreted not enforced and may apply differently per destination."@en ;
+    skos:narrower dlt:table-hint , dlt:column-hint .
+
+dlt:table-hint a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "table hint"@en ;
+    skos:definition "Hint on a schema table. Values: write_disposition, parent, columns, filters."@en ;
+    skos:broader dlt:hint , dlt:schema-table ;
+    skos:narrower dlt:write-disposition .
+
+dlt:column-hint a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "column hint"@en ;
+    skos:definition "Hint on a schema column. Values: primary_key, merge_key, partition, sort, unique, nullable, data_type."@en ;
+    skos:broader dlt:hint , dlt:schema-table .
+
+dlt:write-disposition a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "write disposition"@en ;
+    skos:definition "Table hint controlling how data is written: replace | merge | append."@en ;
+    skos:scopeNote "Deprecated values: overwrite -> replace, upsert -> merge, insert -> append."@en ;
+    skos:broader dlt:table-hint .
+
+# =============================================================================
+# Pipeline Execution
+# =============================================================================
+
+dlt:pipeline-run a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "pipeline run"@en ;
+    skos:altLabel "run"@en ;
+    skos:definition "Single execution of a pipeline. Transitions through steps: extract -> normalize -> load."@en ;
+    skos:broader dlt:pipeline ;
+    skos:narrower dlt:pipeline-step , dlt:run-trace .
+
+dlt:pipeline-step a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "pipeline step"@en ;
+    skos:hiddenLabel "phase"@en , "stage"@en ;
+    skos:definition "Ordered processing within a run: extract | normalize | load."@en ;
+    skos:broader dlt:pipeline-run ;
+    skos:narrower dlt:extract-step , dlt:normalize-step , dlt:load-step .
+
+dlt:extract-step a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "extract step"@en ;
+    skos:hiddenLabel "extraction step"@en ;
+    skos:definition "First step. Pulls data from source, creates load packages, adds schema."@en ;
+    skos:broader dlt:pipeline-step .
+
+dlt:normalize-step a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "normalize step"@en ;
+    skos:hiddenLabel "normalization step"@en ;
+    skos:definition "Second step. Converts data items into loader file formats. May create schema version."@en ;
+    skos:broader dlt:pipeline-step .
+
+dlt:load-step a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "load step"@en ;
+    skos:hiddenLabel "loading step"@en ;
+    skos:definition "Third step. Sends load packages to destination. Syncs schema, loads data."@en ;
+    skos:broader dlt:pipeline-step .
+
+dlt:run-trace a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "run trace"@en ;
+    skos:altLabel "trace"@en ;
+    skos:definition "Execution timeline/diagnostics for a pipeline run."@en ;
+    skos:example "dlt pipeline -vv <name> trace" ;
+    skos:broader dlt:pipeline-run .
+
+# =============================================================================
+# Load Package
+# =============================================================================
+
+dlt:load-package a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "load package"@en ;
+    skos:definition "Root entity identified by load id (strictly increasing). Contains one schema version and one or more jobs. States: new -> extracted -> normalized -> loaded | aborted."@en ;
+    skos:example "dlt pipeline <name> load-package [load_id]" ;
+    skos:narrower dlt:load-package-job .
+
+dlt:load-package-job a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "job"@en ;
+    skos:altLabel "load package job"@en ;
+    skos:definition "Unit of work within a load package for one schema table. States: new_jobs -> started_jobs -> completed_jobs | failed_jobs."@en ;
+    skos:example "dlt pipeline <name> failed-jobs" ;
+    skos:broader dlt:load-package .
+
+# =============================================================================
+# Pipeline State & Configuration
+# =============================================================================
+
+dlt:pipeline-state a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "pipeline state"@en ;
+    skos:definition "Persistent state visible to sources, stored in dataset. Contains source/resource states. Powers incremental loading."@en ;
+    skos:example "dlt pipeline -v <name> info" ;
+    skos:broader dlt:pipeline ;
+    skos:narrower dlt:state-version .
+
+dlt:state-version a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "state version"@en ;
+    skos:definition "Child of pipeline state."@en ;
+    skos:broader dlt:pipeline-state .
+
+dlt:incremental-loading a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "incremental loading"@en ;
+    skos:altLabel "incremental"@en ;
+    skos:hiddenLabel "delta load"@en ;
+    skos:definition "Loading only new/changed data using a cursor column via dlt.sources.incremental."@en ;
+    skos:related dlt:pipeline-state .
+
+dlt:dev-mode a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "dev mode"@en ;
+    skos:definition "Pipeline mode where dataset name gets serial number, working directory emptied. Fresh dataset each run."@en ;
+    skos:example "dlt.pipeline(..., dev_mode=True)" ;
+    skos:related dlt:pipeline .
+
+dlt:refresh-run a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "refresh run"@en ;
+    skos:definition "A run that drops/truncates state and data. Subtypes: source refresh, resource refresh, data refresh."@en ;
+    skos:related dlt:pipeline-run , dlt:pipeline-state .
+
+# =============================================================================
+# Data Flow
+# =============================================================================
+
+dlt:data-item a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "data item"@en ;
+    skos:altLabel "event"@en , "item"@en , "row"@en ;
+    skos:definition "Single instance of data from the source."@en ;
+    skos:related dlt:data-iterator .
+
+dlt:data-iterator a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "data iterator"@en ;
+    skos:altLabel "data"@en , "data stream"@en ;
+    skos:definition "Python iterator of data items produced by a resource."@en ;
+    skos:related dlt:resource , dlt:data-item .
+
+dlt:processing-step a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "processing step"@en ;
+    skos:definition "Resource-level in-extract transform: map | filter | yield_map."@en ;
+    skos:related dlt:resource , dlt:extract-step .
+
+# =============================================================================
+# Pipeline Components
+# =============================================================================
+
+dlt:extractor a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "extractor"@en ;
+    skos:altLabel "source extractor"@en ;
+    skos:definition "Component that extracts data and schema from source/resource."@en ;
+    skos:related dlt:extract-step , dlt:source .
+
+dlt:normalizer a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "normalizer"@en ;
+    skos:altLabel "normaliser"@en ;
+    skos:definition "Component that normalizes data items per schema into loader file formats."@en ;
+    skos:related dlt:normalize-step .
+
+dlt:loader a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "loader"@en ;
+    skos:altLabel "destination loader"@en ;
+    skos:definition "Component that sends load packages to destination."@en ;
+    skos:related dlt:load-step , dlt:destination .
+
+# =============================================================================
+# Subsidiary entities (not top-level, included for completeness)
+# =============================================================================
+
+dlt:working-directory a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "working directory"@en ;
+    skos:definition "Stores pipeline state and active schema versions locally."@en ;
+    skos:broader dlt:pipeline .
+
+dlt:destination-capabilities a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "destination capabilities"@en ;
+    skos:definition "What the destination supports."@en ;
+    skos:broader dlt:destination .
+
+dlt:destination-table a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "destination table"@en ;
+    skos:definition "Physical table at destination, synced with schema table."@en ;
+    skos:broader dlt:dataset ;
+    skos:related dlt:schema-table .
+
+dlt:extraction-pipe a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "extraction pipe"@en ;
+    skos:definition "One per resource. Has one or more pipe steps."@en ;
+    skos:broader dlt:resource .
+
+dlt:resource-hint a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "resource hint"@en ;
+    skos:definition "Becomes table/column hints in extract step."@en ;
+    skos:broader dlt:resource .
+
+dlt:resource-state a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "resource state"@en ;
+    skos:definition "Part of pipeline state."@en ;
+    skos:broader dlt:resource ;
+    skos:related dlt:pipeline-state .
+
+dlt:source-state a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "source state"@en ;
+    skos:definition "Part of pipeline state, contains all resource states."@en ;
+    skos:broader dlt:source ;
+    skos:related dlt:pipeline-state .
+
+dlt:source-configuration a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "source configuration"@en ;
+    skos:definition "Identified by source section + source name."@en ;
+    skos:broader dlt:source .
+
+# =============================================================================
+# Workspace Actions (as concepts for skill name validation)
+# =============================================================================
+
+dlt:action-create a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "create"@en ;
+    skos:definition "Author new code/artifact. Valid objects: pipeline, report, transformation, ontology."@en ;
+    skos:scopeNote "Deprecated synonyms in skill names: build, make, generate."@en .
+
+dlt:action-run a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "run"@en ;
+    skos:definition "Execute pipeline: extract -> normalize -> load. Valid objects: pipeline."@en ;
+    skos:scopeNote "Deprecated synonyms: execute, trigger, start."@en .
+
+dlt:action-find a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "find"@en ;
+    skos:definition "Discover the right source for a data provider. Valid objects: source."@en .
+
+dlt:action-debug a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "debug"@en ;
+    skos:definition "Inspect traces, load packages, exceptions after a failed/suspect run. Valid objects: pipeline, deployment."@en .
+
+dlt:action-inspect a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "inspect"@en ;
+    skos:definition "Examine pipeline state, schema, configuration. Valid objects: pipeline."@en .
+
+dlt:action-validate a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "validate"@en ;
+    skos:definition "Verify schema correctness, data types, row counts, quality after load. Valid objects: dataset."@en .
+
+dlt:action-show a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "show"@en ;
+    skos:definition "Display summary. Valid objects: pipeline, dataset, report."@en ;
+    skos:scopeNote "Deprecated synonyms in skill names: view."@en .
+
+dlt:action-add a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "add"@en ;
+    skos:definition "Add a component to an existing artifact. Valid objects: resource."@en .
+
+dlt:action-adjust a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "adjust"@en ;
+    skos:definition "Harden a resource for production (pagination, incremental, limits). Valid objects: resource."@en .
+
+dlt:action-deploy a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "deploy"@en ;
+    skos:definition "Push to production runtime. Valid objects: workspace."@en .
+
+dlt:action-maintain a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "maintain"@en ;
+    skos:definition "Ongoing production monitoring. Valid objects: pipeline, dataset, report."@en .
+
+dlt:action-annotate a skos:Concept ;
+    skos:inScheme dlt:glossary ;
+    skos:prefLabel "annotate"@en ;
+    skos:definition "Map source tables to business concepts. Valid objects: sources."@en .
