@@ -43,7 +43,6 @@ Run `ls -la` again to confirm what was created.
 
 Read the following files to understand the scaffold:
 - `<source>_pipeline.py` — the pipeline code template
-- `<source>-docs.yaml` — API endpoint scaffold with auth, endpoints, params, data selectors (if present)
 - `.dlt/config.toml` — source/destination config ie. `api_url`
 
 Do NOT read the `.md` file or any `secrets.toml` file.
