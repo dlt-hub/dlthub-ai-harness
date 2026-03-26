@@ -5,6 +5,8 @@ description = "AI toolkits for data engineering with dlt"
 requires-python = ">=3.11"
 dependencies = [
     "dlt[hub,workspace]>=1.23.0",
+    "griffe>=2.0.1",
+    "nltk>=3.9.4",
 ]
 
 [dependency-groups]
