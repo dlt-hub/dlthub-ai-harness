@@ -13,6 +13,13 @@ lint = [
   "mypy>=1.8.0",
   "rdflib>=7.0.0",
 ]
+terminology = [
+  "pyyaml>=6.0",
+  "spacy>=3.7",
+  "sentence-transformers>=2.2",
+  "scikit-learn>=1.3",
+  "anthropic>=0.40",
+]
 
 # [tool.uv.sources]
 # dlt = { git = "https://github.com/dlt-hub/dlt", branch = "feat/ai-workbench-support" }

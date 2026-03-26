@@ -28,4 +28,22 @@ validate-vocabulary:
 visualize-vocabulary:
 	uv run python tools/visualize_vocabulary.py
 
+glossary-lint:
+	uv run --group terminology python tools/glossary_lint.py workbench/
+
+glossary-lint-review:
+	uv run --group terminology python tools/glossary_lint.py --review workbench/
+
+glossary-lint-review-cli:
+	uv run --group terminology python tools/glossary_lint.py --review --cli workbench/
+
+glossary-lint-prompt:
+	uv run --group terminology python tools/glossary_lint.py --prompt workbench/
+
+glossary-drift:
+	uv run --group terminology python tools/glossary_drift.py workbench/
+
+glossary-report:
+	uv run --group terminology python tools/glossary_report.py -o terminology/review_report.md
+
 lint: lint-ruff lint-mypy validate-toolkits lint-install validate-vocabulary
