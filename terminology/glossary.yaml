@@ -119,9 +119,11 @@ terms:
     context: all
     severity: error
     note: >
-      Only flag when used as direct synonyms for schema. "data contract" and
-      "metadata" have broader industry meanings and are acceptable in those
-      contexts.
+      When the term describes the structure, validity, or definition of data
+      columns/tables in a dlt context, it IS a synonym for schema and should
+      be flagged. "metadata" is only acceptable when referring to generic
+      auxiliary information (e.g., "pipeline metadata", "audit metadata"),
+      not when describing data structure.
 
   # ==========================================================================
   # Schema Sub-entities
