@@ -45,7 +45,7 @@ PROMPT_TEMPLATE_PATH = Path("terminology/prompt_template.txt")
 
 # Similarity threshold: how close must the context be to the glossary definition
 # for us to consider the term might be used in the domain-specific sense.
-DOMAIN_SIMILARITY_THRESHOLD = 0.35
+DOMAIN_SIMILARITY_THRESHOLD = 0.30
 
 # Patterns to strip before analysis
 CODE_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
@@ -142,11 +142,18 @@ def build_rules(terms: list[dict], min_severity: str) -> list[GlossaryRule]:
 
 
 def precompute_embeddings(rules: list[GlossaryRule], model: SentenceTransformer) -> None:
-    """Precompute definition embeddings for all rules."""
-    definitions = [r.definition for r in rules]
-    if not definitions:
+    """Precompute embeddings combining deprecated term, preferred term, and definition.
+
+    Embedding the terms alongside the definition produces higher similarity
+    scores for sentences that use the deprecated term in a domain-relevant
+    context, compared to embedding the definition alone.
+    """
+    texts = [
+        f"{r.deprecated}. {r.preferred}. {r.definition}" for r in rules
+    ]
+    if not texts:
         return
-    embeddings = model.encode(definitions, show_progress_bar=False)
+    embeddings = model.encode(texts, show_progress_bar=False)
     for rule, emb in zip(rules, embeddings):
         rule.definition_embedding = emb
 
@@ -488,50 +495,93 @@ def review_candidates(
 # ---------------------------------------------------------------------------
 
 
-def print_candidates(candidates: list[Candidate]) -> None:
+GITHUB_SEVERITY_MAP = {"error": "error", "warning": "warning", "suggestion": "notice"}
+
+
+def github_annotation(
+    file: str, line: int, col: int, severity: str, title: str, message: str
+) -> str:
+    """Format a GitHub Actions workflow annotation command."""
+    gh_level = GITHUB_SEVERITY_MAP.get(severity, "notice")
+    return f"::{gh_level} file={file},line={line},col={col},title={title}::{message}"
+
+
+def print_candidates(candidates: list[Candidate], *, github: bool = False) -> None:
     """Print candidates grouped by file."""
     by_file: dict[str, list[Candidate]] = {}
     for c in candidates:
         by_file.setdefault(c.file, []).append(c)
 
     for filepath, file_candidates in sorted(by_file.items()):
-        print(f"\n{filepath}:")
+        if not github:
+            print(f"\n{filepath}:")
         for c in file_candidates:
-            sev = c.severity.upper()
-            print(
-                f"  :{c.line}:{c.column}: [{sev}] "
-                f"'{c.found}' -> '{c.preferred}' "
-                f"(similarity: {c.similarity:.2f})"
-            )
-            print(f'    "{c.context}"')
+            if github:
+                print(
+                    github_annotation(
+                        file=c.file,
+                        line=c.line,
+                        col=c.column,
+                        severity=c.severity,
+                        title="Terminology",
+                        message=f"Use '{c.preferred}' instead of '{c.found}'",
+                    )
+                )
+            else:
+                sev = c.severity.upper()
+                print(
+                    f"  :{c.line}:{c.column}: [{sev}] "
+                    f"'{c.found}' -> '{c.preferred}' "
+                    f"(similarity: {c.similarity:.2f})"
+                )
+                print(f'    "{c.context}"')
 
 
-def print_verdicts(verdicts: list[dict], candidates: list[Candidate]) -> None:
-    """Print LLM verdicts in human-readable format."""
+def print_verdicts(
+    verdicts: list[dict], candidates: list[Candidate], *, github: bool = False
+) -> None:
+    """Print LLM verdicts in human-readable or GitHub annotation format."""
     violations = [v for v in verdicts if v["verdict"] == "VIOLATION"]
     acceptable = [v for v in verdicts if v["verdict"] == "ACCEPTABLE"]
 
-    if violations:
-        print(f"\nVIOLATIONS ({len(violations)}):\n")
+    if github:
         for v in violations:
             c = candidates[v["id"]]
-            print(f"  {c.file}:{c.line}")
-            print(f'    Found: "{c.found}" -> "{c.preferred}"')
-            print(f'    Context: "{c.context}"')
-            print(f"    Reason: {v['reason']}")
+            message = f"Use '{c.preferred}' instead of '{c.found}'. {v['reason']}"
             if v.get("suggestion"):
-                print(f'    Suggestion: "{v["suggestion"]}"')
+                message += f" Suggestion: {v['suggestion']}"
+            print(
+                github_annotation(
+                    file=c.file,
+                    line=c.line,
+                    col=c.column,
+                    severity=c.severity,
+                    title="Terminology",
+                    message=message,
+                )
+            )
+    else:
+        if violations:
+            print(f"\nVIOLATIONS ({len(violations)}):\n")
+            for v in violations:
+                c = candidates[v["id"]]
+                print(f"  {c.file}:{c.line}")
+                print(f'    Found: "{c.found}" -> "{c.preferred}"')
+                print(f'    Context: "{c.context}"')
+                print(f"    Reason: {v['reason']}")
+                if v.get("suggestion"):
+                    print(f'    Suggestion: "{v["suggestion"]}"')
+                print()
+
+        if acceptable:
+            print(f"ACCEPTABLE ({len(acceptable)}):\n")
+            for v in acceptable:
+                c = candidates[v["id"]]
+                print(f"  {c.file}:{c.line}")
+                print(f'    "{c.found}" kept — {v["reason"]}')
             print()
 
-    if acceptable:
-        print(f"ACCEPTABLE ({len(acceptable)}):\n")
-        for v in acceptable:
-            c = candidates[v["id"]]
-            print(f"  {c.file}:{c.line}")
-            print(f'    "{c.found}" kept — {v["reason"]}')
-        print()
-
-    print(f"Summary: {len(violations)} violation(s), {len(acceptable)} acceptable")
+        print(f"Summary: {len(violations)} violation(s), {len(acceptable)} acceptable")
 
 
 # ---------------------------------------------------------------------------
@@ -559,6 +609,10 @@ def main() -> None:
         help=f"Similarity threshold (default: {DOMAIN_SIMILARITY_THRESHOLD})",
     )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
+    parser.add_argument(
+        "--github", action="store_true",
+        help="Output GitHub Actions annotations (::warning, ::error, ::notice)",
+    )
 
     review_group = parser.add_argument_group("LLM review")
     review_group.add_argument(
@@ -613,7 +667,7 @@ def main() -> None:
         if args.json:
             print(json_mod.dumps(verdicts, indent=2))
         else:
-            print_verdicts(verdicts, candidates)
+            print_verdicts(verdicts, candidates, github=args.github)
 
         has_violations = any(v["verdict"] == "VIOLATION" for v in verdicts)
         sys.exit(1 if has_violations else 0)
@@ -622,8 +676,9 @@ def main() -> None:
     if args.json:
         print(json_mod.dumps([c.to_dict() for c in candidates], indent=2))
     else:
-        print_candidates(candidates)
-        print(f"\n{len(candidates)} candidate(s) found.")
+        print_candidates(candidates, github=args.github)
+        if not args.github:
+            print(f"\n{len(candidates)} candidate(s) found.")
 
     sys.exit(1)
 

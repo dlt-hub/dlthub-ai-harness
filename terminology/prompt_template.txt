@@ -16,6 +16,7 @@ A use is ACCEPTABLE when:
 - The term appears in a definition or explanation of the preferred term (e.g., "a verified source — a pre-built connector" uses "connector" to define "verified source")
 - The term appears in an enumeration, synonym list, or contrast (e.g., "REST API, HTTP API, web API" listing alternatives)
 - The term is used in its general English sense, not the dlt-specific sense (e.g., "execute this command" where "execute" means run a shell command, not run a pipeline)
+- The term is a technical literal — a SQL keyword, file format, configuration value, code identifier, or protocol name used in its native technical meaning (e.g., "INSERT VALUES" as a SQL statement format, "metadata" as a generic data concept, "overwrite" describing file behavior)
 - The term is part of an external name, quote, or proper noun that cannot be changed
 
 A use is a VIOLATION when:

@@ -47,8 +47,9 @@ uv run python <source>_pipeline.py
 Common exceptions and what they mean:
 - `ConfigFieldMissingException` - config / secrets are missing. inspect exception message
 - `PipelineFailedException` - pipeline failed in one of the steps. inspect exception trace to find a root cause. find **load_id** to identify load package that failed
+- `SchemaException` - the data contract is invalid or has conflicting column definitions
 
-In extract step most of the exceptions are coming from source/resource code that you wrote!
+In extract step most of the exceptions are coming from the source connector code that you wrote!
 
 ### First run of the pipeline
 
