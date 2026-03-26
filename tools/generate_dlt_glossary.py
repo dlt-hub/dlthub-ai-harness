@@ -316,8 +316,9 @@ FILTER_WORDS = {
     "you're",
 }
 
+harper_absolute_path = str(Path().home() / ".cargo/bin/harper-cli")
 mine_result = subprocess.run(
-    ["harper-cli", "mine-words", "dlt-api.json"],
+    [harper_absolute_path, "mine-words", "dlt-api.json"],
     capture_output=True,
     text=True,
     check=True,
