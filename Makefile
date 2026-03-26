@@ -3,6 +3,9 @@
 dev:
 	uv sync --group lint --reinstall-package dlt
 
+glossary-deps:
+	cargo install harper-ls --locked
+
 validate-toolkits:
 	uv run python tools/validate_toolkits.py
 
