@@ -50,3 +50,12 @@ show_error_codes = true
 [[tool.mypy.overrides]]
 module = "dlt.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*", "spacy", "spacy.*", "yaml", "sentence_transformers", "sentence_transformers.*", "sklearn", "sklearn.*", "anthropic", "anthropic.*", "nltk", "nltk.*", "rdflib", "rdflib.*"]
+ignore_missing_imports = true
+
+# These tools have optional heavy deps (numpy, spacy, sklearn) not in the venv
+[[tool.mypy.overrides]]
+module = ["glossary_lint", "generate_dlt_glossary"]
+ignore_errors = true

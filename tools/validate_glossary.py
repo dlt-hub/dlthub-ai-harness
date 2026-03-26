@@ -22,8 +22,9 @@ import re
 import sys
 from pathlib import Path
 
-from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib import Graph, Literal, Namespace
 from rdflib.namespace import OWL, RDF, SKOS
+from rdflib.term import Node
 
 DLT = Namespace("https://dlthub.com/vocab/")
 
@@ -38,11 +39,11 @@ def load_graph(path: Path) -> Graph:
     return g
 
 
-def get_concepts(g: Graph) -> set[URIRef]:
+def get_concepts(g: Graph) -> set[Node]:
     return set(g.subjects(RDF.type, SKOS.Concept))
 
 
-def get_collections(g: Graph) -> set[URIRef]:
+def get_collections(g: Graph) -> set[Node]:
     return set(g.subjects(RDF.type, SKOS.Collection))
 
 
@@ -284,8 +285,7 @@ def check_skill_names(g: Graph, toolkit_path: Path) -> list[str]:
             valid = actions[action]
             if valid and not _object_matches(obj, valid):
                 issues.append(
-                    f"  {name}: object '{obj}' not valid for '{action}'"
-                    f" (valid: {', '.join(valid)})"
+                    f"  {name}: object '{obj}' not valid for '{action}' (valid: {', '.join(valid)})"
                 )
 
     return issues
@@ -396,8 +396,8 @@ def main() -> None:
     print(f"Parsing {GLOSSARY_PATH}...")
     try:
         g = load_graph(GLOSSARY_PATH)
-    except Exception as e:
-        print(f"PARSE ERROR: {e}")
+    except Exception as exc:
+        print(f"PARSE ERROR: {exc}")
         sys.exit(1)
 
     concepts = get_concepts(g)
@@ -440,7 +440,10 @@ def main() -> None:
         overlay_map[toolkit_dir.name] = overlay
         overlay_concepts = get_concepts(overlay)
         overlay_triples = len(overlay)
-        print(f"\nOverlay: {toolkit_dir.name} ({overlay_triples} triples, {len(overlay_concepts)} concepts)")
+        print(
+            f"\nOverlay: {toolkit_dir.name}"
+            f" ({overlay_triples} triples, {len(overlay_concepts)} concepts)"
+        )
 
         ov_errors = validate_overlay(g, overlay, toolkit_dir.name)
         if ov_errors:

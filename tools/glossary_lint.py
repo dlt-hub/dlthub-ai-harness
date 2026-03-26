@@ -108,7 +108,7 @@ class Candidate:
 
 
 def load_glossary(path: Path = GLOSSARY_PATH) -> dict:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -148,9 +148,7 @@ def precompute_embeddings(rules: list[GlossaryRule], model: SentenceTransformer)
     scores for sentences that use the deprecated term in a domain-relevant
     context, compared to embedding the definition alone.
     """
-    texts = [
-        f"{r.deprecated}. {r.preferred}. {r.definition}" for r in rules
-    ]
+    texts = [f"{r.deprecated}. {r.preferred}. {r.definition}" for r in rules]
     if not texts:
         return
     embeddings = model.encode(texts, show_progress_bar=False)
@@ -227,9 +225,7 @@ def check_sentence(
             continue
 
         sent_embedding = embedder.encode([sent_text], show_progress_bar=False)[0]
-        similarity = float(
-            cosine_similarity([sent_embedding], [rule.definition_embedding])[0][0]
-        )
+        similarity = float(cosine_similarity([sent_embedding], [rule.definition_embedding])[0][0])
         if similarity < threshold:
             continue
 
@@ -610,25 +606,30 @@ def main() -> None:
     )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument(
-        "--github", action="store_true",
+        "--github",
+        action="store_true",
         help="Output GitHub Actions annotations (::warning, ::error, ::notice)",
     )
 
     review_group = parser.add_argument_group("LLM review")
     review_group.add_argument(
-        "--review", action="store_true",
+        "--review",
+        action="store_true",
         help="Send candidates to LLM for final verdict",
     )
     review_group.add_argument(
-        "--cli", action="store_true",
+        "--cli",
+        action="store_true",
         help="Use Claude Code CLI instead of Anthropic API",
     )
     review_group.add_argument(
-        "--model", default=None,
+        "--model",
+        default=None,
         help="Model (API: claude-sonnet-4-20250514; CLI: sonnet, opus, haiku)",
     )
     review_group.add_argument(
-        "--prompt", action="store_true",
+        "--prompt",
+        action="store_true",
         help="Print the assembled LLM prompt and exit",
     )
 
