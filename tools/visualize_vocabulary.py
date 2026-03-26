@@ -13,8 +13,9 @@ import re
 import sys
 from pathlib import Path
 
-from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib import Graph, Literal, Namespace
 from rdflib.namespace import OWL, RDF, SKOS
+from rdflib.term import Node
 
 DLT = Namespace("https://dlthub.com/vocab/")
 
@@ -29,27 +30,28 @@ OUTPUT_HTML = Path(".vocabulary/diagrams.html")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def load_graph(path: Path) -> Graph:
     g = Graph()
     g.parse(path, format="turtle")
     return g
 
 
-def get_concepts(g: Graph) -> set[URIRef]:
+def get_concepts(g: Graph) -> set[Node]:
     return set(g.subjects(RDF.type, SKOS.Concept))
 
 
-def get_collections(g: Graph) -> set[URIRef]:
+def get_collections(g: Graph) -> set[Node]:
     return set(g.subjects(RDF.type, SKOS.Collection))
 
 
-def concept_id(uri: URIRef) -> str:
+def concept_id(uri: Node) -> str:
     """Extract local name from URI, safe for Mermaid node IDs."""
     local = str(uri).split("/")[-1]
     return local.replace(" ", "_")
 
 
-def concept_label(g: Graph, uri: URIRef) -> str:
+def concept_label(g: Graph, uri: Node) -> str:
     """Get prefLabel for display."""
     pref = next(g.objects(uri, SKOS.prefLabel), None)
     return str(pref) if pref else concept_id(uri)
@@ -60,13 +62,14 @@ def mermaid_safe(label: str) -> str:
     return label.replace('"', "#quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def is_action_concept(uri: URIRef) -> bool:
+def is_action_concept(uri: Node) -> bool:
     return concept_id(uri).startswith("action-")
 
 
 # ---------------------------------------------------------------------------
 # Diagram 1: Entity Taxonomy (broader/narrower hierarchy)
 # ---------------------------------------------------------------------------
+
 
 def generate_taxonomy(g: Graph) -> str:
     lines = ["graph TD"]
@@ -81,22 +84,20 @@ def generate_taxonomy(g: Graph) -> str:
     entity_concepts = {c for c in get_concepts(g) if not is_action_concept(c)}
 
     # Top concepts
-    top_concepts: set[URIRef] = set()
+    top_concepts: set[Node] = set()
     for scheme in g.subjects(RDF.type, SKOS.ConceptScheme):
         for top in g.objects(scheme, SKOS.hasTopConcept):
             top_concepts.add(top)
 
     # Collect hierarchy edges
-    edges: list[tuple[URIRef, URIRef]] = []  # parent -> child
-    children_of: dict[URIRef, set[URIRef]] = {}
+    edges: list[tuple[Node, Node]] = []  # parent -> child
     for parent in entity_concepts:
         for child in g.objects(parent, SKOS.narrower):
             if child in entity_concepts:
                 edges.append((parent, child))
-                children_of.setdefault(parent, set()).add(child)
 
     # Group concepts by collection for subgraphs
-    collection_members: dict[str, list[URIRef]] = {}
+    collection_members: dict[str, list[Node]] = {}
     for coll in get_collections(g):
         coll_label = str(next(g.objects(coll, SKOS.prefLabel), ""))
         members = [m for m in g.objects(coll, SKOS.member) if m in entity_concepts]
@@ -104,7 +105,7 @@ def generate_taxonomy(g: Graph) -> str:
             collection_members[coll_label] = members
 
     # Determine which concepts are in collections
-    assigned: set[URIRef] = set()
+    assigned: set[Node] = set()
     for members in collection_members.values():
         assigned.update(members)
 
@@ -155,6 +156,7 @@ def generate_taxonomy(g: Graph) -> str:
 # Diagram 2: Cross-References (skos:related)
 # ---------------------------------------------------------------------------
 
+
 def generate_relationships(g: Graph) -> str:
     lines = ["graph LR"]
     lines.append("    classDef concept fill:#457b9d,stroke:#1d3557,color:#fff")
@@ -170,10 +172,10 @@ def generate_relationships(g: Graph) -> str:
         for o in g.objects(s, SKOS.related):
             if o not in entity_concepts:
                 continue
-            pair = tuple(sorted([concept_id(s), concept_id(o)]))
-            if pair not in seen:
-                seen.add(pair)
-                edges.append(pair)
+            a, b = sorted([concept_id(s), concept_id(o)])
+            if (a, b) not in seen:
+                seen.add((a, b))
+                edges.append((a, b))
 
     # Collect all nodes that participate in related edges
     nodes: set[str] = set()
@@ -198,6 +200,7 @@ def generate_relationships(g: Graph) -> str:
 # ---------------------------------------------------------------------------
 # Diagram 3: Collections
 # ---------------------------------------------------------------------------
+
 
 def generate_collections(g: Graph) -> str:
     lines = ["graph LR"]
@@ -231,8 +234,9 @@ def generate_collections(g: Graph) -> str:
 # Diagram 4: Actions Table
 # ---------------------------------------------------------------------------
 
+
 def generate_actions_table(g: Graph) -> str:
-    rows: list[tuple[str, str, str]] = []
+    rows: list[tuple[str, str, str, str]] = []
 
     for c in sorted(get_concepts(g), key=lambda u: concept_id(u)):
         if not is_action_concept(c):
@@ -272,6 +276,7 @@ def generate_actions_table(g: Graph) -> str:
 # Diagram 5: Toolkit Overlay
 # ---------------------------------------------------------------------------
 
+
 def generate_overlay(base: Graph, overlay: Graph, toolkit_name: str) -> str:
     lines = ["graph LR"]
     lines.append("    classDef baseRef fill:#adb5bd,stroke:#6c757d,color:#000")
@@ -283,9 +288,9 @@ def generate_overlay(base: Graph, overlay: Graph, toolkit_name: str) -> str:
     overlay_concepts = get_concepts(overlay)
     base_refs: set[str] = set()  # base concept IDs referenced by overlay
 
-    overrides: list[URIRef] = []
-    toolkit_terms: list[URIRef] = []
-    deprecated: list[URIRef] = []
+    overrides: list[Node] = []
+    toolkit_terms: list[Node] = []
+    deprecated: list[Node] = []
 
     for c in sorted(overlay_concepts, key=lambda u: concept_id(u)):
         is_dep = (c, OWL.deprecated, Literal(True)) in overlay
@@ -365,6 +370,7 @@ def generate_overlay(base: Graph, overlay: Graph, toolkit_name: str) -> str:
 # ---------------------------------------------------------------------------
 # Assembly
 # ---------------------------------------------------------------------------
+
 
 def assemble_markdown(
     taxonomy: str,
@@ -494,11 +500,12 @@ def assemble_html(md_content: str) -> str:
         mermaid.initialize({{ startOnLoad: true, theme: 'default' }});
     </script>
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-               max-width: 1200px; margin: 0 auto; padding: 2rem; color: #24292f; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+               max-width: 1200px; margin: auto; padding: 2rem; color: #24292f; }}
         h1 {{ border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }}
         h2 {{ border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; margin-top: 2em; }}
-        blockquote {{ color: #656d76; border-left: 3px solid #d0d7de; padding-left: 1em; margin: 1em 0; }}
+        blockquote {{ color: #656d76; border-left: 3px solid #d0d7de;
+                     padding-left: 1em; margin: 1em 0; }}
         table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
         th, td {{ border: 1px solid #d0d7de; padding: 6px 13px; text-align: left; }}
         th {{ background: #f6f8fa; font-weight: 600; }}
@@ -534,6 +541,7 @@ def _md_table_to_html(lines: list[str]) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     args = sys.argv[1:]
@@ -586,12 +594,12 @@ def main() -> None:
 
     # Assemble and write
     md = assemble_markdown(taxonomy, relationships, collections, actions, overlays)
-    OUTPUT_MD.write_text(md)
+    OUTPUT_MD.write_text(md, encoding="utf-8")
     print(f"\nWrote {OUTPUT_MD}")
 
     if do_html:
         html = assemble_html(md)
-        OUTPUT_HTML.write_text(html)
+        OUTPUT_HTML.write_text(html, encoding="utf-8")
         print(f"Wrote {OUTPUT_HTML}")
 
 
