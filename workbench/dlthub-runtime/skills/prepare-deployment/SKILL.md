@@ -62,7 +62,7 @@ Recommend to user switching to a named destination:
    - Set up the right destination types in profile-scoped toml files for that $name (**MUST** read the reference!)
    - Change the `destination` to $name for pipelines being deployed (all scripts — including notebooks)
    - Set up credentials using profile-scoped secret files. Verify the state of secrets: make sure they overwrite workspace secrets correctly
-   - Offer to run pipeline locally (preferably in debug mode) to confirm settings. NOTE: pipeline will run on **dev** destination!
+   - Offer to run pipeline locally (preferably in dev mode) to confirm settings. NOTE: pipeline will run on **dev** destination!
    - **DO NOT** run pipeline on **prod** profile. That happens on runtime deployment!
 
 **STOP** before making changes. Show your **plan** to get OK from user.
