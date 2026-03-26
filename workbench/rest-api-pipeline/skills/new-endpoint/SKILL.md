@@ -30,8 +30,6 @@ Note what patterns the existing resources use:
 
 ### 2. Research the new endpoint
 
-**If a docs.yaml scaffold exists**, read it for endpoint details.
-
 **Web search** the API documentation for the new endpoint:
 - Endpoint path, HTTP method
 - Query parameters (required and optional)
