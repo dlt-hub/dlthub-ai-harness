@@ -23,7 +23,21 @@ Parse `$ARGUMENTS`:
 
 ## Steps
 
-### 1. Install dlt[hub]
+### 1. Install dependencies
+
+**Determine destination** — if the destination is not already known from prior context (prior conversation), ask the user which destination they are using before proceeding.
+
+Install the matching ibis backend:
+
+| Destination    | Command                              |
+|----------------|--------------------------------------|
+| DuckDB         | `uv add "ibis-framework[duckdb]"`    |
+| PostgreSQL     | `uv add "ibis-framework[postgres]"`  |
+| Snowflake      | `uv add "ibis-framework[snowflake]"` |
+| BigQuery       | `uv add "ibis-framework[bigquery]"`  |
+| *Some backend* | `uv add ibis-framework[<backend>]`     |
+
+Then install dlt[hub]:
 
 ```
 uv add "dlt[hub]"
