@@ -1,6 +1,6 @@
 {
   "name": "rest-api-pipeline",
-  "description": "One shot REST API pipelines with dlt: scope, debug and validate data",
+  "description": "Build REST API pipelines with dlt: scope, debug and validate data",
   "version": "0.1.0",
   "author": {
     "name": "ScaleVector GmbH"
