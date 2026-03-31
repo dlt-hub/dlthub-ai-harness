@@ -86,6 +86,21 @@ Build an execution order:
 
 One `@dlt.hub.transformation` function per CDM entity. Wrap all in a `@dlt.source`.
 
+**Dataset binding is required when yielding from `@dlt.source`.**
+When a transformation resource is returned/yielded from a source, pass the dataset argument explicitly (for example `yield dim_person(source_dataset)`). Not binding datasets can raise `IncompatibleDatasetsException`.
+
+```python
+@dlt.source
+def hubspot_activity_schema(source_dataset: dlt.Dataset):
+    # Correct: dataset is explicitly bound
+    yield dim_company(source_dataset)
+    yield fact_activity(source_dataset)
+
+@dlt.hub.transformation
+def dim_company(dataset: dlt.Dataset):
+    yield dataset("SELECT company_id, name FROM hubspot__companies")
+```
+
 **Default to SQL transformation logic** — pass a SQL string directly to `dataset()` (https://dlthub.com/docs/hub/features/transformations#31-alternatively-use-pure-sql-for-the-transformation).
 Use SQL first because it is easier for users to review, generally more reliable for LLM generation, and dlt can transpile dialect differences when needed.
 
@@ -104,6 +119,24 @@ def dim_users(dataset: dlt.Dataset):
 ```
 
 Use `query_dialect` if your SQL dialect differs from the destination.
+
+**Cross-dataset SQL must use fully qualified source references.**
+When writing into `<target_dataset>` from a different source dataset, unqualified table names may resolve against the target dataset and fail with "table not found". For BigQuery, always use ``project.dataset.table`` for source-side refs.
+
+```python
+@dlt.hub.transformation
+def fact_activity(dataset: dlt.Dataset):
+    yield dataset(
+        """
+        SELECT a.id, a.activity_type, a.created_at
+        FROM `my_project.source_dataset_name.activities` AS a
+        """
+    )
+```
+
+**Association key check is mandatory before FK logic.**
+For nested association tables, verify join lineage first: association table `_dlt_parent_id` joins to parent row `_dlt_id` (not to parent business keys like `id`).
+Do this verification before writing any JOIN used to derive foreign keys.
 
 **ibis remains supported as an option** when SQL becomes too verbose for a specific step (complex programmatic expression building, reusable expression fragments, or existing ibis-heavy codebases). If ibis is chosen, keep everything lazy and never fall back to pandas.
 
@@ -261,6 +294,33 @@ Show a summary of:
 - Any source columns skipped and why
 
 Ask user to confirm before running the transformation.
+
+### 7. Run and recover safely
+
+Run the script from the project root so `.dlt` state resolves correctly. If needed, enforce root CWD in entrypoint:
+
+```python
+from pathlib import Path
+import os
+
+os.chdir(Path(__file__).resolve().parents[1])  # run from project root
+```
+
+After changing SQL and before re-testing, clear stale pending packages if prior failed packages exist:
+
+```
+dlt pipeline <pipeline_name> drop-pending-packages
+```
+
+Use `sync` and `drop-pending-packages` for different failure classes:
+- `dlt pipeline <pipeline_name> sync` — recover/refresh local pipeline state from destination state.
+- `dlt pipeline <pipeline_name> drop-pending-packages` — remove stale failed/pending load packages that can keep retrying old SQL and mask new fixes.
+
+If no recoverable destination state exists, `sync` may not resolve partial package retries; use `drop-pending-packages` before re-run.
+
+References:
+- CLI docs: https://dlthub.com/docs/reference/command-line-interface
+- Transformations docs: https://dlthub.com/docs/hub/features/transformations
 
 ## Output
 
