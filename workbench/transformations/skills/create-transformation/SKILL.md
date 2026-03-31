@@ -115,7 +115,7 @@ If a relation variable is already available (for example `slack_dataset`), treat
 ```python
 @dlt.hub.transformation
 def dim_users(dataset: dlt.Dataset):
-    yield slack_dataset("SELECT user_id, email, created_at FROM users")
+    yield dataset("SELECT user_id, email, created_at FROM users")
 ```
 
 Use `query_dialect` if your SQL dialect differs from the destination.
