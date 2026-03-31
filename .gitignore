@@ -11,7 +11,9 @@ _local
 # ignore duckdb
 *.duckdb
 *.wal 
+# Evals
 .evals
+EVALS.md
 
 # agents local files
 .settings.local.json

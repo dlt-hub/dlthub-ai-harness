@@ -1,16 +1,20 @@
 # dltHub AI Workbench
 
-**dlt** (data load tool) is an open-source Python library for loading data from APIs and databases into a warehouse or lakehouse. **dltHub** (paid platform) extends dlt with enterprise-grade features: transformations, data quality validation, managed runtime infrastructure, managed data apps, and an AI-powered workspace environment.
+**dlt** (data load tool) is an open-source Python library for loading data from APIs and databases into a warehouse or lakehouse. **dltHub** (paid platform) extends dlt with enterprise-grade features tailored to the needs of coding agents: transformations, data quality validation, managed runtime infrastructure, managed data apps, and an AI-powered workspace environment.
 
-The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants the knowledge and step-by-step workflows to build data pipelines with dlt. Each toolkit covers a specific phase of the data engineering lifecycle — ingesting from a REST API, exploring loaded data, or deploying to dltHub — and guides the assistant through it in a defined sequence. You can use the workbench as-is or fork and customize it for your own stack. The **dlt ai CLI** builds the bridge between the workbench and your coding assistant by handling the installation of toolkit components into the right locations for your assistant, and by running the MCP server that the assistant uses during a session.
+![AI Workbench Components](images/ai_workbench_components.png)
+
+The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlt ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
+
+**Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code.
 
 The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI workbench.
 
 ## The dlthub AI workbench supports the iterative data engineering workflow
 
-Building data pipelines is iterative and covers two major phases — **ingestion** and **transformation** — each following the same inner loop:
+Building data pipelines is iterative and covers two major phases — ingestion and transformations — each following the same inner loop:
 
-**Build loop (local development)**
+**Build (local development)**
 - Develop the pipeline iteratively — for ingestion: first REST API endpoint, then additional endpoints; for transformation: data model first, then the full transformation pipeline
 - Explore the loaded data and validate it after each step
 - Loop back to refine until the pipeline is solid
@@ -23,7 +27,7 @@ The outer loop connects the two phases: insights from the transformation and ser
 
 ![Data Development Lifecycle](images/data_development_lifecycle.png)
 
-## The AI Workbench
+## dltHub AI Workbench Toolkits
 
 The workbench gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
 
@@ -33,7 +37,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 ![AI Workbench](images/ai_workbench.png)
 
-### Workbench components
+### Toolkit components
 
 | Component | What it is | When it runs |
 |-----------|-----------|-------------|
@@ -42,7 +46,16 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 | **Rule** | Always-on context (conventions, constraints) | Every session, automatically |
 | **Workflow** | Ordered sequence of skills with a fixed entry point | Loaded as a rule — always active |
 | **MCP server** | Exposes pipelines, tables, and secrets as tools | During a session, via MCP protocol |
+| **[dltHub context](https://dlthub.com/context)** | 9,700+ REST API source definitions with verified connectors and pipeline patterns | During source discovery, via `search_dlthub_sources` |
 
+
+### MCP tools
+
+Two MCP servers give the agent structured context throughout the workflow to avoid the need for manual copy-pasting.
+
+**dlt-workspace-mcp** (local, installed by `dlt ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
+
+**[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
 
 ### Available toolkits
 
@@ -182,7 +195,7 @@ uv run dlt ai mcp run --stdio               # run in stdio mode (for assistants 
 uv run dlt ai mcp install                   # register the MCP server in the agent's config
 ```
 
-The MCP server allows the assistant to answer questions like "what tables were loaded?" or "show me the last pipeline trace" without you having to copy-paste output into the chat.
+The MCP server allows the assistant to answer questions like "what tables were loaded?" or "show me the schema" without you having to copy-paste output into the chat.
 
 ## License
 
