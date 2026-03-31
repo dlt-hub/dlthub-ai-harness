@@ -6,7 +6,7 @@ argument-hint: "[pipeline-name]"
 
 # Create transformation
 
-Write `@dlt.hub.transformation` functions that map annotated source tables to CDM entities using ibis.
+Write `@dlt.hub.transformation` functions that map annotated source tables to CDM entities, using SQL-first with optional ibis.
 
 **Requires:**
 - `.schema/<cdm-name>/taxonomy.json` — confirmed table→concept mappings and natural keys; read `_name` from this file to determine `<cdm-name>`
@@ -56,10 +56,10 @@ Read in parallel:
 - `.schema/taxonomy.json` — table mappings and natural keys
 - `.schema/CDM.dbml` — CDM entity definitions and column specs
 
-### 2. Get actual source schema via ibis
+### 2. Get actual source schema
 
-**Always use ibis (not `get_table_schema` MCP tool) for actual column types.**
-The MCP tool includes untyped/null-only columns that were never materialized in the destination — ibis reflects only what actually exists.
+Prefer relation schema from dlt dataset objects (not `get_table_schema` MCP tool) for actual column types.
+The MCP tool may include untyped/null-only columns that were never materialized in the destination.
 
 ```python
 import dlt
@@ -86,10 +86,8 @@ Build an execution order:
 
 One `@dlt.hub.transformation` function per CDM entity. Wrap all in a `@dlt.source`.
 
-**Use ibis for transformation logic — never pandas DataFrames.**
-ibis expressions are lazy, push computation to the source database, and compose cleanly across unions, joins, and window functions. Falling back to `.to_pandas()` for merges defeats this — keep everything in ibis until dlt loads the result.
-
-**Alternatively, pure SQL is supported** — pass a SQL string directly to `dataset()` instead of using ibis expressions (https://dlthub.com/docs/hub/features/transformations#31-alternatively-use-pure-sql-for-the-transformation). SQL can produce more predictable output schemas and may be preferable for simpler transformations or when the user is more comfortable with SQL:
+**Default to SQL transformation logic** — pass a SQL string directly to `dataset()` (https://dlthub.com/docs/hub/features/transformations#31-alternatively-use-pure-sql-for-the-transformation).
+Use SQL first because it is easier for users to review, generally more reliable for LLM generation, and dlt can transpile dialect differences when needed.
 
 ```python
 @dlt.hub.transformation
@@ -97,9 +95,39 @@ def dim_person(dataset: dlt.Dataset):
     yield dataset("SELECT email, first_name, last_name FROM hubspot__contacts ORDER BY email")
 ```
 
+If a relation variable is already available (for example `slack_dataset`), treat it as a callable dataset relation and pass SQL directly:
+
+```python
+@dlt.hub.transformation
+def dim_users(dataset: dlt.Dataset):
+    yield slack_dataset("SELECT user_id, email, created_at FROM users")
+```
+
 Use `query_dialect` if your SQL dialect differs from the destination.
 
-**ibis requires a SQL-capable destination** (BigQuery, Snowflake, DuckDB with file-based access, etc.). If the user requests DuckDB as destination, check whether ibis can connect to it in the context — if not, switch to BigQuery or another cloud destination and inform the user.
+**ibis remains supported as an option** when SQL becomes too verbose for a specific step (complex programmatic expression building, reusable expression fragments, or existing ibis-heavy codebases). If ibis is chosen, keep everything lazy and never fall back to pandas.
+
+Minimal ibis example (single-table transform), adapted from dlt docs:
+
+```python
+@dlt.hub.transformation
+def dim_person(dataset: dlt.Dataset):
+    contacts = dataset.table("hubspot__contacts").to_ibis()
+    yield contacts.select("email", "first_name", "last_name").order_by("email").limit(1000)
+```
+
+ibis join + aggregate example (useful for fact pre-aggregation):
+
+```python
+@dlt.hub.transformation
+def orders_per_user(dataset: dlt.Dataset):
+    purchases = dataset.table("purchases").to_ibis()
+    customers = dataset.table("customers").to_ibis()
+    enriched = purchases.join(customers, purchases.customer_id == customers.id)
+    yield enriched.group_by(customers.name).aggregate(order_count=purchases.id.count())
+```
+
+**ibis requires a SQL-capable destination** (BigQuery, Snowflake, DuckDB with file-based access, etc.). If the user requests DuckDB as destination, check whether ibis can connect to it in the context — if not, keep SQL-first transformations or switch to a destination that supports the desired ibis workflow.
 
 **Decorator (default pattern):**
 ```python
@@ -110,7 +138,9 @@ def dim_person(dataset: dlt.Dataset):
     ...
 ```
 
-**Cross-source transformations only** (data from multiple pipelines): ibis connections must be created **before** the CDM pipeline starts. Use module-level connection variables initialised in a setup function called before `pipeline.run()`:
+**Cross-source transformations:** use SQL-first where possible by selecting from available datasets in SQL; use ibis connections only when cross-dataset SQL composition is not practical in the current environment.
+
+If ibis is needed for cross-source composition, initialise connections **before** the CDM pipeline starts:
 
 ```python
 _AC = None
@@ -132,7 +162,7 @@ if __name__ == "__main__":
     pipeline.run(my_source())
 ```
 
-**ibis patterns:**
+**Optional ibis patterns (only when ibis path is selected):**
 
 Surrogate keys — use `.hash().cast("string")` (no `ibis.md5()`):
 ```python
@@ -180,7 +210,7 @@ When to add `columns=`:
 
 Omitting `columns=` causes **silent data loss** — dlt strips the column from the outer SELECT if its schema entry has no `data_type`.
 
-**Do NOT use `mcp__dlt__execute_sql_query` for cloud destinations** — use dlt + ibis directly.
+**Do NOT use `mcp__dlt__execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
 
 ### 5. Write the script
 
@@ -189,7 +219,6 @@ Output file: `transformations/<dataset_name>_to_cdm.py`
 Structure:
 ```python
 import dlt
-import ibis
 
 @dlt.source
 def <dataset_name>_to_cdm():
