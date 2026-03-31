@@ -30,11 +30,11 @@ If the request looks like a specific API/service name, run:
 ```
 dlt --non-interactive init --list-sources
 ```
-Search the output (case-insensitive) for the source name. If found, skip to **step 5**
+Search the output (case-insensitive) for the source name. If found, ensure that the verified source contains the data that the user needs (ask the user explicitly) skip to **step 5**
 
 ### 3. Search dlthub context
 
-Use `search_dlthub_sources` mcp tool to look for sources. It is FTS based so pass only essential keywords to it
+Use `search_dlthub_sources` mcp tool to look for sources. It is full-text search based so pass only essential keywords to it
 ie. "claude analytics". You'll get description of the source and set of reference links to use in web search below.
 
 ### 4. Web search and validation

@@ -1,6 +1,6 @@
 ---
 name: improve-skills
-description: Improve existing skills based on the current session. Use at the end of a session (or when the user asks) to capture new debugging patterns, data validation tricks, querying techniques, doc references, or workflow improvements learned during the session. Keeps skills lean and personalized.
+description: Improve existing skills based on the current session. Use at the end of a session (or when the user asks) to capture new debugging patterns, data issues, data validation tracks, querying techniques, doc references, or workflow improvements learned during the session. Keeps skills lean and personalized.
 ---
 
 # Improve skills from session
@@ -20,32 +20,33 @@ Review the current session and update skills with essential learnings. Skills ar
 
 ### 1. Scan the session for learnings
 
-Review the conversation looking for:
+First identify which skills are active in the current toolkit — check the installed skills directory or use the `toolkit_info` MCP tool. Then review the conversation for:
 
-**Debugging patterns** (`debug-pipeline`):
-- New error types and their root causes
-- Diagnostic commands that were useful
-- Config settings that helped (e.g., verbosity, timeouts)
-- Workarounds for specific API behaviors
+**Errors and debugging**:
+- New error types, root causes, and the commands or MCP tools that diagnosed them
+- Config settings that helped (e.g., verbosity, timeouts, flags)
+- Workarounds for API, source, or destination-specific behaviors
 
-**Data validation** (`validate-data`):
-- New data type issues (e.g., money as float → Decimal)
-- Schema surprises (unexpected nesting, missing columns)
-- processing_steps patterns that worked
+**Data and schema**:
+- Unexpected data types or coercions needed
+- Schema surprises (nesting, missing columns, naming conventions)
+- Processing patterns that worked
 
-**Data access** (`view-data`):
-- ibis gotchas (e.g., `.distinct()` is table-level, deferred refs in mutate)
-- New ReadableRelation or dataset API usage
+**Data access and querying**:
+- Library-specific gotchas (e.g., ibis, dlt dataset API)
+- Useful query patterns or MCP tool calls
 
-**Pipeline creation** (`create-rest-api-pipeline`, `new-endpoint`):
-- API-specific auth or pagination quirks
+**Source and pipeline configuration**:
+- Auth, pagination, or rate-limit quirks
 - Config resolution surprises
 - Source/resource parameterization patterns
 
-**Workflow** (`workflow.md`):
+**Workflow**:
 - Missing cross-references between skills
 - New skills that should be in the workflow
 - Steps that are in the wrong order
+
+Map each learning to the most relevant skill in the active toolkit.
 
 ### 2. Read the target skills
 
@@ -61,13 +62,13 @@ Present a summary of proposed updates:
 ```
 Proposed skill updates:
 
-debug-pipeline:
+<skill-name>:
   + [section] Added: <brief description>
 
-validate-data:
+<skill-name>:
   (no changes)
 
-query-data:
+<skill-name>:
   + [section] Added: <brief description>
 ```
 
