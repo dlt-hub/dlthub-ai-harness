@@ -82,6 +82,21 @@ Build an execution order:
 2. Non-conformed dimensions
 3. Fact tables (after all their dimension FKs exist)
 
+**Do not self-reference transformation outputs while building facts (default).**
+By default, fact SQL must be derived from source-side tables/logic (or explicit stage resources), not from newly produced `dim_*` output tables.
+This avoids cyclic/incompatible behavior across runs and destinations.
+
+Allowed exception:
+- If the user explicitly requests output-to-output dependencies and the destination semantics are confirmed to support that pattern, document it in the plan before writing SQL.
+
+**Define a key type contract before writing any SQL.**
+Pick one key type for this pipeline (`text` or `bigint`) and apply it consistently to:
+- all surrogate/foreign key casts in SQL or ibis
+- every corresponding `columns=` schema hint
+
+Do not mix key representations (`INT64` vs `STRING`) for related keys across dimensions/facts.
+If source systems disagree on key type, normalize to the chosen contract in staging/CTEs first.
+
 ### 4. Write transformation functions
 
 One `@dlt.hub.transformation` function per CDM entity. Wrap all in a `@dlt.source`.
@@ -236,6 +251,8 @@ def dim_person(dataset: dlt.Dataset):
     ...
 ```
 
+`columns=` `data_type` values for keys must match the key type contract selected in Step 3.
+
 When to add `columns=`:
 - Any column from a LEFT JOIN (lookup may return NULL)
 - Any cast from string to typed value where source may be empty
@@ -254,13 +271,13 @@ Structure:
 import dlt
 
 @dlt.source
-def <dataset_name>_to_cdm():
+def <dataset_name>_to_cdm(dataset: dlt.Dataset):
     # dimensions first
-    yield dim_person
-    yield dim_company
-    yield dim_event
+    yield dim_person(dataset)
+    yield dim_company(dataset)
+    yield dim_event(dataset)
     # facts after
-    yield fact_event_attendance
+    yield fact_event_attendance(dataset: dlt.Dataset)
 
 @dlt.hub.transformation(write_disposition="replace")
 def dim_person(dataset: dlt.Dataset):
@@ -318,8 +335,23 @@ Use `sync` and `drop-pending-packages` for different failure classes:
 
 If no recoverable destination state exists, `sync` may not resolve partial package retries; use `drop-pending-packages` before re-run.
 
+**If incorrect schema/tables were already loaded to destination, treat `drop` as last resort.**
+Use this escalation order:
+1. Inspect first: `dlt pipeline <pipeline_name> failed-jobs` and `dlt pipeline <pipeline_name> trace`
+2. Clear stale retries: `dlt pipeline <pipeline_name> drop-pending-packages`
+3. Reconcile local state: `dlt pipeline <pipeline_name> sync`
+4. Only then consider selective drop: `dlt pipeline <pipeline_name> drop <resource>` (or `--drop-all` only with explicit user confirmation)
+
+Safety rules for `drop`:
+- Prefer dropping specific resources over `--drop-all`
+- Confirm pipeline name, destination, dataset, and selected resources before accepting the prompt
+- Explain that drop removes destination tables and resets matching state; this can force full reloads and may remove good data with bad data
+- If uncertain which resources are safe to drop, stop and ask the user before executing
+- After drop, re-run transformations and validate schema/tables before further loads
+
 References:
 - CLI docs: https://dlthub.com/docs/reference/command-line-interface
+- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
 - Transformations docs: https://dlthub.com/docs/hub/features/transformations
 
 ## Output
