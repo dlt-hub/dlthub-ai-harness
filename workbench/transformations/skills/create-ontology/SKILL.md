@@ -1,16 +1,16 @@
 ---
 name: create-ontology
-description: Build a business entity graph (ontology) from annotated sources and taxonomy. Use after annotate-sources to design the entity model before CDM generation.
+description: Build a business entity graph (ontology) from annotated sources and ontology_model.py. Use after annotate-sources to design the entity model before CDM generation.
 ---
 
 # Create ontology
 
-Build a formal entity graph from the confirmed source annotations and taxonomy, ready for Kimball CDM design.
+Build a formal entity graph from confirmed source annotations and the unified ontology model, ready for Kimball CDM design.
 
-**Requires** `.schema/<cdm-name>/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/<cdm-name>/taxonomy.json` from `annotate-sources`.
+**Requires** `.schema/<cdm-name>/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/<cdm-name>/ontology_model.py` from `annotate-sources`.
 If either is missing, run `annotate-sources` first.
 
-Read `_name` from `taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
+Read `ontology.cdm_name` from `ontology_model.py` to determine `<cdm-name>` — all files in this skill are under that folder.
 
 ### Key concept: natural key
 
@@ -24,14 +24,14 @@ When a concept has a natural key, rows from different source tables that share t
 
 ### 1. Build entity list
 
-Read `.schema/taxonomy.json`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
+Read `.schema/<cdm-name>/ontology_model.py`. For each key in `ontology.concepts`:
 - Create one ontology entity per canonical concept
 - Name = concept key (PascalCase)
 - Mark as `inferred: false` (grounded in confirmed source mappings)
 
 ### 2. Confirm natural key handling
 
-**Before deriving any attributes**, for every concept that has a `natural_key` in `taxonomy.json`, explicitly ask the user how they want conflicts resolved. Do not assume a strategy.
+**Before deriving any attributes**, for every concept that has a `natural_key` in `ontology.concepts[concept].natural_key`, explicitly ask the user how they want conflicts resolved. Do not assume a strategy.
 
 Present the concept with its natural key, the contributing sources, and the three options:
 
@@ -54,13 +54,15 @@ Also: what about people who only exist in one source?
 Which combination (A/B/C) and (1/2)?
 ```
 
-Wait for explicit confirmation. Record the chosen strategy in the ontology `assumption` field before proceeding to attribute derivation.
+Wait for explicit confirmation. Record the chosen strategy in two places before proceeding:
+- `ontology.concepts[concept].merge_policy`
+- `ontology.assumptions` (human-readable summary)
 
 ### 3. Derive attributes per entity
 
 **SCOPE CONSTRAINT — no inference beyond source data:** Only include attributes that correspond to actual columns in the source schema. Do **not** add computed fields, business metrics, or domain concepts (e.g. `roi`, `is_icp`, `lead_score`, `lifetime_value`) unless a column with that data already exists in one of the source tables. If a useful attribute is missing from the data, record it as a semantic gap (step 5), not as an attribute.
 
-For each entity, collect all columns from **all source tables mapped to that concept** (from `taxonomy[concept].tables`).
+For each entity, collect all columns from **all source tables mapped to that concept** (from `ontology.concepts[concept].tables`).
 
 For each column:
 - Include column name, dlt type, source table, source pipeline
@@ -85,7 +87,7 @@ Wait for confirmation before proceeding.
 
 Two sources of relationships:
 
-**From natural keys** (`taxonomy.json` → `concept.natural_key`):
+**From natural keys** (`ontology_model.py` → `ontology.concepts[concept].natural_key`):
 - Each natural key defines a union relationship between tables of the same concept
 - Record as a `STITCHED_BY` edge with the key column
 
@@ -96,62 +98,35 @@ Two sources of relationships:
 
 ### 5. Flag semantic gaps
 
-Compare entity list against the user's stated use cases (from `taxonomy.json` → `concept.use_cases`).
+Compare entity list against the user's stated use cases (from `ontology_model.py` → `ontology.concepts[concept].use_cases`).
 
 If a use case requires a concept that has **no contributing source table**:
 - Flag it as a semantic gap
-- Record it as an assumption: `{"gap": "Contract entity needed for billing use case, no source table found"}`
+- Record it in `ontology.semantic_gaps`: `"Contract entity needed for billing use case, no source table found"`
 - Suggest where this data might come from (new pipeline, manual input, derivable from existing tables)
 
 Present gaps to the user before writing output.
 
-### 6. Write ontology
+### 6. Write ontology outputs
 
-Write `.schema/ontology.ison` in Graph ISON format (https://graph.ison.dev/) — tabular DSV sections, NOT JSON:
+Update `.schema/<cdm-name>/ontology_model.py` as the canonical artifact:
+- Ensure each concept has complete `merge_policy` when natural keys exist
+- Ensure all derived relationships are written into `ontology.relationships`
+- Ensure all assumptions and semantic gaps are captured in `ontology.assumptions` and `ontology.semantic_gaps`
 
-```ison
-nodes.Entity
-id       label    inferred  assumption
-Person   Person   false     Collapses hubspot contact + luma guest. Natural key: email.
-Company  Company  false     Master source: hubspot__companies.
+`ontology_model.py` should include typed entity classes (subclassing `OntologyEntity`) for canonical concepts so downstream steps can inspect both metadata and typed fields in one file.
 
-nodes.Attribute
-entity           name        type       master_source          also_in          note
-:Entity:Person   email       text       hubspot__contacts      luma__guests     natural_key
-:Entity:Person   first_name  text       hubspot__contacts
-
-edges.BELONGS_TO
-from              to               via                                        inferred
-:Entity:Person    :Entity:Company  hubspot__contacts.associated_company_id   false
-
-edges.STITCHED_BY
-from            to              via    inferred
-:Entity:Person  :Entity:Person  email  false
-```
-
-Rules:
-- One `nodes.<Type>` section per entity type; one `edges.<LABEL>` section per relationship label
-- Node references use `:Type:id` syntax (e.g. `:Entity:Person`)
-- Attributes are a separate `nodes.Attribute` section with an `entity` reference column
-- Tab-separate columns; use a blank line between sections
-
-If semantic gaps were found in step 5, append:
-
-```ison
-nodes.SemanticGap
-concept   use_case                       note
-Contract  track subscription billing     no source table found
-```
+Continue writing `.schema/<cdm-name>/ontology.md` as a human-readable review document.
 
 ## Output
 
-- `.schema/<cdm-name>/ontology.ison` — entity graph with attributes, relationships, and gaps
+- `.schema/<cdm-name>/ontology_model.py` — canonical typed ontology + taxonomy metadata (concepts, mappings, keys, merge policies, relationships, assumptions, gaps)
 - `.schema/<cdm-name>/ontology.md` — human-readable summary (required). One section per entity with: a short description, attribute table (name | type | source | notes), relationships table, and a final assumptions & exclusions list.
 
 After writing both files, explicitly ask the user to open and review `.schema/<cdm-name>/ontology.md` before continuing:
 
 ```
-Please review `.schema/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
+Please review `.schema/<cdm-name>/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
 
 Let me know if anything looks wrong or needs changing before we move on.
 ```

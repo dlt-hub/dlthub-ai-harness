@@ -9,17 +9,17 @@ argument-hint: "[pipeline-name]"
 Write `@dlt.hub.transformation` functions that map annotated source tables to CDM entities, using SQL-first with optional ibis.
 
 **Requires:**
-- `.schema/<cdm-name>/taxonomy.json` — confirmed table→concept mappings and natural keys; read `_name` from this file to determine `<cdm-name>`
+- `.schema/<cdm-name>/ontology_model.py` — confirmed concept mappings, natural keys, merge policies, assumptions, and relationships; read `ontology.cdm_name` from this file to determine `<cdm-name>`
 - `.schema/<cdm-name>/<pipeline_name>.dbml` — annotated source schemas
 - `.schema/<cdm-name>/CDM.dbml` — target CDM schema
 
 If any are missing, run the preceding skills first.
 
-The `_name` value from `taxonomy.json` is also the `dataset_name` for the transformation pipeline — do not re-derive it.
+The `ontology.cdm_name` value from `ontology_model.py` is also the `dataset_name` for the transformation pipeline — do not re-derive it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name`: the dlt pipeline to transform from (e.g. `hubspot_crm_pipeline`)
-- If omitted, check `taxonomy.json` for contributing pipelines and ask user which to target
+- If omitted, check `ontology_model.py` (`ontology.concepts[*].tables[*].source_pipeline`) for contributing pipelines and ask user which to target
 
 ## Steps
 
@@ -53,7 +53,7 @@ dlt license issue dlt.hub.transformations
 
 Read in parallel:
 - `.schema/annotated-sources.dbml` — source columns and their concept mappings
-- `.schema/taxonomy.json` — table mappings and natural keys
+- `.schema/<cdm-name>/ontology_model.py` — concept metadata, table mappings, natural keys, merge policies, relationships
 - `.schema/CDM.dbml` — CDM entity definitions and column specs
 
 ### 2. Get actual source schema
@@ -236,7 +236,7 @@ joined = contacts.join(companies, contacts.company_id == companies.id)
 # RIGHT: contacts.email  ← explicit
 ```
 
-Cross-source union (from `taxonomy[concept].natural_key` + `taxonomy[concept].tables`):
+Cross-source union (from `ontology.concepts[concept].natural_key` + `ontology.concepts[concept].tables`):
 ```python
 persons = hubspot_contacts.select(...).union(luma_guests.select(...))
 ```
@@ -297,8 +297,8 @@ if __name__ == "__main__":
 
 **Naming convention:** `pipeline_name` and `dataset_name` should reflect the **business domain and central fact**, not the source systems. Derive the name from:
 1. The central fact table in `.schema/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
-2. The primary dimension in `.schema/ontology.ison` (e.g. `Person`)
-3. The use cases in `.schema/taxonomy.json`
+2. The primary dimension in `.schema/<cdm-name>/ontology_model.py` entity classes (e.g. `Person`)
+3. The use cases in `.schema/<cdm-name>/ontology_model.py` (`ontology.concepts[*].use_cases`)
 
 Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
 

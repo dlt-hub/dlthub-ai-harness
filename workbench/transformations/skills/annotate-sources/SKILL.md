@@ -20,6 +20,7 @@ If not provided in arguments, ask the user for:
 **IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
 All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 3 below.
+The canonical metadata artifact is `.schema/<cdm-name>/ontology_model.py` (single file replacing separate taxonomy + ontology metadata files).
 
 ## Steps
 
@@ -133,32 +134,81 @@ Does this look right? You can rename, merge, or add anything.
 
    - Wait for explicit confirmation before proceeding
 
-3. Write `.schema/<cdm-name>/taxonomy.json` with the confirmed concepts.
+3. Write `.schema/<cdm-name>/ontology_model.py` with the confirmed concepts and taxonomy metadata.
 
-**Format:** top-level keys are canonical concept names (PascalCase). Each concept holds its references (source-system synonyms) and all related metadata. Excluded tables, version, and CDM name are stored under reserved `_excluded`, `_version`, and `_name` keys.
+Use this structure as the baseline and update it incrementally as table mappings and keys are confirmed:
 
-```json
-{
-  "_version": "1.0",
-  "_name": "person_interactions",
-  "Person": {
-    "description": "Any individual — contact, guest, attendee, or lead",
-    "use_cases": ["track event attendance", "link contacts to companies"],
-    "references": ["guest", "contact", "attendee"],
-    "tables": [],
-    "natural_key": null,
-    "assumptions": ["'guest' and 'contact' collapsed into Person"]
-  },
-  "Company": {
-    "description": "An organisation",
-    "use_cases": ["link contacts to companies"],
-    "references": ["organization", "account"],
-    "tables": [],
-    "natural_key": null,
-    "assumptions": []
-  },
-  "_excluded": []
-}
+```python
+from __future__ import annotations
+from typing import Optional, List, Dict, Literal
+from pydantic import BaseModel, Field
+
+
+class TableMapping(BaseModel):
+    table: str
+    source_pipeline: str
+    role: Literal["primary", "secondary"]
+
+
+class ExcludedTable(BaseModel):
+    table: str
+    reason: str
+
+
+class MergePolicy(BaseModel):
+    conflict_strategy: Literal["prefer_source", "always_source", "field_level"] = "prefer_source"
+    primary_source: Optional[str] = None
+    field_level_priority: Dict[str, str] = {}
+    include_policy: Literal["union", "intersection"] = "union"
+
+
+class ConceptMeta(BaseModel):
+    description: str
+    use_cases: List[str]
+    references: List[str] = []
+    tables: List[TableMapping] = []
+    natural_key: Optional[str] = None
+    assumptions: List[str] = []
+    merge_policy: Optional[MergePolicy] = None
+
+
+class Relationship(BaseModel):
+    label: str
+    from_entity: str
+    to_entity: str
+    via: str
+    cardinality: Literal["one-to-one", "one-to-many", "many-to-many"]
+    master_source: Optional[str] = None
+    note: Optional[str] = None
+
+
+class Ontology(BaseModel):
+    version: str
+    cdm_name: str
+    concepts: Dict[str, ConceptMeta]
+    relationships: List[Relationship] = []
+    excluded_tables: List[ExcludedTable] = []
+    assumptions: List[str] = []
+    semantic_gaps: List[str] = []
+
+
+ontology = Ontology(
+    version="1.0",
+    cdm_name="person_interactions",
+    concepts={
+        "Person": ConceptMeta(
+            description="Any individual - contact, guest, attendee, or lead",
+            use_cases=["track event attendance", "link contacts to companies"],
+            references=["guest", "contact", "attendee"],
+            assumptions=["'guest' and 'contact' collapsed into Person"],
+        ),
+        "Company": ConceptMeta(
+            description="An organisation",
+            use_cases=["link contacts to companies"],
+            references=["organization", "account"],
+        ),
+    },
+)
 ```
 
 ### 5. Filter source tables by relevance
@@ -167,10 +217,15 @@ Read each `.schema/<cdm-name>/<pipeline_name>.dbml`. For each table, automatical
 
 **Excluded** = tables with no plausible connection to any concept (e.g. internal audit logs, pipeline metadata, dlt system tables like `_dlt_loads`, `_dlt_pipeline_state`).
 
-Do NOT ask the user — apply your judgement. Record each exclusion under `_excluded`:
+Do NOT ask the user — apply your judgement. Record each exclusion under `ontology.excluded_tables`:
 
-```json
-{"table": "hubspot__email_events__propertyhistory", "reason": "property change log, not a business entity"}
+```python
+ontology.excluded_tables.append(
+    ExcludedTable(
+        table="hubspot__email_events__propertyhistory",
+        reason="property change log, not a business entity",
+    )
+)
 ```
 
 ### 6. Match source tables to business entities
@@ -188,16 +243,13 @@ Present a mapping table to the user:
 - User may correct mappings, reassign tables, or mark a table as excluded
 - Wait for explicit confirmation
 
-Add confirmed tables under each concept's `tables` array:
+Add confirmed tables under each concept's `tables` list:
 
-```json
-"Person": {
-  ...
-  "tables": [
-    {"table": "hubspot__contacts", "source_pipeline": "hubspot_crm_pipeline", "role": "primary"},
-    {"table": "luma__guests", "source_pipeline": "luma_pipeline", "role": "secondary"}
-  ]
-}
+```python
+ontology.concepts["Person"].tables = [
+    TableMapping(table="hubspot__contacts", source_pipeline="hubspot_crm_pipeline", role="primary"),
+    TableMapping(table="luma__guests", source_pipeline="luma_pipeline", role="secondary"),
+]
 ```
 
 ### 7. Identify cross-source natural keys
@@ -226,11 +278,8 @@ Does this work, or would you prefer a different field?
 
 Set the confirmed natural key on the concept:
 
-```json
-"Person": {
-  ...
-  "natural_key": "email"
-}
+```python
+ontology.concepts["Person"].natural_key = "email"
 ```
 
 ### 7b. Annotate DBML files
@@ -259,11 +308,11 @@ Table "_dlt_loads" [note: 'excluded: dlt internal table'] {
 }
 ```
 
-This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML without cross-referencing `taxonomy.json`.
+This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML and cross-check against `ontology_model.py`.
 
 ### 8. Confirm with user
 
-Read `.schema/<cdm-name>/taxonomy.json` and present a summary of all recorded decisions:
+Read `.schema/<cdm-name>/ontology_model.py` (the `ontology` object) and present a summary of all recorded decisions:
 - Concepts and their synonym collapses
 - Excluded tables and reasons
 
@@ -278,11 +327,11 @@ Decisions recorded:
 Anything to correct before we move on?
 ```
 
-Apply any corrections to `taxonomy.json`.
+Apply any corrections to `ontology_model.py`.
 
 ## Output
 
 - `.schema/<cdm-name>/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
-- `.schema/<cdm-name>/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions; `_name` holds the confirmed CDM folder name
+- `.schema/<cdm-name>/ontology_model.py` — single source of truth for concepts, references, table mappings, natural keys, merge policy placeholders, exclusions, assumptions, and semantic gaps; `ontology.cdm_name` holds the confirmed CDM folder name
 
 Hand over to `create-ontology` skill.
