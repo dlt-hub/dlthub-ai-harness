@@ -260,7 +260,7 @@ When to add `columns=`:
 
 Omitting `columns=` causes **silent data loss** — dlt strips the column from the outer SELECT if its schema entry has no `data_type`.
 
-**Do NOT use `mcp__dlt__execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
+**Do NOT use `execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
 
 ### 5. Write the script
 
