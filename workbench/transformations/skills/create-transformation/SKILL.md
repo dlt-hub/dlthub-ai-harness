@@ -323,9 +323,14 @@ import os
 os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 ```
 
-After changing SQL and before re-testing, clear stale pending packages if prior failed packages exist:
+**During development iterations**, use the `debug-pipeline` skill from the **rest-api-pipeline** toolkit — it offers more help with failing pipelines, and particularly sets up `dev_mode=True` for development iterations.
+
+**When `dev_mode` is not suitable (production datasets or shared destinations):**
+
+If stale pending packages exist after a failed run, clear them before re-running:
 
 ```
+# TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages
 dlt pipeline <pipeline_name> drop-pending-packages
 ```
 
