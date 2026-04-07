@@ -20,4 +20,5 @@
 When the user's needs go beyond this toolkit, hand over to:
 
 - **data-exploration** — after `validate-data` or `view-data`, when the user wants interactive notebooks, charts, dashboards, or deeper analysis with marimo
+- **transformations** — after `validate-data` or `view-data`, when the user wants to model the ingested data into a CDM or run cross-source transformations
 - **dlthub-runtime** — when the pipeline is production-ready and the user wants to deploy, schedule, or run it on the dltHub platform
