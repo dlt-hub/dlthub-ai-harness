@@ -164,16 +164,7 @@ def dim_person(dataset: dlt.Dataset):
     yield contacts.select("email", "first_name", "last_name").order_by("email").limit(1000)
 ```
 
-ibis join + aggregate example (useful for fact pre-aggregation):
-
-```python
-@dlt.hub.transformation
-def orders_per_user(dataset: dlt.Dataset):
-    purchases = dataset.table("purchases").to_ibis()
-    customers = dataset.table("customers").to_ibis()
-    enriched = purchases.join(customers, purchases.customer_id == customers.id)
-    yield enriched.group_by(customers.name).aggregate(order_count=purchases.id.count())
-```
+For more complex ibis patterns (joins, aggregations, unions, `row_number`, window functions, etc.) see the [ibis Table expression API](https://ibis-project.org/reference/expression-tables).
 
 **ibis requires a SQL-capable destination** (BigQuery, Snowflake, DuckDB with file-based access, etc.). If the user requests DuckDB as destination, check whether ibis can connect to it in the context — if not, keep SQL-first transformations or switch to a destination that supports the desired ibis workflow.
 
@@ -188,58 +179,7 @@ def dim_person(dataset: dlt.Dataset):
 
 **Cross-source transformations:** use SQL-first where possible by selecting from available datasets in SQL; use ibis connections only when cross-dataset SQL composition is not practical in the current environment.
 
-If ibis is needed for cross-source composition, initialise connections **before** the CDM pipeline starts:
-
-```python
-_AC = None
-_LUMA = None
-
-def _init_connections() -> None:
-    global _AC, _LUMA
-    _AC = dlt.pipeline("active_campaigns", destination="bigquery", dataset_name="active_campaigns").dataset().ibis()
-    _LUMA = dlt.pipeline("luma_events_data", destination="bigquery", dataset_name="luma_events_data").dataset().ibis()
-
-def dim_person():
-    contacts = _AC.table("contacts")
-    guests   = _LUMA.table("event_guests")
-    ...  # pure ibis — no .to_pandas()
-
-if __name__ == "__main__":
-    _init_connections()          # BEFORE pipeline is created
-    pipeline = dlt.pipeline(...)
-    pipeline.run(my_source())
-```
-
-**Optional ibis patterns (only when ibis path is selected):**
-
-Surrogate keys — use `.hash().cast("string")` (no `ibis.md5()`):
-```python
-person_sk = contacts.email.hash().cast("string").name("person_sk")
-```
-
-CASE WHEN — use `ibis.cases(...)` not `ibis.case()` (ibis 10+):
-```python
-ibis.cases((condition, value), else_=default)
-```
-
-First-row-per-group (dedup) — use `row_number()` over a window:
-```python
-import ibis.expr.types as ir
-row_num = ibis.row_number().over(ibis.window(group_by=["email"], order_by=[ibis.desc("updated_at")]))
-contacts.mutate(rn=row_num).filter(ibis._.rn == 0)
-```
-
-Join column references — always reference via original table variable after join (silent ambiguity otherwise):
-```python
-joined = contacts.join(companies, contacts.company_id == companies.id)
-# WRONG: joined.email  ← ambiguous if both tables have email
-# RIGHT: contacts.email  ← explicit
-```
-
-Cross-source union (from `taxonomy[concept].natural_key` + `taxonomy[concept].tables`):
-```python
-persons = hubspot_contacts.select(...).union(luma_guests.select(...))
-```
+If ibis is needed for cross-source composition, initialise connections **before** the CDM pipeline starts — see the [ibis Table expression API](https://ibis-project.org/reference/expression-tables) for join, union, and window function patterns.
 
 **`columns=` hint — REQUIRED for any column that may be NULL on first run:**
 ```python
@@ -277,7 +217,7 @@ def <dataset_name>_to_cdm(dataset: dlt.Dataset):
     yield dim_company(dataset)
     yield dim_event(dataset)
     # facts after
-    yield fact_event_attendance(dataset: dlt.Dataset)
+    yield fact_event_attendance(dataset)
 
 @dlt.hub.transformation(write_disposition="replace")
 def dim_person(dataset: dlt.Dataset):
