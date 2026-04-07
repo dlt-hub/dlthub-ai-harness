@@ -260,7 +260,7 @@ When to add `columns=`:
 
 Omitting `columns=` causes **silent data loss** — dlt strips the column from the outer SELECT if its schema entry has no `data_type`.
 
-**Do NOT use `execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
+**Do NOT use `mcp__dlt__execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
 
 ### 5. Write the script
 
@@ -323,32 +323,17 @@ import os
 os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 ```
 
-**During development iterations, use `dev_mode=True`** — dlt drops and recreates the dataset on every run, so no load packages can get stuck between iterations:
-
-```python
-if __name__ == "__main__":
-    pipeline = dlt.pipeline(
-        pipeline_name="<business_domain>_pipeline",
-        destination="<destination>",
-        dataset_name="<business_domain>",
-        dev_mode=True,  # safe for iteration — remove before production
-    )
-```
-
-For pipeline traces, failed jobs, and load package inspection, use the `debug-pipeline` skill from the **rest-api-pipeline** toolkit.
-
-**When `dev_mode` is not suitable (production datasets or shared destinations):**
-
-If stale pending packages exist after a failed run, clear them before re-running:
+After changing SQL and before re-testing, clear stale pending packages if prior failed packages exist:
 
 ```
-# TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages
 dlt pipeline <pipeline_name> drop-pending-packages
 ```
 
 Use `sync` and `drop-pending-packages` for different failure classes:
 - `dlt pipeline <pipeline_name> sync` — recover/refresh local pipeline state from destination state.
 - `dlt pipeline <pipeline_name> drop-pending-packages` — remove stale failed/pending load packages that can keep retrying old SQL and mask new fixes.
+
+If no recoverable destination state exists, `sync` may not resolve partial package retries; use `drop-pending-packages` before re-run.
 
 **If incorrect schema/tables were already loaded to destination, treat `drop` as last resort.**
 Use this escalation order:
