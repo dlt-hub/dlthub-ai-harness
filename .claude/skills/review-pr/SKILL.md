@@ -76,9 +76,9 @@ Evaluate the change against each principle from `product_principles.md`:
 
 ## Step 4 — Core library gaps: prefer upstream fixes, flag workarounds
 
-The workbench may introduce temporary workarounds for gaps in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub), but they should always be visible, flagged to core maintainers, and have a clear path to removal.
+The workbench may introduce temporary workarounds solving a problem via a skill that can actually be solved deterministically e.g via a CLI command or a platform capability. These workarounds may address gaps in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub) temporarily, but they should always be visible, flagged to core maintainers, and have a clear path to removal.
 
-**Prefer deterministic over probabilistic.** If something can be handled by a CLI command, a library call, or a platform feature — that is always preferable to a skill-based workaround. An agent skill is a last resort, not a first option, when the core library could own the behaviour.
+**Prefer deterministic over probabilistic.** If something can be handled by a CLI command in [dlt](https://dlthub.com/docs/hub/command-line-interface) or [dltHub](https://dlthub.com/docs/reference/command-line-interface), a library call, or a platform feature — that is always preferable to a skill-based workaround. An agent skill is a last resort, not a first option, when the core library could own the behaviour.
 
 **Check for these patterns:**
 
