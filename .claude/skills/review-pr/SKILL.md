@@ -72,6 +72,10 @@ Evaluate the change against each principle from `product_principles.md`:
 - [ ] Secrets never appear in agent output — only via redacted CLI or MCP inspection tools
 - [ ] Agents don't auto-proceed past defined checkpoints (code review, schema validation, deployment approval)
 
+### dltHub AI workbench approach for building skills
+- [ ] Skills should not merely contain docs but be step by step instructions for workflows for the agent
+- [ ] Ensure a skill gives clear and consise instructions for the workflow and not just copy the docs into 
+
 ---
 
 ## Step 4 — Core library gaps: prefer upstream fixes, flag workarounds
