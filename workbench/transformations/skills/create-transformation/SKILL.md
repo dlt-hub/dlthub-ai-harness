@@ -56,14 +56,13 @@ Read in parallel:
 - `.schema/taxonomy.json` — table mappings and natural keys
 - `.schema/CDM.dbml` — CDM entity definitions and column specs
 
-### 2. Get actual source schema
+### 3. Get actual source schema
 
 Prefer relation schema from dlt dataset objects (not `get_table_schema` MCP tool) for actual column types.
 The MCP tool may include untyped/null-only columns that were never materialized in the destination.
 
 ```python
 import dlt
-import ibis
 
 pipeline = dlt.attach(pipeline_name="<pipeline_name>")
 dataset = pipeline.dataset()
@@ -71,9 +70,9 @@ relation = dataset.<table_name>
 schema = relation.schema()  # authoritative column list
 ```
 
-Cross-check the annotated columns in `annotated-sources.dbml` against the ibis schema. Note any discrepancies.
+Cross-check the annotated columns in `annotated-sources.dbml` against the schema from `relation.schema()`. Note any discrepancies.
 
-### 3. Plan transformation order
+### 4. Plan transformation order
 
 **Always run dimensions before facts** — facts join on dimension surrogate keys.
 
@@ -97,7 +96,7 @@ Pick one key type for this pipeline (`text` or `bigint`) and apply it consistent
 Do not mix key representations (`INT64` vs `STRING`) for related keys across dimensions/facts.
 If source systems disagree on key type, normalize to the chosen contract in staging/CTEs first.
 
-### 4. Write transformation functions
+### 5. Write transformation functions
 
 One `@dlt.hub.transformation` function per CDM entity. Wrap all in a `@dlt.source`.
 
@@ -191,7 +190,7 @@ def dim_person(dataset: dlt.Dataset):
     ...
 ```
 
-`columns=` `data_type` values for keys must match the key type contract selected in Step 3.
+`columns=` `data_type` values for keys must match the key type contract selected in Step 4.
 
 When to add `columns=`:
 - Any column from a LEFT JOIN (lookup may return NULL)
@@ -202,7 +201,7 @@ Omitting `columns=` causes **silent data loss** — dlt strips the column from t
 
 **Do NOT use `execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
 
-### 5. Write the script
+### 6. Write the script
 
 Output file: `transformations/<dataset_name>_to_cdm.py`
 
@@ -242,7 +241,7 @@ if __name__ == "__main__":
 
 Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
 
-### 6. Get feedback before running
+### 7. Get feedback before running
 
 Show a summary of:
 - Output tables being created
@@ -252,7 +251,7 @@ Show a summary of:
 
 Ask user to confirm before running the transformation.
 
-### 7. Run and recover safely
+### 8. Run and recover safely
 
 Run the script from the project root so `.dlt` state resolves correctly. If needed, enforce root CWD in entrypoint:
 
