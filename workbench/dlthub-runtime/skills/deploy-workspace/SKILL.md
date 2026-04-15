@@ -1,11 +1,11 @@
 ---
 name: deploy-workspace
-description: Deploy dlt pipelines to dltHub Runtime. Use when the user says "deploy to runtime", "launch on runtime", "run on dlt Hub", or "schedule pipeline". Assumes workspace is verified and production credentials are set up.
+description: Deploy dlt pipelines to dltHub Platform. Use when the user says "deploy to dltHub", "launch on dltHub", "run on dltHub", "schedule pipeline", or wants to deploy a pipeline or notebook to dltHub.
 ---
 
-# Deploy to dltHub Runtime
+# Deploy to dltHub Platform
 
-Assumes (`setup-runtime`) and (`prepare-deployment`) have been completed — workspace is set up, credentials are configured, and runtime login is done.
+If this is a first deployment, complete (`setup-runtime`) and (`prepare-deployment`) first — they set up the workspace, configure credentials, and log in to runtime. Otherwise, continue from here.
 
 ## Step 1: Prepare scripts for production
 
