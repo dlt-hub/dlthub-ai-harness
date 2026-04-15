@@ -10,18 +10,18 @@
 ## Extend and harden
 3. **Debug deployment** (`debug-deployment`) — check job status, view logs, diagnose failures
 
+## Handover to other toolkits
+
+### Outgoing (from dlthub-runtime)
+
+- **rest-api-pipeline** — when the user needs to build or modify a pipeline before deploying
+- **data-exploration** — when the user wants to create marimo notebooks to deploy as interactive jobs
+
 ### Incoming (to dlthub-runtime)
 
 - From **rest-api-pipeline** (after `debug-pipeline` or hardening steps) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` and `deploy-workspace` without re-discovery
 - From **transformations** (after `create-transformation`) — transformation scripts and pipeline destination are already known; carry them into `setup-runtime`
 - From **data-exploration** (after `build-notebook`) — notebook file already exists; `deploy-workspace` should use `dlt runtime serve` for the notebook job
-
-## Handover to other toolkits
-
-When the user's needs go beyond this toolkit, hand over to:
-
-- **rest-api-pipeline** — when the user needs to build or modify a pipeline before deploying
-- **data-exploration** — when the user wants to create marimo notebooks to deploy as interactive jobs
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt
