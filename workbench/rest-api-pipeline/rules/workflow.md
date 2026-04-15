@@ -24,4 +24,4 @@ When the user's needs go beyond this toolkit, hand over to:
 - **transformations** — after `validate-data` or `view-data`, when the user wants to model the ingested data into a CDM or run cross-source transformations
 - **dlthub-runtime** — two entry points:
   - **Early** (after `debug-pipeline` succeeds): when the user wants to run the pipeline on dltHub right away — a working pipeline is enough to deploy
-  - **Later** (after `adjust-endpoint`, incremental loading, or `view-data`): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
+  - **Later** (after `adjust-endpoint`, incremental loading, or `add-endpoints`): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
