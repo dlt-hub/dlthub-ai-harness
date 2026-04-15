@@ -20,4 +20,4 @@ When the user's needs go beyond this toolkit, hand over to:
 
 - **rest-api-pipeline** — at `annotate-sources` step 1, when a stated source has no local dlt pipeline yet
 - **data-exploration** — after `create-transformation`, when the user wants to explore, visualise, or validate the CDM output interactively
-- **dlthub-runtime** — when the transformation is production-ready and the user wants to schedule or deploy it on the dltHub platform
+- **dlthub-runtime** — when the transformation is working and the user wants to deploy or schedule it on the dltHub platform

@@ -5,7 +5,7 @@ description: Deploy dlt pipelines to dltHub Runtime. Use when the user says "dep
 
 # Deploy to dltHub Runtime
 
-Assumes (`setup-runtime`) and (`prepare-deployment`) have been completed — workspace is set up, credentials are configured, and runtime login is done.
+If this is a first deployment, complete (`setup-runtime`) and (`prepare-deployment`) first — they set up the workspace, configure credentials, and log in to runtime. Otherwise, continue from here.
 
 ## Step 1: Prepare scripts for production
 
