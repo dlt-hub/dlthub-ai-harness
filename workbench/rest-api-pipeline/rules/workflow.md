@@ -23,5 +23,5 @@ When the user's needs go beyond this toolkit, hand over to:
 - **data-exploration** — after `validate-data` or `view-data`, when the user wants interactive notebooks, charts, dashboards, or deeper analysis with marimo
 - **transformations** — after `validate-data` or `view-data`, when the user wants to model the ingested data into a CDM or run cross-source transformations
 - **dlthub-runtime** — two entry points:
-  - **Early** (after `debug-pipeline` succeeds): when the user wants to run the pipeline on dltHub right away — a working pipeline is enough to deploy
-  - **Later** (after `adjust-endpoint`, incremental loading, or `add-endpoints`): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
+  - **Early** (after `create-rest-api-pipeline` or `debug-pipeline`): when the user wants to run the pipeline on dltHub right away — a working pipeline is enough to deploy
+  - **Later** (after `adjust-endpoint`, incremental loading, `add-endpoints`, or a subsequent `debug-pipeline` run): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
