@@ -3,7 +3,6 @@ name: run-data-quality
 argument-hint: "[pipeline-name]"
 description: Use after define-data-quality-checks to run the pipeline with DQ enabled and surface immediate check failures.
 ---
-~to add to this skill and the previous one: make sure that the python files created/written are not in random places - and are replaced by mcp where it applies.
 # Run data quality checks
 
 Execute the pipeline so dlt computes checks and metrics post-load, then surface any failures immediately.
@@ -64,7 +63,7 @@ print(load_info)
 load_info.raise_on_failed_jobs()
 ```
 
-Run it with `uv run python -c "..."` or write it to a temp file and run that.
+Write it to `tools/dq_run.py` in the project root and run with `uv run python tools/dq_run.py`. Never write to a random temp location.
 
 ### 4. Handle pipeline run failure
 
@@ -95,7 +94,18 @@ Do not proceed to check result reading if the pipeline itself failed to load dat
 
 ### 5. Surface immediate check failures
 
-If the pipeline run succeeded (data loaded), do a quick pass to detect any check failures before handing off to `review-data-quality`. Run this snippet:
+If the pipeline run succeeded (data loaded), do a quick pass to detect any check failures before handing off to `review-data-quality`.
+
+**Prefer MCP:** use `list_tables` to check whether the destination already has a DQ results table (typically named `_dlt_dq_*` or similar). If found, query it directly with `execute_sql_query`:
+
+```sql
+SELECT table_name, check_name, outcome, COUNT(*) as n
+FROM <dq_results_table>
+GROUP BY table_name, check_name, outcome
+ORDER BY outcome DESC
+```
+
+**Fallback — Python API:** if the DQ results table name is not discoverable, write and run `tools/dq_quick_check.py`:
 
 ```python
 import dlt

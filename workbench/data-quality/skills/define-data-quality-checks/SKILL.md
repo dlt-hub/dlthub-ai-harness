@@ -200,11 +200,13 @@ Wait for explicit confirmation. Apply any corrections, then re-present the chang
 
 ### 7. Apply to pipeline file
 
-Once confirmed, instruct the user where to add the code (or, if the pipeline file is accessible, write the changes directly):
+Once confirmed, write the changes directly into the existing pipeline file. **Never create a new file for this — the checks and metrics must live alongside the resource definitions they annotate.**
 
-- Decorator form: add `@dq.with_checks(...)` and `@dq.with_metrics(...)` immediately above each `@dlt.resource` decorator in the pipeline file.
-- Dynamic form: add the `dq.with_checks(...)` / `dq.with_metrics(...)` calls in the pipeline script, after the source is instantiated and before `pipeline.run(source)`.
-- Add `from dlt.hub import data_quality as dq` to the imports if not already present.
+- Decorator form: add `@dq.with_checks(...)` and `@dq.with_metrics(...)` immediately above each `@dlt.resource` decorator in the existing pipeline file.
+- Dynamic form: add the `dq.with_checks(...)` / `dq.with_metrics(...)` calls in the existing pipeline script, after the source is instantiated and before `pipeline.run(source)`.
+- Add `from dlt.hub import data_quality as dq` to the imports at the top of that same file if not already present.
+
+If the pipeline file is not accessible (e.g., it lives in a package), show the user the exact diff and ask them to apply it.
 
 ## Output and handover
 
