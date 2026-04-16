@@ -1,0 +1,12 @@
+{
+  "name": "data-quality",
+  "description": "Define, run, and review data quality checks on dlt pipeline data. Set up a DQ contract, define checks, run validations, and review results.",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlt", "data-quality", "validation", "checks", "contracts"]
+}
