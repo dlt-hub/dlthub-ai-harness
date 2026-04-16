@@ -57,6 +57,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
+    },
+    {
+      "name": "data-quality",
+      "source": "./workbench/data-quality",
+      "description": "Define, run, and review data quality checks on dlt pipeline data. Set up a DQ contract, define checks, run validations, and review results.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "data-quality", "validation", "checks", "contracts"]
     }
   ]
 }
