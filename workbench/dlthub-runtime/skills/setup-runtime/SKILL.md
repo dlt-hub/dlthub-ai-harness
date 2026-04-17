@@ -7,7 +7,7 @@ description: Verify dlt workspace is ready for dltHub Runtime. Use when user wan
 
 Lightweight check that the workspace is ready for runtime work. Run through each check and fix issues as found.
 
-**Reference**: https://dlthub.com/docs/hub/command-line-interface.md
+**Reference**: https://dlthub.com/docs/devel/hub/runtime/overview
 
 ## 1. Verify Python project
 
@@ -54,10 +54,10 @@ dlt runtime login
 ```
 
 - Opens a device-code OAuth flow (user visits URL + enters code in browser)
-- After auth, CLI prompts to select or create a remote workspace (interactive — needs piped input if non-interactive: `printf '1\n' | dlt runtime login`)
-- Creating a new workspace requires three inputs: selection (`0`), name, description (can be empty)
+- After auth, CLI prompts to select or create a remote workspace
+- Use `dlt runtime login --workspace <name_or_id>` to skip the interactive prompt
 - The selected workspace ID is stored in `config.toml` under `[runtime] workspace_id`
-- To **switch workspaces**: `dlt runtime logout`, remove `workspace_id` from `config.toml`, then `dlt runtime login` again
+- To **switch workspaces**: `dlt runtime workspace switch <name_or_id>` (no re-login needed)
 
 ## 5. Verify profile files exist
 

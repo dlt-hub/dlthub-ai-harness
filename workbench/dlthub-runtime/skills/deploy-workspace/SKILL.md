@@ -22,22 +22,21 @@ Review each script being deployed and fix patterns that are safe locally but har
 
 ## Step 2: Deploy, launch, debug
 
-**Reference**: https://dlthub.com/docs/hub/runtime/overview.md
+**Reference**: https://dlthub.com/docs/devel/hub/runtime/overview
 
 ```bash
-dlt runtime deploy                             # sync code + config
-dlt runtime launch my_pipeline.py              # run batch job once (ie pipeline)
-dlt runtime serve my_notebook.py              # run interactive job (ie. notebook)
-dlt runtime logs my_pipeline.py                # check output
+dlt runtime launch my_pipeline.py             # sync code + run batch job once (ie pipeline)
+dlt runtime serve my_notebook.py             # sync code + run interactive job (ie. notebook)
+dlt runtime sync                             # sync code + config without running anything
+dlt runtime logs my_pipeline.py              # check output (use job name or script path)
+dlt runtime logs jobs.my_pipeline --follow   # stream logs in real-time
+dlt runtime schedule my_pipeline.py "0 6 * * *"  # schedule with cron expression
+dlt runtime schedule my_pipeline.py cancel   # remove schedule
 ```
 
-
-After deploying:
+After launching:
 - Check the first run completes successfully with `dlt runtime logs`
 - If it fails, use (`debug-deployment`) to diagnose
-
-
-NOTE: do not put any pipelines on schedule. This part is coming soon
 
 ## Important
 

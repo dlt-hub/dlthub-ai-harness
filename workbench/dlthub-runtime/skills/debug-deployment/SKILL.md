@@ -5,7 +5,7 @@ description: Debug a failed or misbehaving dltHub Runtime deployment. Use when a
 
 # Debug dltHub Runtime deployment
 
-**Reference**: https://dlthub.com/docs/hub/runtime/overview.md
+**Reference**: https://dlthub.com/docs/devel/hub/runtime/overview
 
 ## Check job status
 
@@ -23,12 +23,13 @@ dlt runtime logs <script_or_name>                 # latest run
 dlt runtime logs <script_or_name> <run#>          # specific run
 ```
 
-Note: logs **always** follow. You will get stuck if job is still running. This is a temporary limitation.
+Use `--follow` to stream logs in real-time; without it, logs print and exit.
 
 ## Cancel a running job
 
 ```bash
-dlt runtime cancel <script_or_name> [run#]
+dlt runtime cancel <script_or_name>          # cancel all active runs for a job
+dlt runtime job-run cancel <script_or_name> [run#]  # cancel a specific run
 ```
 
 ## Access production data (read only)
@@ -45,6 +46,14 @@ to run a single command on given profile use:
 WORKSPACE__PROFILE=prod dlt pipeline my_pipeline info
 ```
 Note: you must pin profile for mcp server to see the change
+
+## Other useful commands
+
+```bash
+dlt runtime trigger <selector>               # trigger jobs by selector without syncing (e.g. tag:backfill)
+dlt runtime run-pipeline <pipeline_name>     # trigger job by pipeline name
+dlt runtime workspace switch <name_or_id>    # switch workspace without re-login
+```
 
 ## Open the web dashboard (for humans)
 
@@ -66,4 +75,4 @@ If a job failed:
    - **`dev_mode=True` left in** — drops and recreates dataset on every run
    - **Wrong destination credentials** — prod profile may point to a different destination than dev
    - **Job timeout** — jobs are killed after 120 minutes; use incremental loads for long pipelines
-4. After fixing, redeploy with `dlt runtime deploy` and relaunch with `dlt runtime launch <script>`
+4. After fixing, relaunch with `dlt runtime launch <script>`
