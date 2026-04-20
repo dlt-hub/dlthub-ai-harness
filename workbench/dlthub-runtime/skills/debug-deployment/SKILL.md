@@ -11,9 +11,9 @@ description: Debug a failed or misbehaving dltHub Runtime deployment. Use when a
 
 ```bash
 dlt runtime job list                              # all jobs
-dlt runtime job info <script_or_name>             # details for one job
-dlt runtime job-run list <script_or_name>         # list all runs
-dlt runtime job-run info <script_or_name> [run#]  # specific run details
+dlt runtime job <script_or_name> info             # details for one job
+dlt runtime job-run <script_or_name> list         # list all runs
+dlt runtime job-run <script_or_name> [run#] info  # specific run details
 ```
 
 ## View logs
@@ -28,8 +28,8 @@ Use `--follow` to stream logs in real-time; without it, logs print and exit.
 ## Cancel a running job
 
 ```bash
-dlt runtime cancel <script_or_name>          # cancel all active runs for a job
-dlt runtime job-run cancel <script_or_name> [run#]  # cancel a specific run
+dlt runtime cancel <script_or_name>                   # cancel all active runs for a job
+dlt runtime job-run <script_or_name> [run#] cancel    # cancel a specific run
 ```
 
 ## Access production data (read only)
