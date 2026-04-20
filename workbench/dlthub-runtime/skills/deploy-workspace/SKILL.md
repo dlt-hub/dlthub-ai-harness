@@ -30,13 +30,51 @@ dlt runtime serve my_notebook.py             # sync code + run interactive job (
 dlt runtime sync                             # sync code + config without running anything
 dlt runtime logs my_pipeline.py              # check output (use job name or script path)
 dlt runtime logs jobs.my_pipeline --follow   # stream logs in real-time
-dlt runtime schedule my_pipeline.py "0 6 * * *"  # schedule with cron expression
-dlt runtime schedule my_pipeline.py cancel   # remove schedule
 ```
 
 After launching:
 - Check the first run completes successfully with `dlt runtime logs`
 - If it fails, use (`debug-deployment`) to diagnose
+
+## Step 3: Schedule a pipeline (cron)
+
+Scheduling requires a `__deployment__.py` manifest in the project root. `dlt runtime schedule` is documented but not yet implemented — use this approach instead.
+
+Create `__deployment__.py`:
+
+```python
+import dlt
+from dlt._workspace.deployment.decorators import pipeline_run
+from dlt._workspace.deployment.trigger import schedule
+
+from my_pipeline import my_source  # import the @dlt.source function
+
+
+@pipeline_run("my_pipeline", trigger=schedule("0 0 * * *"))  # daily at midnight UTC
+def run_my_pipeline():
+    pipeline = dlt.pipeline(
+        pipeline_name="my_pipeline",
+        destination="warehouse",       # use the named destination
+        dataset_name="my_dataset",
+    )
+    pipeline.run(my_source())
+```
+
+Then deploy:
+
+```bash
+dlt runtime deploy          # preview: add --dry-run --show-manifest
+```
+
+**Other trigger types** (from `dlt._workspace.deployment.trigger`):
+- `every("6h")` — every 6 hours
+- `deployment()` — run on every code deploy
+- `job_success("other_job")` — chain after another job succeeds
+
+**Notes:**
+- The function body must recreate the pipeline (not reuse a module-level `pipeline` variable).
+- `dlt runtime deploy` reconciles all jobs — new ones are added, removed ones are archived.
+- After deploying, use `dlt runtime job list` to confirm the trigger is set.
 
 ## Important
 
