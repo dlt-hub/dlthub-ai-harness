@@ -5,31 +5,42 @@ description: Debug a failed or misbehaving dltHub Runtime deployment. Use when a
 
 # Debug dltHub Runtime deployment
 
-**Reference**: https://dlthub.com/docs/devel/hub/runtime/overview
 
 ## Check job status
 
+Commands accept job names, script paths, or **selectors** (fnmatch patterns):
+
 ```bash
 dlt runtime job list                              # all jobs
-dlt runtime job <script_or_name> info             # details for one job
-dlt runtime job-run <script_or_name> list         # list all runs
-dlt runtime job-run <script_or_name> [run#] info  # specific run details
+dlt runtime job batch list                        # only batch jobs
+dlt runtime job "tag:ingest" list                 # jobs tagged "ingest"
+dlt runtime job "schedule:*" list                 # jobs with a schedule trigger
+dlt runtime job <name> info                       # details for one job
+dlt runtime job-run <name_or_selector> list       # runs for matching jobs
+dlt runtime job-run <name> [run#] info            # specific run details
+```
+
+## Debug job definitions
+
+```bash
+dlt runtime deploy --dry-run                      # preview manifest reconciliation
+dlt -v runtime deploy --dry-run --show-manifest   # dump full manifest as YAML
 ```
 
 ## View logs
 
 ```bash
-dlt runtime logs <script_or_name>                 # latest run
-dlt runtime logs <script_or_name> <run#>          # specific run
+dlt runtime logs <name_or_selector>               # latest run
+dlt runtime logs <name> <run#>                    # specific run
+dlt runtime logs <name> -f                        # stream in real-time
 ```
 
-Use `--follow` to stream logs in real-time; without it, logs print and exit.
-
-## Cancel a running job
+## Cancel running jobs
 
 ```bash
-dlt runtime cancel <script_or_name>                   # cancel all active runs for a job
-dlt runtime job-run <script_or_name> [run#] cancel    # cancel a specific run
+dlt runtime cancel <name>                         # cancel active runs for one job
+dlt runtime cancel "tag:backfill"                 # cancel by selector
+dlt runtime cancel batch --dry-run                # preview what would be cancelled
 ```
 
 ## Access production data (read only)
@@ -51,8 +62,11 @@ Note: you must pin profile for mcp server to see the change
 
 ```bash
 dlt runtime trigger <selector>               # trigger jobs by selector without syncing (e.g. tag:backfill)
+dlt runtime trigger <selector> --refresh     # trigger with refresh signal
+dlt runtime trigger <selector> --dry-run     # preview which jobs would fire
 dlt runtime run-pipeline <pipeline_name>     # trigger job by pipeline name
 dlt runtime workspace switch <name_or_id>    # switch workspace without re-login
+dlt runtime info                             # workspace deployment overview
 ```
 
 ## Open the web dashboard (for humans)
@@ -61,18 +75,18 @@ dlt runtime workspace switch <name_or_id>    # switch workspace without re-login
 dlt runtime dashboard
 ```
 
-Opens the dltHub Runtime UI at dlthub.app — shows jobs, runs, logs, schedules, and deployment history.
+Opens the dltHub Runtime UI at dlthub.app -- shows jobs, runs, logs, schedules, and deployment history.
 
 ## Quick diagnosis
 
 If a job failed:
-1. `dlt runtime job-run info <script> <run#>` — check exit status and timing
-2. `dlt runtime logs <script> <run#>` — read the error output
+1. `dlt runtime job-run <name> [run#] info` -- check exit status and timing
+2. `dlt runtime logs <name> [run#]` -- read the error output
 3. Common causes:
-   - **Missing dependencies** in `pyproject.toml` — all packages must be declared, not just locally installed
-   - **Secrets not configured for `prod` profile** — runtime uses `prod` profile, check `.dlt/prod.secrets.toml`
-   - **Script missing `if __name__ == "__main__":`** — the job does nothing without it
-   - **`dev_mode=True` left in** — drops and recreates dataset on every run
-   - **Wrong destination credentials** — prod profile may point to a different destination than dev
-   - **Job timeout** — jobs are killed after 120 minutes; use incremental loads for long pipelines
-4. After fixing, relaunch with `dlt runtime launch <script>`
+   - **Missing dependencies** in `pyproject.toml` -- all packages must be declared, not just locally installed
+   - **Secrets not configured for `prod` profile** -- runtime uses `prod` profile, check `.dlt/prod.secrets.toml`
+   - **Script missing `if __name__ == "__main__":`** -- the job does nothing without it
+   - **`dev_mode=True` left in** -- drops and recreates dataset on every run
+   - **Wrong destination credentials** -- prod profile may point to a different destination than dev
+   - **Job timeout** -- default is 120 minutes; override with `execute={"timeout": "6h"}` in the decorator
+4. After fixing, relaunch with `dlt runtime launch <name_or_file>`

@@ -25,5 +25,5 @@
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt
-* **Workspace and runtime CLI** https://dlthub.com/docs/hub/command-line-interface.md
-* **Runtime overview** https://dlthub.com/docs/hub/runtime/overview.md
+* **Workspace deployment reference**: https://raw.githubusercontent.com/dlt-hub/runtime-starter-pack/refs/heads/main/REFERENCE.md
+* **Runtime overview**: https://feat-workspace-deployment-2-docs.services4758.workers.dev/docs/devel/hub/runtime/overview.md

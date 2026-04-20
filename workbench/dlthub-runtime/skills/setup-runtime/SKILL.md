@@ -7,7 +7,7 @@ description: Verify dlt workspace is ready for dltHub Runtime. Use when user wan
 
 Lightweight check that the workspace is ready for runtime work. Run through each check and fix issues as found.
 
-**Reference**: https://dlthub.com/docs/devel/hub/runtime/overview
+**Reference**: https://feat-workspace-deployment-2-docs.services4758.workers.dev/docs/devel/hub/runtime/overview.md
 
 ## 1. Verify Python project
 
