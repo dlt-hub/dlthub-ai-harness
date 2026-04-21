@@ -18,6 +18,12 @@
 
 ## Handover to other toolkits
 
+### Incoming (to rest-api-pipeline)
+
+- From **dlthub-runtime** (from `deploy-workspace` when the pipeline needs modification before deploying) — pipeline name and destination are already known; skip `find-source` discovery and go straight to the relevant fix skill (`debug-pipeline`, `adjust-endpoint`, or `new-endpoint`).
+
+### Outgoing (from rest-api-pipeline)
+
 When the user's needs go beyond this toolkit, hand over to:
 
 - **data-exploration** — after `validate-data` or `view-data`, when the user wants interactive notebooks, charts, dashboards, or deeper analysis with marimo

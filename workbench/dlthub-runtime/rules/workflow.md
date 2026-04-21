@@ -14,8 +14,8 @@
 
 ### Outgoing (from dlthub-runtime)
 
-- **rest-api-pipeline** — when the user needs to build or modify a pipeline before deploying
-- **data-exploration** — when the user wants to create marimo notebooks to deploy as interactive jobs
+- **rest-api-pipeline** → `debug-pipeline` / `adjust-endpoint` (modify existing) — when the user needs to build or modify a pipeline before deploying
+- **data-exploration** → `build-notebook` — when the user wants to create marimo notebooks to deploy as interactive jobs
 
 ### Incoming (to dlthub-runtime)
 
@@ -25,5 +25,7 @@
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt
-* **Workspace and runtime CLI** https://dlthub.com/docs/hub/command-line-interface.md
-* **Runtime overview** https://dlthub.com/docs/hub/runtime/overview.md
+* **Workspace deployment reference**: https://raw.githubusercontent.com/dlt-hub/runtime-starter-pack/refs/heads/main/REFERENCE.md
+  <!-- TODO: replace with stable docs URL when official runtime docs are published -->
+* **Runtime overview**: https://feat-workspace-deployment-2-docs.services4758.workers.dev/docs/devel/hub/runtime/overview.md
+  <!-- TODO: replace with stable docs URL when official runtime docs are published -->

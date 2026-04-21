@@ -65,7 +65,7 @@ Recommend to user switching to a named destination:
    - Offer to run pipeline locally (preferably in debug mode) to confirm settings. NOTE: pipeline will run on **dev** destination!
    - **DO NOT** run pipeline on **prod** profile. That happens on runtime deployment!
 
-**STOP** before making changes. Show your **plan** to get OK from user.
+**STOP** before making changes. Show your **plan** and get approval from the user.
 
 ### 3c. Verify production destination access
 
@@ -81,5 +81,68 @@ Use `secrets_view_redacted` to see the final unified view across all workspace s
 - Prod profile has production credentials
 - No placeholder values remain in prod secrets
 - Profile-scoped files correctly override workspace-scoped defaults
+
+## 5. Create deployment manifest (`__deployment__.py`)
+
+**Reference**: [deployment-module.md](deployment-module.md)
+**Full Documentation** https://raw.githubusercontent.com/dlt-hub/runtime-starter-pack/refs/heads/main/REFERENCE.md
+
+- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlt runtime launch <file>` directly instead (see Chapter 1 in the starter pack)
+- This step is **mandatory** for workspaces with transformations, multiple pipelines, scheduled jobs, or followup triggers
+- This step will be repeated when more notebooks or pipelines are added to the workspace
+
+### 5a. Identify pipeline runs
+
+Find every `dlt.pipeline(...).run(...)` call site that should run on Runtime. Each one becomes a decorated function. Look for:
+- Scripts with `if __name__ == "__main__"` blocks that create and run a pipeline
+- Transformation scripts that read from one dataset and write to another
+
+### 5b. Decorate with `@run.pipeline`
+
+Wrap each pipeline run in a decorated function. Use `from dlt.hub import run`:
+
+```python
+from dlt.hub import run
+
+@run.pipeline("my_pipeline")
+def ingest_data():
+    pipeline = dlt.pipeline(
+        pipeline_name="my_pipeline",
+        destination="warehouse",
+        dataset_name="my_data",
+    )
+    pipeline.run(my_source())
+```
+
+**DO NOT** add triggers or schedules at this point -- just the bare minimum to register the job. Scheduling is added in the deployment step.
+
+### 5c. Create or update `__deployment__.py`
+
+1. **Import decorated functions** (`from my_pipeline import ingest_data`)
+2. **Import notebook modules** (`import my_notebook`)
+3. **Add a module docstring** -- first line becomes workspace description
+4. **Create `__all__`** listing every name to deploy
+
+```python
+"""My workspace -- ingest and explore data"""
+
+from my_pipeline import ingest_data
+import my_notebook
+
+__all__ = ["ingest_data", "my_notebook"]
+```
+
+5. **Verify**: `dlt runtime deploy --dry-run` -- shows what would be created/updated/archived
+6. **Debug**: `dlt -v runtime deploy --dry-run --show-manifest` -- dumps full manifest as YAML
+
+### Job references
+
+Every deployed job gets a `job_ref` in `jobs.<module>.<function>` form:
+- `from my_pipeline import ingest_data` -> `jobs.my_pipeline.ingest_data`
+- `import my_notebook` -> `jobs.my_notebook`
+
+**Job names**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves automatically.
+
+**STOP** before making changes. Show your **plan** and get approval from the user.
 
 Tell the user the workspace is ready for deployment — use (`deploy-workspace`) next.
