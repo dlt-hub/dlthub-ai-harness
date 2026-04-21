@@ -56,7 +56,7 @@ to run a single command on given profile use:
 ```
 WORKSPACE__PROFILE=prod dlt pipeline my_pipeline info
 ```
-Note: you must pin profile for mcp server to see the change
+Note: you must pin the production profile for mcp server to see the change
 
 ## Other useful commands
 
@@ -75,7 +75,7 @@ dlt runtime info                             # workspace deployment overview
 dlt runtime dashboard
 ```
 
-Opens the dltHub Runtime UI at dlthub.app -- shows jobs, runs, logs, schedules, and deployment history.
+Opens a hosted notebook in the dltHub UI (without Runtime).
 
 ## Quick diagnosis
 
@@ -84,7 +84,7 @@ If a job failed:
 2. `dlt runtime logs <name> [run#]` -- read the error output
 3. Common causes:
    - **Missing dependencies** in `pyproject.toml` -- all packages must be declared, not just locally installed
-   - **Secrets not configured for `prod` profile** -- runtime uses `prod` profile, check `.dlt/prod.secrets.toml`
+   - **Secrets not configured for `prod` profile** -- runtime uses `prod` profile, ask the user to check `.dlt/prod.secrets.toml` — NEVER access it directly, only the user may modify it
    - **Script missing `if __name__ == "__main__":`** -- the job does nothing without it
    - **`dev_mode=True` left in** -- drops and recreates dataset on every run
    - **Wrong destination credentials** -- prod profile may point to a different destination than dev
