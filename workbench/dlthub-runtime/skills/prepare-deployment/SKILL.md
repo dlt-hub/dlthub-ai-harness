@@ -141,7 +141,7 @@ Every deployed job gets a `job_ref` in `jobs.<module>.<function>` form:
 - `from my_pipeline import ingest_data` -> `jobs.my_pipeline.ingest_data`
 - `import my_notebook` -> `jobs.my_notebook`
 
-**CLI shorthand**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves automatically.
+**Job names**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves automatically.
 
 **STOP** before making changes. Show your **plan** and get approval from the user.
 

@@ -17,7 +17,7 @@ Review each script being deployed and fix patterns that are safe locally but har
 4. **Check `if __name__ == "__main__":` block** — every script must have one or the runtime job does nothing. The block should NOT contain interactive/debug-only code.
 5. **Pin the dlt version exactly** in `pyproject.toml` — use `==` not `>=` to prevent unexpected upgrades on runtime. If user has a pre-release (e.g. `1.23.0a3`), use `uv pip install` to install it and pin with `==` in pyproject (do NOT use `uv add` which may downgrade to latest stable).
 6. **Notebooks (`marimo` apps)**:
-   - Verify they use `dlt.attach()` (not `dlt.pipeline()`) and that **destination** and **dataset_name** are explicitly passed (this is a temporary limitation of the runtime)
+   - Verify they use `dlt.attach()` (not `dlt.pipeline()`) and that **destination** and **dataset_name** are explicitly passed (this is a temporary limitation of the runtime) <!-- TODO: remove when runtime supports dlt.pipeline() in notebooks — track in github.com/dlt-hub/runtime -->
    - All visualization dependencies (`altair`, `ibis-framework`, `pandas`, etc.) are in `pyproject.toml`
 
 ## Step 2: Deploy, launch, debug
@@ -26,7 +26,8 @@ Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns
 
 ### Step 2a. Deploy a workspace
 **SKIP** for simple workspaces without deployment manifest
-If `__deployment__.py` is set up start with:
+If `__deployment__.py` is set up, first run `dlt runtime deploy --dry-run` to preview changes, then **STOP** — show the plan and get approval from the user before deploying.
+
 ```bash
 dlt runtime deploy  # synchronizes deployment module with runtime
 ```
@@ -39,7 +40,7 @@ dlt runtime launch my_pipeline.py             # sync code + run batch job once (
 dlt runtime serve my_notebook.py             # sync code + run interactive job (i.e. notebook or data app)
 ```
 
-### Step 2c: Read logs and debug
+### Step 2c. Read logs and debug
 
 ```bash
 dlt runtime logs my_pipeline.py              # check output (use job name or script path)
