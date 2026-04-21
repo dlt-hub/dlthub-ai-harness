@@ -29,14 +29,6 @@ A bare cron string also works as shorthand:
 
 ## Common cron patterns
 
-| Pattern | Meaning |
-|---------|---------|
-| `*/5 * * * *` | Every 5 minutes |
-| `0 * * * *` | Every hour at :00 |
-| `0 0 * * *` | Daily at midnight UTC |
-| `0 8 * * 1-5` | Weekdays at 8am UTC |
-| `0 0 * * 0` | Weekly on Sunday |
-
 Use [crontab.guru](https://crontab.guru) to build and test expressions.
 
 ## Trigger types
