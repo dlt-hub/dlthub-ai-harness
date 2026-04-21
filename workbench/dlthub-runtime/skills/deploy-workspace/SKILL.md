@@ -24,7 +24,7 @@ Review each script being deployed and fix patterns that are safe locally but har
 
 Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns.md](advanced-patterns.md)
 
-### Step 2a. Deploy workspace!
+### Step 2a. Deploy a workspace
 **SKIP** for simple workspaces without deployment manifest
 If `__deployment__.py` is set up start with:
 ```bash
@@ -35,8 +35,8 @@ Summarize the output (which jobs created/updated/archived)
 ### Step 2b. Run pipelines and notebooks
 
 ```bash
-dlt runtime launch my_pipeline.py             # sync code + run batch job once (ie pipeline)
-dlt runtime serve my_notebook.py             # sync code + run interactive job (ie. notebook)
+dlt runtime launch my_pipeline.py             # sync code + run batch job once (i.e. pipeline)
+dlt runtime serve my_notebook.py             # sync code + run interactive job (i.e. notebook or data app)
 ```
 
 ### Step 2c: Read logs and debug
@@ -91,7 +91,7 @@ dlt runtime job list                  # confirm triggers are set
 
 See [scheduling-triggers.md](scheduling-triggers.md) for the full trigger types table and more examples.
 
-## Step 4: Upgrade your deployment
+## Step 4: Advanced trigger and scheduling options
 
 See [advanced-patterns.md](advanced-patterns.md) for full examples of each pattern:
 
