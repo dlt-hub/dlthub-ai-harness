@@ -75,7 +75,7 @@ dlt runtime info                             # workspace deployment overview
 dlt runtime dashboard
 ```
 
-Opens a hosted notebook in the dltHub UI (without Runtime).
+Opens a hosted notebook on dltHub.
 
 ## Quick diagnosis
 
