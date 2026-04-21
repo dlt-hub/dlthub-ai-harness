@@ -6,14 +6,14 @@ redeploy.
 
 ## Adding a schedule to an existing job
 
-Before:
+Without a trigger:
 ```python
 @run.pipeline("my_pipeline")
 def ingest_data():
     ...
 ```
 
-After -- run daily at midnight UTC:
+With a trigger -- run daily at midnight UTC:
 ```python
 from dlt.hub.run import trigger
 

@@ -65,7 +65,7 @@ Recommend to user switching to a named destination:
    - Offer to run pipeline locally (preferably in debug mode) to confirm settings. NOTE: pipeline will run on **dev** destination!
    - **DO NOT** run pipeline on **prod** profile. That happens on runtime deployment!
 
-**STOP** before making changes. Show your **plan** to get OK from user.
+**STOP** before making changes. Show your **plan** and get approval from the user.
 
 ### 3c. Verify production destination access
 
@@ -143,6 +143,6 @@ Every deployed job gets a `job_ref` in `jobs.<module>.<function>` form:
 
 **CLI shorthand**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves automatically.
 
-**STOP** before making changes. Show your **plan** to get OK from user.
+**STOP** before making changes. Show your **plan** and get approval from the user.
 
 Tell the user the workspace is ready for deployment — use (`deploy-workspace`) next.

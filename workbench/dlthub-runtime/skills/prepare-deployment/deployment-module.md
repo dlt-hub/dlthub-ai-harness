@@ -22,9 +22,9 @@ __all__ = ["ingest_data", "run_transforms", "my_notebook"]
   or `@run.interactive`.
 - **Module imports** (`import my_notebook`) produce one job per module. The
   framework is auto-detected:
-  - `marimo.App` -> interactive GUI (notebook)
+  - `marimo.App` -> interactive notebook
   - `FastMCP` instance -> MCP tool server
-  - `streamlit` usage -> dashboard
+  - `streamlit` usage -> interactive dashboard
   - Plain module with `if __name__ == "__main__"` -> batch job
 
 ## Required elements
@@ -43,7 +43,7 @@ Every job gets a reference in `jobs.<section>.<name>` form:
 | `from my_pipeline import ingest_data` | `jobs.my_pipeline.ingest_data` | Function: section=module, name=function |
 | `import my_notebook` | `jobs.my_notebook` | Module: section=module name |
 
-**CLI shorthand**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves to `jobs.my_pipeline.ingest_data` if there's only one `ingest_data` in the workspace.
+**Job names**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves to `jobs.my_pipeline.ingest_data` if there's only one `ingest_data` in the workspace.
 
 ## Verify and debug
 

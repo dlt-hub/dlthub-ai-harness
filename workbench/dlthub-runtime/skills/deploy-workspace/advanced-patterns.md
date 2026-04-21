@@ -100,7 +100,7 @@ if run_context["refresh"]:
       ...
   ```
 
-- `@run.interactive` -- long-running HTTP services (MCP, GUI, REST API):
+- `@run.interactive` -- long-running HTTP services (MCP, hosted notebooks or dashboards, REST API):
   ```python
   @run.interactive(interface="mcp", idle_timeout="30m")
   def my_mcp_server():
