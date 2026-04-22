@@ -1,7 +1,7 @@
 ---
 name: review-data-quality
 argument-hint: "[pipeline-name]"
-description: Use after run-data-quality to read check and metric results, understand what passed and failed, and decide on next steps.
+description: Use when the user asks to "review data quality results", "what failed", "show me DQ results", "analyze check results", "investigate DQ failures", or wants to understand check and metric outcomes from a pipeline run. Do NOT use to run new checks (use run-data-quality).
 ---
 
 # Review data quality results

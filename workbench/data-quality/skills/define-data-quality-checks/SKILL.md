@@ -1,7 +1,7 @@
 ---
 name: define-data-quality-checks
 argument-hint: "[pipeline-name] [table]"
-description: Use after setup-data-quality to translate schema context and business requirements into concrete dlt checks and metrics.
+description: Use when the user asks to "define checks", "add validation rules", "set up contracts", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlt DQ check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
 ---
 
 # Define data quality checks
@@ -87,6 +87,7 @@ Translate each stated requirement to the appropriate built-in check. Always pref
 | "X must be >= 0" / any row-level condition | `dq.checks.case("X >= 0")` |
 
 **`is_primary_key` note:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of substituting the actual column name (marked `# TODO parameterize` in the source). It raises `LineageFailedException` at runtime. Use `dq.checks.is_unique("col")` as a substitute until the library completes the implementation.
+<!-- TODO: remove substitute when dlt-hub/dlthub#<issue> (is_primary_key parameterization) is resolved -->
 
 **`case()` and NULLs:** `case()` treats NULL as a failing row. For nullable columns, either exclude NULLs in the expression (`case("col IS NULL OR col >= 0")`) or add a separate `is_not_null` check if NULLs are also disallowed.
 

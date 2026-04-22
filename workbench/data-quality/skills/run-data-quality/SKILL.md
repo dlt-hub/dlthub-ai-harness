@@ -1,7 +1,7 @@
 ---
 name: run-data-quality
 argument-hint: "[pipeline-name]"
-description: Use after define-data-quality-checks to run DQ checks against existing pipeline data and surface immediate check failures.
+description: Use when the user asks to "run data quality checks", "execute checks", "run my DQ", "check the data now", "run validations", or wants to execute already-defined checks against a loaded pipeline. Do NOT use to define new checks (use define-data-quality-checks) or to review existing results (use review-data-quality).
 ---
 # Run data quality checks
 
@@ -192,6 +192,6 @@ tools/dq_run.py ran your checks once against the current data. What would you li
 
 ```
 
-If the user chooses [1], hand over to the **dlthub-runtime** toolkit (`setup-runtime`), passing:
+If the user chooses [1], hand over to **dlthub-runtime** (start at `setup-runtime`), passing:
 - The script path (`tools/dq_run.py`) as the deployment target
 - The confirmed pipeline name and destination

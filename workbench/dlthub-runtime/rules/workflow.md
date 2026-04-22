@@ -22,6 +22,7 @@
 - From **rest-api-pipeline** (after `debug-pipeline` or hardening steps) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` and `deploy-workspace` without re-discovery
 - From **transformations** (after `create-transformation`) — transformation scripts and pipeline destination are already known; carry them into `setup-runtime`
 - From **data-exploration** (after `build-notebook`) — notebook file already exists; `deploy-workspace` should use `dlt runtime serve` for the notebook job
+- From **data-quality** (after `run-data-quality`) — `tools/dq_run.py` already exists with confirmed checks; carry the script path, pipeline name, and destination into `setup-runtime` as the deployment target
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt

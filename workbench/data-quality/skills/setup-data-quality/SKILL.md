@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 
 Before any discovery step, check what is already known:
 
-1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, or from `transformations` after `validate-transformed-data`), skip `list_pipelines` discovery.
+1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, or from `transformations` after `create-transformation`), skip `list_pipelines` discovery.
 2. **License already confirmed** — if the session already verified the `dlthub.data_quality` license scope, skip step 1.
 
 ## Steps
@@ -49,7 +49,7 @@ Wait for the user to confirm they've run the command before continuing. Do not i
 
 Once the license is confirmed (scopes include `dlthub.data_quality`), continue.
 
-### 3. Confirm pipeline
+### 2. Confirm pipeline
 
 Use the `list_pipelines` MCP tool to list all local dlt pipelines.
 
@@ -82,7 +82,7 @@ Then ask the user to provide the pipeline name manually and continue once they d
 
 **IMPORTANT: Confirm the exact pipeline name before any further MCP calls.** A wrong name causes all subsequent schema lookups to fail silently or return empty results.
 
-### 4. Discover tables
+### 3. Discover tables
 
 Use the `list_tables` MCP tool for the confirmed pipeline. Collect the table names and column counts. Skip `_dlt_*` system tables.
 
@@ -102,7 +102,7 @@ If there are no non-system tables, stop:
 No data tables found in pipeline "<name>". Run the pipeline at least once to load data.
 ```
 
-### 5. Inspect schema and auto-detect check candidates
+### 4. Inspect schema and auto-detect check candidates
 
 For each table from step 4, call `display_schema` MCP tool. Read the column-level hints returned (type, `nullable`, `unique`).
 
@@ -115,10 +115,11 @@ Map hints to DQ check candidates using this table:
 | `unique: true` | `dq.checks.is_unique("col")` |
 
 **Known issue:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of the actual column name (marked `# TODO parameterize` in the source). It will raise a `LineageFailedException` at runtime. Substitute `dq.checks.is_unique("col")` until the library completes the implementation.
+<!-- TODO: remove substitute when dlt-hub/dlthub#<issue> (is_primary_key parameterization) is resolved -->
 
 Collect candidates per table. Ignore columns with no actionable hints.
 
-### 6. Present summary to the user
+### 5. Present summary to the user
 
 Present a summary table. Do not ask for decisions yet — that happens in `define-data-quality-checks`. This step is read-only.
 

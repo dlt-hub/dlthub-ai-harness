@@ -5,8 +5,6 @@
 
 ## Core workflow
 
-TODO — fill in core workflow steps
-
 1. **Setup data quality** (`setup-data-quality`) — connect to pipeline, inspect schema, prepare DQ environment
 2. **Define data quality checks** (`define-data-quality-checks`) — define checks per table/column
 3. **Run data quality** (`run-data-quality`) — execute checks against the pipeline data
@@ -14,18 +12,19 @@ TODO — fill in core workflow steps
 
 ## Extend and harden
 
-TODO — fill in advanced steps
+5. **Add or refine checks** — return to (`define-data-quality-checks`) after seeing initial results; adjust thresholds, add new checks, or remove over-strict ones
+6. **Schedule DQ monitoring** — hand off to **dlthub-runtime** to deploy `tools/dq_run.py` as a recurring scheduled job; start at `setup-runtime`
+7. **Investigate anomalies** — hand off to **data-exploration** when metric trends reveal unexpected patterns that need deeper analysis
 
 ## Handover to other toolkits
 
-TODO — fill in handover conditions
-
 ### Outgoing (from data-quality)
 
-- **transformations** — when DQ failures reveal modeling issues that need fixing upstream
-- **dlthub-runtime** (`setup-runtime`) — when Profile B user wants to schedule `tools/dq_run.py` on the dltHub platform after a successful one-off run
+- **transformations** — from (`review-data-quality`), when DQ failures reveal upstream modeling issues that need fixing
+- **dlthub-runtime** — from (`run-data-quality`), when the user wants to schedule `tools/dq_run.py` as a recurring job on the dltHub platform; start at `setup-runtime`
+- **data-exploration** — from (`review-data-quality`), when metric anomalies need deeper interactive investigation
 
 ### Incoming (to data-quality)
 
-- From **rest-api-pipeline** (after `validate-data`) — pipeline name and dataset already known; skip discovery
-- From **transformations** (after `validate-transformed-data`) — transformed tables already known; go straight to `define-data-quality-checks`
+- From **rest-api-pipeline** (after `validate-data`) — pipeline name and dataset already known; skip discovery in (`setup-data-quality`)
+- From **transformations** (after `create-transformation`) — transformed tables already known; go straight to (`define-data-quality-checks`)
