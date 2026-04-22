@@ -8,7 +8,7 @@
 
 **Enable before checking.** Always call `dq.enable_data_quality(pipeline)` before defining or running any checks. If the DQ flag is absent from pipeline state, stop and return to `setup-data-quality`.
 
-**Prefer built-in checks.** Use `is_unique()`, `is_not_null()`, `is_primary_key()`, `is_in()`, `case()` before writing any custom logic. Custom code is a last resort.
+**Prefer built-in checks.** Use `is_unique()`, `is_not_null()`, `is_in()`, `case()` before writing any custom logic. Custom code is a last resort. Do NOT use `is_primary_key()` — it is not yet fully implemented and raises `LineageFailedException` at runtime; use `is_unique()` instead.
 
 **Business intent first.** Ask for the user's data quality requirements in plain language; map them to checks. Do not expose the API surface (`dq.checks.*`, `dq.metrics.*`) until the user's intent is clear.
 

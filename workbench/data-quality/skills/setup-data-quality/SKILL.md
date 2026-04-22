@@ -104,7 +104,7 @@ No data tables found in pipeline "<name>". Run the pipeline at least once to loa
 
 ### 4. Inspect schema and auto-detect check candidates
 
-For each table from step 4, call `display_schema` MCP tool. Read the column-level hints returned (type, `nullable`, `unique`).
+For each table from step 3, call `display_schema` MCP tool. Read the column-level hints returned (type, `nullable`, `unique`).
 
 Map hints to DQ check candidates using this table:
 

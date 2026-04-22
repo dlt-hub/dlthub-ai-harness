@@ -59,11 +59,11 @@ Profile B skips Question 2 entirely — no pipeline file is modified.
 Based on the schema, here are the checks I'd suggest as a starting point:
 
   orders:
-    → is_primary_key("id")         [id is marked primary_key in schema]
+    → is_unique("id")              [id is marked primary_key in schema]
     → is_not_null("customer_id")   [customer_id is non-nullable]
 
   customers:
-    → is_primary_key("id")
+    → is_unique("id")              [id is marked primary_key in schema]
     → is_not_null("email")
 
 Anything to add or change? Common additions:
