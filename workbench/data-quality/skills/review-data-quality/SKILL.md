@@ -39,21 +39,22 @@ Flag any table where the count is 0 or significantly lower than expected (if pri
 
 ### 2. Build a table-level check summary
 
-For each table, query the DQ check results table using `execute_sql_query` MCP to get a pass/fail aggregate — not individual rows:
+The DQ checks table is always `_dlt_data_quality._dlt_checks`. Schema columns: `table_name`, `check_qualified_name`, `row_count`, `success_count`, `success_rate` (0.0–1.0; 1.0 = all rows passed).
+
+For each table, query using `execute_sql_query` MCP:
 
 ```sql
 SELECT
-    table_name,
-    check_name,
-    outcome,
-    COUNT(*) AS n
-FROM <dq_checks_results_table>
+    check_qualified_name,
+    row_count,
+    success_count,
+    success_rate
+FROM _dlt_data_quality._dlt_checks
 WHERE table_name = '<table>'
-GROUP BY table_name, check_name, outcome
-ORDER BY outcome DESC, check_name
+ORDER BY success_rate ASC
 ```
 
-If the DQ results table name is unknown, use `list_tables` MCP first to find it (look for `_dlt_dq_*` or similar). If no SQL path is available, fall back to `dq.read_check(dataset, table="<table>").df()` in `tools/dq_review.py`.
+A check passes when `success_count = row_count` (equivalently `success_rate = 1.0`).
 
 Present one table at a time as results come in:
 
@@ -73,7 +74,7 @@ Do not move to metrics until all tables have been summarised this way.
 
 ### 3. Read metric results
 
-For each table, query metric results using `execute_sql_query` MCP:
+For each table, query metric results using `execute_sql_query` MCP. The metrics table is `_dlt_data_quality._dlt_dq_metrics`:
 
 ```sql
 SELECT
@@ -82,7 +83,7 @@ SELECT
     metric_name,
     metric_value,
     loaded_at
-FROM <dq_metrics_results_table>
+FROM _dlt_data_quality._dlt_dq_metrics
 WHERE table_name = '<table>'
 ORDER BY loaded_at DESC
 LIMIT 50

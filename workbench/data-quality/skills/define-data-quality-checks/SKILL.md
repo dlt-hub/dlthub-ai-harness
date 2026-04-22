@@ -73,9 +73,13 @@ Translate each stated requirement to the appropriate built-in check. Always pref
 |---|---|
 | "X must be unique" | `dq.checks.is_unique("X")` |
 | "X must not be null / is required" | `dq.checks.is_not_null("X")` |
-| "X is the primary key" | `dq.checks.is_primary_key("X")` |
+| "X is the primary key" | `dq.checks.is_unique("X")` *(see note below)* |
 | "X must be one of [a, b, c]" | `dq.checks.is_in("X", ["a", "b", "c"])` |
 | "X must be >= 0" / any row-level condition | `dq.checks.case("X >= 0")` |
+
+**`is_primary_key` note:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of substituting the actual column name (marked `# TODO parameterize` in the source). It raises `LineageFailedException` at runtime. Use `dq.checks.is_unique("col")` as a substitute until the library completes the implementation.
+
+**`case()` and NULLs:** `case()` treats NULL as a failing row. For nullable columns, either exclude NULLs in the expression (`case("col IS NULL OR col >= 0")`) or add a separate `is_not_null` check if NULLs are also disallowed.
 
 **Validate `is_in` values before committing.** For any `is_in` check, use the `preview_table` MCP tool to sample the column and confirm the allowed set matches real data:
 

@@ -17,6 +17,35 @@ Expected from prior steps:
 
 ## Steps
 
+### 0. Detect profile
+
+Before writing any script, determine which execution profile applies:
+
+| Profile | Signal | Action |
+|---|---|---|
+| **A — pipeline author** | Checks were applied via `@dq.with_checks` / `dq.with_checks(resource, ...)` decorators in the pipeline file | Run the existing pipeline script — checks fire automatically during load |
+| **B — postmortem analyst** | No decorator changes; user wants to check existing destination data without re-running the pipeline | Write and run `tools/dq_run.py` using `dlt.attach` + `dq.run_checks` |
+
+If the profile is ambiguous, ask: "Were the checks added to the pipeline code (decorators), or do you want to run them against data already in the destination without re-extracting?"
+
+---
+
+**Profile A — run the pipeline**
+
+Instruct the user to run their pipeline script as normal. Show the exact command (infer from session context or ask):
+
+```
+uv run python <pipeline_script>.py
+```
+
+Checks and metrics defined via decorators will execute during the load and write results to `_dlt_data_quality._dlt_checks`. No separate run script is needed.
+
+Wait for the user to confirm the run completed before proceeding to step 4.
+
+---
+
+**Profile B — write the DQ run script**
+
 ### 1. Write the DQ run script
 
 Write `tools/dq_run.py` in the project root. Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination, writes results to `_dlt_data_quality._dlt_checks`).
@@ -38,6 +67,8 @@ load_info.raise_on_failed_jobs()
 ```
 
 **Never glob for pipeline files or run the user's original pipeline script.** That re-extracts from the source. `run_checks` is self-contained against the destination.
+
+**Note on `case()` and NULLs:** `dq.checks.case("col >= 0")` treats NULL as a failing row. If the column is nullable and NULLs are expected, either exclude them in the expression (`case("col IS NULL OR col >= 0")`) or use `is_not_null` as a separate check.
 
 Show the written file to the user and ask for explicit confirmation before running:
 

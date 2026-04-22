@@ -18,11 +18,46 @@ Parse `$ARGUMENTS`:
 Before any discovery step, check what is already known:
 
 1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, or from `transformations` after `validate-transformed-data`), skip `list_pipelines` discovery.
-2. **DQ already enabled** — if the session indicates `dq.enable_data_quality()` was already called in a prior run, skip step 4 and go straight to the handover.
+2. **License already confirmed** — if the session already verified the `dlthub.data_quality` license scope, skip step 1.
 
 ## Steps
 
-### 1. Confirm pipeline
+### 1. Verify license
+
+The `dlthub.data_quality` scope is required to run checks. Check for it before the user invests time defining checks — if it becomes a paid scope in the future, the user should know up front.
+
+Run:
+
+```python
+import dlt
+dlt.config["license"]  # or inspect ~/.dlt/secrets.toml
+```
+
+Simpler: attempt a dry import of the licensed function:
+
+```python
+from dlthub.common.license.license import get_license
+license = get_license()
+scopes = license.scopes if license else []
+print(scopes)
+```
+
+If `dlthub.data_quality` is not in the scopes, tell the user:
+
+```
+Running data quality checks requires the dlthub.data_quality license scope.
+This is currently available as a free trial. To proceed, run:
+
+    dlt license issue dlthub.data_quality
+
+You will be asked to agree to the dltHub EULA before the license is issued.
+```
+
+Wait for the user to confirm they've run the command before continuing. Do not issue the license yourself.
+
+Once the license is confirmed (scopes include `dlthub.data_quality`), continue.
+
+### 3. Confirm pipeline
 
 Use the `list_pipelines` MCP tool to list all local dlt pipelines. If `pipeline-name` was passed, verify it appears in the list. If it does not exist, stop and tell the user:
 
@@ -35,7 +70,7 @@ If `pipeline-name` was not provided, present the list and ask the user to pick o
 
 **IMPORTANT: Confirm the exact pipeline name before any further MCP calls.** A wrong name causes all subsequent schema lookups to fail silently or return empty results.
 
-### 2. Discover tables
+### 4. Discover tables
 
 Use the `list_tables` MCP tool for the confirmed pipeline. Collect the table names and column counts. Skip `_dlt_*` system tables.
 
@@ -55,9 +90,9 @@ If there are no non-system tables, stop:
 No data tables found in pipeline "<name>". Run the pipeline at least once to load data.
 ```
 
-### 3. Inspect schema and auto-detect check candidates
+### 5. Inspect schema and auto-detect check candidates
 
-For each table from step 2, call `display_schema` MCP tool. Read the column-level hints returned (type, `primary_key`, `nullable`, `unique`).
+For each table from step 4, call `display_schema` MCP tool. Read the column-level hints returned (type, `nullable`, `unique`).
 
 Map hints to DQ check candidates using this table:
 
@@ -67,9 +102,11 @@ Map hints to DQ check candidates using this table:
 | `nullable: false` | `dq.checks.is_not_null("col")` |
 | `unique: true` | `dq.checks.is_unique("col")` |
 
+**Known issue:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of the actual column name (marked `# TODO parameterize` in the source). It will raise a `LineageFailedException` at runtime. Substitute `dq.checks.is_unique("col")` until the library completes the implementation.
+
 Collect candidates per table. Ignore columns with no actionable hints.
 
-### 4. Present summary to the user
+### 6. Present summary to the user
 
 Present a summary table. Do not ask for decisions yet — that happens in `define-data-quality-checks`. This step is read-only.
 
@@ -90,14 +127,26 @@ Table: customers
 (2 more tables — no auto-detected candidates)
 ```
 
-If a table has no hints at all, note it briefly but do not skip it — the user may still want manual checks on it.
+**For tables with no auto-detected candidates**, do not skip them. Ask the user directly about business intent for each such table:
+
+```
+Table "wallets" has no schema hints. A few quick questions:
+  - Which column(s) identify a unique record? (e.g., id, transaction_id)
+  - Are there any columns that must always have a value?
+  - Any value constraints? (e.g., "amount must be >= 0", "status must be one of X/Y/Z")
+
+Say "none" or "skip" to move on without adding checks for this table.
+```
+
+Record the user's answers as free-form notes — they will be passed to `define-data-quality-checks` as business intent. Do not map to specific checks yet; that happens in define.
 
 ## Output and handover
 
 Pass the following context to `define-data-quality-checks`:
 - Confirmed pipeline name
 - Table list (names + column counts)
-- Auto-detected check candidates per table (from step 3)
+- Auto-detected check candidates per table (from schema hints)
+- Business intent per table (free-form notes from Q&A on hint-less tables; omit tables where user said "skip")
 
 ```
 Schema inspected. Ready to define checks.
