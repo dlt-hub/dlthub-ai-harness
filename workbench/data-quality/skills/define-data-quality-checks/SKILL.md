@@ -146,7 +146,7 @@ Produce ready-to-paste code for each table. Use the correct API form determined 
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
 @dq.with_checks(
-    dq.checks.is_primary_key("id"),
+    dq.checks.is_unique("id"),
     dq.checks.is_not_null("customer_id"),
     dq.checks.case("amount >= 0"),
 )
@@ -171,7 +171,7 @@ orders = source.resources["orders"]
 
 dq.with_checks(
     orders,
-    dq.checks.is_primary_key("id"),
+    dq.checks.is_unique("id"),
     dq.checks.is_not_null("customer_id"),
     dq.checks.case("amount >= 0"),
 )
@@ -216,7 +216,7 @@ Here is what I'll add to your pipeline:
 
 Table: orders
   Checks:
-    ✓ is_primary_key("id")
+    ✓ is_unique("id")
     ✓ is_not_null("customer_id")
     ✓ case("amount >= 0")
   Metrics:
@@ -226,7 +226,7 @@ Table: orders
 
 Table: customers
   Checks:
-    ✓ is_primary_key("id")
+    ✓ is_unique("id")
     ✓ is_not_null("email")
     ✓ is_unique("email")
   Metrics:

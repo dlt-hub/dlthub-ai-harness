@@ -62,13 +62,13 @@ Present one table at a time as results come in:
 
 ```
 Table: orders
-  ✓ is_primary_key("id")            — passed
+  ✓ is_unique("id")                 — passed
   ✓ is_not_null("customer_id")      — passed
   ✗ case("amount >= 0")             — 3 rows failed
   ✗ is_not_null("status")           — 42 rows failed
 
 Table: customers
-  ✓ is_primary_key("id")            — passed
+  ✓ is_unique("id")                 — passed
   ✗ is_unique("email")              — 7 duplicates found
 ```
 
@@ -84,14 +84,14 @@ SELECT
     column_name,
     metric_name,
     metric_value,
-    loaded_at
+    _dlt_load_id
 FROM _dlt_dq_metrics
 WHERE table_name = '<table>'
-ORDER BY loaded_at DESC
+ORDER BY _dlt_load_id DESC
 LIMIT 50
 ```
 
-**Trend detection:** if multiple `loaded_at` values exist for the same metric, compute the delta and flag meaningful changes:
+**Trend detection:** if multiple `_dlt_load_id` values exist for the same metric (i.e. the pipeline has run more than once), compute the delta and flag meaningful changes:
 
 | Metric | Flag condition |
 |---|---|
