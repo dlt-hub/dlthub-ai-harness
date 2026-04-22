@@ -26,23 +26,15 @@ Before any discovery step, check what is already known:
 
 The `dlthub.data_quality` scope is required to run checks. Check for it before the user invests time defining checks — if it becomes a paid scope in the future, the user should know up front.
 
-Run:
+Run the CLI command:
 
-```python
-import dlt
-dlt.config["license"]  # or inspect ~/.dlt/secrets.toml
+```
+dlt license info
 ```
 
-Simpler: attempt a dry import of the licensed function:
+This prints the installed license and its scopes. Check that `dlthub.data_quality` appears in the `Scopes` field.
 
-```python
-from dlthub.common.license.license import get_license
-license = get_license()
-scopes = license.scopes if license else []
-print(scopes)
-```
-
-If `dlthub.data_quality` is not in the scopes, tell the user:
+If the command errors ("no license found") or `dlthub.data_quality` is not in the scopes, tell the user:
 
 ```
 Running data quality checks requires the dlthub.data_quality license scope.
@@ -59,14 +51,34 @@ Once the license is confirmed (scopes include `dlthub.data_quality`), continue.
 
 ### 3. Confirm pipeline
 
-Use the `list_pipelines` MCP tool to list all local dlt pipelines. If `pipeline-name` was passed, verify it appears in the list. If it does not exist, stop and tell the user:
+Use the `list_pipelines` MCP tool to list all local dlt pipelines.
+
+**If `list_pipelines` returns an empty list**, do not stop silently. Fall back to the CLI:
 
 ```
-Pipeline "<name>" not found locally. Available pipelines: <list>.
-Run the pipeline at least once before setting up data quality.
+dlt pipeline --list-pipelines
 ```
 
-If `pipeline-name` was not provided, present the list and ask the user to pick one. Wait for confirmation before continuing.
+If the CLI also returns nothing, tell the user:
+
+```
+No pipelines found in this workspace. This usually means the pipeline was run
+from a different directory. Please provide the pipeline name directly, or
+navigate to the directory where the pipeline was run and restart.
+```
+
+Then ask the user to provide the pipeline name manually and continue once they do.
+
+**If pipelines are found:**
+
+- If `pipeline-name` was passed, verify it appears in the list. If it does not, stop and tell the user:
+
+  ```
+  Pipeline "<name>" not found. Available pipelines: <list>.
+  Run the pipeline at least once before setting up data quality.
+  ```
+
+- If `pipeline-name` was not provided, present the list and ask the user to pick one. Wait for confirmation before continuing.
 
 **IMPORTANT: Confirm the exact pipeline name before any further MCP calls.** A wrong name causes all subsequent schema lookups to fail silently or return empty results.
 
@@ -127,7 +139,9 @@ Table: customers
 (2 more tables — no auto-detected candidates)
 ```
 
-**For tables with no auto-detected candidates**, do not skip them. Ask the user directly about business intent for each such table:
+**For tables with no auto-detected candidates**, do not skip them — but do not ask about each one individually if there are many.
+
+**If there are 5 or fewer hint-less tables:** ask directly about each:
 
 ```
 Table "wallets" has no schema hints. A few quick questions:
@@ -138,7 +152,22 @@ Table "wallets" has no schema hints. A few quick questions:
 Say "none" or "skip" to move on without adding checks for this table.
 ```
 
-Record the user's answers as free-form notes — they will be passed to `define-data-quality-checks` as business intent. Do not map to specific checks yet; that happens in define.
+**If there are more than 5 hint-less tables:** group them by common name prefix (e.g., `payment_*`, `employee_*`, `order_*`) and ask the user to prioritize first:
+
+```
+38 tables have no schema hints. Here are the groups I see:
+
+  payment_*     (8 tables)
+  employee_*    (6 tables)
+  operator_*    (4 tables)
+  invoice_*     (3 tables)
+  ... (17 more)
+
+Which group or domain matters most for data quality? I'll ask detailed questions
+about those first. Say "all" to go through everything, or name the groups to focus on.
+```
+
+Only ask the three detailed questions (unique columns, required columns, value constraints) for the groups the user selects. Record all answers as free-form notes to pass to `define-data-quality-checks`. Do not map to specific checks yet.
 
 ## Output and handover
 

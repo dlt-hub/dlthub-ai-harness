@@ -103,7 +103,9 @@ Do not proceed to result reading if the script failed.
 
 ### 4. Surface check failures
 
-`run_checks` writes results to `_dlt_data_quality._dlt_checks`. Query with `execute_sql_query`:
+`run_checks` writes results to `_dlt_checks` within the pipeline's destination dataset. The physical location depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If unsure, call `list_tables` MCP to locate it before querying.
+
+Query with `execute_sql_query`:
 
 ```sql
 SELECT
@@ -112,7 +114,7 @@ SELECT
     row_count,
     success_count,
     success_rate
-FROM _dlt_data_quality._dlt_checks
+FROM _dlt_checks
 ORDER BY success_rate ASC
 ```
 
@@ -162,3 +164,18 @@ Pass to `review-data-quality`:
 - Confirmed pipeline name
 - Run outcome (success / failures detected)
 - Failing checks and tables (if any)
+
+**Profile B only — after review is complete**, surface the deployment question:
+
+```
+tools/dq_run.py ran your checks once against the current data. What would you like to do with it?
+
+  [1] Deploy it — run these checks on a schedule on the dltHub platform
+  [2] Keep it local — re-run manually whenever needed (uv run python tools/dq_run.py)
+  [3] Discard it — the results are in the destination, the script is no longer needed
+
+```
+
+If the user chooses [1], hand over to the **dlthub-runtime** toolkit (`setup-runtime`), passing:
+- The script path (`tools/dq_run.py`) as the deployment target
+- The confirmed pipeline name and destination

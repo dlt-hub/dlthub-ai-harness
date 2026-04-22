@@ -39,7 +39,9 @@ Flag any table where the count is 0 or significantly lower than expected (if pri
 
 ### 2. Build a table-level check summary
 
-The DQ checks table is always `_dlt_data_quality._dlt_checks`. Schema columns: `table_name`, `check_qualified_name`, `row_count`, `success_count`, `success_rate` (0.0–1.0; 1.0 = all rows passed).
+The DQ checks table is `_dlt_checks`, located within the pipeline's destination dataset. The physical path depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If the exact path is unknown, call `list_tables` MCP first to locate it.
+
+Schema columns: `table_name`, `check_qualified_name`, `row_count`, `success_count`, `success_rate` (0.0–1.0; 1.0 = all rows passed).
 
 For each table, query using `execute_sql_query` MCP:
 
@@ -49,7 +51,7 @@ SELECT
     row_count,
     success_count,
     success_rate
-FROM _dlt_data_quality._dlt_checks
+FROM _dlt_checks
 WHERE table_name = '<table>'
 ORDER BY success_rate ASC
 ```
@@ -74,7 +76,7 @@ Do not move to metrics until all tables have been summarised this way.
 
 ### 3. Read metric results
 
-For each table, query metric results using `execute_sql_query` MCP. The metrics table is `_dlt_data_quality._dlt_dq_metrics`:
+For each table, query metric results using `execute_sql_query` MCP. The metrics table is `_dlt_dq_metrics`, in the same destination dataset as `_dlt_checks`:
 
 ```sql
 SELECT
@@ -83,7 +85,7 @@ SELECT
     metric_name,
     metric_value,
     loaded_at
-FROM _dlt_data_quality._dlt_dq_metrics
+FROM _dlt_dq_metrics
 WHERE table_name = '<table>'
 ORDER BY loaded_at DESC
 LIMIT 50
