@@ -25,13 +25,20 @@ If this context is missing (skill invoked directly), run steps 2–3 of `setup-d
 
 ## Steps
 
-### 1. Detect resource type
+### 1. Determine profile and output form
 
-Before generating any code, determine how the pipeline's resources are defined. This controls which API form to use.
+Two questions control how checks are generated.
 
-Ask the user (or infer from session context / pipeline file):
+**Question 1 — profile:**
 
-> Are these resources defined as custom `@dlt.resource` functions in your own code, or do they come from a dlt built-in source like `rest_api`, `sql_database`, or `filesystem`?
+| Answer | Profile |
+|---|---|
+| "I want checks to run every time the pipeline loads" | **A** — checks go into the pipeline code |
+| "Data is already loaded; I want to check it without re-running the pipeline" | **B** — checks run once against the destination via `dq.run_checks` |
+
+If arriving from `setup-data-quality` with an existing destination and no intent to modify the pipeline, default to Profile B. If ambiguous, ask.
+
+**Question 2 — resource type (Profile A only):**
 
 | Resource type | API form |
 |---|---|
@@ -39,6 +46,8 @@ Ask the user (or infer from session context / pipeline file):
 | Built-in source (`rest_api`, `sql_database`, `filesystem`) | Dynamic: `dq.with_checks(resource_obj, ...)` after instantiation |
 
 If the user is unsure, check the pipeline file for `@dlt.resource` decorators or `rest_api()` / `sql_database()` calls. Make the call yourself — do not leave it as an open question.
+
+Profile B skips Question 2 entirely — no pipeline file is modified.
 
 ### 2. Elicit business intent
 
@@ -96,9 +105,11 @@ Your stated set was ["active", "inactive"]. Should I include "pending" and "canc
 
 Wait for confirmation before finalising the check.
 
-### 4. Map intent to metrics
+### 4. Map intent to metrics (Profile A only)
 
-Select metrics that give ongoing visibility into the data's health over time. Match to what the user said they want to track, or apply these defaults when no preference is stated:
+**Profile B skips this step.** `dq.run_checks` does not support metrics — they require `@dq.with_metrics` decorators on the resource and run during the pipeline load.
+
+For Profile A: select metrics that give ongoing visibility into the data's health over time. Match to what the user said they want to track, or apply these defaults when no preference is stated:
 
 **Always include on every table:**
 ```python
@@ -171,6 +182,28 @@ dq.with_metrics(
 
 Generate one block per table. Do not merge unrelated tables into a single decorator call.
 
+**Profile B — checks dict:**
+
+Do not modify any pipeline file. Produce a `checks` dict to pass directly to `dq.run_checks`:
+
+```python
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+
+checks = {
+    "orders": [
+        dq.checks.is_unique("id"),
+        dq.checks.is_not_null("customer_id"),
+        dq.checks.case("amount >= 0"),
+    ],
+    "customers": [
+        dq.checks.is_unique("id"),
+        dq.checks.is_not_null("email"),
+    ],
+}
+```
+
+This dict is passed to `run-data-quality` as session context and written into `tools/dq_run.py` there. No file is written at this stage.
+
 ### 6. Confirm with the user
 
 Present the full set of checks and metrics before any code is written to a file:
@@ -202,9 +235,11 @@ Does this look right? Say "yes" to proceed, or tell me what to change.
 
 Wait for explicit confirmation. Apply any corrections, then re-present the changed items only.
 
-### 7. Apply to pipeline file
+### 7. Apply changes
 
-Once confirmed, write the changes directly into the existing pipeline file. **Never create a new file for this — the checks and metrics must live alongside the resource definitions they annotate.**
+**Profile A — write to pipeline file:**
+
+Write the changes directly into the existing pipeline file. **Never create a new file for this — the checks and metrics must live alongside the resource definitions they annotate.**
 
 - Decorator form: add `@dq.with_checks(...)` and `@dq.with_metrics(...)` immediately above each `@dlt.resource` decorator in the existing pipeline file.
 - Dynamic form: add the `dq.with_checks(...)` / `dq.with_metrics(...)` calls in the existing pipeline script, after the source is instantiated and before `pipeline.run(source)`.
@@ -212,14 +247,23 @@ Once confirmed, write the changes directly into the existing pipeline file. **Ne
 
 If the pipeline file is not accessible (e.g., it lives in a package), show the user the exact diff and ask them to apply it.
 
+**Profile B — no file write:**
+
+Do not modify any file. The checks dict generated in step 5 is passed forward as session context to `run-data-quality`, which will write `tools/dq_run.py`.
+
 ## Output and handover
 
-Pass to `run-data-quality`:
+**Profile A** — pass to `run-data-quality`:
 - Confirmed pipeline name
-- Tables with checks and metrics now applied
-- Resource type (decorator vs. dynamic) — affects how run results are read back
+- Tables with checks and metrics applied in the pipeline file
+- Resource type (decorator vs. dynamic)
+
+**Profile B** — pass to `run-data-quality`:
+- Confirmed pipeline name
+- The full checks dict (table → list of checks) as a Python literal
+- Profile B flag so `run-data-quality` goes directly to the script-writing path
 
 ```
-Checks and metrics defined. Ready to run.
+Checks defined. Ready to run.
 Moving to run-data-quality →
 ```
