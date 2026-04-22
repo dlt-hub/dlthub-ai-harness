@@ -131,6 +131,8 @@ dq.metrics.dataset.load_row_count()
 dq.metrics.dataset.latest_loaded_at()
 ```
 
+**Constraint:** `dq.metrics.dataset.*` metrics must be applied on a `@dlt.source` function, not on individual `@dlt.resource` functions. If the pipeline only defines `@dlt.resource` without a `@dlt.source` wrapper, skip dataset-level metrics — adding them to a resource will cause a runtime error.
+
 If the user explicitly says "I want to track X over time" — include the matching metric even if it falls outside these defaults.
 
 ### 5. Generate code
@@ -241,9 +243,21 @@ Wait for explicit confirmation. Apply any corrections, then re-present the chang
 
 Write the changes directly into the existing pipeline file. **Never create a new file for this — the checks and metrics must live alongside the resource definitions they annotate.**
 
+**Before writing, scan the pipeline file for any existing `is_primary_key` calls and replace them with `is_unique` on the same column.** Do not leave `is_primary_key` in the file — it will crash at runtime.
+
 - Decorator form: add `@dq.with_checks(...)` and `@dq.with_metrics(...)` immediately above each `@dlt.resource` decorator in the existing pipeline file.
 - Dynamic form: add the `dq.with_checks(...)` / `dq.with_metrics(...)` calls in the existing pipeline script, after the source is instantiated and before `pipeline.run(source)`.
 - Add `from dlt.hub import data_quality as dq` to the imports at the top of that same file if not already present.
+
+**Also add the DQ execution call after `pipeline.run(source)`:**
+
+```python
+# run DQ checks and metrics against just-loaded data
+dq_load_info = pipeline.run(dq.data_quality_checks(pipeline.dataset()))
+dq_load_info.raise_on_failed_jobs()
+```
+
+`@dq.with_checks` only stores hints in the schema metadata — it does not execute checks on its own. The `dq.data_quality_checks(pipeline.dataset())` call reads those hints and writes results to `_dlt_checks`.
 
 If the pipeline file is not accessible (e.g., it lives in a package), show the user the exact diff and ask them to apply it.
 

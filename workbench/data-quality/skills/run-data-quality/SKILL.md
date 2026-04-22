@@ -32,13 +32,15 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
 **Profile A — run the pipeline**
 
-Instruct the user to run their pipeline script as normal. Show the exact command (infer from session context or ask):
+`@dq.with_checks` and `@dq.with_metrics` only store hints in the schema metadata — they do not execute on their own. Results are written to `_dlt_checks` by `dq.data_quality_checks(pipeline.dataset())`, which `define-data-quality-checks` already added to the pipeline file.
+
+Instruct the user to run their pipeline script. Show the exact command (infer from session context or ask):
 
 ```
 uv run python <pipeline_script>.py
 ```
 
-Checks and metrics defined via decorators will execute during the load and write results to `_dlt_data_quality._dlt_checks`. No separate run script is needed.
+This runs the data load AND the `dq.data_quality_checks(...)` call in sequence. Both must complete for results to appear.
 
 Wait for the user to confirm the run completed before proceeding to step 4.
 
@@ -105,7 +107,7 @@ Do not proceed to result reading if the script failed.
 
 `run_checks` writes results to `_dlt_checks` within the pipeline's destination dataset. The physical location depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If unsure, call `list_tables` MCP to locate it before querying.
 
-Query with `execute_sql_query`:
+Query with `execute_sql_query` MCP:
 
 ```sql
 SELECT
@@ -116,6 +118,20 @@ SELECT
     success_rate
 FROM _dlt_checks
 ORDER BY success_rate ASC
+```
+
+**If `execute_sql_query` returns no rows or errors** (the MCP may not index system schema tables), fall back to Python via `pipeline.sql_client()`:
+
+```python
+import dlt
+pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+with pipeline.sql_client() as client:
+    with client.execute_query(
+        "SELECT table_name, check_qualified_name, row_count, success_count, success_rate"
+        " FROM _dlt_checks ORDER BY success_rate ASC"
+    ) as cursor:
+        for row in cursor.fetchall():
+            print(row)
 ```
 
 `success_rate` is 0.0–1.0 (1.0 = all rows passed). A check passes if `success_count = row_count`.

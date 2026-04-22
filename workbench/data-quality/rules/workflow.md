@@ -23,6 +23,7 @@ TODO — fill in handover conditions
 ### Outgoing (from data-quality)
 
 - **transformations** — when DQ failures reveal modeling issues that need fixing upstream
+- **dlthub-runtime** (`setup-runtime`) — when Profile B user wants to schedule `tools/dq_run.py` on the dltHub platform after a successful one-off run
 
 ### Incoming (to data-quality)
 
