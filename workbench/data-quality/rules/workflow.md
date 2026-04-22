@@ -20,9 +20,9 @@
 
 ### Outgoing (from data-quality)
 
-- **transformations** — from (`review-data-quality`), when DQ failures reveal upstream modeling issues that need fixing
+- **transformations** — from (`review-data-quality`), when DQ failures reveal upstream modeling issues that need fixing; start at `annotate-sources`
 - **dlthub-runtime** — from (`run-data-quality`), when the user wants to schedule `tools/dq_run.py` as a recurring job on the dltHub platform; start at `setup-runtime`
-- **data-exploration** — from (`review-data-quality`), when metric anomalies need deeper interactive investigation
+- **data-exploration** — from (`review-data-quality`), when metric anomalies need deeper interactive investigation; start at `explore-data`
 
 ### Incoming (to data-quality)
 
