@@ -92,42 +92,12 @@ Table: customers
 
 If a table has no hints at all, note it briefly but do not skip it — the user may still want manual checks on it.
 
-### 5. Enable DQ on the pipeline
-
-> **Dependency note:** `dq.enable_data_quality()` requires `dlt.hub`. If the import fails, skip this step, note it to the user, and proceed to the handover — the check scaffolding in `define-data-quality-checks` works independently. No structural rework needed once the API lands.
-
-Run the following in a Python snippet:
-
-```python
-import dlt
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
-
-pipeline = dlt.attach(pipeline_name="<pipeline-name>")
-dq.enable_data_quality(pipeline)
-print("DQ enabled — flag persisted in pipeline state.")
-```
-
-Confirm success with the user:
-
-```
-DQ enabled on pipeline "my_pipeline". The flag is persisted in pipeline state across runs.
-```
-
-If the import is unavailable, say:
-
-```
-dlt.hub is not yet available in this environment — DQ flag not set.
-You can still define and scaffold checks now; enable_data_quality() can be wired in once the API lands.
-```
-
 ## Output and handover
 
 Pass the following context to `define-data-quality-checks`:
 - Confirmed pipeline name
 - Table list (names + column counts)
 - Auto-detected check candidates per table (from step 3)
-
-Hand over immediately — do not ask the user for confirmation again unless step 5 failed:
 
 ```
 Schema inspected. Ready to define checks.
