@@ -6,7 +6,7 @@
 
 **Use the dlt DQ API, not notebooks.** When the user asks to "set up data quality" or "monitor data quality", invoke `setup-data-quality`. Never generate a custom Marimo notebook as a DQ solution.
 
-**Enable before checking.** Always call `dq.enable_data_quality(pipeline)` before defining or running any checks. If the DQ flag is absent from pipeline state, stop and return to `setup-data-quality`.
+**Enable before checking.** The DQ flag must be present in the pipeline state before checks can run. If `setup-data-quality` detects the flag is absent, stop and re-run `setup-data-quality` before continuing.
 
 **Prefer built-in checks.** Use `is_unique()`, `is_not_null()`, `is_in()`, `case()` before writing any custom logic. Custom code is a last resort. Do NOT use `is_primary_key()` — it is not yet fully implemented and raises `LineageFailedException` at runtime; use `is_unique()` instead.
 
@@ -19,7 +19,7 @@
 ### Inbound — other toolkits recommending data-quality
 
 - **rest-api-pipeline** → after `validate-data` or pipeline completion, suggest: *"Your pipeline is working. To set up continuous data quality monitoring, use `setup-data-quality`."*
-- **transformations** → after `annotate-sources` or completing a transformation pipeline, recommend DQ as the next production-readiness step.
+- **transformations** → after `create-transformation`, recommend DQ as the next production-readiness step.
 
 ### Outbound — data-quality recommending other toolkits
 
