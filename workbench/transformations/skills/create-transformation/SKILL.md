@@ -225,12 +225,10 @@ def dim_person(dataset: dlt.Dataset):
 # ... remaining functions
 
 if __name__ == "__main__":
-    pipeline = dlt.pipeline(
-        pipeline_name="<business_domain>_pipeline",   # e.g. person_interactions_pipeline
-        destination="<destination>",
-        dataset_name="<business_domain>",             # no _pipeline suffix on dataset
-    )
-    load_info = pipeline.run(<business_domain>_to_cdm())
+    source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
+    source_dataset = source_pipeline.dataset()
+
+    load_info = pipeline.run(<business_domain>_to_cdm(source_dataset))
     print(load_info)
 ```
 
