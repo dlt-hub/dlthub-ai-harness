@@ -132,7 +132,16 @@ def dim_users(dataset: dlt.Dataset):
     yield dataset("SELECT user_id, email, created_at FROM users")
 ```
 
-Use `query_dialect` if your SQL dialect differs from the destination.
+**Write all transformation SQL in ANSI-standard SQL.** This ensures transformations are portable across destinations without modification. dlt uses SQLGlot to transpile queries, but transpilation can only bridge dialect gaps when the input SQL uses constructs that have mappings across dialects. ANSI SQL is the baseline that all supported destinations understand.
+
+Concretely:
+- Use `CAST(x AS type)` not `x::type`
+- Use `COALESCE(a, b)` not `IFNULL(a, b)`
+- Use standard type names: `VARCHAR`, `BIGINT`, `BOOLEAN`, `TIMESTAMP`
+- Use `CASE WHEN` for conditional logic
+- Use standard aggregates: `SUM`, `AVG`, `COUNT`, `MIN`, `MAX`
+
+When a transformation genuinely requires a dialect-specific function with no ANSI equivalent (e.g., `EPOCH_MS`, `STRFTIME`, array operations), pass `query_dialect` to `dataset()` so dlt knows how to transpile it.
 
 **Cross-dataset SQL must use fully qualified source references.**
 When writing into `<target_dataset>` from a different source dataset, unqualified table names may resolve against the target dataset and fail with "table not found". For BigQuery, always use ``project.dataset.table`` for source-side refs.
