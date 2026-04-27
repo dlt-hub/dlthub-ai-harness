@@ -189,11 +189,16 @@ def dim_person(dataset: dlt.Dataset):
 
 If ibis is needed for cross-source composition, initialise connections **before** the CDM pipeline starts — see the [ibis Table expression API](https://ibis-project.org/reference/expression-tables) for join, union, and window function patterns.
 
-**`columns=` hint — REQUIRED for any column that may be NULL on first run:**
+**`columns=` hint — REQUIRED for any column that may be NULL on first run, and for any computed or derived column:**
 ```python
 @dlt.hub.transformation(
     write_disposition="replace",
-    columns={"company_sk": {"data_type": "text", "nullable": True}},
+    columns={
+        "company_sk":   {"data_type": "text",     "nullable": False},
+        "email_hash":   {"data_type": "text",     "nullable": True},  # md5()
+        "month_bucket": {"data_type": "text",     "nullable": True},  # strftime()
+        "event_count":  {"data_type": "bigint",   "nullable": True},  # COUNT() alias
+    },
 )
 def dim_person(dataset: dlt.Dataset):
     ...
@@ -202,6 +207,7 @@ def dim_person(dataset: dlt.Dataset):
 `columns=` `data_type` values for keys must match the key type contract selected in Step 4.
 
 When to add `columns=`:
+- **Any computed or derived column** — scan the SELECT list: every `md5()`, `strftime()`, `TRY_CAST`, `CASE WHEN`, aggregate alias (`COUNT(*) AS event_count`), or function chain needs a hint. These are visible directly in the SQL.
 - Any column from a LEFT JOIN (lookup may return NULL)
 - Any cast from string to typed value where source may be empty
 - Any column that was NULL-only in a prior run
