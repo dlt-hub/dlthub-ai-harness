@@ -13,7 +13,8 @@ Diagnose and fix dlt transformation failures. Two main failure classes: **SQL di
 - Pipeline fails with SQL syntax errors or "unsupported function" messages
 - You want to verify SQL portability **before** deploying (proactive check)
 - Pipeline is stuck in a failed/retry loop
-- Columns are missing from output after the first run
+- Columns are missing from output after the first run (NULL-only or computed/derived columns)
+- You want to inspect what the transformation actually produced after a successful run
 
 ## 1. SQL dialect compatibility
 
@@ -143,9 +144,17 @@ References:
 - dlt CLI reference: https://dlthub.com/docs/reference/command-line-interface
 - `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
 
-## 3. NULL column and schema issues
+## 3. Missing columns and schema issues
 
-When a column is NULL-only on the first run and no `columns=` hint was provided on the `@dlt.hub.transformation` decorator, dlt strips the column from the schema, causing silent data loss on subsequent runs.
+dlt silently drops columns it cannot type-infer — no error, no warning. Two root causes:
+
+### 3a. NULL-only columns
+
+When a column is NULL-only on the first run and no `columns=` hint was provided, dlt strips the column from the schema. Subsequent runs write data but the column is absent.
+
+### 3b. Computed / derived columns
+
+When a transformation uses derived expressions — `md5()`, `strftime()`, `TRY_CAST`, `CASE WHEN ... END`, aggregates with aliases, or function chains — dlt cannot infer the output type from the SQL alone. Without a `columns=` hint the column is silently dropped.
 
 **Diagnose:** compare expected vs actual columns using the MCP `get_table_schema` tool, or inspect via:
 
@@ -153,14 +162,19 @@ When a column is NULL-only on the first run and no `columns=` hint was provided 
 dlt pipeline <pipeline_name> show
 ```
 
-**Fix:** add `columns=` hints for any column that may be NULL on first run:
+Identify which computed columns are absent from the output schema. Each missing column needs an explicit `columns=` hint.
+
+**Fix:** add `columns=` hints for every affected column:
 
 ```python
 @dlt.hub.transformation(
     write_disposition="replace",
     columns={
-        "company_sk": {"data_type": "text", "nullable": True},
-        "joined_at":  {"data_type": "timestamp", "nullable": True},
+        "company_sk":   {"data_type": "text",      "nullable": False},
+        "joined_at":    {"data_type": "timestamp",  "nullable": True},
+        "email_hash":   {"data_type": "text",       "nullable": True},   # md5() result
+        "month_bucket": {"data_type": "text",       "nullable": True},   # strftime() result
+        "event_count":  {"data_type": "bigint",     "nullable": True},   # COUNT() alias
     },
 )
 def dim_company(dataset: dlt.Dataset):
@@ -173,5 +187,48 @@ Apply `columns=` hints for:
 - Any column from a `LEFT JOIN` (lookup may return NULL)
 - Any cast from string to typed value where the source may be empty
 - Any column that was NULL-only in a prior run
+- **Any computed or derived column**: `md5()`, `strftime()`, `TRY_CAST`, `CASE WHEN`, aggregate aliases, function chains
+
+### Known DuckDB failure: "Parser Error: Adding columns with constraints not yet supported"
+
+This error surfaces when re-running a transformation with new or modified `columns=` hints against DuckDB — DuckDB's `ALTER TABLE` cannot add constrained columns. The workaround is to drop the dataset and re-run from scratch:
+
+```bash
+# DuckDB only — this drops all tables in the dataset
+duckdb <path_to_db_file> "DROP SCHEMA <dataset_name> CASCADE;"
+```
+
+Then re-run the transformation script. This is DuckDB-specific behavior and will not occur on cloud destinations (BigQuery, Snowflake, Postgres).
 
 Reference: https://dlthub.com/docs/hub/features/transformations
+
+## 4. Validate transformation output
+
+After a successful run, verify the transformation produced the expected result before treating it as done.
+
+**Check which tables were created and row counts:**
+
+```python
+import dlt
+
+pipeline = dlt.attach(pipeline_name="<business_domain>_pipeline")
+dataset = pipeline.dataset()
+
+for table in pipeline.default_schema.tables:
+    relation = dataset.table(table)
+    print(table, relation.fetchone())  # quick row count check
+```
+
+Or use the MCP tools:
+- `list_tables` — confirm all CDM tables are present in the target dataset
+- `get_row_counts` — verify counts are non-zero and plausible relative to source
+- `get_table_schema` — confirm column names and types match the CDM spec
+- `preview_table` — inspect a sample of rows for unexpected NULLs, wrong grain, or type mismatches
+
+**What to check:**
+- All expected CDM tables exist (no silent skip due to empty resource)
+- Row counts are non-zero and plausible relative to source table sizes
+- Surrogate key columns are populated (not all NULL)
+- Foreign keys in fact tables resolve to values present in dimension tables
+- No unexpected duplicate rows (grain violation)
+- Computed columns (`md5`, date buckets, etc.) are present and non-NULL where expected
