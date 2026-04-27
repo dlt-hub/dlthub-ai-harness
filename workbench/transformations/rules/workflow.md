@@ -9,6 +9,9 @@
 3. **Generate CDM** (`generate-cdm`) — apply Kimball dimensional modeling: classify fact/dimension, define grain, surrogate keys, SCD types, conformed dimensions
 4. **Create transformation** (`create-transformation`) — write SQL-first `@dlt.hub.transformation` functions (with optional ibis) that map source tables to CDM entities
 
+## Extend and harden
+5. **Debug transformation** (`debug-transformation`) — diagnose SQL dialect incompatibility, fix failing transformations, validate portability across destinations, recover from pipeline state errors
+
 ## Incoming
 
 - From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name, destination, and dataset are already known. `annotate-sources` should skip `list_pipelines` discovery and go straight to schema extraction on the known pipeline. Business context may already be available from the ingestion session.

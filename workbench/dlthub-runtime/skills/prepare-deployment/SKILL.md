@@ -47,6 +47,8 @@ Offer to set up a production destination. If user is using `duckdb`, explain why
 1. If user is using `duckdb` — offer to set up **Motherduck** as the production destination.
 2. `dlt` supports most major warehouses, data lakes and pure filesystems.
 
+**If transformations are part of this workspace and the production destination differs from dev:** before proceeding, run the (`debug-transformation`) skill from the **transformations** toolkit to validate SQL dialect compatibility. Transformations developed against DuckDB may use syntax that fails on BigQuery, Snowflake, or Postgres.
+
 ### 3b. Configure production destination
 
 Our goal here is to keep **existing dev destination** in dev profile, and configure **production** destination
