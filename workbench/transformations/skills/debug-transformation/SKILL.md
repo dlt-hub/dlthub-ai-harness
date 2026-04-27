@@ -1,0 +1,177 @@
+---
+name: debug-transformation
+description: Debug dlt transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, or pipeline recovery is needed after a failed run.
+---
+
+# Debug transformation
+
+Diagnose and fix dlt transformation failures. Two main failure classes: **SQL dialect incompatibility** (transformation works on dev destination, fails on production) and **pipeline state errors** (stale packages, schema drift, failed jobs).
+
+## When to use this skill
+
+- Transformation works on DuckDB locally but fails on BigQuery, Snowflake, or Postgres after deployment
+- Pipeline fails with SQL syntax errors or "unsupported function" messages
+- You want to verify SQL portability **before** deploying (proactive check)
+- Pipeline is stuck in a failed/retry loop
+- Columns are missing from output after the first run
+
+## 1. SQL dialect compatibility
+
+### 1a. Inspect transpiled SQL output
+
+Before or after a failure, inspect what SQL dlt will actually send to the destination. Every dlt `Relation` exposes a `.sql()` method that returns the transpiled query string for the current destination.
+
+```python
+import dlt
+
+source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
+source_dataset = source_pipeline.dataset()
+
+# Get the relation produced by your transformation function
+relation = list(my_transform(source_dataset))[0]
+print(relation.sql())  # shows what will run on the destination
+```
+
+Compare the output against what you wrote. If the transpilation looks wrong or incomplete, the SQL contains constructs SQLGlot cannot map to the target dialect.
+
+### 1b. Test against a different target dialect
+
+If developing on DuckDB but deploying to BigQuery (or any other destination), create a test pipeline pointing at the target destination and inspect the transpiled SQL without running it:
+
+```python
+import dlt
+
+# Point at the target destination
+target_pipeline = dlt.pipeline(
+    pipeline_name="<business_domain>_pipeline",
+    destination="bigquery",  # target destination, not dev destination
+    dataset_name="<business_domain>",
+)
+
+source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
+source_dataset = source_pipeline.dataset()
+
+relation = list(my_transform(source_dataset))[0]
+print(relation.sql())  # shows transpiled SQL for BigQuery
+```
+
+This reveals dialect gaps before they cause a production failure.
+
+### 1c. Common dialect-specific patterns to fix
+
+Rewrite these to ANSI SQL so SQLGlot can transpile them to any destination:
+
+| Dialect-specific pattern | Portable ANSI alternative |
+|---|---|
+| `x::TEXT`, `x::INT` (cast shorthand) | `CAST(x AS VARCHAR)`, `CAST(x AS INTEGER)` |
+| `IFNULL(a, b)` | `COALESCE(a, b)` |
+| `ILIKE` | `LOWER(x) LIKE LOWER(y)` |
+| `INT64` / `STRING` / `FLOAT64` as type names | `BIGINT` / `VARCHAR` / `DOUBLE` |
+| `EPOCH_MS()`, `STRFTIME()`, `LIST_AGG()`, etc. | No ANSI equivalent — use `query_dialect` (see below) |
+| `QUALIFY` clause | Wrap in subquery with `WHERE` on the window result |
+
+### 1d. When dialect-specific SQL is unavoidable
+
+If a transformation genuinely requires a dialect-specific function with no ANSI equivalent, declare the source dialect with `query_dialect` so SQLGlot knows how to transpile:
+
+```python
+@dlt.hub.transformation
+def my_transform(dataset: dlt.Dataset):
+    yield dataset(
+        "SELECT STRFTIME(created_at, '%Y-%m') AS month FROM events",
+        query_dialect="duckdb",  # tells dlt this SQL is DuckDB dialect
+    )
+```
+
+If SQLGlot raises `UnsupportedError` or logs warnings at `unsupported_level`, the construct has no mapping to the target dialect and must be rewritten to an ANSI equivalent or handled in application code.
+
+References:
+- SQLGlot supported dialects: https://sqlglot.com/sqlglot.html
+- SQLGlot unsupported errors: https://sqlglot.com/sqlglot.html#unsupported-errors
+- dlt `Relation` source: https://github.com/dlt-hub/dlt/blob/3583acd7785d3120fa29329d11cfbf379e0258a3/dlt/dataset/relation.py#L276
+
+## 2. Pipeline failure recovery
+
+Use this escalation order. Do not skip steps.
+
+### Step 1: Inspect failures
+
+```bash
+dlt pipeline <pipeline_name> failed-jobs
+dlt pipeline <pipeline_name> trace
+```
+
+Read the error messages before taking any recovery action. Most failures are fixable without touching destination state.
+
+### Step 2: Clear stale packages
+
+If a prior run failed mid-load and left pending packages that keep retrying old (broken) SQL:
+
+```bash
+dlt pipeline <pipeline_name> drop-pending-packages
+```
+
+Re-run after clearing. If the underlying SQL was fixed, this is often all that is needed.
+
+### Step 3: Reconcile local state
+
+If local pipeline state has drifted from the destination (e.g. after a partial load or schema change):
+
+```bash
+dlt pipeline <pipeline_name> sync
+```
+
+If no recoverable destination state exists, `sync` may not resolve partial retries — use `drop-pending-packages` first.
+
+### Step 4: Selective drop (last resort)
+
+Only if the steps above do not resolve the failure and incorrect schema or tables were already loaded to the destination:
+
+```bash
+dlt pipeline <pipeline_name> drop <resource>   # drop a specific resource
+dlt pipeline <pipeline_name> drop --drop-all   # only with explicit user confirmation
+```
+
+**Safety rules before dropping:**
+- Prefer dropping specific resources over `--drop-all`
+- Confirm pipeline name, destination, dataset, and which resources will be dropped before executing
+- `drop` removes destination tables and resets matching local state — this forces a full reload and may remove good data alongside bad
+- If uncertain which resources are safe to drop, stop and ask the user before executing
+- After drop: re-run transformations and validate schema/tables before further loads
+
+References:
+- dlt CLI reference: https://dlthub.com/docs/reference/command-line-interface
+- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
+
+## 3. NULL column and schema issues
+
+When a column is NULL-only on the first run and no `columns=` hint was provided on the `@dlt.hub.transformation` decorator, dlt strips the column from the schema, causing silent data loss on subsequent runs.
+
+**Diagnose:** compare expected vs actual columns using the MCP `get_table_schema` tool, or inspect via:
+
+```bash
+dlt pipeline <pipeline_name> show
+```
+
+**Fix:** add `columns=` hints for any column that may be NULL on first run:
+
+```python
+@dlt.hub.transformation(
+    write_disposition="replace",
+    columns={
+        "company_sk": {"data_type": "text", "nullable": True},
+        "joined_at":  {"data_type": "timestamp", "nullable": True},
+    },
+)
+def dim_company(dataset: dlt.Dataset):
+    ...
+```
+
+`data_type` values must match the key type contract established during `create-transformation` (consistently `text` or `bigint` for surrogate keys).
+
+Apply `columns=` hints for:
+- Any column from a `LEFT JOIN` (lookup may return NULL)
+- Any cast from string to typed value where the source may be empty
+- Any column that was NULL-only in a prior run
+
+Reference: https://dlthub.com/docs/hub/features/transformations

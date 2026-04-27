@@ -258,7 +258,7 @@ Show a summary of:
 
 Ask user to confirm before running the transformation.
 
-### 8. Run and recover safely
+### 8. Run
 
 Run the script from the project root so `.dlt` state resolves correctly. If needed, enforce root CWD in entrypoint:
 
@@ -271,39 +271,7 @@ os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 
 **During development iterations**, use the `debug-pipeline` skill from the **rest-api-pipeline** toolkit — it offers more help with failing pipelines, and particularly sets up `dev_mode=True` for development iterations.
 
-**When `dev_mode` is not suitable (production datasets or shared destinations):**
-
-If stale pending packages exist after a failed run, clear them before re-running:
-
-```
-# TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages
-dlt pipeline <pipeline_name> drop-pending-packages
-```
-
-Use `sync` and `drop-pending-packages` for different failure classes:
-- `dlt pipeline <pipeline_name> sync` — recover/refresh local pipeline state from destination state.
-- `dlt pipeline <pipeline_name> drop-pending-packages` — remove stale failed/pending load packages that can keep retrying old SQL and mask new fixes.
-
-If no recoverable destination state exists, `sync` may not resolve partial package retries; use `drop-pending-packages` before re-run.
-
-**If incorrect schema/tables were already loaded to destination, treat `drop` as last resort.**
-Use this escalation order:
-1. Inspect first: `dlt pipeline <pipeline_name> failed-jobs` and `dlt pipeline <pipeline_name> trace`
-2. Clear stale retries: `dlt pipeline <pipeline_name> drop-pending-packages`
-3. Reconcile local state: `dlt pipeline <pipeline_name> sync`
-4. Only then consider selective drop: `dlt pipeline <pipeline_name> drop <resource>` (or `--drop-all` only with explicit user confirmation)
-
-Safety rules for `drop`:
-- Prefer dropping specific resources over `--drop-all`
-- Confirm pipeline name, destination, dataset, and selected resources before accepting the prompt
-- Explain that drop removes destination tables and resets matching state; this can force full reloads and may remove good data with bad data
-- If uncertain which resources are safe to drop, stop and ask the user before executing
-- After drop, re-run transformations and validate schema/tables before further loads
-
-References:
-- CLI docs: https://dlthub.com/docs/reference/command-line-interface
-- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
-- Transformations docs: https://dlthub.com/docs/hub/features/transformations
+If the transformation fails, or if you want to validate SQL portability across destinations before deploying, use the (`debug-transformation`) skill.
 
 ## Output
 
