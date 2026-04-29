@@ -1,16 +1,41 @@
 ---
 name: annotate-sources
 description: Annotate dlt pipeline sources for transformation. Use when the user wants to transform data, do data modelling, design a data model, describes their data sources and use cases, or wants to build a CDM from existing pipelines.
-argument-hint: "[sources] [use-cases]"
+argument-hint: "[sources] [use-cases] [resources]"
 ---
 
 # Annotate sources
 
 Map the user's data sources to canonical business concepts, ready for ontology and CDM design.
 
+## Session context — skip redundant work
+
+Before asking the user anything, check what is already known from the current session:
+
+1. **Arriving from rest-api-pipeline** (after `validate-data`, `view-data`, or `debug-pipeline`) — pipeline name, destination, dataset name, and loaded resources are already in session context. Present what was found and ask for confirmation rather than re-asking:
+
+   ```
+   I can see you just loaded the HubSpot pipeline:
+     Pipeline: hubspot_crm_pipeline
+     Destination: duckdb
+     Dataset: hubspot_crm_data
+     Resources: contacts, companies, deals, activities
+
+   I'll use this as the starting point for annotation. Does this look right, or do you want to add other sources?
+   ```
+
+   Wait for confirmation, then proceed directly to **Step 0** (bootstrap validation) — skip the source-gathering questions below.
+
+2. **Arriving from data-exploration** (after profiling raw pipeline data) — pipeline name, dataset, and table structure are already known, and the user has decided the raw tables need proper modeling. Carry forward any profiling observations (natural key candidates, data quality notes, PII flags). Skip pipeline discovery; go straight to **Step 0**.
+
+3. **Standalone entry (no prior context)** — fall through to `Parse $ARGUMENTS` and the user questions below.
+
+---
+
 Parse `$ARGUMENTS`:
 - `source names`: comma-separated pipeline or source names (e.g. "hubspot, luma, stripe")
 - `use cases`: what the user wants to do with the data (e.g. "track event attendance, link contacts to companies")
+- `resources`: comma-separated list of loaded resources/endpoints (e.g. "contacts, companies, deals") — used in bootstrap validation
 
 If not provided in arguments, ask the user for:
 1. Which data sources / dlt pipelines they have
@@ -45,6 +70,26 @@ You need to ingest it first — use the rest-api-pipeline toolkit to build a dlt
 ```
 
 Only continue when **all stated sources are confirmed as Case A or Case B**.
+
+**[Optional] If ingestion context is available (resource list known from prior session):** run a quick coverage check now, before any design work. Call `get_row_counts` for each confirmed pipeline and cross-check loaded tables against the expected resource list. Flag:
+
+- **Missing tables** — resources the user configured but absent from the dataset
+- **Empty tables** — tables with 0 rows
+
+Present the result and ask whether to continue or fix gaps first:
+
+```
+Source coverage check — hubspot_crm_pipeline:
+
+✓ contacts — 1,842 rows
+✓ companies — 304 rows
+✗ deals — table not found
+✗ activities — 0 rows (empty)
+
+Missing or empty tables may block your use case. Fix the pipeline first (hand off to rest-api-pipeline), or proceed with what's available?
+```
+
+Record any gaps as assumptions and carry them forward regardless of the user's choice.
 
 ### 2. Confirm CDM folder name
 
@@ -199,6 +244,21 @@ Add confirmed tables under each concept's `tables` array:
   ]
 }
 ```
+
+**[Optional]: If no ingestion context was available earlier:** now that tables are mapped to entities, run the coverage check here. Call `get_row_counts` for each pipeline and check that every entity has at least one mapped table with rows. Flag empty or missing tables by entity:
+
+```
+Coverage check after mapping:
+
+Person:
+  ✓ hubspot__contacts — 1,842 rows
+  ✓ luma__guests — 310 rows
+
+Deal:
+  ✗ hubspot__deals — 0 rows (empty — revenue use case may be blocked)
+```
+
+Present gaps to the user and ask whether to fix them or proceed. Record gaps as assumptions regardless.
 
 ### 7. Identify cross-source natural keys
 
