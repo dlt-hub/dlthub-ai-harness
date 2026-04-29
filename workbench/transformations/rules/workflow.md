@@ -3,6 +3,10 @@
 ## Workflow Entry
 **ALWAYS** start with **Annotate sources** (`annotate-sources`) SKILL — identify pipelines, extract schemas, map tables to canonical concepts, and confirm natural keys before any design work
 
+**Use this toolkit when the user wants to build a reusable data model** — a CDM, dimensional model, or structured output that will be run repeatedly. The signal is intent to *model*: "I want to design a data model", "I want a CDM", "I want to standardise my data", "I want fact and dimension tables."
+
+If the user wants to explore, analyse, visualise, or ask ad-hoc questions about their data, use the **data-exploration** toolkit instead. When intent is ambiguous, ask once: "Are you looking to model this data into a reusable structure (CDM / dimensional model), or explore and visualise what's already there?"
+
 ## Core workflow
 1. **Annotate sources** (`annotate-sources`) — verify pipelines exist, extract source schemas, derive canonical concepts from use cases, map tables to concepts, identify cross-source natural keys
 2. **Create ontology** (`create-ontology`) — build the entity graph: one entity per concept, union attributes from all contributing sources, define relationships from natural keys and FKs
