@@ -18,17 +18,20 @@ Diagnose and fix dlt transformation failures. Two main failure classes: **SQL di
 
 ## 1. SQL dialect compatibility
 
+Write dialect-checking scripts to `diagnostics/check_dialect.py` (create `diagnostics/` at the project root if it doesn't exist). Delete them after the issue is resolved — they are temporary diagnostic aids, not part of the transformation code.
+
 ### 1a. Inspect transpiled SQL output
 
 Before or after a failure, inspect what SQL dlt will actually send to the destination. Every dlt `Relation` exposes a `.sql()` method that returns the transpiled query string for the current destination.
 
 ```python
+# diagnostics/check_dialect.py
 import dlt
+from transformations.<dataset_name>_to_cdm import my_transform
 
 source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
 source_dataset = source_pipeline.dataset()
 
-# Get the relation produced by your transformation function
 relation = list(my_transform(source_dataset))[0]
 print(relation.sql())  # shows what will run on the destination
 ```
@@ -37,10 +40,12 @@ Compare the output against what you wrote. If the transpilation looks wrong or i
 
 ### 1b. Test against a different target dialect
 
-If developing on DuckDB but deploying to BigQuery (or any other destination), create a test pipeline pointing at the target destination and inspect the transpiled SQL without running it:
+If developing on DuckDB but deploying to BigQuery (or any other destination), point the pipeline at the target destination and inspect the transpiled SQL without running it:
 
 ```python
+# diagnostics/check_dialect.py
 import dlt
+from transformations.<dataset_name>_to_cdm import my_transform
 
 # Point at the target destination
 target_pipeline = dlt.pipeline(
