@@ -18,50 +18,51 @@ Diagnose and fix dlt transformation failures. Two main failure classes: **SQL di
 
 ## 1. SQL dialect compatibility
 
-Write dialect-checking scripts to `diagnostics/check_dialect.py` (create `diagnostics/` at the project root if it doesn't exist). Delete them after the issue is resolved — they are temporary diagnostic aids, not part of the transformation code.
+Write dialect-checking scripts to `diagnostics/check_dialect.py` (create `diagnostics/` at the project root if it doesn't exist). Add `diagnostics/` to `.gitignore` — these are temporary diagnostic aids, not part of the transformation code. Delete them after the issue is resolved.
 
-### 1a. Inspect transpiled SQL output
+### 1a. Validate SQL portability with SQLGlot
 
-Before or after a failure, inspect what SQL dlt will actually send to the destination. Every dlt `Relation` exposes a `.sql()` method that returns the transpiled query string for the current destination.
+Use SQLGlot directly to transpile each transformation's SQL from the dev dialect to the target dialect — no pipeline connection required, pure static analysis.
 
-```python
-# diagnostics/check_dialect.py
-import dlt
-from transformations.<dataset_name>_to_cdm import my_transform
-
-source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
-source_dataset = source_pipeline.dataset()
-
-relation = list(my_transform(source_dataset))[0]
-print(relation.sql())  # shows what will run on the destination
-```
-
-Compare the output against what you wrote. If the transpilation looks wrong or incomplete, the SQL contains constructs SQLGlot cannot map to the target dialect.
-
-### 1b. Test against a different target dialect
-
-If developing on DuckDB but deploying to BigQuery (or any other destination), point the pipeline at the target destination and inspect the transpiled SQL without running it:
+Collect the SQL strings from your `@dlt.hub.transformation` functions (they are the string literals passed to `dataset()`), add them to a `QUERIES` dict, and run:
 
 ```python
 # diagnostics/check_dialect.py
-import dlt
-from transformations.<dataset_name>_to_cdm import my_transform
+import sqlglot
 
-# Point at the target destination
-target_pipeline = dlt.pipeline(
-    pipeline_name="<business_domain>_pipeline",
-    destination="bigquery",  # target destination, not dev destination
-    dataset_name="<business_domain>",
-)
+QUERIES = {
+    "dim_person": "SELECT email, first_name FROM hubspot__contacts",
+    "fact_activity": "SELECT id, activity_type FROM hubspot__activities",
+    # add one entry per transformation function
+}
 
-source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
-source_dataset = source_pipeline.dataset()
+issues = {}
 
-relation = list(my_transform(source_dataset))[0]
-print(relation.sql())  # shows transpiled SQL for BigQuery
+for name, sql in QUERIES.items():
+    print(f"\n{'='*60}\n  {name}\n{'='*60}")
+    try:
+        result = sqlglot.transpile(
+            sql,
+            read="duckdb",    # source dialect (your dev destination)
+            write="bigquery", # target dialect (your production destination)
+            error_level=sqlglot.ErrorLevel.WARN,
+        )[0]
+        print(result[:2000])
+    except Exception as e:
+        print(f"ERROR: {e}")
+        issues[name] = str(e)
+
+print("\nSUMMARY")
+if issues:
+    for name, err in issues.items():
+        print(f"  {name}: {err}")
+else:
+    print("  No transpilation issues detected.")
 ```
 
-This reveals dialect gaps before they cause a production failure.
+Run with `uv run python diagnostics/check_dialect.py`. Any `UnsupportedError` or warning means that construct has no mapping to the target dialect and must be rewritten to ANSI SQL or annotated with `query_dialect`.
+
+Change `read=` and `write=` to match your actual dev and production destinations. SQLGlot supports 31+ dialects — see https://sqlglot.com/sqlglot.html for dialect names.
 
 ### 1c. Common dialect-specific patterns to fix
 
@@ -209,22 +210,8 @@ Reference: https://dlthub.com/docs/hub/features/transformations
 
 ## 4. Validate transformation output
 
-After a successful run, verify the transformation produced the expected result before treating it as done.
+After a successful run, verify the transformation produced the expected result before treating it as done. Use the MCP tools:
 
-**Check which tables were created and row counts:**
-
-```python
-import dlt
-
-pipeline = dlt.attach(pipeline_name="<business_domain>_pipeline")
-dataset = pipeline.dataset()
-
-for table in pipeline.default_schema.tables:
-    relation = dataset.table(table)
-    print(table, relation.fetchone())  # quick row count check
-```
-
-Or use the MCP tools:
 - `list_tables` — confirm all CDM tables are present in the target dataset
 - `get_row_counts` — verify counts are non-zero and plausible relative to source
 - `get_table_schema` — confirm column names and types match the CDM spec
