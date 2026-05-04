@@ -91,14 +91,21 @@ ORDER BY _dlt_load_id DESC
 LIMIT 50
 ```
 
-**Trend detection:** if multiple `_dlt_load_id` values exist for the same metric (i.e. the pipeline has run more than once), compute the delta and flag meaningful changes:
+**Trend detection:** if multiple `_dlt_load_id` values exist for the same metric (i.e. the pipeline has run more than once), compute the delta per metric and ask the user to set alert thresholds before flagging:
 
-| Metric | Flag condition |
-|---|---|
-| `null_rate` | Increased by > 5 percentage points vs. previous run |
-| `row_count` | Dropped by > 20% vs. previous run |
-| `minimum` / `maximum` | Outside historical range (new min/max) |
-| `unique_count` | Dropped (potential deduplication or data loss) |
+```
+I can compare these metrics against the previous run and flag meaningful changes.
+What thresholds should I use?
+
+  null_rate      — flag if increased by more than ___% points
+  row_count      — flag if dropped by more than ___%
+  minimum/maximum — flag if outside historical range? (yes/no)
+  unique_count   — flag if dropped? (yes/no)
+
+Say "skip" to show all deltas without filtering.
+```
+
+Wait for the user's answer. If they say "skip", present all deltas with no threshold filtering. Otherwise apply their stated thresholds when deciding what to flag.
 
 Present metrics alongside the check summary for each table:
 
