@@ -1,7 +1,7 @@
 ---
 name: define-data-quality-checks
 argument-hint: "[pipeline-name] [table]"
-description: Use when the user asks to "define checks", "add validation rules", "set up contracts", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlt DQ check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
+description: Use when the user asks to "define checks", "add validation rules", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlt DQ check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
 ---
 
 # Define data quality checks
