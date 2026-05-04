@@ -19,7 +19,7 @@ If not provided in arguments, ask the user for:
 
 **IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
-All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 3 below.
+All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 2 below.
 
 ## Steps
 
@@ -29,13 +29,27 @@ Use `list_pipelines` MCP tool to list all local dlt pipelines.
 
 For each source the user mentioned, one of three cases applies:
 
-**Case A — local pipeline found** → note the pipeline name, dataset name, and destination. Schema will be extracted via `export_schema` in step 2.
+**Case A — local pipeline found** → note the pipeline name, dataset name, and destination. Schema will be read from `~/.dlt/pipelines/<pipeline_name>/schemas/<pipeline_name>.schema.json` in step 3.
+
+Before proceeding, check whether any tables in the schema JSON already have `x-taxonomy` blocks. If they do, this pipeline was annotated in a previous session. Prompt the user:
+
+```
+This pipeline already has taxonomy annotations from a previous session.
+
+If the schema has changed since then (new tables, new columns, updated endpoints), run check-taxonomy first to see what's drifted before re-annotating.
+
+Would you like to:
+  1) Run check-taxonomy first (recommended)
+  2) Continue with annotate-sources
+```
+
+Wait for the user's choice before proceeding.
 
 **Case B — no local pipeline, but data already exists on a remote destination** → ask the user for:
 - The exact dataset name on the destination (e.g. `luma_events_data`)
 - The destination type (e.g. `bigquery`, `snowflake`)
 
-Schema will be extracted via a dlt ibis script in step 2. Do NOT hand off to rest-api-pipeline — the data is already there.
+Schema will be extracted via a dlt ibis script in step 3. Note: `x-taxonomy` annotations cannot be embedded in the schema JSON for Case B sources — no local pipeline state exists. Mappings for Case B tables will be recorded in `taxonomy.md` only.
 
 **Case C — no pipeline and no remote dataset** → stop and hand over to **rest-api-pipeline** toolkit:
 
@@ -60,57 +74,58 @@ Does this name work, or would you like to change it?
 
 Wait for confirmation. This name will also be used as the `dataset_name` when the transformation script is written — so it's worth getting right now.
 
-### 3. Extract source schemas
+### 3. Read source schemas
 
-**For Case A (local pipeline):** call `export_schema` MCP tool with `output_format: "dbml"` and `save_to_file: "<project_root>/.schema/<cdm-name>/<pipeline_name>.dbml"`.
+**For Case A (local pipeline):** Read the dlt schema JSON directly:
 
-**For Case B (remote dataset, no local pipeline):** write and run a Python script using dlt ibis to extract the schema and write it as DBML.
+```
+~/.dlt/pipelines/<pipeline_name>/schemas/<pipeline_name>.schema.json
+```
 
-Write the script to `tools/get_<source>_schema.py`:
+On Windows this resolves to `C:\Users\<username>\.dlt\pipelines\...`. In any Python scripts, construct the path as:
+```python
+from pathlib import Path
+schema_path = Path.home() / ".dlt" / "pipelines" / "<pipeline_name>" / "schemas" / f"<pipeline_name>.schema.json"
+```
+
+Load the JSON and read the `tables` object into context. Skip all `_dlt_*` tables — these are dlt internals and are never mapped to concepts. The `tables` object is the working artifact for all subsequent steps.
+
+**For Case B (remote dataset, no local pipeline):** Write and run a Python script using dlt ibis to extract the schema. Write the script to `tools/get_<source>_schema.py`:
 
 ```python
-"""Get <source> schema from <destination> via dlt ibis and write as DBML."""
+"""Get <source> schema from <destination> via dlt ibis."""
+import json
 import dlt
 
 pipeline = dlt.pipeline(
-    pipeline_name="<pipeline_name>",   # use the dataset name as pipeline name
-    destination="<destination>",        # e.g. "bigquery"
-    dataset_name="<dataset_name>",      # e.g. "luma_events_data"
+    pipeline_name="<pipeline_name>",
+    destination="<destination>",
+    dataset_name="<dataset_name>",
 )
 
 dataset = pipeline.dataset()
 ibis_conn = dataset.ibis()
 tables = ibis_conn.list_tables()
 
-lines = []
+schema_tables = {}
 for table_name in tables:
     if table_name.startswith("_dlt"):
         continue
     t = ibis_conn.table(table_name)
-    lines.append(f'Table "{table_name}" {{')
-    for name, dtype in zip(t.schema().names, t.schema().types):
-        nullable = "" if str(dtype).endswith("!") else ""
-        lines.append(f'    "{name}" {dtype}')
-    lines.append("}")
-    lines.append("")
+    schema_tables[table_name] = {
+        "columns": {name: {"data_type": str(dtype)} for name, dtype in zip(t.schema().names, t.schema().types)}
+    }
 
-dbml = "\n".join(lines)
-output_path = "<project_root>/.schema/<cdm-name>/<pipeline_name>.dbml"
-with open(output_path, "w") as f:
-    f.write(dbml)
-print(f"Schema written to {output_path}")
-print("Tables found:", tables)
+print(json.dumps(schema_tables, indent=2))
 ```
 
-Run with `uv run python tools/get_<source>_schema.py`. Confirm the file was written before proceeding.
-
-This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and natural keys are confirmed.
+Run with `uv run python tools/get_<source>_schema.py`. Capture the output into context as the working schema for this source.
 
 ### 4. Identify core business entities
 
-Read the use cases the user stated. Using the source schemas and stated use cases only:
+Read the use cases the user stated. Using the source schemas loaded in step 3 and stated use cases only:
 
-**SCOPE CONSTRAINT — no inference beyond source data:** Entity names, descriptions, and use-case coverage must be grounded strictly in (a) columns that actually exist in the source schemas and (b) use cases the user explicitly stated. Do **not** add, suggest, or imply attributes, metrics, or business concepts that have no corresponding column in the source data. For example: if the source has a `contacts` table but no `roi`, `lead_score`, or `is_icp` columns, do not mention or include those concepts anywhere — not in descriptions, not in assumptions, not as "could be added later". Only record what the data actually contains.
+**SCOPE CONSTRAINT — no inference beyond source data:** Entity names, descriptions, and use-case coverage must be grounded strictly in (a) columns that actually exist in the source schemas and (b) use cases the user explicitly stated. Do **not** add, suggest, or imply attributes, metrics, or business concepts that have no corresponding column in the source data. For example: if the source has a `contacts` table but no `roi`, `lead_score`, or `is_icp` columns, do not mention or include those concepts anywhere.
 
 1. Propose the core **business entities** the use cases revolve around.
    - Collapse synonyms: `guest` → `Person`, `contact` → `Person`, `attendee` → `Person`
@@ -131,47 +146,15 @@ Here are the core business entities I see in your data:
 Does this look right? You can rename, merge, or add anything.
 ```
 
-   - Wait for explicit confirmation before proceeding
-
-3. Write `.schema/<cdm-name>/taxonomy.json` with the confirmed concepts.
-
-**Format:** top-level keys are canonical concept names (PascalCase). Each concept holds its references (source-system synonyms) and all related metadata. Excluded tables, version, and CDM name are stored under reserved `_excluded`, `_version`, and `_name` keys.
-
-```json
-{
-  "_version": "1.0",
-  "_name": "person_interactions",
-  "Person": {
-    "description": "Any individual — contact, guest, attendee, or lead",
-    "use_cases": ["track event attendance", "link contacts to companies"],
-    "references": ["guest", "contact", "attendee"],
-    "tables": [],
-    "natural_key": null,
-    "assumptions": ["'guest' and 'contact' collapsed into Person"]
-  },
-  "Company": {
-    "description": "An organisation",
-    "use_cases": ["link contacts to companies"],
-    "references": ["organization", "account"],
-    "tables": [],
-    "natural_key": null,
-    "assumptions": []
-  },
-  "_excluded": []
-}
-```
+Wait for explicit confirmation before proceeding. Keep all decisions in context — nothing is written to disk until step 7b.
 
 ### 5. Filter source tables by relevance
 
-Read each `.schema/<cdm-name>/<pipeline_name>.dbml`. For each table, automatically judge relevance against the confirmed canonical concepts.
+Using the schema loaded in step 3, for each table automatically judge relevance against the confirmed canonical concepts.
 
 **Excluded** = tables with no plausible connection to any concept (e.g. internal audit logs, pipeline metadata, dlt system tables like `_dlt_loads`, `_dlt_pipeline_state`).
 
-Do NOT ask the user — apply your judgement. Record each exclusion under `_excluded`:
-
-```json
-{"table": "hubspot__email_events__propertyhistory", "reason": "property change log, not a business entity"}
-```
+Do NOT ask the user — apply your judgement. Record exclusions in context (table name + reason in business language) for step 7b.
 
 ### 6. Match source tables to business entities
 
@@ -188,21 +171,11 @@ Present a mapping table to the user:
 - User may correct mappings, reassign tables, or mark a table as excluded
 - Wait for explicit confirmation
 
-Add confirmed tables under each concept's `tables` array:
-
-```json
-"Person": {
-  ...
-  "tables": [
-    {"table": "hubspot__contacts", "source_pipeline": "hubspot_crm_pipeline", "role": "primary"},
-    {"table": "luma__guests", "source_pipeline": "luma_pipeline", "role": "secondary"}
-  ]
-}
-```
+Record confirmed mappings in context. Nothing written to disk yet.
 
 ### 7. Identify cross-source natural keys
 
-Find all concepts whose `tables` array contains entries from **more than one source pipeline**.
+Find all concepts whose confirmed tables come from **more than one source pipeline**.
 
 For each such concept:
 1. List the contributing tables
@@ -224,65 +197,166 @@ Does this work, or would you prefer a different field?
 - User may override the field or keep the two tables separate
 - Wait for explicit confirmation
 
-Set the confirmed natural key on the concept:
+Record confirmed natural keys in context.
+
+### 7b. Write annotations
+
+All decisions are now confirmed. Write two artifacts in a single pass.
+
+**1. Patch `x-taxonomy` into dlt schema JSON (Case A pipelines only)**
+
+Write a Python script for each Case A pipeline at `tools/annotate_<pipeline_name>_schema.py`. Populate `taxonomy` with all confirmed mappings from this session:
+
+```python
+"""Patch x-taxonomy annotations into dlt schema JSON for <pipeline_name>."""
+import json
+from pathlib import Path
+
+schema_path = Path.home() / ".dlt" / "pipelines" / "<pipeline_name>" / "schemas" / "<pipeline_name>.schema.json"
+schema = json.loads(schema_path.read_text())
+
+# Confirmed table→concept mappings from annotate-sources session
+taxonomy = {
+    "hubspot__contacts": {
+        "concept": "Person",
+        "role": "primary",
+        "natural_key": "email",
+    },
+    "luma__guests": {
+        "concept": "Person",
+        "role": "secondary",
+        "natural_key": "email",
+    },
+    "hubspot__companies": {
+        "concept": "Company",
+        "role": "primary",
+        "natural_key": None,
+    },
+}
+
+for table_name, annotation in taxonomy.items():
+    if table_name in schema["tables"]:
+        schema["tables"][table_name]["x-taxonomy"] = annotation
+    else:
+        print(f"Warning: table '{table_name}' not found in schema — skipping")
+
+schema_path.write_text(json.dumps(schema, indent=2))
+print(f"Patched {len(taxonomy)} tables in {schema_path}")
+```
+
+The resulting `x-taxonomy` block sits alongside dlt's own `x-normalizer` at the table level:
 
 ```json
-"Person": {
-  ...
-  "natural_key": "email"
+"contacts": {
+  "name": "contacts",
+  "columns": { "..." },
+  "write_disposition": "replace",
+  "x-normalizer": { "seen-data": true },
+  "x-taxonomy": {
+    "concept": "Person",
+    "role": "primary",
+    "natural_key": "email"
+  }
 }
 ```
 
-### 7b. Annotate DBML files
+Run with `uv run python tools/annotate_<pipeline_name>_schema.py`. Confirm output before proceeding.
 
-After steps 6 and 7 are confirmed, edit each `.schema/<cdm-name>/<pipeline_name>.dbml` to embed semantic annotations as DBML `Note` blocks and inline comments.
+**2. Write `taxonomy.md`**
 
-**Table-level note** — on every mapped table, add a `Note` with the canonical concept, role, and (if applicable) natural key:
+Write `.schema/<cdm-name>/taxonomy.md`. Use business language throughout — translate excluded table names into business-language categories (e.g. `hubspot__email_events__propertyhistory` → "historical property change logs"). Raw table names appear only in the "Where it comes from" table rows.
 
-```dbml
-Table "contacts" [note: 'concept: Person | role: primary | natural_key: email'] {
-    ...
-}
+```markdown
+# Data Model Review: {model_name}
+
+> Generated: {date}  
+> Pipeline: `{pipeline_name}`  
+> Source: {source_description, e.g. "HubSpot CRM + Luma events"}  
+> Status: **Draft — awaiting review**
+
+---
+
+## What this document is
+
+This is a summary of how your data has been organized for analysis. It describes the key business concepts, where they come from, and how they relate to each other.
+
+**If you're reviewing this:** check that the definitions match how your business actually works. Flag anything that looks wrong or missing.
+
+---
+
+## Concepts
+
+### {Concept Name}
+
+**What it is:** {description in business language}
+
+**Used for:** {use cases as a sentence — e.g. "Breaking down revenue by company, rolling up to parent group"}
+
+**Where it comes from:**
+
+| Source | Called there | How it maps |
+|--------|-------------|-------------|
+| {e.g. HubSpot} | {e.g. Contact} | {e.g. One contact = one person} |
+| {e.g. Luma} | {e.g. Guest} | {e.g. Matched by email} |
+
+**Assumptions:**
+- {any assumptions made during annotation, or "None"}
+
+---
+
+*Repeat for each concept.*
+
+---
+
+## Not included in this model
+
+> This model focuses on **{scope}**. Data related to {excluded categories in business language — no table names} was excluded because it falls outside this scope. If you need any of these for your analysis, flag it.
+
+---
+
+## What's missing (known gaps)
+
+- {gaps identified during annotation — concepts needed by use cases but absent from source data}
+- {or "None identified yet"}
+
+---
+
+## Review
+
+| Concept | Approved | Reviewer | Date | Notes |
+|---------|----------|----------|------|-------|
+| {Concept} | ☐ | | | |
+
+**Overall model approval:** ☐ Ready for production
 ```
-
-**Field-level note** — on the natural key column, mark it explicitly:
-
-```dbml
-    "email" text [note: 'natural_key']
-```
-
-**Excluded tables** — add a note so they are visually distinct:
-
-```dbml
-Table "_dlt_loads" [note: 'excluded: dlt internal table'] {
-    ...
-}
-```
-
-This makes the DBML files self-documenting — `create-ontology` can read concept mappings directly from the DBML without cross-referencing `taxonomy.json`.
 
 ### 8. Confirm with user
 
-Read `.schema/<cdm-name>/taxonomy.json` and present a summary of all recorded decisions:
-- Concepts and their synonym collapses
-- Excluded tables and reasons
-
-Ask the user to review before proceeding:
+Present a summary of all decisions recorded and files written:
 
 ```
-Decisions recorded:
-1. "guest" and "contact" are both treated as Person
-2. hubspot__email_events__propertyhistory skipped — property change log, not a business entity
-3. ...
+Decisions recorded and written:
+
+Concepts:
+  Person — contact (HubSpot), guest (Luma) — linked by email
+  Company — company (HubSpot)
+
+Excluded:
+  hubspot__email_events__propertyhistory — property change log, not a business entity
+
+Written:
+  ~/.dlt/pipelines/hubspot_crm_pipeline/schemas/hubspot_crm_pipeline.schema.json — x-taxonomy added to 3 tables
+  ~/.dlt/pipelines/luma_pipeline/schemas/luma_pipeline.schema.json — x-taxonomy added to 1 table
+  .schema/person_interactions/taxonomy.md — ready for business review
 
 Anything to correct before we move on?
 ```
 
-Apply any corrections to `taxonomy.json`.
+If corrections are needed: update `taxonomy` in the annotation script, re-run it, and update `taxonomy.md` to match.
 
 ## Output
 
-- `.schema/<cdm-name>/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
-- `.schema/<cdm-name>/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions; `_name` holds the confirmed CDM folder name
+- `~/.dlt/pipelines/<pipeline_name>/schemas/<pipeline_name>.schema.json` — `x-taxonomy` block added to each mapped table; sits alongside `x-normalizer` (Case A pipelines only)
+- `.schema/<cdm-name>/taxonomy.md` — business-facing model review document for sign-off
 
 Hand over to `create-ontology` skill.

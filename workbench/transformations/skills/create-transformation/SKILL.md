@@ -9,17 +9,17 @@ argument-hint: "[pipeline-name]"
 Write `@dlt.hub.transformation` functions that map annotated source tables to CDM entities, using SQL-first with optional ibis.
 
 **Requires:**
-- `.schema/<cdm-name>/taxonomy.json` — confirmed table→concept mappings and natural keys; read `_name` from this file to determine `<cdm-name>`
-- `.schema/<cdm-name>/<pipeline_name>.dbml` — annotated source schemas
-- `.schema/<cdm-name>/CDM.dbml` — target CDM schema
+- `~/.dlt/pipelines/<pipeline_name>/schemas/<pipeline_name>.schema.json` — one per source pipeline, with `x-taxonomy` blocks written by `annotate-sources`
+- `.schema/<cdm-name>/taxonomy.md` — concept definitions and source mappings written by `annotate-sources`
+- `.schema/<cdm-name>/CDM.md` — dimensional model written by `generate-cdm`
 
 If any are missing, run the preceding skills first.
 
-The `_name` value from `taxonomy.json` is also the `dataset_name` for the transformation pipeline — do not re-derive it.
+The `<cdm-name>` is the parent directory of `taxonomy.md` and is also the `dataset_name` for the transformation pipeline — do not re-derive it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name`: the dlt pipeline to transform from (e.g. `hubspot_crm_pipeline`)
-- If omitted, check `taxonomy.json` for contributing pipelines and ask user which to target
+- If omitted, read pipeline names from the schema JSONs referenced in `taxonomy.md` and ask the user which to target
 
 ## Steps
 
@@ -52,9 +52,9 @@ dlt license issue dlthub.transformations
 ### 2. Read inputs
 
 Read in parallel:
-- `.schema/annotated-sources.dbml` — source columns and their concept mappings
-- `.schema/taxonomy.json` — table mappings and natural keys
-- `.schema/CDM.dbml` — CDM entity definitions and column specs
+- `~/.dlt/pipelines/<pipeline_name>/schemas/<pipeline_name>.schema.json` (one per source pipeline) — `x-taxonomy` blocks give table→concept mappings, roles, and natural keys; `columns` give source column names and dlt types
+- `.schema/<cdm-name>/taxonomy.md` — concept definitions, use cases, and merge strategies
+- `.schema/<cdm-name>/CDM.md` — target table specs (columns, types, PK/FK, SCD type, grain) from the Tables section
 
 ### 3. Get actual source schema
 
@@ -70,7 +70,7 @@ relation = dataset.<table_name>
 schema = relation.schema()  # authoritative column list
 ```
 
-Cross-check the annotated columns in `annotated-sources.dbml` against the schema from `relation.schema()`. Note any discrepancies.
+Cross-check the columns from the schema JSON `x-taxonomy`-annotated tables against the schema from `relation.schema()`. Note any discrepancies — new columns added since annotation are common and expected.
 
 ### 4. Plan transformation order
 
