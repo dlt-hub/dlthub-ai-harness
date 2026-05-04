@@ -110,12 +110,12 @@ Map hints to DQ check candidates using this table:
 
 | Schema hint | Auto-detected check |
 |---|---|
-| `primary_key: true` | `dq.checks.is_primary_key("col")` |
+| `primary_key: true` | `dq.checks.is_unique("col")` |
 | `nullable: false` | `dq.checks.is_not_null("col")` |
 | `unique: true` | `dq.checks.is_unique("col")` |
 
 **Known issue:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of the actual column name (marked `# TODO parameterize` in the source). It will raise a `LineageFailedException` at runtime. Substitute `dq.checks.is_unique("col")` until the library completes the implementation.
-<!-- TODO: remove substitute when dlt-hub/dlthub#<issue> (is_primary_key parameterization) is resolved -->
+<!-- TODO: remove substitute when dlt-hub/dlthub#397 (is_primary_key parameterization) is resolved -->
 
 Collect candidates per table. Ignore columns with no actionable hints.
 
@@ -127,13 +127,13 @@ Present a summary table. Do not ask for decisions yet — that happens in `defin
 Schema summary for pipeline "my_pipeline":
 
 Table: orders
-  id           bigint    → is_primary_key("id")
+  id           bigint    → is_unique("id")
   customer_id  bigint    → is_not_null("customer_id")
   status       text      (no hint)
   amount       float     (no hint)
 
 Table: customers
-  id           bigint    → is_primary_key("id"), is_unique("id")
+  id           bigint    → is_unique("id")
   email        text      → is_not_null("email")
   ...
 

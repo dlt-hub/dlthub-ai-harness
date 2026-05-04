@@ -87,7 +87,7 @@ Translate each stated requirement to the appropriate built-in check. Always pref
 | "X must be >= 0" / any row-level condition | `dq.checks.case("X >= 0")` |
 
 **`is_primary_key` note:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of substituting the actual column name (marked `# TODO parameterize` in the source). It raises `LineageFailedException` at runtime. Use `dq.checks.is_unique("col")` as a substitute until the library completes the implementation.
-<!-- TODO: remove substitute when dlt-hub/dlthub#<issue> (is_primary_key parameterization) is resolved -->
+<!-- TODO: remove substitute when dlt-hub/dlthub#397 (is_primary_key parameterization) is resolved -->
 
 **`case()` and NULLs:** `case()` treats NULL as a failing row. For nullable columns, either exclude NULLs in the expression (`case("col IS NULL OR col >= 0")`) or add a separate `is_not_null` check if NULLs are also disallowed.
 
