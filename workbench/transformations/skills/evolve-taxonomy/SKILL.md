@@ -1,5 +1,5 @@
 ---
-name: check-taxonomy
+name: evolve-taxonomy
 description: Check whether x-taxonomy annotations are still in sync with the current dlt schema. Use when the pipeline schema has evolved (new endpoints, columns added/removed), when taxonomy.md has been edited, or before re-annotating an existing CDM.
 ---
 

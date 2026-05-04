@@ -40,7 +40,7 @@ concepts = {}  # concept → list of {table, pipeline, role, natural_key, column
 
 for pipeline_name in pipeline_names:
     schema_path = Path.home() / ".dlt" / "pipelines" / pipeline_name / "schemas" / f"{pipeline_name}.schema.json"
-    schema = json.loads(schema_path.read_text())
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
     for table_name, table in schema.get("tables", {}).items():
         taxonomy = table.get("x-taxonomy")
         if not taxonomy:
