@@ -4,10 +4,27 @@
 **ALWAYS** start with **Annotate sources** (`annotate-sources`) SKILL — identify pipelines, extract schemas, map tables to canonical concepts, and confirm natural keys before any design work
 
 ## Core workflow
-1. **Annotate sources** (`annotate-sources`) — verify pipelines exist, extract source schemas, derive canonical concepts from use cases, map tables to concepts, identify cross-source natural keys
+1. **Annotate sources** (`annotate-sources`) — verify pipelines exist, read source schemas, derive canonical concepts from use cases, map tables to concepts, identify cross-source natural keys
+   - Writes `x-taxonomy` blocks into `~/.dlt/pipelines/<pipeline>/schemas/<pipeline>.schema.json` (versioned alongside the structural schema)
+   - Writes `.schema/<cdm-name>/taxonomy.md` (business-facing model review document)
 2. **Create ontology** (`create-ontology`) — build the entity graph: one entity per concept, union attributes from all contributing sources, define relationships from natural keys and FKs
+   - Reads schema JSONs (`x-taxonomy`) + `taxonomy.md`
+   - Writes `.schema/<cdm-name>/ontology.md` (developer-facing entity graph summary)
 3. **Generate CDM** (`generate-cdm`) — apply Kimball dimensional modeling: classify fact/dimension, define grain, surrogate keys, SCD types, conformed dimensions
+   - Reads `ontology.md`
+   - Writes `.schema/<cdm-name>/CDM.md` (Mermaid ERD + per-table column specs)
 4. **Create transformation** (`create-transformation`) — write SQL-first `@dlt.hub.transformation` functions (with optional ibis) that map source tables to CDM entities
+   - Reads schema JSONs (`x-taxonomy`) + `taxonomy.md` + `CDM.md`
+   - Writes `transformations/<dataset_name>_to_cdm.py`
+
+## Conditional: schema or taxonomy has evolved
+
+Run **Check taxonomy** (`check-taxonomy`) when:
+- The pipeline has been re-run and new tables or columns appeared since the CDM was designed
+- `taxonomy.md` was edited directly (concept renamed, table reassigned, natural key changed)
+- A new source is being added to an existing CDM
+
+`annotate-sources` will prompt this automatically when it detects existing `x-taxonomy` annotations on a pipeline. `check-taxonomy` can also be invoked directly at any time.
 
 ## Incoming
 
