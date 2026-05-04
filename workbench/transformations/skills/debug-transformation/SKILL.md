@@ -49,12 +49,18 @@ def dest_type_from_profile(profile: str, dest_name: str = "warehouse") -> str:
     )
 
 
+DLT_TO_SQLGLOT = {
+    "motherduck": "duckdb",  # MotherDuck uses DuckDB SQL; no separate SQLGlot dialect
+}
+
+
 def to_sqlglot_dialect(dlt_dest: str) -> str | None:
+    mapped = DLT_TO_SQLGLOT.get(dlt_dest, dlt_dest)
     try:
-        sqlglot.Dialect.get_or_raise(dlt_dest)
+        sqlglot.Dialect.get_or_raise(mapped)
     except Exception:
         return None
-    return dlt_dest
+    return mapped
 
 
 QUERIES = {
