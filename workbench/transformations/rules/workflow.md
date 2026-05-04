@@ -8,23 +8,23 @@
    - Writes `x-taxonomy` blocks into `~/.dlt/pipelines/<pipeline>/schemas/<pipeline>.schema.json` (versioned alongside the structural schema)
    - Writes `.schema/<cdm-name>/taxonomy.md` (business-facing model review document)
 2. **Create ontology** (`create-ontology`) — build the entity graph: one entity per concept, union attributes from all contributing sources, define relationships from natural keys and FKs
-   - Reads schema JSONs (`x-taxonomy`) + `taxonomy.md`
+   - Reads `x-taxonomy`-annotated schema JSONs + `taxonomy.md`
    - Writes `.schema/<cdm-name>/ontology.md` (developer-facing entity graph summary)
 3. **Generate CDM** (`generate-cdm`) — apply Kimball dimensional modeling: classify fact/dimension, define grain, surrogate keys, SCD types, conformed dimensions
    - Reads `ontology.md`
    - Writes `.schema/<cdm-name>/CDM.md` (Mermaid ERD + per-table column specs)
 4. **Create transformation** (`create-transformation`) — write SQL-first `@dlt.hub.transformation` functions (with optional ibis) that map source tables to CDM entities
-   - Reads schema JSONs (`x-taxonomy`) + `taxonomy.md` + `CDM.md`
+   - Reads `x-taxonomy`-annotated schema JSONs + `taxonomy.md` + `CDM.md`
    - Writes `transformations/<dataset_name>_to_cdm.py`
 
 ## Conditional: schema or taxonomy has evolved
 
-Run **Check taxonomy** (`check-taxonomy`) when:
+Run **Check taxonomy** (`evolve-taxonomy`) when:
 - The pipeline has been re-run and new tables or columns appeared since the CDM was designed
 - `taxonomy.md` was edited directly (concept renamed, table reassigned, natural key changed)
 - A new source is being added to an existing CDM
 
-`annotate-sources` will prompt this automatically when it detects existing `x-taxonomy` annotations on a pipeline. `check-taxonomy` can also be invoked directly at any time.
+`annotate-sources` will prompt this automatically when it detects existing `x-taxonomy` annotations on a pipeline. `evolve-taxonomy` can also be invoked directly at any time.
 
 ## Incoming
 

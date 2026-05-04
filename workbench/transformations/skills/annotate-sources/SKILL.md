@@ -36,10 +36,10 @@ Before proceeding, check whether any tables in the schema JSON already have `x-t
 ```
 This pipeline already has taxonomy annotations from a previous session.
 
-If the schema has changed since then (new tables, new columns, updated endpoints), run check-taxonomy first to see what's drifted before re-annotating.
+If the schema has changed since then (new tables, new columns, updated endpoints), run evolve-taxonomy first to see what's drifted before re-annotating.
 
 Would you like to:
-  1) Run check-taxonomy first (recommended)
+  1) Run evolve-taxonomy first (recommended)
   2) Continue with annotate-sources
 ```
 
