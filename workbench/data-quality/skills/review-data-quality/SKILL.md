@@ -76,20 +76,17 @@ Do not move to metrics until all tables have been summarised this way.
 
 ### 3. Read metric results
 
-For each table, query metric results using `execute_sql_query` MCP. The metrics table is `_dlt_dq_metrics`, in the same destination dataset as `_dlt_checks`:
+For each table, read metric results using the public API:
 
-```sql
-SELECT
-    table_name,
-    column_name,
-    metric_name,
-    metric_value,
-    _dlt_load_id
-FROM _dlt_dq_metrics
-WHERE table_name = '<table>'
-ORDER BY _dlt_load_id DESC
-LIMIT 50
+```python
+import dlt
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+
+pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+metrics = dq.read_metric(pipeline, table_name="<table>")
 ```
+
+`dq.read_metric()` returns metric rows for the given table. Inspect the result for `table_name`, `column_name`, `metric_name`, `metric_value`, and `_dlt_load_id` fields.
 
 **Trend detection:** if multiple `_dlt_load_id` values exist for the same metric (i.e. the pipeline has run more than once), compute the delta per metric and ask the user to set alert thresholds before flagging:
 
