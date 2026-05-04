@@ -46,7 +46,15 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
 **Profile B — write and run the DQ script**
 
-1. **Write `tools/dq_run.py`** in the project root. Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination, writes results to `_dlt_data_quality._dlt_checks`).
+1. **Confirm the script path.** Before writing anything, ask:
+
+   ```
+   Where should I write the DQ run script? (default: tools/dq_run.py)
+   ```
+
+   Use the user's answer as `<script_path>` for all subsequent steps. If they say "default" or give no answer, use `tools/dq_run.py`.
+
+2. **Write `<script_path>`.** Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination).
 
    ```python
    import dlt
@@ -71,64 +79,48 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
    Show the written file to the user and ask for explicit confirmation before running:
 
    ```
-   I've written tools/dq_run.py with your checks. Ready to run it?
+   I've written <script_path> with your checks. Ready to run it?
    ```
 
    Do not proceed until the user confirms.
 
-2. **Run the script.** Once the user confirms:
+3. **Run the script.** Once the user confirms, ask how they run Python scripts if it is not already clear from session context:
 
    ```
-   uv run python tools/dq_run.py
+   python <script_path>
+   # or, if using uv:
+   uv run python <script_path>
    ```
 
    Capture stdout and stderr in full.
 
-3. **Handle script failure.** If `run_checks` raises an exception or `raise_on_failed_jobs()` fails:
+4. **Handle script failure.** If `run_checks` raises an exception or `raise_on_failed_jobs()` fails:
 
    | Error pattern | Likely cause | Action |
    |---|---|---|
-   | `DestinationTerminalException` | Destination config / credential issue | Ask user to check secrets and destination setup |
-   | `LineageFailedException` | SQL generation bug in a check (e.g. `is_primary_key`) | Remove the failing check, use `is_unique` instead, rewrite `tools/dq_run.py` |
+   | `DestinationTerminalException` containing "database is locked" (DuckDB) | Another process holds the DuckDB file — dlt dashboard open, a pipeline EL/T run in progress, or a second terminal session | Close the dashboard and any other pipeline processes, then re-run |
+   | `DestinationTerminalException` (other) | Destination config / credential issue | Ask user to check secrets and destination setup |
+   | `LineageFailedException` | SQL generation bug in a check (e.g. `is_primary_key`) | Remove the failing check, use `is_unique` instead, rewrite `<script_path>` |
    | `DltLicenseScopeInvalidException` | Missing `dlthub.data_quality` license scope | Run `dlt license issue dlthub.data_quality` |
    | Any other exception | Infrastructure or code error | Surface the full traceback and stop |
 
-   Do not proceed to step 2 if the script failed.
+   Do not proceed to step 2 (Surface check failures) if the script failed.
 
 ---
 
 ### 2. Surface check failures
 
-`run_checks` writes results to `_dlt_checks` within the pipeline's destination dataset. The physical location depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If unsure, call `list_tables` MCP to locate it before querying.
-
-Query with `execute_sql_query` MCP:
-
-```sql
-SELECT
-    table_name,
-    check_qualified_name,
-    row_count,
-    success_count,
-    success_rate
-FROM _dlt_checks
-ORDER BY success_rate ASC
-```
-
-**If `execute_sql_query` returns no rows or errors** (the MCP may not index system schema tables), fall back to Python via `pipeline.sql_client()`:
+Read check results using the library:
 
 ```python
 import dlt
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+
 pipeline = dlt.attach(pipeline_name="<pipeline-name>")
-with pipeline.sql_client() as client:
-    with client.execute_query(
-        "SELECT table_name, check_qualified_name, row_count, success_count, success_rate"
-        " FROM _dlt_checks ORDER BY success_rate ASC"
-    ) as cursor:
-        for row in cursor.fetchall():
-            print(row)
+results = dq.read_check(pipeline)
 ```
 
-`success_rate` is 0.0–1.0 (1.0 = all rows passed). A check passes if `success_count = row_count`.
+`dq.read_check()` returns check rows with `table_name`, `check_qualified_name`, `row_count`, `success_count`, and `success_rate` (0.0–1.0; 1.0 = all rows passed). A check passes if `success_count = row_count`.
 
 **If no failures:**
 
@@ -178,14 +170,14 @@ Pass to `review-data-quality`:
 **Profile B only — after review is complete**, surface the deployment question:
 
 ```
-tools/dq_run.py ran your checks once against the current data. What would you like to do with it?
+<script_path> ran your checks once against the current data. What would you like to do with it?
 
   [1] Deploy it — run these checks on a schedule on the dltHub platform
-  [2] Keep it local — re-run manually whenever needed (uv run python tools/dq_run.py)
+  [2] Keep it local — re-run manually whenever needed (python <script_path>)
   [3] Discard it — the results are in the destination, the script is no longer needed
 
 ```
 
 If the user chooses [1], hand over to **dlthub-runtime** (start at `setup-runtime`), passing:
-- The script path (`tools/dq_run.py`) as the deployment target
+- The script path (`<script_path>`) as the deployment target
 - The confirmed pipeline name and destination
