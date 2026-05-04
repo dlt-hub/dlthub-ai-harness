@@ -17,7 +17,7 @@ Expected from prior steps:
 
 ## Steps
 
-### 0. Detect profile
+### 1. Detect profile
 
 Before writing any script, determine which execution profile applies:
 
@@ -32,78 +32,72 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
 **Profile A — run the pipeline**
 
-`@dq.with_checks` and `@dq.with_metrics` only store hints in the schema metadata — they do not execute on their own. Results are written to `_dlt_checks` by `dq.data_quality_checks(pipeline.dataset())`, which `define-data-quality-checks` already added to the pipeline file.
+1. `@dq.with_checks` and `@dq.with_metrics` only store hints in the schema metadata — they do not execute on their own. Results are written to `_dlt_checks` by `dq.data_quality_checks(pipeline.dataset())`, which `define-data-quality-checks` already added to the pipeline file. Instruct the user to run their pipeline script. Show the exact command (infer from session context or ask):
 
-Instruct the user to run their pipeline script. Show the exact command (infer from session context or ask):
+   ```
+   uv run python <pipeline_script>.py
+   ```
 
-```
-uv run python <pipeline_script>.py
-```
+   This runs the data load AND the `dq.data_quality_checks(...)` call in sequence. Both must complete for results to appear.
 
-This runs the data load AND the `dq.data_quality_checks(...)` call in sequence. Both must complete for results to appear.
-
-Wait for the user to confirm the run completed before proceeding to step 4.
+2. Wait for the user to confirm the run completed before proceeding to step 2.
 
 ---
 
-**Profile B — write the DQ run script**
+**Profile B — write and run the DQ script**
 
-### 1. Write the DQ run script
+1. **Write `tools/dq_run.py`** in the project root. Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination, writes results to `_dlt_data_quality._dlt_checks`).
 
-Write `tools/dq_run.py` in the project root. Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination, writes results to `_dlt_data_quality._dlt_checks`).
+   ```python
+   import dlt
+   from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
-```python
-import dlt
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+   pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+   load_info = dq.run_checks(pipeline, checks={
+       "<table>": [
+           dq.checks.is_unique("<col>"),
+           dq.checks.is_not_null("<col>"),
+           # ... all confirmed checks
+       ],
+   })
+   print(load_info)
+   load_info.raise_on_failed_jobs()
+   ```
 
-pipeline = dlt.attach(pipeline_name="<pipeline-name>")
-load_info = dq.run_checks(pipeline, checks={
-    "<table>": [
-        dq.checks.is_unique("<col>"),
-        dq.checks.is_not_null("<col>"),
-        # ... all confirmed checks
-    ],
-})
-print(load_info)
-load_info.raise_on_failed_jobs()
-```
+   **Never glob for pipeline files or run the user's original pipeline script.** That re-extracts from the source. `run_checks` is self-contained against the destination.
 
-**Never glob for pipeline files or run the user's original pipeline script.** That re-extracts from the source. `run_checks` is self-contained against the destination.
+   **Note on `case()` and NULLs:** `dq.checks.case("col >= 0")` treats NULL as a failing row. If the column is nullable and NULLs are expected, either exclude them in the expression (`case("col IS NULL OR col >= 0")`) or use `is_not_null` as a separate check.
 
-**Note on `case()` and NULLs:** `dq.checks.case("col >= 0")` treats NULL as a failing row. If the column is nullable and NULLs are expected, either exclude them in the expression (`case("col IS NULL OR col >= 0")`) or use `is_not_null` as a separate check.
+   Show the written file to the user and ask for explicit confirmation before running:
 
-Show the written file to the user and ask for explicit confirmation before running:
+   ```
+   I've written tools/dq_run.py with your checks. Ready to run it?
+   ```
 
-```
-I've written tools/dq_run.py with your checks. Ready to run it?
-```
+   Do not proceed until the user confirms.
 
-Do not proceed until the user confirms.
+2. **Run the script.** Once the user confirms:
 
-### 2. Run the script
+   ```
+   uv run python tools/dq_run.py
+   ```
 
-Once the user confirms:
+   Capture stdout and stderr in full.
 
-```
-uv run python tools/dq_run.py
-```
+3. **Handle script failure.** If `run_checks` raises an exception or `raise_on_failed_jobs()` fails:
 
-Capture stdout and stderr in full.
+   | Error pattern | Likely cause | Action |
+   |---|---|---|
+   | `DestinationTerminalException` | Destination config / credential issue | Ask user to check secrets and destination setup |
+   | `LineageFailedException` | SQL generation bug in a check (e.g. `is_primary_key`) | Remove the failing check, use `is_unique` instead, rewrite `tools/dq_run.py` |
+   | `DltLicenseScopeInvalidException` | Missing `dlthub.data_quality` license scope | Run `dlt license issue dlthub.data_quality` |
+   | Any other exception | Infrastructure or code error | Surface the full traceback and stop |
 
-### 3. Handle script failure
+   Do not proceed to step 2 if the script failed.
 
-If `run_checks` raises an exception or `raise_on_failed_jobs()` fails:
+---
 
-| Error pattern | Likely cause | Action |
-|---|---|---|
-| `DestinationTerminalException` | Destination config / credential issue | Ask user to check secrets and destination setup |
-| `LineageFailedException` | SQL generation bug in a check (e.g. `is_primary_key`) | Remove the failing check, use `is_unique` instead, rewrite `tools/dq_run.py` |
-| `DltLicenseScopeInvalidException` | Missing `dlthub.data_quality` license scope | Run `dlt license issue dlthub.data_quality` |
-| Any other exception | Infrastructure or code error | Surface the full traceback and stop |
-
-Do not proceed to result reading if the script failed.
-
-### 4. Surface check failures
+### 2. Surface check failures
 
 `run_checks` writes results to `_dlt_checks` within the pipeline's destination dataset. The physical location depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If unsure, call `list_tables` MCP to locate it before querying.
 
