@@ -213,7 +213,7 @@ import json
 from pathlib import Path
 
 schema_path = Path.home() / ".dlt" / "pipelines" / "<pipeline_name>" / "schemas" / "<pipeline_name>.schema.json"
-schema = json.loads(schema_path.read_text())
+schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
 # Confirmed table→concept mappings from annotate-sources session
 taxonomy = {
@@ -240,7 +240,7 @@ for table_name, annotation in taxonomy.items():
     else:
         print(f"Warning: table '{table_name}' not found in schema — skipping")
 
-schema_path.write_text(json.dumps(schema, indent=2))
+schema_path.write_text(json.dumps(schema, indent=2), encoding="utf-8")
 print(f"Patched {len(taxonomy)} tables in {schema_path}")
 ```
 

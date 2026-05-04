@@ -235,9 +235,9 @@ if __name__ == "__main__":
 ```
 
 **Naming convention:** `pipeline_name` and `dataset_name` should reflect the **business domain and central fact**, not the source systems. Derive the name from:
-1. The central fact table in `.schema/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
-2. The primary dimension in `.schema/ontology.ison` (e.g. `Person`)
-3. The use cases in `.schema/taxonomy.json`
+1. The central fact table in `.schema/<cdm-name>/CDM.md` (e.g. `fact_interaction` → `interactions`)
+2. The primary dimension in `.schema/<cdm-name>/ontology.md` (e.g. `Person`)
+3. The use cases in `.schema/<cdm-name>/taxonomy.md`
 
 Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
 
