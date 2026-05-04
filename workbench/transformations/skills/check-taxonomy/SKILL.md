@@ -41,7 +41,7 @@ for pipeline_name in pipeline_names:
         report[pipeline_name] = {"error": "schema file not found"}
         continue
 
-    schema = json.loads(schema_path.read_text())
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
     tables = schema.get("tables", {})
 
     annotated = {}   # tables with x-taxonomy
@@ -133,7 +133,7 @@ Work through each issue with the user:
 
 **For B (new unannotated tables):** For each new table, ask whether it maps to an existing concept, introduces a new concept, or should be excluded. If it maps to an existing concept, write `x-taxonomy` for it. If it introduces a new concept, prompt the user to update `taxonomy.md` and then annotate. If excluded, note why.
 
-**For C (annotated table gone):** Remove the stale `x-taxonomy` entry is not needed — the table is gone. Update `taxonomy.md` and `ontology.md` to remove the reference if the concept no longer has any source tables.
+**For C (annotated table gone):** No action on the schema JSON is needed — the table is gone. Update `taxonomy.md` and `ontology.md` to remove the reference if the concept no longer has any source tables.
 
 **For D (concept in taxonomy.md, no tables):** Either the concept needs new annotation (link to an existing unannotated table or run `annotate-sources` for a new pipeline) or the concept should be removed from `taxonomy.md`. Confirm with user.
 
