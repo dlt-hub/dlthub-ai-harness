@@ -354,9 +354,32 @@ Anything to correct before we move on?
 
 If corrections are needed: update `taxonomy` in the annotation script, re-run it, and update `taxonomy.md` to match.
 
+### 9. Business stakeholder review
+
+**Do not proceed to `create-ontology` until `taxonomy.md` has been reviewed and approved by business stakeholders.**
+
+Prompt the user:
+
+```
+taxonomy.md is ready for business review.
+
+Share `.schema/<cdm-name>/taxonomy.md` with the business stakeholders who own or use this data.
+They should check that:
+  - concept definitions match how the business actually works
+  - source mappings look right (what's called what, where it comes from)
+  - the scope (what's included and excluded) is correct
+  - any gaps are acknowledged
+
+The Review table at the bottom of the file has a checkbox per concept — ask reviewers to fill it in.
+
+Let me know once all concepts are approved and the file has been signed off.
+```
+
+Wait for the user to confirm that stakeholder review is complete before handing over to `create-ontology`. Do not skip or fast-forward this step.
+
 ## Output
 
 - `~/.dlt/pipelines/<pipeline_name>/schemas/<pipeline_name>.schema.json` — `x-taxonomy` block added to each mapped table; sits alongside `x-normalizer` (Case A pipelines only)
-- `.schema/<cdm-name>/taxonomy.md` — business-facing model review document for sign-off
+- `.schema/<cdm-name>/taxonomy.md` — business-facing model review document, must be approved before proceeding
 
-Hand over to `create-ontology` skill.
+Hand over to `create-ontology` skill only after stakeholder approval is confirmed.
