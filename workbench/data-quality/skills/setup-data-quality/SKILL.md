@@ -1,7 +1,7 @@
 ---
 name: setup-data-quality
 argument-hint: "[pipeline-name]"
-description: This skill should be used when the user asks to "set up data quality", "enable data quality checks", "add DQ to my pipeline", "validate my pipeline data", "I want to check data quality", "check my tables for issues", "set up a DQ contract", or wants to start any data quality workflow on a dlt pipeline. Inspects the pipeline schema, surfaces auto-detected check candidates from schema hints, and enables the DQ flag on the pipeline. Do NOT use for exploring or charting data (use data-exploration toolkit), running existing checks (use run-data-quality), or reviewing results (use review-data-quality).
+description: This skill should be used when the user asks to "set up data quality", "enable data quality checks", "add DQ to my pipeline", "validate my pipeline data", "I want to check data quality", "check my tables for issues", or wants to start any data quality workflow on a dlt pipeline. Inspects the pipeline schema, surfaces auto-detected check candidates from schema hints, and enables the DQ flag on the pipeline. Do NOT use for exploring or charting data (use data-exploration toolkit), running existing checks (use run-data-quality), or reviewing results (use review-data-quality).
 ---
 
 # Setup data quality
