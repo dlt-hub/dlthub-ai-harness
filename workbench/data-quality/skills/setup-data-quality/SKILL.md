@@ -1,12 +1,12 @@
 ---
 name: setup-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "set up data quality", "enable data quality checks", "add DQ to my pipeline", "validate my pipeline data", "I want to check data quality", "check my tables for issues", or wants to start any data quality workflow on a dlt pipeline. Do NOT use for exploring or charting data (use data-exploration toolkit), running existing checks (use run-data-quality), or reviewing results (use review-data-quality).
+description: Use when the user asks to "set up data quality", "enable data quality checks", "add data quality to my pipeline", "validate my pipeline data", "I want to check data quality", "check my tables for issues", or wants to start any data quality workflow on a dlt pipeline. Do NOT use for exploring or charting data (use data-exploration toolkit), running existing checks (use run-data-quality), or reviewing results (use review-data-quality).
 ---
 
 # Setup data quality
 
-Orient the user, inspect what data exists, and prepare the pipeline for DQ.
+Orient the user, inspect what data exists, and prepare the pipeline for data quality.
 
 Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
 
@@ -104,20 +104,35 @@ No data tables found in pipeline "<name>". Run the pipeline at least once to loa
 
 ### 4. Inspect schema and auto-detect check candidates
 
-For each table from step 3, call `display_schema` MCP tool. Read the column-level hints returned (type, `nullable`, `unique`).
+Run a small inline script to generate check candidates directly from the pipeline schema:
 
-Map hints to DQ check candidates using this table:
+```python
+import dlt
+from dlthub.data_quality.checks._definitions import create_check_hints_from_schema, _check_hints_to_def
+
+pipeline = dlt.attach(pipeline_name="<name>")
+hints = create_check_hints_from_schema(pipeline.default_schema)
+
+# Bug workaround: is_primary_key() hardcodes `value` instead of the actual column name
+# in its SQL template (dlt-hub/dlthub#397) and raises LineageFailedException at runtime.
+# Substitute with is_unique() on the same column until the bug is fixed.
+for table_hints in hints["tables"].values():
+    for h in table_hints:
+        if h["name"] == "is_primary_key":
+            h["name"] = "is_unique"
+            h["args"] = {"column": h["args"]["columns"][0]}
+```
+
+`create_check_hints_from_schema` maps schema column metadata to check candidates:
 
 | Schema hint | Auto-detected check |
 |---|---|
-| `primary_key: true` | `dq.checks.is_unique("col")` |
-| `nullable: false` | `dq.checks.is_not_null("col")` |
-| `unique: true` | `dq.checks.is_unique("col")` |
+| `primary_key: true` | `is_unique("col")` *(substituted — see bug note above)* |
+| `nullable: false` | `is_not_null("col")` |
+| `unique: true` | `is_unique("col")` |
+| `row_key: true` | `is_unique("col")` |
 
-**Known issue:** `dq.checks.is_primary_key()` is not yet fully implemented — the SQL template hardcodes `value` instead of the actual column name (marked `# TODO parameterize` in the source). It will raise a `LineageFailedException` at runtime. Substitute `dq.checks.is_unique("col")` until the library completes the implementation.
-<!-- TODO: remove substitute when dlt-hub/dlthub#397 (is_primary_key parameterization) is resolved -->
-
-Collect candidates per table. Ignore columns with no actionable hints.
+Collect candidates per table. Ignore tables where `hints["tables"]` returns an empty list.
 
 ### 5. Present summary to the user
 

@@ -1,12 +1,12 @@
 ---
 name: define-data-quality-checks
 argument-hint: "[pipeline-name] [table]"
-description: Use when the user asks to "define checks", "add validation rules", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlt DQ check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
+description: Use when the user asks to "define checks", "add validation rules", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlt data quality check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
 ---
 
 # Define data quality checks
 
-Translate business requirements into concrete dlt DQ checks and metrics, then write them into the pipeline code.
+Translate business requirements into concrete dlt data quality checks and metrics, then write them into the pipeline code.
 
 Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
 
@@ -250,10 +250,10 @@ Write the changes directly into the existing pipeline file. **Never create a new
 - Dynamic form: add the `dq.with_checks(...)` / `dq.with_metrics(...)` calls in the existing pipeline script, after the source is instantiated and before `pipeline.run(source)`.
 - Add `from dlt.hub import data_quality as dq` to the imports at the top of that same file if not already present.
 
-**Also add the DQ execution call after `pipeline.run(source)`:**
+**Also add the data quality execution call after `pipeline.run(source)`:**
 
 ```python
-# run DQ checks and metrics against just-loaded data
+# run data quality checks and metrics against just-loaded data
 dq_load_info = pipeline.run(dq.data_quality_checks(pipeline.dataset()))
 dq_load_info.raise_on_failed_jobs()
 ```

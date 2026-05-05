@@ -1,12 +1,12 @@
 ---
 name: review-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "review data quality results", "what failed", "show me DQ results", "analyze check results", "investigate DQ failures", or wants to understand check and metric outcomes from a pipeline run. Do NOT use to run new checks (use run-data-quality).
+description: Use when the user asks to "review data quality results", "what failed", "show me data quality results", "analyze check results", "investigate data quality failures", or wants to understand check and metric outcomes from a pipeline run. Do NOT use to run new checks (use run-data-quality).
 ---
 
 # Review data quality results
 
-Read DQ check and metric results incrementally, surface failures with remediation suggestions, and recommend next steps.
+Read data quality check and metric results incrementally, surface failures with remediation suggestions, and recommend next steps.
 
 Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
 
@@ -17,7 +17,7 @@ Expected from prior steps:
 - Tables with checks and metrics applied
 - Run outcome (success / failures detected) and any pre-identified failing tables
 
-**Incremental querying rule:** always start with table-level aggregates. Load row-level detail only when the user explicitly asks for it or when a failure needs drill-down to diagnose root cause. Never load the entire DQ result set in one query.
+**Incremental querying rule:** always start with table-level aggregates. Load row-level detail only when the user explicitly asks for it or when a failure needs drill-down to diagnose root cause. Never load the entire data quality result set in one query.
 
 ## Steps
 
@@ -39,7 +39,7 @@ Flag any table where the count is 0 or significantly lower than expected (if pri
 
 ### 2. Build a table-level check summary
 
-The DQ checks table is `_dlt_checks`, located within the pipeline's destination dataset. The physical path depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If the exact path is unknown, call `list_tables` MCP first to locate it.
+The data quality checks table is `_dlt_checks`, located within the pipeline's destination dataset. The physical path depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If the exact path is unknown, call `list_tables` MCP first to locate it.
 
 Schema columns: `table_name`, `check_qualified_name`, `row_count`, `success_count`, `success_rate` (0.0–1.0; 1.0 = all rows passed).
 
@@ -154,7 +154,7 @@ Keep queries narrow: one table, one column, one question at a time. Cap results 
 After all tables are reviewed, present a concise overall verdict:
 
 ```
-DQ review complete — pipeline "my_pipeline"
+Data quality review complete — pipeline "my_pipeline"
 
   Checks:   8 passed / 3 failed
   Metrics:  2 anomalies flagged (null_rate on status, new minimum on amount)
@@ -170,4 +170,4 @@ Then recommend one of these next steps based on what was found:
 - **Checks need adjustment** (check was too strict, enum values changed) → loop back to `define-data-quality-checks` with the specific checks pre-targeted
 - **Source data has real problems** → hand over to **rest-api-pipeline** toolkit (`adjust-endpoint` or `new-endpoint`) to fix the data at the source
 - **Anomalies need deeper investigation** → hand over to **data-exploration** toolkit (`explore-data`) with the table name and failing column already in context
-- **Everything looks good** → hand over to **dlthub-runtime** toolkit (`setup-runtime`) to deploy the pipeline with continuous DQ monitoring
+- **Everything looks good** → hand over to **dlthub-runtime** toolkit (`setup-runtime`) to deploy the pipeline with continuous data quality monitoring

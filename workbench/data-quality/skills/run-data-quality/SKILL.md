@@ -1,7 +1,7 @@
 ---
 name: run-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "run data quality checks", "execute checks", "run my DQ", "check the data now", "run validations", or wants to execute already-defined checks against a loaded pipeline. Do NOT use to define new checks (use define-data-quality-checks) or to review existing results (use review-data-quality).
+description: Use when the user asks to "run data quality checks", "execute checks", "run my data quality checks", "check the data now", "run validations", or wants to execute already-defined checks against a loaded pipeline. Do NOT use to define new checks (use define-data-quality-checks) or to review existing results (use review-data-quality).
 ---
 # Run data quality checks
 
@@ -44,12 +44,12 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
 ---
 
-**Profile B — write and run the DQ script**
+**Profile B — write and run the data quality script**
 
 1. **Confirm the script path.** Before writing anything, ask:
 
    ```
-   Where should I write the DQ run script? (default: tools/dq_run.py)
+   Where should I write the data quality run script? (default: tools/dq_run.py)
    ```
 
    Use the user's answer as `<script_path>` for all subsequent steps. If they say "default" or give no answer, use `tools/dq_run.py`.

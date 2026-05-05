@@ -1,11 +1,11 @@
 # Data quality workflow
 
 ## Workflow Entry
-**ALWAYS** start with **Setup data quality** (`setup-data-quality`) SKILL — connect to a dlt pipeline and prepare the DQ environment
+**ALWAYS** start with **Setup data quality** (`setup-data-quality`) SKILL — connect to a dlt pipeline and prepare the data quality environment
 
 ## Core workflow
 
-1. **Setup data quality** (`setup-data-quality`) — connect to pipeline, inspect schema, prepare DQ environment
+1. **Setup data quality** (`setup-data-quality`) — connect to pipeline, inspect schema, prepare data quality environment
 2. **Define data quality checks** (`define-data-quality-checks`) — define checks per table/column
 3. **Run data quality** (`run-data-quality`) — execute checks against the pipeline data
 4. **Review data quality** (`review-data-quality`) — review results, surface failures, suggest fixes
@@ -18,7 +18,7 @@
 
 ### Outgoing (from data-quality)
 
-- **transformations** — from (`review-data-quality`), when DQ failures reveal upstream modeling issues that need fixing; start at `annotate-sources`
+- **transformations** — from (`review-data-quality`), when data quality failures reveal upstream modeling issues that need fixing; start at `annotate-sources`
 - **dlthub-runtime** (Profile A) — from (`run-data-quality`), when the user wants to deploy the pipeline script (with embedded `@dq.with_checks` decorators) as a scheduled job; start at `setup-runtime`
 - **dlthub-runtime** (Profile B) — from (`run-data-quality`), when the user wants to schedule `tools/dq_run.py` as a standalone recurring job; start at `setup-runtime`
 - **data-exploration** — from (`review-data-quality`), when metric anomalies need deeper interactive investigation; start at `explore-data`

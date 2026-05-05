@@ -2,9 +2,9 @@
 
 ## Core rules
 
-**Continuous DQ, not ad-hoc.** This toolkit sets up persistent checks and metrics that run on every pipeline load. For one-off data sanity checks during development, use the **data-exploration** toolkit or the `validate-data` step in **rest-api-pipeline** instead.
+**Continuous data quality, not ad-hoc.** This toolkit sets up persistent checks and metrics that run on every pipeline load. For one-off data sanity checks during development, use the **data-exploration** toolkit or the `validate-data` step in **rest-api-pipeline** instead.
 
-**Use the dlt DQ API, not notebooks.** When the user asks to "set up data quality" or "monitor data quality", invoke `setup-data-quality`. Never generate a custom Marimo notebook as a DQ solution.
+**Use the dlt data quality API, not notebooks.** When the user asks to "set up data quality" or "monitor data quality", invoke `setup-data-quality`. Never generate a custom Marimo notebook as a data quality solution.
 
 **License first.** The `dlthub.data_quality` license scope must be present before checks can run. If it is absent, stop and run `dlt license issue dlthub.data_quality` before continuing.
 
