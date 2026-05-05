@@ -42,6 +42,10 @@ This is currently available as a free trial. To proceed, run:
 
     dlt license issue dlthub.data_quality
 
+Important: run this command from the same working directory where your pipeline
+runs. The license is tied to that directory — issuing it elsewhere will cause
+checks to fail with a license error at runtime.
+
 You will be asked to agree to the dltHub EULA before the license is issued.
 ```
 
@@ -133,6 +137,8 @@ for table_hints in hints["tables"].values():
 | `row_key: true` | `is_unique("col")` |
 
 Collect candidates per table. Ignore tables where `hints["tables"]` returns an empty list.
+
+**Important — source of truth:** The schema state, pipeline code, and destination can get out of sync. If the schema already shows `x-dq-checks` metadata (from a previous session or external edit) but the code has no decorators, or vice versa, make this explicit to the user: for Profile A the code is the source of truth (re-running the pipeline overwrites schema hints with whatever the decorators say); for Profile B the `dq.run_checks` call is the source of truth; the `_dlt_checks` destination table reflects only what was last executed.
 
 ### 5. Present summary to the user
 

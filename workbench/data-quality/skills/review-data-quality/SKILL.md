@@ -19,6 +19,32 @@ Expected from prior steps:
 
 **Incremental querying rule:** always start with table-level aggregates. Load row-level detail only when the user explicitly asks for it or when a failure needs drill-down to diagnose root cause. Never load the entire data quality result set in one query.
 
+## Quick summary mode
+
+If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlt library:
+
+```python
+import dlt
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+
+pipeline = dlt.attach(pipeline_name="<name>")
+results = dq.read_check(pipeline)
+```
+
+Group by `table_name` and present a compact verdict:
+
+```
+Latest data quality snapshot — pipeline "my_pipeline"
+
+  orders      3 checks: ✓ ✓ ✗  (1 failure)
+  customers   2 checks: ✓ ✓
+  products    2 checks: ✓ ✓
+
+1 failure detected. Want to drill into metrics and failures, or is this enough?
+```
+
+If the user says "that's enough", stop here. If they want to go deeper, continue to the full review steps below.
+
 ## Steps
 
 ### 1. Get table row counts
@@ -39,22 +65,17 @@ Flag any table where the count is 0 or significantly lower than expected (if pri
 
 ### 2. Build a table-level check summary
 
-The data quality checks table is `_dlt_checks`, located within the pipeline's destination dataset. The physical path depends on the destination — for DuckDB it is `{dataset_name}._dlt_checks` (e.g., `navit._dlt_checks`). If the exact path is unknown, call `list_tables` MCP first to locate it.
+Read check results using internal dlt functionality:
 
-Schema columns: `table_name`, `check_qualified_name`, `row_count`, `success_count`, `success_rate` (0.0–1.0; 1.0 = all rows passed).
+```python
+import dlt
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
-For each table, query using `execute_sql_query` MCP:
-
-```sql
-SELECT
-    check_qualified_name,
-    row_count,
-    success_count,
-    success_rate
-FROM _dlt_checks
-WHERE table_name = '<table>'
-ORDER BY success_rate ASC
+pipeline = dlt.attach(pipeline_name="<name>")
+results = dq.read_check(pipeline, table_name="<table>")
 ```
+
+**`_dlt_checks` accumulates one row per check per run** — historical rows are kept for auditability but make it noisy to answer "did the current checks pass?". If `dq.read_check()` returns multiple rows per check (multiple `_dlt_load_id` values), scope to the latest by filtering on `max(_dlt_load_id)` before presenting. Do this for each table separately.
 
 A check passes when `success_count = row_count` (equivalently `success_rate = 1.0`).
 
@@ -76,7 +97,7 @@ Do not move to metrics until all tables have been summarised this way.
 
 ### 3. Read metric results
 
-For each table, read metric results using the public API:
+For each table, read metric results using the dlt library:
 
 ```python
 import dlt
@@ -170,4 +191,8 @@ Then recommend one of these next steps based on what was found:
 - **Checks need adjustment** (check was too strict, enum values changed) → loop back to `define-data-quality-checks` with the specific checks pre-targeted
 - **Source data has real problems** → hand over to **rest-api-pipeline** toolkit (`adjust-endpoint` or `new-endpoint`) to fix the data at the source
 - **Anomalies need deeper investigation** → hand over to **data-exploration** toolkit (`explore-data`) with the table name and failing column already in context
-- **Everything looks good** → hand over to **dlthub-runtime** toolkit (`setup-runtime`) to deploy the pipeline with continuous data quality monitoring
+- **Everything looks good** → hand over to **dlthub-runtime** toolkit (`setup-runtime`):
+  - **Profile A** (checks embedded in pipeline): deploy the pipeline script itself — checks run automatically on every load
+  - **Profile B** (standalone script): deploy `<script_path>` as a separate scheduled job — pass the script path and pipeline name to `setup-runtime`
+
+If the profile was not carried over from `run-data-quality`, ask: "Are your checks embedded in the pipeline code, or are they in a standalone script?"
