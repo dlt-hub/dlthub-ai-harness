@@ -1,7 +1,10 @@
-.PHONY: dev validate-toolkits lint lint-ruff lint-mypy format format-fix lint-install
+.PHONY: dev validate-toolkits lint lint-ruff lint-mypy format format-fix lint-install visualize-vocabulary
 
 dev:
 	uv sync --group lint --reinstall-package dlt
+
+glossary-deps:
+	cargo install harper-ls --locked
 
 validate-toolkits:
 	uv run python tools/validate_toolkits.py
@@ -22,4 +25,28 @@ format-fix: format
 lint-install:
 	uv run python tools/lint_install.py
 
-lint: lint-ruff lint-mypy validate-toolkits lint-install
+validate-vocabulary:
+	uv run python tools/validate_glossary.py --check-skills
+
+visualize-vocabulary:
+	uv run python tools/visualize_vocabulary.py
+
+glossary-lint:
+	uv run --group terminology python tools/glossary_lint.py workbench/
+
+glossary-lint-review:
+	uv run --group terminology python tools/glossary_lint.py --review workbench/
+
+glossary-lint-review-cli:
+	uv run --group terminology python tools/glossary_lint.py --review --cli workbench/
+
+glossary-lint-prompt:
+	uv run --group terminology python tools/glossary_lint.py --prompt workbench/
+
+glossary-drift:
+	uv run --group terminology python tools/glossary_drift.py workbench/
+
+glossary-report:
+	uv run --group terminology python tools/glossary_report.py -o terminology/review_report.md
+
+lint: lint-ruff lint-mypy validate-toolkits lint-install validate-vocabulary

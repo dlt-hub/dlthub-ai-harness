@@ -25,3 +25,26 @@ jobs:
 
       - name: Validate and lint
         run: make lint
+
+  terminology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install terminology dependencies
+        run: |
+          uv sync --group terminology
+          uv pip install en-core-web-md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
+
+      - name: Terminology lint
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_PLATFORM_KEY }}
+        run: uv run --group terminology python tools/glossary_lint.py --review --github --severity warning workbench/rest-api-pipeline/skills/debug-pipeline/SKILL.md

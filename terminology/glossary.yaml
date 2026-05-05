@@ -1,0 +1,544 @@
+# dlt Controlled Vocabulary — Glossary for terminology linting
+#
+# Derived from .vocabulary/vocabulary.md (authoritative source).
+# Used by tools/glossary_lint.py for candidate extraction and LLM judgment.
+#
+# Fields:
+#   preferred:   The canonical term
+#   deprecated:  Terms to flag and suggest replacing
+#   alternatives: Acceptable synonyms (not flagged)
+#   definition:  What the term means in dlt context
+#   context:     Where the rule applies (all, technical, marketing)
+#   severity:    error (must fix) | warning (should fix) | suggestion (consider)
+#   note:        Clarifications, edge cases, or exceptions
+#   see_also:    Related terms
+#   category:    Grouping for the term
+
+terms:
+  # ==========================================================================
+  # Core Entities
+  # ==========================================================================
+
+  - preferred: "pipeline"
+    category: core
+    deprecated: ["ETL job", "data flow", "workflow", "ingestion pipeline"]
+    definition: >
+      Moves data from source into destination via extract, normalize, load
+      steps according to schema instructions. Root entity identified by
+      pipeline name.
+    context: all
+    severity: error
+    note: >
+      "workflow" is only deprecated when used as a synonym for dlt pipeline.
+      It is acceptable when referring to a sequence of skills/steps in a toolkit.
+
+  - preferred: "source"
+    category: core
+    deprecated: ["source connector", "tap", "data source connector", "adapter"]
+    alternatives: ["dlt source"]
+    definition: >
+      Software component (@dlt.source) providing access to data from a data
+      source as one or more resources, plus metadata as a schema.
+    context: all
+    severity: error
+    note: >
+      "source" = the @dlt.source component. Use "data source" for the external
+      system. These are distinct concepts.
+    see_also: ["data source", "resource"]
+
+  - preferred: "data source"
+    category: core
+    deprecated: []
+    alternatives: ["API", "external source"]
+    definition: >
+      External location holding data with structure, organized into data
+      resources. Not a dlt object.
+    context: all
+    severity: warning
+    note: >
+      Examples: Hubspot, Stripe, a PostgreSQL database, REST API, CSV files.
+      Distinct from "source" which is the @dlt.source component.
+    see_also: ["source", "data resource"]
+
+  - preferred: "resource"
+    category: core
+    deprecated: ["stream", "tap stream"]
+    alternatives: ["dlt resource"]
+    definition: >
+      Software component (@dlt.resource) providing access to one data resource
+      as a Python iterator of data items. Child of source.
+    context: all
+    severity: error
+    note: >
+      "stream" and "endpoint" are deprecated when used as synonyms for the dlt
+      resource object. "endpoint" is acceptable when referring to the API URL
+      path (a data resource), not the dlt resource.
+    see_also: ["data resource", "source"]
+
+  - preferred: "data resource"
+    category: core
+    deprecated: []
+    alternatives: ["table", "stream", "collection", "endpoint", "topic"]
+    definition: >
+      A logical grouping of data within a data source (e.g., a database table,
+      an API endpoint, a spreadsheet tab).
+    context: all
+    severity: suggestion
+    see_also: ["resource", "data source"]
+
+  - preferred: "destination"
+    category: core
+    deprecated: ["database", "data lake", "data warehouse"]
+    alternatives: ["target", "data store"]
+    definition: >
+      Where data is loaded. Root entity identified by destination name.
+      Has capabilities and a fingerprint.
+    context: all
+    severity: error
+    note: >
+      "database", "data lake", "data warehouse" are only deprecated when used
+      as generic synonyms for the dlt destination concept. They are acceptable
+      when referring to a specific technology type.
+
+  - preferred: "dataset"
+    category: core
+    deprecated: []
+    definition: >
+      Root entity identified by dataset name. Has a single schema, materialized
+      on a single destination. Contains destination tables.
+    context: all
+    severity: warning
+
+  - preferred: "schema"
+    category: core
+    deprecated: ["manifest", "data contract", "metadata", "policy"]
+    definition: >
+      Describes structure of data from a source and provides hints on
+      processing/loading. Child of pipeline, identified by schema name
+      (= source name).
+    context: all
+    severity: error
+    note: >
+      When the term describes the structure, validity, or definition of data
+      columns/tables in a dlt context, it IS a synonym for schema and should
+      be flagged. "metadata" is only acceptable when referring to generic
+      auxiliary information (e.g., "pipeline metadata", "audit metadata"),
+      not when describing data structure.
+
+  # ==========================================================================
+  # Schema Sub-entities
+  # ==========================================================================
+
+  - preferred: "schema version"
+    category: schema
+    deprecated: []
+    definition: >
+      Child of schema, identified by version hash. Transitions tracked via
+      schema update.
+    context: technical
+    severity: suggestion
+
+  - preferred: "schema table"
+    category: schema
+    deprecated: []
+    definition: >
+      Named entry in schema version. Has table hints and schema columns.
+      An incomplete table has no columns.
+    context: technical
+    severity: suggestion
+
+  - preferred: "schema column"
+    category: schema
+    deprecated: []
+    definition: >
+      Entry in schema table with data type and column hints.
+      An incomplete column has no data type.
+    context: technical
+    severity: suggestion
+
+  - preferred: "table chain"
+    category: schema
+    deprecated: []
+    definition: >
+      Root table + all its nested/child tables, ordered by ancestry.
+    context: technical
+    severity: suggestion
+
+  - preferred: "child table"
+    category: schema
+    deprecated: []
+    alternatives: ["nested table"]
+    definition: >
+      Auto-created by normalizer for nested arrays.
+      Named {parent_table}__{key_name}.
+    context: technical
+    severity: warning
+
+  # ==========================================================================
+  # Hints
+  # ==========================================================================
+
+  - preferred: "hint"
+    category: hints
+    deprecated: []
+    alternatives: ["processing instruction", "loading instruction"]
+    definition: >
+      Additional information in schema that instructs normalizer/loader.
+      Hints are interpreted not enforced and may apply differently per
+      destination.
+    context: technical
+    severity: suggestion
+    see_also: ["table hint", "column hint"]
+
+  - preferred: "table hint"
+    category: hints
+    deprecated: []
+    definition: >
+      Hint on a schema table. Values: write_disposition, parent, columns,
+      filters.
+    context: technical
+    severity: suggestion
+
+  - preferred: "column hint"
+    category: hints
+    deprecated: ["column type hint", "type hint", "column annotation"]
+    definition: >
+      Hint on a schema column. Values: primary_key, merge_key, partition,
+      sort, unique, nullable, data_type.
+    context: technical
+    severity: suggestion
+
+  - preferred: "write disposition"
+    category: hints
+    deprecated: ["overwrite", "upsert", "insert"]
+    definition: >
+      Table hint controlling how data is written: replace | merge | append.
+    context: technical
+    severity: error
+    note: >
+      "overwrite" -> replace, "upsert" -> merge, "insert" -> append.
+      Only flag when used as the name of the write disposition value.
+      "insert" is acceptable in general SQL context.
+
+  # ==========================================================================
+  # Pipeline Execution
+  # ==========================================================================
+
+  - preferred: "pipeline run"
+    category: execution
+    deprecated: []
+    alternatives: ["run"]
+    definition: >
+      Single execution of a pipeline. Transitions through steps:
+      extract -> normalize -> load. Succeeds if all steps succeed.
+    context: all
+    severity: warning
+
+  - preferred: "run"
+    category: execution
+    role: verb
+    deprecated: ["execute", "trigger", "start"]
+    definition: >
+      The verb for pipeline execution. A pipeline is "run", not "executed"
+      or "triggered". Mirrors the pipeline.run() method in the dlt API.
+    context: all
+    severity: error
+    note: >
+      Only flag when the object is a pipeline or source. "execute a SQL query",
+      "execute this command" are valid uses. "deploy" is acceptable only for
+      infrastructure deployment, never as a synonym for running a pipeline.
+
+  - preferred: "pipeline step"
+    category: execution
+    deprecated: ["phase", "stage"]
+    definition: >
+      Ordered processing within a run: extract | normalize | load.
+      Each processes one or more load packages.
+    context: technical
+    severity: warning
+    note: >
+      Only flag "phase" and "stage" when used as synonyms for pipeline step.
+
+  - preferred: "extract step"
+    category: execution
+    deprecated: ["extraction step"]
+    definition: >
+      First step. Pulls data from source, creates load packages, adds schema.
+      Only step that may create/modify pipeline state.
+    context: technical
+    severity: warning
+
+  - preferred: "normalize step"
+    category: execution
+    deprecated: ["normalization step"]
+    definition: >
+      Second step. Converts data items into loader file formats (CSV, JSON,
+      Avro, Parquet). May create schema version. Requires destination
+      capabilities.
+    context: technical
+    severity: warning
+
+  - preferred: "load step"
+    category: execution
+    deprecated: ["loading step"]
+    definition: >
+      Third step. Sends load packages to destination. Syncs schema, may
+      create dataset, loads data.
+    context: technical
+    severity: warning
+
+  - preferred: "run trace"
+    category: execution
+    deprecated: []
+    alternatives: ["trace"]
+    definition: >
+      Execution timeline/diagnostics for a pipeline run.
+    context: technical
+    severity: suggestion
+    note: >
+      "logging" and "logs" are acceptable when referring to runtime log output.
+      "trace" refers to the dlt trace command and structured run metadata.
+
+  # ==========================================================================
+  # Load Package
+  # ==========================================================================
+
+  - preferred: "load package"
+    category: load-package
+    deprecated: []
+    definition: >
+      Root entity identified by load id (strictly increasing). Contains one
+      schema version and one or more jobs.
+      States: new -> extracted -> normalized -> loaded | aborted.
+    context: technical
+    severity: warning
+
+  - preferred: "job"
+    category: load-package
+    deprecated: []
+    alternatives: ["load package job"]
+    definition: >
+      Unit of work within a load package for one schema table.
+      States: new_jobs -> started_jobs -> completed_jobs | failed_jobs.
+    context: technical
+    severity: suggestion
+
+  # ==========================================================================
+  # Pipeline State & Configuration
+  # ==========================================================================
+
+  - preferred: "pipeline state"
+    category: state
+    deprecated: []
+    definition: >
+      Persistent state visible to sources, stored in dataset. Contains
+      source/resource states. Powers incremental loading.
+    context: technical
+    severity: warning
+
+  - preferred: "incremental loading"
+    category: state
+    deprecated: ["delta load"]
+    alternatives: ["incremental"]
+    definition: >
+      Loading only new/changed data using a cursor column via
+      dlt.sources.incremental.
+    context: all
+    severity: warning
+
+  - preferred: "dev mode"
+    category: state
+    deprecated: ["development mode", "debug mode", "test mode"]
+    definition: >
+      Pipeline mode where dataset name gets serial number, working directory
+      emptied. Fresh dataset each run.
+    context: all
+    severity: suggestion
+
+  - preferred: "refresh run"
+    category: state
+    deprecated: []
+    definition: >
+      A run that drops/truncates state and data. Subtypes: source refresh,
+      resource refresh, data refresh.
+    context: technical
+    severity: suggestion
+
+  # ==========================================================================
+  # Data Flow
+  # ==========================================================================
+
+  - preferred: "data item"
+    category: data-flow
+    deprecated: []
+    alternatives: ["event", "item", "row"]
+    definition: >
+      Single instance of data from the source.
+    context: technical
+    severity: suggestion
+
+  - preferred: "data iterator"
+    category: data-flow
+    deprecated: []
+    alternatives: ["data", "data stream"]
+    definition: >
+      Python iterator of data items produced by a resource.
+    context: technical
+    severity: suggestion
+
+  - preferred: "processing step"
+    category: data-flow
+    deprecated: ["transformation", "data transform", "pre-load transform"]
+    definition: >
+      Resource-level in-extract transform: map | filter | yield_map.
+    context: technical
+    severity: warning
+    note: >
+      "transformation" is acceptable in general discussion. In technical docs,
+      use "processing step" to match the dlt API.
+
+  # ==========================================================================
+  # Pipeline Components
+  # ==========================================================================
+
+  - preferred: "extractor"
+    category: components
+    deprecated: []
+    alternatives: ["source extractor"]
+    definition: >
+      Component that extracts data and schema from source/resource.
+    context: technical
+    severity: suggestion
+
+  - preferred: "normalizer"
+    category: components
+    deprecated: []
+    alternatives: ["normaliser"]
+    definition: >
+      Component that normalizes data items per schema into loader file formats.
+    context: technical
+    severity: suggestion
+
+  - preferred: "loader"
+    category: components
+    deprecated: []
+    alternatives: ["destination loader"]
+    definition: >
+      Component that sends load packages to destination.
+    context: technical
+    severity: suggestion
+
+  # ==========================================================================
+  # Workspace Actions (canonical verbs for skill naming)
+  # ==========================================================================
+
+  - preferred: "create"
+    category: actions
+    role: verb
+    deprecated: ["build", "make", "generate"]
+    definition: >
+      Author new code/artifact. Valid objects: pipeline, report,
+      transformation, ontology.
+    context: all
+    severity: warning
+    note: >
+      Only flag in skill names and action descriptions. "generate" and "build"
+      are acceptable in general prose.
+
+  - preferred: "find"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Discover the right source for a data provider.
+      Valid objects: source.
+    context: all
+    severity: suggestion
+
+  - preferred: "debug"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Inspect traces, load packages, exceptions after a failed/suspect run.
+      Valid objects: pipeline, deployment.
+    context: all
+    severity: suggestion
+
+  - preferred: "inspect"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Examine pipeline state, schema, configuration.
+      Valid objects: pipeline.
+    context: all
+    severity: suggestion
+
+  - preferred: "validate"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Verify schema correctness, data types, row counts, quality after load.
+      Valid objects: dataset.
+    context: all
+    severity: suggestion
+
+  - preferred: "show"
+    category: actions
+    role: verb
+    deprecated: ["view"]
+    definition: >
+      Display summary. Valid objects: pipeline, dataset, report.
+    context: all
+    severity: suggestion
+    note: Only flag "view" in skill names and action descriptions.
+
+  - preferred: "add"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Add a component to an existing artifact. Valid objects: resource.
+    context: all
+    severity: suggestion
+    note: >
+      "new" is not a verb — use "add" or "create" instead in skill names.
+
+  - preferred: "adjust"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Harden a resource for production (pagination, incremental, limits).
+      Valid objects: resource.
+    context: all
+    severity: suggestion
+
+  - preferred: "deploy"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Push to production runtime. Valid objects: workspace.
+    context: all
+    severity: suggestion
+
+  - preferred: "maintain"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Ongoing production monitoring. Valid objects: pipeline, dataset, report.
+    context: all
+    severity: suggestion
+
+  - preferred: "annotate"
+    category: actions
+    role: verb
+    deprecated: []
+    definition: >
+      Map source tables to business concepts. Valid objects: sources.
+    context: all
+    severity: suggestion
