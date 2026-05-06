@@ -1,26 +1,14 @@
 # tools/check_dialect.py
 # Static SQL dialect compatibility checker for @dlt.hub.transformation functions.
-# Usage: uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py <transform_file.py>
+# Usage: uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py <transform_file.py> --read <dev_dialect> --write <prod_dialect>
+import argparse
 import ast
 import re
 import sys
 from pathlib import Path
 
 import sqlglot
-import tomlkit
 from sqlglot import expressions as exp
-
-
-def dest_type_from_profile(profile: str, dest_name: str = "warehouse") -> str:
-    path = Path(f".dlt/{profile}.config.toml")
-    if not path.exists():
-        return ""
-    return (
-        tomlkit.loads(path.read_text())
-        .get("destination", {})
-        .get(dest_name, {})
-        .get("destination_type", "")
-    )
 
 
 DLT_TO_SQLGLOT = {
@@ -93,37 +81,36 @@ def extract_queries(transform_file: Path) -> dict[str, str]:
     return queries
 
 
-if len(sys.argv) < 2:
-    print("Usage: uv run python tools/check_dialect.py <transform_file.py>")
+parser = argparse.ArgumentParser(description="Check SQL dialect compatibility for dlt transformations")
+parser.add_argument("transform_file", type=Path, help="Path to the transformation Python file")
+parser.add_argument("--read", required=True, metavar="DIALECT", help="Dev/source destination type (e.g. duckdb, motherduck)")
+parser.add_argument("--write", required=True, metavar="DIALECT", help="Prod/target destination type (e.g. bigquery, snowflake, postgres)")
+args = parser.parse_args()
+
+if not args.transform_file.exists():
+    print(f"ERROR: {args.transform_file} not found")
     sys.exit(1)
 
-transform_file = Path(sys.argv[1])
-if not transform_file.exists():
-    print(f"ERROR: {transform_file} not found")
-    sys.exit(1)
-
-QUERIES = extract_queries(transform_file)
-if not QUERIES:
-    print(f"No @dlt.hub.transformation functions with extractable SQL found in {transform_file}")
-    sys.exit(0)
-
-raw_read = dest_type_from_profile("dev") or "duckdb"
-raw_write = dest_type_from_profile("prod") or "bigquery"
-READ_DIALECT = to_sqlglot_dialect(raw_read)
-WRITE_DIALECT = to_sqlglot_dialect(raw_write)
+READ_DIALECT = to_sqlglot_dialect(args.read)
+WRITE_DIALECT = to_sqlglot_dialect(args.write)
 
 for label, raw, resolved in [
-    ("dev", raw_read, READ_DIALECT),
-    ("prod", raw_write, WRITE_DIALECT),
+    ("--read", args.read, READ_DIALECT),
+    ("--write", args.write, WRITE_DIALECT),
 ]:
     if resolved is None:
         available = sorted(d.value for d in sqlglot.dialects.Dialects)
-        print(f"ERROR: no SQLGlot dialect for dlt destination '{raw}' ({label} profile)")
-        print(f"Available SQLGlot dialects: {available}")
+        print(f"ERROR: no SQLGlot dialect for '{raw}' ({label})")
+        print(f"Available SQLGlot dialects: {', '.join(available)}")
         sys.exit(1)
 
+QUERIES = extract_queries(args.transform_file)
+if not QUERIES:
+    print(f"No @dlt.hub.transformation functions with extractable SQL found in {args.transform_file}")
+    sys.exit(0)
+
 print(f"Dialects: {READ_DIALECT} -> {WRITE_DIALECT}")
-print(f"Checking {len(QUERIES)} transformation(s) from {transform_file}\n")
+print(f"Checking {len(QUERIES)} transformation(s) from {args.transform_file}\n")
 
 warnings = 0
 errors = 0

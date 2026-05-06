@@ -22,15 +22,17 @@ Diagnose and fix dlt transformation failures. Two main failure classes: **SQL di
 
 The toolkit includes a bundled dialect checker that reads your transformation file directly — no pipeline connection needed, and no script to write. It parses each `@dlt.hub.transformation` function's SQL in the dev dialect and transpiles it to the target dialect, catching portability issues before deployment.
 
-Tell the user: *"I'm going to run a static SQL compatibility check on your transformation file. I just need to make sure SQL dialect issues don't arise as you move from dev to prod."*
+Tell the user: *"I'm going to run a static SQL compatibility check on your transformation file to catch any SQL dialect issues before you move to prod."*
 
-Run the checker, substituting the actual transformation file path:
+You must pass the dev and prod destination types explicitly via `--read` and `--write`. If you already have this from context (e.g. from `create-transformation`), use it directly. If not, call `get_local_pipeline_state` via MCP to retrieve the destination type for the pipeline, then ask the user for the prod destination if unknown.
+
+Run the checker yourself and read the output:
 
 ```bash
-uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py transformations/<dataset>_to_cdm.py
+uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py transformations/<dataset>_to_cdm.py --read <dev_dialect> --write <prod_dialect>
 ```
 
-The script auto-detects dev and prod destinations from `.dlt/dev.config.toml` and `.dlt/prod.config.toml`, falling back to `duckdb → bigquery` if those files are absent. Expected output looks like:
+Expected output looks like:
 
 ```
 Dialects: duckdb -> bigquery
