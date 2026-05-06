@@ -18,124 +18,41 @@ Diagnose and fix dlt transformation failures. Two main failure classes: **SQL di
 
 ## 1. SQL dialect compatibility
 
-Write dialect-checking scripts to `diagnostics/check_dialect.py` (create `diagnostics/` at the project root if it doesn't exist). Add `diagnostics/` to `.gitignore` — these are temporary diagnostic aids, not part of the transformation code. Delete them after the issue is resolved.
-
 ### 1a. Static SQL compatibility checks
 
-Use SQLGlot directly to parse each transformation's SQL in the dev dialect and transpile it to the target dialect — no pipeline connection required, pure static analysis. This catches common dialect issues before deployment and adds two dlt-specific checks that a bare `sqlglot.transpile()` call can miss.
+The toolkit includes a bundled dialect checker that reads your transformation file directly — no pipeline connection needed, and no script to write. It parses each `@dlt.hub.transformation` function's SQL in the dev dialect and transpiles it to the target dialect, catching portability issues before deployment.
 
-Collect the SQL strings from your `@dlt.hub.transformation` functions (they are the string literals passed to `dataset()`), add them to a `QUERIES` dict, and run:
+Tell the user: *"I'm going to run a static SQL compatibility check on your transformation file. I just need to make sure SQL dialect issues don't arise as you move from dev to prod."*
 
-```python
-# diagnostics/check_dialect.py
-import re
-import sys
-from pathlib import Path
+Run the checker, substituting the actual transformation file path:
 
-import sqlglot
-import tomlkit
-from sqlglot import expressions as exp
-
-
-def dest_type_from_profile(profile: str, dest_name: str = "warehouse") -> str:
-    path = Path(f".dlt/{profile}.config.toml")
-    if not path.exists():
-        return ""
-    return (
-        tomlkit.loads(path.read_text())
-        .get("destination", {})
-        .get(dest_name, {})
-        .get("destination_type", "")
-    )
-
-
-DLT_TO_SQLGLOT = {
-    "motherduck": "duckdb",  # MotherDuck uses DuckDB SQL; no separate SQLGlot dialect
-}
-
-
-def to_sqlglot_dialect(dlt_dest: str) -> str | None:
-    mapped = DLT_TO_SQLGLOT.get(dlt_dest, dlt_dest)
-    try:
-        sqlglot.Dialect.get_or_raise(mapped)
-    except Exception:
-        return None
-    return mapped
-
-
-QUERIES = {
-    "dim_person": "SELECT email, first_name FROM hubspot__contacts",
-    "fact_activity": "SELECT id, activity_type FROM hubspot__activities",
-    # add one entry per transformation function
-}
-
-raw_read = dest_type_from_profile("dev") or "duckdb"
-raw_write = dest_type_from_profile("prod") or "bigquery"
-READ_DIALECT = to_sqlglot_dialect(raw_read)
-WRITE_DIALECT = to_sqlglot_dialect(raw_write)
-
-for label, raw, resolved in [
-    ("dev", raw_read, READ_DIALECT),
-    ("prod", raw_write, WRITE_DIALECT),
-]:
-    if resolved is None:
-        available = sorted(d.value for d in sqlglot.dialects.Dialects)
-        print(f"ERROR: no SQLGlot dialect for dlt destination '{raw}' ({label} profile)")
-        print(f"Available SQLGlot dialects: {available}")
-        sys.exit(1)
-
-print(f"Dialects: {READ_DIALECT} -> {WRITE_DIALECT}\n")
-
-warnings = 0
-errors = 0
-
-for name, sql in QUERIES.items():
-    query_warnings = []
-    query_errors = []
-
-    try:
-        parsed = sqlglot.parse_one(sql, read=READ_DIALECT)
-        if not isinstance(parsed, exp.Select):
-            query_warnings.append(
-                f"top-level is {type(parsed).__name__}, not Select; dlt SqlModel may reject it"
-            )
-    except Exception as e:
-        query_errors.append(f"parse failed for {READ_DIALECT}: {e}")
-
-    for identifier in sorted(set(re.findall(r'"([^"\n]+)"', sql))):
-        query_warnings.append(
-            f'double-quoted identifier "{identifier}"; verify destination quoting in {WRITE_DIALECT}'
-        )
-
-    try:
-        sqlglot.transpile(
-            sql,
-            read=READ_DIALECT,
-            write=WRITE_DIALECT,
-            error_level=sqlglot.ErrorLevel.WARN,
-        )
-    except Exception as e:
-        query_errors.append(f"transpile {READ_DIALECT}->{WRITE_DIALECT} failed: {e}")
-
-    if not query_warnings and not query_errors:
-        print(f"[{name}] OK")
-        continue
-
-    print(f"[{name}]")
-    for warning in query_warnings:
-        print(f"  WARN: {warning}")
-    for error in query_errors:
-        print(f"  ERROR: {error}")
-    warnings += len(query_warnings)
-    errors += len(query_errors)
-
-print("\nSUMMARY")
-print(f"  warnings: {warnings}")
-print(f"  errors: {errors}")
-sys.exit(1 if warnings or errors else 0)
+```bash
+uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py transformations/<dataset>_to_cdm.py
 ```
 
-Run with `uv run python diagnostics/check_dialect.py`. Treat `WARN` as a portability risk to inspect, not a guaranteed failure. Treat `ERROR` as a likely rewrite requirement. This static check catches common SQLGlot and dlt `SqlModel` issues, but it does not replace inspecting `Relation.sql()` when deployment still fails.
+The script auto-detects dev and prod destinations from `.dlt/dev.config.toml` and `.dlt/prod.config.toml`, falling back to `duckdb → bigquery` if those files are absent. Expected output looks like:
+
+```
+Dialects: duckdb -> bigquery
+Checking 5 transformation(s) from transformations/hubspot_to_cdm.py
+
+[dim_company] OK
+[dim_person] WARN: double-quoted identifier "email"; verify destination quoting in bigquery
+[fact_activity] ERROR: transpile duckdb->bigquery failed: ...
+...
+
+SUMMARY
+  warnings: 1
+  errors: 1
+```
+
+Walk the user through the results:
+- **OK** — safe to deploy as-is
+- **WARN** — portability risk worth inspecting, not a guaranteed failure; common cause is double-quoted identifiers that BigQuery/Snowflake handle differently
+- **ERROR** — the SQL will likely fail on the target destination; rewrite to ANSI SQL (see section 1c)
+- **skipped** — SQL is dynamically constructed and can't be statically analysed; inspect those functions manually
+
+This check catches the most common issues, but does not replace inspecting `Relation.sql()` output if deployment still fails after fixes.
 
 If either dlt destination is not covered by SQLGlot, the script stops and prints the available SQLGlot dialects. In that case, inspect dlt's actual `Relation.sql()` output or run a target-destination test pipeline instead. SQLGlot supports 31+ dialects — see https://sqlglot.com/sqlglot.html for dialect names.
 
