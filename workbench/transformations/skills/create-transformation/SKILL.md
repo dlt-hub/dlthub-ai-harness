@@ -275,9 +275,10 @@ import os
 os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 ```
 
-**During development iterations**, use the `debug-pipeline` skill from the **rest-api-pipeline** toolkit — it offers more help with failing pipelines, and particularly sets up `dev_mode=True` for development iterations.
+If the run fails, read the error before deciding where to go — do not proceed to step 9:
 
-If the run fails, go to the (`debug-transformation`) skill — do not proceed to step 9.
+- **SQL syntax error, unsupported function, dialect error** → (`debug-transformation`) skill
+- **Pipeline state error, stale packages, schema drift, connection error** → `debug-pipeline` skill in the **rest-api-pipeline** toolkit (also use this for development iterations — it sets up `dev_mode=True`)
 
 ### 9. Validate output
 

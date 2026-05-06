@@ -126,6 +126,8 @@ If no recoverable destination state exists, `sync` may not resolve partial retri
 
 ### Step 4: Selective drop (last resort)
 
+> **DuckDB only:** if the failure is `"Parser Error: Adding columns with constraints not yet supported"`, `dlt pipeline drop` will not fix it — go to section 3's DuckDB workaround instead.
+
 Only if the steps above do not resolve the failure and incorrect schema or tables were already loaded to the destination:
 
 ```bash
@@ -198,7 +200,7 @@ This error surfaces when re-running a transformation with new or modified `colum
 duckdb <path_to_db_file> "DROP SCHEMA <dataset_name> CASCADE;"
 ```
 
-Then re-run the transformation script. This is DuckDB-specific behavior and will not occur on cloud destinations (BigQuery, Snowflake, Postgres).
+Then re-run the transformation script. This is DuckDB-specific behavior and will not occur on cloud destinations (BigQuery, Snowflake, Postgres). Do not use `dlt pipeline drop` for this error — it does not clear the DuckDB schema and will not resolve the constraint conflict.
 
 Reference: https://dlthub.com/docs/hub/features/transformations
 
