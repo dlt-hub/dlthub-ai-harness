@@ -57,6 +57,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
+    },
+    {
+      "name": "data-quality",
+      "source": "./workbench/data-quality",
+      "description": "Add checks and metrics to dlt pipelines — inspect schema for candidates, define column-level validations and load metrics, run them on every pipeline load, and review results with failure diagnosis.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "data-quality", "validation", "checks", "metrics"]
     }
   ]
 }
