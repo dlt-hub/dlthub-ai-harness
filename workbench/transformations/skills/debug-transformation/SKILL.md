@@ -87,7 +87,7 @@ If SQLGlot raises `UnsupportedError` or logs warnings at `unsupported_level`, th
 References:
 - SQLGlot supported dialects: https://sqlglot.com/sqlglot.html
 - SQLGlot unsupported errors: https://sqlglot.com/sqlglot.html#unsupported-errors
-- dlt `Relation` source: https://github.com/dlt-hub/dlt/blob/3583acd7785d3120fa29329d11cfbf379e0258a3/dlt/dataset/relation.py#L276
+- dlt `Relation` source: https://github.com/dlt-hub/dlt/blob/master/dlt/dataset/relation.py#L276
 
 ## 2. Pipeline failure recovery
 
