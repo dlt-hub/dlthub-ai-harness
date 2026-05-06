@@ -28,7 +28,9 @@ import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
 pipeline = dlt.attach(pipeline_name="<name>")
-results = dq.read_check(pipeline)
+results = dq.read_check(pipeline.dataset())
+rows = results.fetchall()
+cols = results.columns
 ```
 
 Group by `table_name` and present a compact verdict:
@@ -72,7 +74,9 @@ import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
 pipeline = dlt.attach(pipeline_name="<name>")
-results = dq.read_check(pipeline, table_name="<table>")
+results = dq.read_check(pipeline.dataset(), table="<table>")
+rows = results.fetchall()
+cols = results.columns
 ```
 
 **`_dlt_checks` accumulates one row per check per run** — historical rows are kept for auditability but make it noisy to answer "did the current checks pass?". If `dq.read_check()` returns multiple rows per check (multiple `_dlt_load_id` values), scope to the latest by filtering on `max(_dlt_load_id)` before presenting. Do this for each table separately.
@@ -104,10 +108,23 @@ import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
 pipeline = dlt.attach(pipeline_name="<pipeline-name>")
-metrics = dq.read_metric(pipeline, table_name="<table>")
+
+# dataset-level metric (e.g. load_row_count, latest_loaded_at)
+results = dq.read_metric(pipeline.dataset(), metric="<metric-name>")
+
+# table-level metric (e.g. row_count)
+results = dq.read_metric(pipeline.dataset(), table="<table>", metric="<metric-name>")
+
+# column-level metric (e.g. null_rate, mean)
+results = dq.read_metric(pipeline.dataset(), table="<table>", column="<col>", metric="<metric-name>")
+
+rows = results.fetchall()
+cols = results.columns
 ```
 
-`dq.read_metric()` returns metric rows for the given table. Inspect the result for `table_name`, `column_name`, `metric_name`, `metric_value`, and `_dlt_load_id` fields.
+`metric` is required — make one call per metric name. Consume with `.fetchall()` and `.columns`. Fields: `table_name`, `column_name`, `metric_name`, `metric_value`, `_dlt_load_id`.
+
+**Profile A only.** `dq.read_metric()` reads from schema hints written by `@dq.with_metrics`. Calling it in a Profile B context (no decorators, no schema hints) raises `StopIteration` or `KeyError` with no useful error message — skip this step entirely for Profile B.
 
 **Trend detection:** if multiple `_dlt_load_id` values exist for the same metric (i.e. the pipeline has run more than once), compute the delta per metric and ask the user to set alert thresholds before flagging:
 

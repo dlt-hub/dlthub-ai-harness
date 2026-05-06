@@ -128,10 +128,12 @@ import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
 
 pipeline = dlt.attach(pipeline_name="<pipeline-name>")
-results = dq.read_check(pipeline)
+results = dq.read_check(pipeline.dataset())
+rows = results.fetchall()
+cols = results.columns
 ```
 
-`dq.read_check()` returns check rows with `table_name`, `check_qualified_name`, `row_count`, `success_count`, and `success_rate` (0.0–1.0; 1.0 = all rows passed). A check passes if `success_count = row_count`.
+Consume results with `.fetchall()` and `.columns` — do not iterate the `Relation` directly. Fields: `table_name`, `check_qualified_name`, `row_count`, `success_count`, `success_rate` (0.0–1.0; 1.0 = all rows passed). A check passes if `success_count = row_count`.
 
 **If no failures:**
 
