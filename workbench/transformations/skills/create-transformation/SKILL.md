@@ -277,7 +277,34 @@ os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 
 **During development iterations**, use the `debug-pipeline` skill from the **rest-api-pipeline** toolkit — it offers more help with failing pipelines, and particularly sets up `dev_mode=True` for development iterations.
 
-If the transformation fails, or if you want to validate SQL portability across destinations before deploying, use the (`debug-transformation`) skill.
+If the run fails, go to the (`debug-transformation`) skill — do not proceed to step 9.
+
+### 9. Validate output
+
+After a successful run, verify the transformation produced the expected result using the MCP tools:
+
+- `list_tables` — confirm all CDM tables are present in the target dataset
+- `get_row_counts` — verify counts are non-zero and plausible relative to source table sizes
+- `get_table_schema` — confirm column names and types match the CDM spec
+- `preview_table` — inspect a sample of rows for unexpected NULLs, wrong grain, or type mismatches
+
+**What to check:**
+- All expected CDM tables exist (no silent skip due to empty resource)
+- Row counts are non-zero and plausible relative to source table sizes
+- Surrogate key columns are populated (not all NULL)
+- Foreign keys in fact tables resolve to values present in dimension tables
+- No unexpected duplicate rows (grain violation)
+- Computed columns (`md5`, date buckets, etc.) are present and non-NULL where expected
+
+If any check fails, go to the (`debug-transformation`) skill.
+
+If all checks pass, ask the user what they'd like to do next:
+
+```
+Transformation validated successfully. What would you like to do next?
+  1. Deploy and schedule this transformation → dlthub-runtime toolkit
+  2. Explore and visualise the CDM output → data-exploration toolkit
+```
 
 ## Output
 
