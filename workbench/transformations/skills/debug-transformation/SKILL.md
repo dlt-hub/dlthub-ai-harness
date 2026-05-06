@@ -51,14 +51,14 @@ SUMMARY
 Walk the user through the results:
 - **OK** — safe to deploy as-is
 - **WARN** — portability risk worth inspecting, not a guaranteed failure; common cause is double-quoted identifiers that BigQuery/Snowflake handle differently
-- **ERROR** — the SQL will likely fail on the target destination; rewrite to ANSI SQL (see section 1c)
+- **ERROR** — the SQL will likely fail on the target destination; rewrite to ANSI SQL (see section 1b)
 - **skipped** — SQL is dynamically constructed and can't be statically analysed; inspect those functions manually
 
 This check catches the most common issues, but does not replace inspecting `Relation.sql()` output if deployment still fails after fixes.
 
 If either dlt destination is not covered by SQLGlot, the script stops and prints the available SQLGlot dialects. In that case, inspect dlt's actual `Relation.sql()` output or run a target-destination test pipeline instead. SQLGlot supports 31+ dialects — see https://sqlglot.com/sqlglot.html for dialect names.
 
-### 1c. Common dialect-specific patterns to fix
+### 1b. Common dialect-specific patterns to fix
 
 Rewrite these to ANSI SQL so SQLGlot can transpile them to any destination:
 
@@ -71,7 +71,7 @@ Rewrite these to ANSI SQL so SQLGlot can transpile them to any destination:
 | `EPOCH_MS()`, `STRFTIME()`, `LIST_AGG()`, etc. | No ANSI equivalent — use `query_dialect` (see below) |
 | `QUALIFY` clause | Wrap in subquery with `WHERE` on the window result |
 
-### 1d. When dialect-specific SQL is unavoidable
+### 1c. When dialect-specific SQL is unavoidable
 
 If a transformation genuinely requires a dialect-specific function with no ANSI equivalent, declare the source dialect with `query_dialect` so SQLGlot knows how to transpile:
 
