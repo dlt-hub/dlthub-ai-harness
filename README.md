@@ -133,6 +133,7 @@ uv run dlt ai toolkit rest-api-pipeline install
 uv run dlt ai toolkit dlthub-runtime install
 uv run dlt ai toolkit data-exploration install
 uv run dlt ai toolkit transformations install
+uv run dlt ai toolkit data-quality install
 ```
 
 ### Starting the workbench
@@ -159,6 +160,7 @@ The workbench is also available as a Claude Code plugin via the marketplace. Sta
 /plugin install dlthub-runtime@dlthub-ai-workbench --scope project
 /plugin install data-exploration@dlthub-ai-workbench --scope project
 /plugin install transformations@dlthub-ai-workbench --scope project
+/plugin install data-quality@dlthub-ai-workbench --scope project
 ```
 
 Start a new session — plugins take effect only after restarting Claude Code: `claude`
