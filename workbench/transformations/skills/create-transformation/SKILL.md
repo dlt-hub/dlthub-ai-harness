@@ -243,7 +243,7 @@ if __name__ == "__main__":
     source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
     source_dataset = source_pipeline.dataset()
 
-    load_info = pipeline.run(<business_domain>_to_cdm(source_dataset))
+    load_info = source_pipeline.run(<business_domain>_to_cdm(source_dataset))
     print(load_info)
 ```
 
