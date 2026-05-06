@@ -66,6 +66,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
 | `dlthub-runtime` | Run | `setup-runtime` | Deploy pipelines to the dltHub platform | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlt transformation functions from existing pipelines | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
+| `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 
 > `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlt ai init` or as a separate plugin via the Claude marketplace.
 
@@ -132,6 +133,7 @@ uv run dlt ai toolkit rest-api-pipeline install
 uv run dlt ai toolkit dlthub-runtime install
 uv run dlt ai toolkit data-exploration install
 uv run dlt ai toolkit transformations install
+uv run dlt ai toolkit data-quality install
 ```
 
 ### Starting the workbench
@@ -158,6 +160,7 @@ The workbench is also available as a Claude Code plugin via the marketplace. Sta
 /plugin install dlthub-runtime@dlthub-ai-workbench --scope project
 /plugin install data-exploration@dlthub-ai-workbench --scope project
 /plugin install transformations@dlthub-ai-workbench --scope project
+/plugin install data-quality@dlthub-ai-workbench --scope project
 ```
 
 Start a new session — plugins take effect only after restarting Claude Code: `claude`
