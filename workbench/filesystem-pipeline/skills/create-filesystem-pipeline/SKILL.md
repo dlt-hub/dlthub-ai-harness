@@ -49,6 +49,7 @@ Use `AskUserQuestion` with options `Confirm — proceed` / `It's actually multi-
 
 While `dlt init` runs (below), fetch the relevant docs in parallel based on what the user chose in step 1:
 - **If backend is not Local**: Basic configuration & credentials — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic.md`
+- **If backend is SFTP**: SFTP destination setup — `https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem#sftp`
 - **If file format is Custom**: Advanced (custom readers, transformers, glob patterns) — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/advanced.md`
 
 Run `dlt init` directly in current directory. Pipeline artifacts (`.dlt/`, the `.duckdb` file, generated Python) belong in the user's working directory so they can version-control or move them.
