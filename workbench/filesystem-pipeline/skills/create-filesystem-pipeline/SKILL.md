@@ -20,7 +20,6 @@ Before scaffolding, ask the user (one `AskUserQuestion` call, parallel questions
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
 - **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
 - **`bucket_url`** — full URL with path, e.g. `gs://my-bucket/data` or `file:///abs/path` or `s3://bucket/prefix`.
-- **`file_glob`** — pattern relative to the bucket, e.g. `*.csv`, `**/*.parquet`, `encounters_2025*.csv`. Default `*` matches everything.
 
 If the user does not have a bucket / files yet, stop and ask them to provide one — do **not** invent a bucket URL.
 
@@ -33,13 +32,14 @@ Before running anything, lay out the plan and ask the user to confirm. Include:
 - Working directory (current `pwd`)
 - The exact `dlt init` command that will run
 - Backend, file format, reader (`read_csv` / `read_parquet` / `read_jsonl` / custom)
-- `bucket_url`, `file_glob`
+- `bucket_url`
+- `file_glob` — infer a sensible default from the bucket URL, file format, and any domain context (e.g. `*.csv` for CSV format, `**/*.parquet` for nested Parquet). Present it clearly so the user can correct it.
 - Pipeline name, dataset name, destination table name (you choose sensible defaults from the source domain — e.g. bucket path or glob hint)
 - That secrets will be written as **placeholders only** via MCP and the user fills real values
 
-End the confirmation with a single sentence flagging the single-table assumption, e.g.:
+End the confirmation with a single sentence flagging the single-table assumption and the default table name, e.g.:
 
-> "I'm assuming all files matched by `<glob>` belong to the **same logical table** (`<table_name>`). If your bucket actually contains multiple distinct tables in different sub-folders (e.g. `reports/*.csv` and `transactions/*.csv` going into separate tables), say so now and I'll use the multi-table pattern instead (step 4b)."
+> "I'm assuming all files matched by `<glob>` belong to the **same logical table**, which I'll call `files` by default. If you'd like a different name, say so now. If your bucket actually contains multiple distinct tables in different sub-folders (e.g. `reports/*.csv` and `transactions/*.csv` going into separate tables), say so now and I'll use the multi-table pattern instead (step 4b)."
 
 Use `AskUserQuestion` with options `Confirm — proceed` / `It's actually multi-table` / `Change something`. Only continue past this step on explicit confirmation.
 
