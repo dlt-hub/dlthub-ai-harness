@@ -74,7 +74,7 @@ Read these to confirm shape and pick patterns to keep:
 - `filesystem_pipeline.py` — useful for the `filesystem(...) | read_csv()` pipe pattern; ignore the `readers(...).read_csv()` style and the 7-function demo
 - `.dlt/config.toml`
 
-Do **not** read `.dlt/secrets.toml` directly — use the MCP tools (step 6c).
+Do **not** read `.dlt/secrets.toml` directly — use the MCP tools (step 6b).
 
 ### 4. Replace the pipeline with a focused function
 
@@ -232,7 +232,7 @@ sftp_key_passphrase = "fill-me-in-or-remove"
 ```
 Where: from your existing SSH key or the server admin.
 
-**Local filesystem:** no credentials needed — skip 6c entirely.
+**Local filesystem:** no credentials needed — skip 6b entirely.
 
 After running `secrets_update_fragment`, **show the user a summary of changed files and tell them which fields to fill** before continuing.
 
@@ -257,7 +257,7 @@ When the user confirms, run `uv run python filesystem_pipeline.py`. Common first
 |-------|-----|
 | `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv pip install "dlt[s3]"`, GCS → `uv pip install "dlt[gs]"`, Azure → `uv pip install "dlt[az]"`, SFTP → `uv pip install "dlt[sftp]"`. |
 | `No module named 'pandas'` (or `pyarrow`) | Run `uv pip install pandas` / `pyarrow`. |
-| `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6c. |
+| `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6b. |
 | `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
 | `FileNotFoundError` / empty load | `file_glob` doesn't match anything — list the bucket with the `fsspec_from_resource` helper from the advanced docs, or relax the pattern. |
 

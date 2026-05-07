@@ -7,7 +7,7 @@
 1. **Create pipeline** (`create-filesystem-pipeline`) — scaffold with `dlt init filesystem`, configure bucket URL, credentials, file glob, and reader; run and verify the load
 
 ## Extend and harden
-2. **Debug pipeline** — for failures beyond first-run errors, hand off to (`debug-pipeline`) in the **rest-api-pipeline** toolkit
+2. **Debug pipeline** — for failures beyond first-run errors, hand off to **rest-api-pipeline** → `debug-pipeline`
 3. **Add incremental loading** — set up `dlt.sources.incremental` on the filesystem resource for production efficiency (planned)
 
 ## Handover to other toolkits
