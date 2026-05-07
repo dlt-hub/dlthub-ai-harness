@@ -1,0 +1,292 @@
+---
+name: create-filesystem-pipeline
+description: Create a dlt filesystem pipeline that reads files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination. Use for the filesystem core source. Not for REST APIs (rest_api) or databases (sql_database).
+argument-hint: "[destination]"
+---
+
+# Create a filesystem dlt pipeline
+
+Create the simplest working dlt filesystem pipeline — a single bucket, a single file pattern, a single reader — to get data flowing fast.
+
+The argument is the destination (e.g. `duckdb`, `postgres`, `filesystem`). Defaults to `duckdb` if omitted.
+
+**Essential reading** (fetch upfront, in parallel with step 2):
+- Filesystem tutorial: `https://dlthub.com/docs/tutorial/filesystem.md`
+- Basic configuration & credentials per backend: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic.md`
+- Advanced (custom readers, file metadata, glob patterns): `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/advanced.md`
+
+## Steps
+
+### 1. Gather inputs
+
+Before scaffolding, ask the user (one `AskUserQuestion` call, parallel questions):
+
+- **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Picks what gets passed to `dlt init filesystem <destination>` and the `destination=` argument on `dlt.pipeline(...)`. **Always ask** — even if `$ARGUMENTS` provided one, confirm it before running `dlt init`. Default to `duckdb` if the user has no preference. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
+- **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
+- **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
+- **`bucket_url`** — full URL with path, e.g. `gs://my-bucket/data` or `file:///abs/path` or `s3://bucket/prefix`.
+- **`file_glob`** — pattern relative to the bucket, e.g. `*.csv`, `**/*.parquet`, `encounters_2025*.csv`. Default `*` matches everything.
+
+If the user does not have a bucket / files yet, stop and ask them to provide one — do **not** invent a bucket URL.
+
+Do **not** ask about layout (single vs multi-table). Assume **single-table** — all files matched by the glob share one schema and load into one destination table. The confirmation in step 1b is the user's chance to correct that assumption.
+
+### 1b. Confirm the plan
+
+Before running anything, lay out the plan and ask the user to confirm. Include:
+
+- Working directory (current `pwd`)
+- The exact `dlt init` command that will run
+- Backend, file format, reader (`read_csv` / `read_parquet` / `read_jsonl` / custom)
+- `bucket_url`, `file_glob`
+- Pipeline name, dataset name, destination table name (you choose sensible defaults from the source domain — e.g. bucket path or glob hint)
+- Which extras need installing (`dlt[<backend>]`, `pandas`/`pyarrow`)
+- That secrets will be written as **placeholders only** via MCP and the user fills real values
+
+End the confirmation with a single sentence flagging the single-table assumption, e.g.:
+
+> "I'm assuming all files matched by `<glob>` belong to the **same logical table** (`<table_name>`). If your bucket actually contains multiple distinct tables in different sub-folders (e.g. `reports/*.csv` and `transactions/*.csv` going into separate tables), say so now and I'll use the multi-table pattern instead (step 4b)."
+
+Use `AskUserQuestion` with options `Confirm — proceed` / `It's actually multi-table` / `Change something`. Only continue past this step on explicit confirmation.
+
+**Do not run `dlt init` until the user confirms.**
+
+### 2. Scaffold in the current working directory
+
+Run `dlt init` directly in current directory. Pipeline artifacts (`.dlt/`, the `.duckdb` file, generated Python) belong in the user's working directory so they can version-control or move them.
+
+```bash
+ls -la                                        # snapshot before scaffolding
+dlt --non-interactive init filesystem <destination>
+ls -la                                        # confirm what was created
+```
+
+Note: `--non-interactive` is a **global** flag on `dlt`, not on `init`. The wrong order (`dlt init filesystem duckdb --non-interactive`) errors out.
+
+`dlt init` is safe to re-run in a project that already has files — it adds new ones without overwriting `filesystem_pipeline.py`, and updates shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `requirements.txt`, `.gitignore`).
+
+The scaffold creates:
+- `filesystem_pipeline.py` — kitchen-sink demo with 7 functions; you will replace it
+- `.dlt/config.toml` — `[sources.filesystem]` with placeholder `bucket_url`
+- `.dlt/secrets.toml` — placeholder credentials (AWS by default; replace with your backend's shape)
+- `requirements.txt` — `dlt[duckdb,filesystem]>=…` (no backend extra, no `pandas`/`pyarrow`)
+
+### 3. Read the scaffold
+
+Read these to confirm shape and pick patterns to keep:
+- `filesystem_pipeline.py` — useful for the `filesystem(...) | read_csv()` pipe pattern; ignore the `readers(...).read_csv()` style and the 7-function demo
+- `.dlt/config.toml`
+
+Do **not** read `.dlt/secrets.toml` directly — use the MCP tools (step 6c).
+
+### 4. Replace the pipeline with a focused function
+
+Edit `filesystem_pipeline.py`. Pick the pattern that matches the **Layout** chosen in step 1.
+
+#### 4a. Single-table layout
+
+Use this when all matched files share one schema and load into one destination table.
+
+```python
+"""dlt filesystem pipeline: load <files> from <bucket> into <destination>."""
+
+import dlt
+from dlt.sources.filesystem import filesystem, read_csv  # or read_parquet / read_jsonl
+
+
+def load_<table_name>() -> None:
+    """Load files from the configured bucket into <destination>.
+
+    bucket_url is read from .dlt/config.toml under [sources.filesystem].
+    file_glob is set inline so it lives next to the code that depends on it.
+    """
+    pipeline = dlt.pipeline(
+        pipeline_name="<pipeline_name>",
+        destination="<destination>",
+        dataset_name="<dataset>",
+        dev_mode=True,                              # fresh dataset on every run during dev
+    )
+
+    reader = (filesystem(file_glob="<pattern>") | read_csv()).with_name("<table_name>")
+
+    load_info = pipeline.run(reader, write_disposition="replace")
+    print(load_info)
+    print(pipeline.last_trace.last_normalize_info)
+
+
+if __name__ == "__main__":
+    load_<table_name>()
+```
+
+Rules:
+- `bucket_url` is injected from `[sources.filesystem]` in `config.toml` (step 6a). `file_glob` is **passed inline** in the script — keeping the pattern next to the code that depends on it makes the pipeline self-documenting and easier to refactor when patterns change.
+- `.with_name("<table_name>")` controls the destination table name. Without it, dlt names tables after the resource (`encounters` for `read_csv`).
+- Start with `replace` write disposition + `dev_mode=True`. Switch to `merge` / incremental later (see advanced docs).
+- One file format per pipeline at first. Mixing CSV and Parquet means two readers and two `.with_name(...)` calls — leave that for iteration 2.
+
+#### 4b. Multi-table layout
+
+Use this when different sub-folders / glob patterns map to different destination tables. **Reuse the same `filesystem(...) | read_csv()` pipe per table — `.with_name("<table>")` is what splits them into separate destination tables.** Without renaming, all readers of the same kind would collide into one table.
+
+```python
+"""dlt filesystem pipeline: load multiple tables from <bucket> into <destination>."""
+
+import dlt
+from dlt.sources.filesystem import filesystem, read_csv  # or read_parquet / read_jsonl
+
+BUCKET_URL = "<scheme>://<bucket>"
+
+def load_all() -> None:
+    pipeline = dlt.pipeline(
+        pipeline_name="<pipeline_name>",
+        destination="<destination>",
+        dataset_name="<dataset>",
+        dev_mode=True,
+    )
+
+    reports = (
+        filesystem(bucket_url=BUCKET_URL, file_glob="reports/*.csv")
+        | read_csv()
+    ).with_name("reports")
+
+    transactions = (
+        filesystem(bucket_url=BUCKET_URL, file_glob="transactions/*.csv")
+        | read_csv()
+    ).with_name("transactions")
+
+    load_info = pipeline.run([reports, transactions], write_disposition="replace")
+    print(load_info)
+    print(pipeline.last_trace.last_normalize_info)
+
+
+if __name__ == "__main__":
+    load_all()
+```
+
+Rules for multi-table:
+- Pass `bucket_url` and `file_glob` **inline as kwargs** — `[sources.filesystem]` in `config.toml` is one global value and can't differ per call. Step 6a's config.toml fragment is for single-table only.
+- Same backend credentials still come from `[sources.filesystem.credentials]` in `secrets.toml`.
+- One reader type per call (`read_csv`, `read_parquet`, etc.) — mix freely if different sub-folders use different formats.
+- Pass the renamed pipes as a **list** to `pipeline.run([reports, transactions, ...])`.
+
+Reference for renaming/duplicating resources: `https://dlthub.com/docs/general-usage/resource.md`.
+
+### 5. Custom readers (only if format is Custom)
+
+For Excel, XML, JSON-array, etc. write a `@dlt.transformer` that takes an `Iterator[FileItemDict]` and yields records — see the advanced docs link above. Skip this step for CSV/Parquet/JSONL.
+
+### 6. Configure
+
+#### 6a. config.toml (non-secret values)
+
+**Single-table only.** For multi-table layout (4b), `bucket_url` is passed inline in code — skip this step entirely.
+
+Edit `.dlt/config.toml` directly. Set **only `bucket_url`** under `[sources.filesystem]`. `file_glob` lives in the script (step 4a), not here:
+
+```toml
+[sources.filesystem]
+bucket_url = "<scheme>://<bucket>/<optional-path>"
+```
+
+The scaffold's `local_dir = "<configure me>"` line is unused for cloud backends — leave or remove.
+
+#### 6b. Install the backend extra and reader dependencies
+
+The default `requirements.txt` does **not** include the backend driver or pandas/pyarrow. Add what's needed:
+
+| Backend | Extra |
+|---------|-------|
+| Local | none |
+| S3 | `dlt[s3]` |
+| GCS | `dlt[gs]` |
+| Azure | `dlt[az]` |
+| SFTP | `dlt[sftp]` |
+
+| Reader | Extra dependency |
+|--------|------------------|
+| `read_csv` | `pandas` |
+| `read_parquet` | `pyarrow` |
+| `read_jsonl` | (built-in) |
+| `read_csv_duckdb` | `duckdb` (already pulled by `dlt[duckdb]`) |
+
+Install in the active venv: `pip install "dlt[<backend>]" <reader-deps>` (or `uv pip install ...`).
+
+#### 6c. Secrets — MCP only, never edit secrets.toml directly
+
+**Never read or write `.dlt/secrets.toml` directly. Never run commands that print secret values** (`cat`, `env | grep`, `gcloud auth print-access-token`, etc.).
+
+Use `dlt-workspace-mcp` tools — `secrets_list`, `secrets_view_redacted`, `secrets_update_fragment` — to write **placeholders only**. The user fills the real values themselves by editing the file. (See the `setup-secrets` skill for full details.)
+
+Per-backend placeholder fragments (pass via `secrets_update_fragment`):
+
+**S3:**
+```toml
+[sources.filesystem.credentials]
+aws_access_key_id     = "AKIA-fill-me-in"
+aws_secret_access_key = "fill-me-in"
+```
+Where: AWS Console → IAM → Users → *your user* → Security credentials → *Create access key*. Use a user/role with `s3:GetObject` and `s3:ListBucket` on the target bucket.
+
+**GCS** (no anonymous mode — even public buckets need a service-account JSON):
+```toml
+[sources.filesystem.credentials]
+project_id   = "your-gcp-project-id"
+client_email = "sa-name@your-project.iam.gserviceaccount.com"
+private_key  = """-----BEGIN PRIVATE KEY-----
+fill-me-in
+-----END PRIVATE KEY-----
+"""
+```
+Where: Google Cloud Console → IAM & Admin → Service Accounts → *Create or select* → grant role `Storage Object Viewer` on the bucket → *Keys → Add Key → JSON*. Copy `project_id`, `client_email`, `private_key` from the downloaded JSON.
+
+**Azure:**
+```toml
+[sources.filesystem.credentials]
+azure_storage_account_name = "your-account"
+azure_storage_account_key  = "fill-me-in"
+```
+Where: Azure Portal → Storage Account → *Access keys*. Copy the account name and one of the two keys.
+
+**SFTP** (key-based):
+```toml
+[sources.filesystem.credentials]
+sftp_username       = "your-user"
+sftp_key_filename   = "/abs/path/to/id_rsa"
+sftp_key_passphrase = "fill-me-in-or-remove"
+```
+Where: from your existing SSH key or the server admin.
+
+**Local filesystem:** no credentials needed — skip 6c entirely.
+
+After running `secrets_update_fragment`, **show the user a summary of changed files and tell them which fields to fill** before continuing.
+
+### 7. Ask before running — and consider `.add_limit(1)` for big data
+
+Before running the pipeline for the first time, **always ask the user** whether they want to run now, and **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
+
+For large datasets, suggest a sample run first by adding `.add_limit(1)` on the filesystem resource — this caps the source to one page (default `files_per_page=100`, so up to 100 files). For an even smaller sample, also lower `files_per_page`:
+
+```python
+files = filesystem(files_per_page=1).add_limit(1)         # just 1 file
+reader = (files | read_csv()).with_name("<table_name>")
+```
+
+Show a summary of changed files and the planned run command. Only run when the user confirms.
+
+### 8. Debug — first run
+
+When the user confirms, run `python filesystem_pipeline.py`. Common first-run failures:
+
+| Error | Fix |
+|-------|-----|
+| `You must install additional dependencies to run filesystem` | Install the backend extra (`dlt[gs]` / `dlt[s3]` / `dlt[az]`). |
+| `No module named 'pandas'` (or `pyarrow`) | Install the reader's extra dependency (table in 6b). |
+| `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6c. |
+| `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
+| `FileNotFoundError` / empty load | `file_glob` doesn't match anything — list the bucket with the `fsspec_from_resource` helper from the advanced docs, or relax the pattern. |
+
+After a clean run, verify the load:
+- `list_tables`, `get_row_counts`, `preview_table` MCP tools (preferred), or
+- `dlt pipeline <pipeline_name> show` for a quick browser dashboard.
+
+**Do not add a second reader, incremental loading, or merge keys until the single-resource pipeline runs end-to-end and the user has reviewed the loaded data.**
