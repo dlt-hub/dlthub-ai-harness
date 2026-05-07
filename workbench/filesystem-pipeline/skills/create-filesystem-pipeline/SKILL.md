@@ -10,11 +10,6 @@ Create the simplest working dlt filesystem pipeline — a single bucket, a singl
 
 The argument is the destination (e.g. `duckdb`, `postgres`, `filesystem`). Defaults to `duckdb` if omitted.
 
-**Essential reading** (fetch upfront, in parallel with step 2):
-- Filesystem tutorial: `https://dlthub.com/docs/tutorial/filesystem.md`
-- Basic configuration & credentials per backend: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic.md`
-- Advanced (custom readers, file metadata, glob patterns): `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/advanced.md`
-
 ## Steps
 
 ### 1. Gather inputs
@@ -52,6 +47,11 @@ Use `AskUserQuestion` with options `Confirm — proceed` / `It's actually multi-
 **Do not run `dlt init` until the user confirms.**
 
 ### 2. Scaffold in the current working directory
+
+While `dlt init` runs (below), fetch the relevant docs in parallel based on what the user chose in step 1:
+- **Always**: Filesystem tutorial — `https://dlthub.com/docs/tutorial/filesystem.md`
+- **If backend is not Local**: Basic configuration & credentials — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic.md`
+- **If file format is Custom**: Advanced (custom readers, transformers, glob patterns) — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/advanced.md`
 
 Run `dlt init` directly in current directory. Pipeline artifacts (`.dlt/`, the `.duckdb` file, generated Python) belong in the user's working directory so they can version-control or move them.
 
