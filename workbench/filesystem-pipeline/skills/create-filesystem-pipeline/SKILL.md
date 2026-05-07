@@ -14,7 +14,7 @@ The argument is the destination (e.g. `duckdb`, `postgres`, `filesystem`). Defau
 
 ### 1. Gather inputs
 
-Before scaffolding, ask the user (one `AskUserQuestion` call, parallel questions):
+Before scaffolding, check session context — if the user has already stated any of these values, use them and do not ask again. Ask only for what is still unknown (one `AskUserQuestion` call, parallel questions):
 
 - **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Picks what gets passed to `dlt init filesystem <destination>` and the `destination=` argument on `dlt.pipeline(...)`. **Always ask** — even if `$ARGUMENTS` provided one, confirm it before running `dlt init`. Default to `duckdb` if the user has no preference. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
