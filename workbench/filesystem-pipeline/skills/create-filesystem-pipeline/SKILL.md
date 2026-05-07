@@ -238,7 +238,7 @@ After running `secrets_update_fragment`, **show the user a summary of changed fi
 
 ### 7. Ask before running — and consider `.add_limit(1)` for big data
 
-Before running the pipeline for the first time, **always ask the user** whether they want to run now, and **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
+Before running the pipeline for the first time, **always ask the user** whether they want to run now. If the backend is not Local, **explicitly remind them to fill in their credentials in `.dlt/secrets.toml` before proceeding** — the pipeline will fail with a `ConfigFieldMissingException` if the placeholders are still there. Also **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
 
 For large datasets, suggest a sample run first by adding `.add_limit(1)` on the filesystem resource — this caps the source to one page (default `files_per_page=100`, so up to 100 files). For an even smaller sample, also lower `files_per_page`:
 
