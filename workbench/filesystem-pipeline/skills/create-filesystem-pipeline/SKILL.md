@@ -35,7 +35,6 @@ Before running anything, lay out the plan and ask the user to confirm. Include:
 - Backend, file format, reader (`read_csv` / `read_parquet` / `read_jsonl` / custom)
 - `bucket_url`, `file_glob`
 - Pipeline name, dataset name, destination table name (you choose sensible defaults from the source domain — e.g. bucket path or glob hint)
-- Which extras need installing (`dlt[<backend>]`, `pandas`/`pyarrow`)
 - That secrets will be written as **placeholders only** via MCP and the user fills real values
 
 End the confirmation with a single sentence flagging the single-table assumption, e.g.:
@@ -63,13 +62,12 @@ ls -la                                        # confirm what was created
 
 Note: `--non-interactive` is a **global** flag on `dlt`, not on `init`. The wrong order (`dlt init filesystem duckdb --non-interactive`) errors out.
 
-`dlt init` is safe to re-run in a project that already has files — it adds new ones without overwriting `filesystem_pipeline.py`, and updates shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `requirements.txt`, `.gitignore`).
+`dlt init` is safe to re-run in a project that already has files — it adds new ones without overwriting `filesystem_pipeline.py`, and updates shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `.gitignore`).
 
 The scaffold creates:
 - `filesystem_pipeline.py` — kitchen-sink demo with 7 functions; you will replace it
 - `.dlt/config.toml` — `[sources.filesystem]` with placeholder `bucket_url`
 - `.dlt/secrets.toml` — placeholder credentials (AWS by default; replace with your backend's shape)
-- `requirements.txt` — `dlt[duckdb,filesystem]>=…` (no backend extra, no `pandas`/`pyarrow`)
 
 ### 3. Read the scaffold
 
@@ -190,28 +188,7 @@ bucket_url = "<scheme>://<bucket>/<optional-path>"
 
 The scaffold's `local_dir = "<configure me>"` line is unused for cloud backends — leave or remove.
 
-#### 6b. Install the backend extra and reader dependencies
-
-The default `requirements.txt` does **not** include the backend driver or pandas/pyarrow. Add what's needed:
-
-| Backend | Extra |
-|---------|-------|
-| Local | none |
-| S3 | `dlt[s3]` |
-| GCS | `dlt[gs]` |
-| Azure | `dlt[az]` |
-| SFTP | `dlt[sftp]` |
-
-| Reader | Extra dependency |
-|--------|------------------|
-| `read_csv` | `pandas` |
-| `read_parquet` | `pyarrow` |
-| `read_jsonl` | (built-in) |
-| `read_csv_duckdb` | `duckdb` (already pulled by `dlt[duckdb]`) |
-
-Install in the active venv: `pip install "dlt[<backend>]" <reader-deps>` (or `uv pip install ...`).
-
-#### 6c. Secrets — MCP only, never edit secrets.toml directly
+#### 6b. Secrets — MCP only, never edit secrets.toml directly
 
 **Never read or write `.dlt/secrets.toml` directly. Never run commands that print secret values** (`cat`, `env | grep`, `gcloud auth print-access-token`, etc.).
 
@@ -275,12 +252,12 @@ Show a summary of changed files and the planned run command. Only run when the u
 
 ### 8. Debug — first run
 
-When the user confirms, run `python filesystem_pipeline.py`. Common first-run failures:
+When the user confirms, run `uv run python filesystem_pipeline.py`. Common first-run failures:
 
 | Error | Fix |
 |-------|-----|
-| `You must install additional dependencies to run filesystem` | Install the backend extra (`dlt[gs]` / `dlt[s3]` / `dlt[az]`). |
-| `No module named 'pandas'` (or `pyarrow`) | Install the reader's extra dependency (table in 6b). |
+| `You must install additional dependencies to run filesystem` | Run `uv pip install "dlt[filesystem]"`. |
+| `No module named 'pandas'` (or `pyarrow`) | Run `uv pip install pandas` / `pyarrow`. |
 | `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6c. |
 | `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
 | `FileNotFoundError` / empty load | `file_glob` doesn't match anything — list the bucket with the `fsspec_from_resource` helper from the advanced docs, or relax the pattern. |
