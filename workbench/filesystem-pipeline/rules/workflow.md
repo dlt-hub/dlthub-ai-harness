@@ -8,7 +8,7 @@
 
 ## Extend and harden
 2. **Debug pipeline** — for failures beyond first-run errors, hand off to **rest-api-pipeline** → `debug-pipeline`
-3. **Add incremental loading** — set up `dlt.sources.incremental` on the filesystem resource for production efficiency (planned)
+3. **Add incremental loading** (`add-incremental-loading`) — filter files by modification date, optionally filter records by timestamp column, switch to merge write disposition
 
 ## Handover to other toolkits
 
