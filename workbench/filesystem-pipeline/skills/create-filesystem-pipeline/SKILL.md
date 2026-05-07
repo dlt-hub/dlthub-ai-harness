@@ -48,7 +48,6 @@ Use `AskUserQuestion` with options `Confirm — proceed` / `It's actually multi-
 ### 2. Scaffold in the current working directory
 
 While `dlt init` runs (below), fetch the relevant docs in parallel based on what the user chose in step 1:
-- **Always**: Filesystem tutorial — `https://dlthub.com/docs/tutorial/filesystem.md`
 - **If backend is not Local**: Basic configuration & credentials — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic.md`
 - **If file format is Custom**: Advanced (custom readers, transformers, glob patterns) — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/advanced.md`
 
@@ -267,3 +266,5 @@ After a clean run, verify the load:
 - `dlt pipeline <pipeline_name> show` for a quick browser dashboard.
 
 **Do not add a second reader, incremental loading, or merge keys until the single-resource pipeline runs end-to-end and the user has reviewed the loaded data.**
+
+For failures not covered above (schema errors, bad data types, failed jobs, normalisation issues), use the (`debug-pipeline`) skill from the **rest-api-pipeline** toolkit — it covers post-run trace inspection, load package analysis, and iterative fixes.
