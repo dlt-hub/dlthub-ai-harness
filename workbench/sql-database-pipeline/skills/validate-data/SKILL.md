@@ -77,6 +77,8 @@ sql_table(
 )
 ```
 
+> **Note:** `columns={}` hints do not work with backends that skip dlt normalisation (`pyarrow`, `pandas`, `connectorx`). If you need schema hints and are using one of those backends, use `table_adapter_callback` instead.
+
 ### Unexpected column names
 
 dlt normalizes column names to snake_case by default. If source DB column names contain spaces or special chars, they are renamed. Check the schema mermaid output to see the mapped names.

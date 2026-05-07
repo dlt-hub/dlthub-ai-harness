@@ -16,19 +16,13 @@ Parse `$ARGUMENTS`:
 
 ## Steps
 
-### 1. Assess data volume and choose configuration
+### 1. Assess data volume
 
 Ask the user: **how much data will be loaded?** (approximate row count or table size is enough)
 
-Use the answer to recommend source and pipeline configuration upfront:
+Note the answer — it will be used in step 10 to recommend the right backend and `chunk_size`.
 
-| Scale | Rows / Size | Recommended config |
-| --- | --- | --- |
-| Small | < 100k rows / < 500 MB | `backend="sqlalchemy"` (default), any `chunk_size` |
-| Medium | 100k – 10M rows / 500 MB – 10 GB | `backend="pyarrow"`, `chunk_size=5000`; add `numpy` |
-| Large | > 10M rows / > 10 GB | `backend="connectorx"` (MySQL/Postgres) or `backend="pyarrow"` with `chunk_size=50000`; plan incremental loading from the start |
-
-Key rules:
+Key rules regardless of scale:
 - **Always pass `table_names=`** to `sql_database()` — avoids reflecting the entire schema
 - **Large tables need incremental loading** — full reload of tens of millions of rows on every run is almost never the right plan; flag this to the user before writing code
 
@@ -229,12 +223,19 @@ Common first-run errors:
 
 ### 10. Suggest backend after a successful test run
 
-After the first successful run, suggest backend options — one sentence each:
+Using the data volume noted in step 1, recommend the right backend:
 
-- **`sqlalchemy`** (current default) — safest, works with every destination, but slowest.
-- **`pyarrow`** — 20–30x faster and preserves decimal/date types precisely; best general upgrade. Also requires `numpy`.
+| Scale | Rows / Size | Recommended backend | chunk_size |
+| --- | --- | --- | --- |
+| Small | < 100k rows / < 500 MB | `sqlalchemy` (default) | any |
+| Medium | 100k – 10M rows / 500 MB – 10 GB | `pyarrow` (needs `numpy`) | 5000 |
+| Large | > 10M rows / > 10 GB | `connectorx` (MySQL/Postgres) or `pyarrow` | 50000 |
+
+Backend options:
+- **`sqlalchemy`** — safest, works with every destination, but slowest.
+- **`pyarrow`** — 20–30x faster; preserves decimal/date types precisely. Also requires `numpy`.
 - **`pandas`** — convenient for DataFrame workflows, but loses precision on decimal and date columns.
-- **`connectorx`** — fastest overall (2x over pyarrow, Rust-based); great for large MySQL/PostgreSQL tables. Uses its own connection string format, bypasses SQLAlchemy.
+- **`connectorx`** — fastest overall (2x over pyarrow, Rust-based); uses its own connection string format, bypasses SQLAlchemy.
 
 Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration#configuring-the-backend
 
@@ -245,7 +246,7 @@ table = sql_table(table="<table_name>", chunk_size=500, backend="pyarrow")
 
 Re-run the test to confirm the backend works before moving on.
 
-> **Note:** When using `pyarrow` (normalization skipped), `apply_hints` works for incremental loading, write disposition, merge keys, etc. — but schema changes like `columns={...}` do not work. Use `table_adapter_callback` for column-level schema changes instead.
+> **Note:** When using `pyarrow`, `pandas`, or `connectorx` (normalization skipped), `apply_hints` works for incremental loading, write disposition, merge keys, etc. — but schema changes like `columns={...}` do not work. Use `table_adapter_callback` for column-level schema changes instead.
 
 ## Next steps
 

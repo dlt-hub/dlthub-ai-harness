@@ -166,5 +166,5 @@ Do NOT remove settings the user had before you started.
 ## Next steps
 
 - **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (`data-exploration` toolkit) to jump straight into charts and analysis
-- **Config/secrets missing** → revisit `create-sql-database-pipeline` step 6 for credential setup
+- **Config/secrets missing** → revisit `create-sql-database-pipeline` — "Set up config and secrets" section
 - **No pipeline exists yet** → use `create-sql-database-pipeline` to scaffold one first

@@ -27,6 +27,7 @@ Infer intent from the user's message — never ask "do you have a specific quest
 ### Incoming (to data-exploration)
 
 - From **rest-api-pipeline** (after `validate-data`, `view-data`, `new-endpoint`, or `adjust-endpoint`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
+- From **sql-database-pipeline** (after `validate-data` or `adjust-table`) — pipeline name, destination, and loaded table names are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From transformation toolkit (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **dlthub-runtime** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 - From **data-quality** (after `review-data-quality`) — failing table name and metric anomaly are already known; `explore-data` should skip broad profiling and target those specific tables directly.

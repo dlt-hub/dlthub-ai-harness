@@ -15,7 +15,7 @@
 2. **Adjust table** (`adjust-table`) — remove dev limits, fix column types, add hints and mappings, correct schema
 3. **Add incremental loading** — set up cursor column for incremental loads, merge keys for deduplication, and write disposition for production efficiency
 4. **Add tables** (`add-table`) — add more tables or views from the same database into the pipeline
-5. **Transform before loading** — use `query_adapter_callback` to filter rows at SQL level, `table_adapter_callback` to modify schema, or `add_map` to transform rows after extraction; see `create-sql-database-pipeline` step 7
+5. **Transform before loading** — use `query_adapter_callback` to filter rows at SQL level, `table_adapter_callback` to modify schema, or `add_map` to transform rows after extraction; see `create-sql-database-pipeline` — "Add transformation callbacks" section
 6. **View data** — query and explore loaded data in Python or DuckDB
 
 ## Handover to other toolkits

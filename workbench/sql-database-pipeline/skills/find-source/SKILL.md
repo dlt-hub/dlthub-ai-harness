@@ -12,6 +12,19 @@ Parse `$ARGUMENTS`:
 - `database` (required): description or connection URL of the source database (e.g. "postgres on localhost", "Rfam MySQL at rfam.org", a connection string, or just the DB type)
 - `destination` (optional, default `duckdb`): where to load data
 
+## Incoming context check
+
+**Before running any steps**, check whether the pipeline already exists in this session:
+
+- **Arriving from `dlthub-runtime`** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
+  - Pipeline errors or connection issues → `debug-pipeline`
+  - Schema or column changes needed → `adjust-table`
+  - Adding more tables → `add-table`
+
+- **Arriving mid-session** with a pipeline already scaffolded — if a `*_pipeline.py` file exists and the user just wants to extend or fix it, skip steps 1–4 and go straight to step 5 to confirm tables and destination.
+
+Only run the full discovery flow (steps 1–6) when starting fresh with no existing pipeline.
+
 ## Steps
 
 ### 1. Classify the database type
@@ -46,7 +59,7 @@ Tell the user which source fits and the install/init command. Do not continue wi
 
 **Also search the dlt hub** for the specific database type — community and ecosystem sources are not listed by `dlt init --list-sources`:
 ```
-https://dlthub.com/docs/hub/
+https://dlthub.com/docs/hub
 ```
 
 **Then run** to check verified sources for any SaaS product built on top of the database (e.g. `salesforce`, `hubspot`):
@@ -90,10 +103,11 @@ Ask the user:
 3. **Do you need dlt normalization?** dlt normalizes schema, coerces types, and standardizes column names. Skip it if you want data loaded as-is.
 4. **Do you need to transform data before or during loading?** (e.g. filter rows, pseudonymize values, apply business logic)
 
-**Backend based on normalization answer:**
+**Backend based on normalization need and data size** (cross-reference with data volume from step 1 of `create-sql-database-pipeline`):
 
-- No normalization needed (default) → `backend="pyarrow"`
-- Need dlt schema inference and type coercion → `backend="sqlalchemy"`
+- Normalization needed → `backend="sqlalchemy"` (any size)
+- No normalization, small data (< 100k rows) → `backend="sqlalchemy"` (simpler, no extra deps)
+- No normalization, medium/large data → `backend="pyarrow"` or `backend="connectorx"`
 
 Suggest starting with a single small or representative table to validate the pipeline end-to-end before adding more.
 
@@ -101,11 +115,12 @@ Suggest starting with a single small or representative table to validate the pip
 
 Present a one-line summary:
 ```
-Source: <dialect> database at <host>/<dbname>
-Table:  <table_name> (schema: <schema or default>)
-Destination: <destination>
-Backend: <backend>
-Driver package: <package>
+Source:       <dialect> database at <host>/<dbname>
+Table:        <table_name> (schema: <schema or default>)
+Destination:  <destination>
+Backend:      <backend>
+Driver:       <package>
+Transform before load: <brief description, e.g. "filter rows by status=active", "pseudonymize email column", "cast decimal columns" — or "none">
 ```
 
-Then proceed to `create-sql-database-pipeline` with this information.
+Then proceed to `create-sql-database-pipeline` with this information. If transformations are needed, address them in step 7 (Add transformation callbacks).
