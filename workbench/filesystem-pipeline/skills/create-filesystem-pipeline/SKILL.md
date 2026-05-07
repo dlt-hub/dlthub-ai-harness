@@ -18,7 +18,7 @@ Before scaffolding, ask the user (one `AskUserQuestion` call, parallel questions
 
 - **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Picks what gets passed to `dlt init filesystem <destination>` and the `destination=` argument on `dlt.pipeline(...)`. **Always ask** — even if `$ARGUMENTS` provided one, confirm it before running `dlt init`. Default to `duckdb` if the user has no preference. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
-- **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
+- **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`. If the user selects `Custom`, ask a follow-up: what is the actual format (e.g. Excel, XML, JSON-array, binary)? This determines what parsing library to use in step 5.
 - **`bucket_url`** — full URL with path, e.g. `gs://my-bucket/data` or `file:///abs/path` or `s3://bucket/prefix`.
 
 If the user does not have a bucket / files yet, stop and ask them to provide one — do **not** invent a bucket URL.
@@ -170,7 +170,33 @@ Reference for renaming/duplicating resources: `https://dlthub.com/docs/general-u
 
 ### 5. Custom readers (only if format is Custom)
 
-For Excel, XML, JSON-array, etc. write a `@dlt.transformer` that takes an `Iterator[FileItemDict]` and yields records — see the advanced docs link above. Skip this step for CSV/Parquet/JSONL.
+Skip this step for CSV/Parquet/JSONL.
+
+Write a `@dlt.transformer` that accepts an `Iterator[FileItemDict]` and yields records. Use `file_obj.open()` to access the file content — `FileItemDict` also exposes `file_name`, `file_url`, and `relative_path` as metadata keys.
+
+Skeleton (replace the body with format-specific parsing):
+
+```python
+from typing import Iterator
+import dlt
+from dlt.sources.filesystem import FileItemDict
+from dlt.sources import TDataItems
+
+@dlt.transformer
+def read_<format>(items: Iterator[FileItemDict]) -> Iterator[TDataItems]:
+    for file_obj in items:
+        with file_obj.open() as f:
+            # parse f and yield records as a list of dicts
+            yield [...]
+```
+
+Wire it into the pipeline the same way as a built-in reader:
+
+```python
+reader = (filesystem(file_glob="<pattern>") | read_<format>()).with_name("<table_name>")
+```
+
+Use the advanced docs (fetched above) for format-specific parsing examples (Excel, XML, etc.). If the format needs a third-party library, install it with `uv pip install <library>` before running.
 
 ### 6. Configure
 
