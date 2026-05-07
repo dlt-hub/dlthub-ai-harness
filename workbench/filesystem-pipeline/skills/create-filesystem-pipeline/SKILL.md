@@ -255,7 +255,7 @@ When the user confirms, run `uv run python filesystem_pipeline.py`. Common first
 
 | Error | Fix |
 |-------|-----|
-| `You must install additional dependencies to run filesystem` | Run `uv pip install "dlt[filesystem]"`. |
+| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv pip install "dlt[s3]"`, GCS → `uv pip install "dlt[gs]"`, Azure → `uv pip install "dlt[az]"`, SFTP → `uv pip install "dlt[sftp]"`. |
 | `No module named 'pandas'` (or `pyarrow`) | Run `uv pip install pandas` / `pyarrow`. |
 | `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6c. |
 | `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
