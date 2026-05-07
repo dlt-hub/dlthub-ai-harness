@@ -236,11 +236,15 @@ Where: from your existing SSH key or the server admin.
 
 After running `secrets_update_fragment`, **show the user a summary of changed files and tell them which fields to fill** before continuing.
 
-### 7. Ask before running — and consider `.add_limit(1)` for big data
+### 7. Ask before running
 
 Before running the pipeline for the first time, **always ask the user** whether they want to run now. If the backend is not Local, **explicitly remind them to fill in their credentials in `.dlt/secrets.toml` before proceeding** — the pipeline will fail with a `ConfigFieldMissingException` if the placeholders are still there. Also **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
 
-For large datasets, suggest a sample run first by adding `.add_limit(1)` on the filesystem resource — this caps the source to one page (default `files_per_page=100`, so up to 100 files). For an even smaller sample, also lower `files_per_page`:
+Then ask the user how they want to run (use `AskUserQuestion`):
+- **Sample run** — load a single page of files (up to 100) to verify the pipeline works before committing to a full load. Recommended if the bucket likely contains a lot of data (deep glob patterns like `**/*`, many files, large files).
+- **Full load** — load everything now.
+
+For a sample run, add `.add_limit(1)` on the filesystem resource before running:
 
 ```python
 files = filesystem(files_per_page=1).add_limit(1)         # just 1 file
@@ -265,6 +269,14 @@ After a clean run, verify the load:
 - `list_tables`, `get_row_counts`, `preview_table` MCP tools (preferred), or
 - `dlt pipeline <pipeline_name> show` for a quick browser dashboard.
 
+If this was a sample run, ask the user if they want to do a full load now — remove `.add_limit(1)` and `files_per_page=1` from the pipeline and run again.
+
 **Do not add a second reader, incremental loading, or merge keys until the single-resource pipeline runs end-to-end and the user has reviewed the loaded data.**
 
 For failures not covered above (schema errors, bad data types, failed jobs, normalisation issues), use the (`debug-pipeline`) skill from the **rest-api-pipeline** toolkit — it covers post-run trace inspection, load package analysis, and iterative fixes.
+
+Once the pipeline is verified, suggest next steps in this order:
+1. **Add incremental loading** (`add-incremental-loading`) — load only new or modified files on each run
+2. **Explore the data** — hand off to **data-exploration** toolkit to profile and visualise the loaded tables
+3. **Add data quality checks** — hand off to **data-quality** toolkit
+4. **Deploy** — hand off to **dlthub-runtime** toolkit to schedule the pipeline on dltHub
