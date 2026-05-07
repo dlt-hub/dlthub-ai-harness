@@ -140,7 +140,25 @@ pipeline.run(my_database())                       # auto-inject from TOML
 pipeline.run(my_database(table_name="orders"))    # explicit
 ```
 
-### 7. Add transformation callbacks (if needed)
+### 7. Apply reflection level
+
+Using the reflection level chosen in `find-source`, set it on `sql_table` or `sql_database`:
+
+```python
+table = sql_table(
+    table="<table_name>",
+    chunk_size=500,
+    reflection_level="full",  # minimal | full (default) | full_with_precision
+)
+```
+
+- `minimal` — column names and nullability only; types inferred from data. Use when `full` causes casting errors.
+- `full` — column names, nullability, and data types including decimal precision/scale. Default; works for most cases.
+- `full_with_precision` — maximum detail including precision for text/binary. Use when the destination requires strict typing; may cause type-mismatch errors.
+
+Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/advanced#column-reflection
+
+### 8. Add transformation callbacks (if needed)
 
 If the user needs to transform data before or during loading, introduce the right tool depending on when the transformation happens:
 
@@ -169,7 +187,7 @@ Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/usage
 
 If no transformation is needed, skip this step — heavier logic is better handled after loading (see **transformations** toolkit).
 
-### 8. Set up config and secrets
+### 9. Set up config and secrets
 
 **Config** (non-secret values like schema name, table name):
 
@@ -204,7 +222,7 @@ credentials = "<dialect+driver>://user:password@host:port/database"
 
 **ALWAYS Get Feedback** before running for the first time. Show a summary of the files you changed or created, and confirm the user has filled in credentials.
 
-### 9. Debug pipeline — first run
+### 10. Debug pipeline — first run
 
 When user is ready, run:
 ```
@@ -221,7 +239,7 @@ Common first-run errors:
 - `ModuleNotFoundError: No module named 'sqlalchemy'` — run `uv add "dlt[sql_database]"`
 - `MissingDependencyException: numpy required` — the pyarrow backend also needs numpy: `uv add numpy`
 
-### 10. Suggest backend after a successful test run
+### 11. Suggest backend after a successful test run
 
 Using the data volume noted in step 1, recommend the right backend:
 

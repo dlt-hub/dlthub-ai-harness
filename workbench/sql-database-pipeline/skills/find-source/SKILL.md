@@ -69,18 +69,15 @@ dlt --non-interactive init --list-sources
 
 If a maintained connector exists, inform the user — it is almost always better than building from scratch.
 
-### 3. Gather connection details
+### 3. Set up credentials
 
-Ask the user for the connection information you will need:
-- **Host**, **port**, **database name**, **username**, **password** (for network databases)
-- **File path** (for SQLite)
-- Or a full **connection URL**: `dialect+driver://user:password@host:port/dbname`
+Never ask the user to provide credentials directly. All credentials must go through `secrets.toml` and `config.toml`.
 
-Do NOT write credentials to any file yet — just collect them.
+Use the **`setup-secrets`** skill to configure credentials. It will write the correct fragment to `.dlt/secrets.toml` safely without exposing values.
 
 ### 4. Explore available tables
 
-Once the user has credentials, connect and list tables using a quick Python snippet:
+Once credentials are configured, connect and list tables using a quick Python snippet:
 
 ```python
 from sqlalchemy import create_engine, inspect
@@ -97,11 +94,17 @@ Run this so the user can see what's available. If the database is not yet reacha
 
 ### 5. Pick tables, destination, and backend
 
-Ask the user:
+Ask the user — **do not proceed until all five questions are answered**:
+
 1. **Which table(s)** to load first (start with one for the initial pipeline)
 2. **Destination** if not provided (default: `duckdb`)
-3. **Do you need dlt normalization?** dlt normalizes schema, coerces types, and standardizes column names. Skip it if you want data loaded as-is.
-4. **Do you need to transform data before or during loading?** (e.g. filter rows, pseudonymize values, apply business logic)
+3. **Do you need dlt normalization?** dlt normalizes schema, coerces types, and standardizes column names. Skip it if you want data loaded as-is. **Wait for an explicit yes/no before continuing.**
+4. **Do you need to transform data before or during loading?** (e.g. filter rows, pseudonymize values, apply business logic) **Wait for an explicit yes/no before continuing.**
+5. **What reflection level do you need?** Controls how much schema metadata is read from the database:
+   - `minimal` — column names and nullability only; types inferred from the data
+   - `full` — column names, nullability, and data types including decimal precision/scale (**default**, recommended for most cases)
+   - `full_with_precision` — maximum detail including precision for text and binary columns; may cause type-mismatch errors on some destinations
+   Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/advanced#column-reflection
 
 **Backend based on normalization need and data size** (cross-reference with data volume from step 1 of `create-sql-database-pipeline`):
 
@@ -115,11 +118,12 @@ Suggest starting with a single small or representative table to validate the pip
 
 Present a one-line summary:
 ```
-Source:       <dialect> database at <host>/<dbname>
-Table:        <table_name> (schema: <schema or default>)
-Destination:  <destination>
-Backend:      <backend>
-Driver:       <package>
+Source:            <dialect> database at <host>/<dbname>
+Table:             <table_name> (schema: <schema or default>)
+Destination:       <destination>
+Backend:           <backend>
+Driver:            <package>
+Reflection level:  <minimal | full | full_with_precision>
 Transform before load: <brief description, e.g. "filter rows by status=active", "pseudonymize email column", "cast decimal columns" — or "none">
 ```
 
