@@ -6,7 +6,7 @@
 
 The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlthub ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
-**Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code.
+**Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code. New users can start with the `quick-start` toolkit for a guided end-to-end run from data to dashboard.
 
 The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI workbench.
 
@@ -61,6 +61,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
+| `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
 | `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-source to load tables from my Postgres database into DuckDB"* | Run `/find-source` |
@@ -145,6 +146,7 @@ uv run dlthub ai toolkit list
 Install toolkits (if you are not sure which toolkits to install we recommend installing all of them):
 
 ```bash
+uv run dlthub ai toolkit install quick-start
 uv run dlthub ai toolkit install bootstrap
 uv run dlthub ai toolkit install rest-api-pipeline
 uv run dlthub ai toolkit install sql-database-pipeline
@@ -174,6 +176,7 @@ The workbench is also available as a Claude Code plugin via the marketplace. Sta
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-workbench
 /plugin install init@dlthub-ai-workbench --scope project
+/plugin install quick-start@dlthub-ai-workbench --scope project
 /plugin install bootstrap@dlthub-ai-workbench --scope project
 /plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
 /plugin install sql-database-pipeline@dlthub-ai-workbench --scope project
