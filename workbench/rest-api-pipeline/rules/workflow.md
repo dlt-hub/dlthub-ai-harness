@@ -21,6 +21,7 @@
 ### Incoming (to rest-api-pipeline)
 
 - From **dlthub-platform** (from `deploy-workspace` when the pipeline needs modification before deploying) — pipeline name and destination are already known; skip `find-source` discovery and go straight to the relevant fix skill (`debug-pipeline`, `adjust-endpoint`, or `new-endpoint`).
+- From **quick-start** (after path confirmation in `quick-start`) — the source name is passed as `find-source`'s first argument. `find-source` should treat it as the discovery seed and skip the "what data do you want to extract?" question. The chosen path name (Lightning / Quality / Production / Full CDM) is informational only and does not change `find-source`'s behaviour; downstream toolkit handoffs follow this toolkit's normal `Outgoing` rules.
 
 ### Outgoing (from rest-api-pipeline)
 
