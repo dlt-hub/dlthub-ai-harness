@@ -12,7 +12,7 @@ Guide the user from zero to a working demo in 3-5 prompts.
 
 Parse `$ARGUMENTS`:
 - `data-source` (optional): what the user wants to extract data from
-- `path` (optional): one of `lightning`, `inspect`, `production`, `cdm`
+- `path` (optional): one of `discover`, `inspect`, `production`, `cdm`
 
 ## Step 1 — Check workspace status
 
@@ -39,7 +39,7 @@ TRANSFORM  → Canonical data model — Kimball (annotate-sources → generate-c
 DEPLOY     → dltHub Runtime on a schedule (setup-runtime → prepare-deployment → deploy-workspace)
 
 Pick a depth:
-  [1] Lightning   — ingest + visualize (3 prompts, great for demos)
+  [1] Discover    — ingest + visualize (3 prompts, great for demos)
   [2] Inspect     — ingest + validate schema/data + visualize (one inspection checkpoint)
   [3] Production  — ingest + validate + deploy + visualize
   [4] Full CDM    — ingest + validate + model + transform + visualize (~8 steps)
@@ -47,7 +47,7 @@ Pick a depth:
 What do you want to extract data from?
 ```
 
-If the user answers with just a source name, default to **Lightning** unless they also pick a depth.
+If the user answers with just a source name, default to **Discover** unless they also pick a depth.
 
 ## Step 3 — Confirm path and hand off
 
@@ -55,7 +55,7 @@ Announce the step sequence for the chosen path, then invoke `find-source` with t
 
 | Path | Sequence |
 |---|---|
-| Lightning | find-source → create-rest-api-pipeline → debug-pipeline → explore-data → build-notebook |
+| Discover | find-source → create-rest-api-pipeline → debug-pipeline → explore-data → build-notebook |
 | Inspect | find-source → create-rest-api-pipeline → debug-pipeline → validate-data → explore-data → build-notebook |
 | Production | find-source → create-rest-api-pipeline → debug-pipeline → validate-data → setup-runtime → prepare-deployment → deploy-workspace → explore-data → build-notebook |
 | Full CDM | find-source → create-rest-api-pipeline → debug-pipeline → validate-data → annotate-sources → create-ontology → generate-cdm → create-transformation → explore-data → build-notebook |
