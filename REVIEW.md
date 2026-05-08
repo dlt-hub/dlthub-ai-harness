@@ -1,40 +1,12 @@
----
-name: review-pr
-description: Review a pull request against dltHub AI Workbench standards. Use when reviewing a PR, checking skill or workflow quality, auditing toolkit changes, or preparing a PR for merge. Covers architectural clarity, product principles alignment, skill format, workflow correctness, and iterative design.
-argument-hint: "[pr-number]"
----
-
 # Review PR
 
-Review a pull request against the quality standards of this repo. Gather data in parallel where possible.
+Review this pull request against the quality standards of the dltHub AI Workbench. These instructions take priority over the default review behavior.
 
-Parse `$ARGUMENTS`: the PR number or URL is `PR_ID`. Everything after `--` is **reviewer instructions** (optional focus areas).
-
-## Prerequisites
-
-- GitHub CLI (`gh`) is authenticated
-- `make validate-toolkits` is available
+Identify which toolkits, skills, commands, rules, or workflows are changed. Understand the original problem being solved (check linked issues) before evaluating the solution.
 
 ---
 
-## Step 1 — Fetch PR metadata and diff (in parallel)
-
-```bash
-gh pr view [pr-number] --json title,body,author,state,baseRefName,headRefName,number,url,comments,reviews,labels
-gh pr diff [pr-number]
-```
-
-Extract any issue references from the PR body (`fixes #N`, `closes #N`, `#N`) and fetch each:
-
-```bash
-gh issue view <number> --json title,body,author,state,comments,labels
-```
-
-Understand the original problem being solved before evaluating the solution. Identify which toolkits, skills, commands, rules, or workflows are changed.
-
----
-
-## Step 2 — Run automated validation
+## Step 1 — Run automated validation
 
 ```bash
 make validate-toolkits
@@ -44,7 +16,7 @@ Report failures immediately — broken frontmatter, unresolved skill references,
 
 ---
 
-## Step 3 — Review against product principles
+## Step 2 — Review against product principles
 
 Evaluate the change against each principle from `product_principles.md`:
 
@@ -74,11 +46,11 @@ Evaluate the change against each principle from `product_principles.md`:
 
 ### dltHub AI workbench approach for building skills
 - [ ] Skills should not merely contain docs but be step by step instructions for workflows for the agent
-- [ ] Ensure a skill gives clear and consise instructions for the workflow and not just copy the docs into 
+- [ ] Ensure a skill gives clear and concise instructions for the workflow and not just copy the docs into it
 
 ---
 
-## Step 4 — Core library gaps: prefer upstream fixes, flag workarounds
+## Step 3 — Core library gaps: prefer upstream fixes, flag workarounds
 
 The workbench may introduce temporary workarounds solving a problem via a skill that can actually be solved deterministically e.g via a CLI command or a platform capability. These workarounds may address gaps in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub) temporarily, but they should always be visible, flagged to core maintainers, and have a clear path to removal.
 
@@ -90,7 +62,7 @@ The workbench may introduce temporary workarounds solving a problem via a skill 
 - [ ] If no built-in exists but one clearly should — could this be proposed as a new feature in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub)? A skill encoding something deterministic is a signal the core library has a gap worth filing.
 - [ ] If a workaround exists, is it marked with a `TODO: remove when dlt#<issue> / dlthub#<issue> is resolved` comment so it has an expiry?
 - [ ] Is the upstream gap tracked as an issue in the right repo?
-  - ingstion library gap → [github.com/dlt-hub/dlt](https://github.com/dlt-hub/dlt)
+  - ingestion library gap → [github.com/dlt-hub/dlt](https://github.com/dlt-hub/dlt)
   - transformations or data quality libraries gap → [github.com/dlt-hub/dlthub](https://github.com/dlt-hub/dlthub)
   - platform gap → [github.com/dlt-hub/runtime](https://github.com/dlt-hub/runtime)
 - [ ] Is the workaround scoped as narrowly as possible, so it doesn't leak into unrelated skills?
@@ -101,7 +73,7 @@ If a skill reimplements something the core library handles (or should handle), n
 
 ---
 
-## Step 5 — Architecture and separation of concerns
+## Step 4 — Architecture and separation of concerns
 
 The most common source of review feedback.
 
@@ -127,7 +99,7 @@ The most common source of review feedback.
 
 ---
 
-## Step 6 — Skill format and trigger quality
+## Step 5 — Skill format and trigger quality
 
 For any changed SKILL.md files:
 
@@ -151,7 +123,7 @@ For any changed SKILL.md files:
 
 ---
 
-## Step 7 — Workflow and handoff correctness
+## Step 6 — Workflow and handoff correctness
 
 For changes to `workflow.md` or `rules/`:
 
@@ -165,7 +137,7 @@ For changes to `workflow.md` or `rules/`:
 
 ---
 
-## Step 7a — Cross-toolkit link symmetry
+## Step 6a — Cross-toolkit link symmetry
 
 Every toolkit that sends users somewhere must also be reachable from somewhere. Check both directions for any affected toolkit.
 
@@ -191,7 +163,7 @@ Flag any broken pair: A says it sends to B, but B has no incoming entry for A, o
 
 ---
 
-## Step 8 — Format and naming conventions
+## Step 7 — Format and naming conventions
 
 | Artifact | Expected format |
 |---|---|
@@ -208,7 +180,7 @@ Flag any broken pair: A says it sends to B, but B has no incoming entry for A, o
 
 ---
 
-## Step 9 — README currency
+## Step 8 — README currency
 
 Check whether the PR's changes affect anything described in `README.md` (root) or a toolkit-level `README.md`:
 
@@ -222,7 +194,7 @@ If README updates are missing, flag as required — not a suggestion.
 
 ---
 
-## Step 9a — dlt docs currency
+## Step 8a — dlt docs currency
 
 The dltHub AI Workbench is documented in the dlt docs under [`dlt-ecosystem/llm-tooling`](https://github.com/dlt-hub/dlt/tree/devel/docs/website/docs/dlt-ecosystem/llm-tooling). Two pages cover the workbench directly:
 
@@ -241,9 +213,11 @@ Docs live in a separate repo ([dlt-hub/dlt](https://github.com/dlt-hub/dlt)). If
 
 ---
 
-## Step 10 — Compose the review
+## Review composition
 
 **No prose.** Every line must be a bullet, label, or checklist item. No explanatory paragraphs, no filler sentences. If something needs context, add it as a sub-bullet.
+
+Structure the review as:
 
 ```
 ## Summary
@@ -276,19 +250,6 @@ Docs live in a separate repo ([dlt-hub/dlt](https://github.com/dlt-hub/dlt)). If
 
 ## Verdict
 APPROVE / REQUEST CHANGES / COMMENT
-```
-
-Post the review — pass the body as a single quoted string directly (heredoc syntax breaks in zsh):
-
-```bash
-gh pr review [pr-number] --request-changes --body "## Summary
-- ...
-
-## Required changes
-- ..."
-
-gh pr review [pr-number] --approve --body "..."
-gh pr review [pr-number] --comment --body "..."
 ```
 
 ---
