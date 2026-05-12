@@ -8,7 +8,7 @@ argument-hint: "[data-source] [path]"
 
 # Quick Start
 
-Guide the user from zero to a deployed, production-ready pipeline in a few prompts.
+Guide the user from zero to a deployed, production-ready pipeline in a few prompts. Make sure you keep the sampling for the first deployment. 
 
 Parse `$ARGUMENTS`:
 - `data-source` (optional): what the user wants to extract data from
