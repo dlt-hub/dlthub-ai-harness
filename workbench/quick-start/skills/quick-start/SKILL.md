@@ -8,11 +8,11 @@ argument-hint: "[data-source] [path]"
 
 # Quick Start
 
-Guide the user from zero to a working demo in 3-5 prompts.
+Guide the user from zero to a deployed, production-ready pipeline in a few prompts.
 
 Parse `$ARGUMENTS`:
 - `data-source` (optional): what the user wants to extract data from
-- `path` (optional): one of `discover`, `inspect`, `production`, `cdm`
+- `path` (optional): one of `production` (default), `discover`, `inspect`, `cdm`
 
 ## Step 1 — Check workspace status
 
@@ -33,21 +33,21 @@ If the user has mentioned an existing pipeline (has data already loaded), route 
 Otherwise, show the capability table and depth menu, then ask: **"What do you want to extract data from?"**
 
 ```
-INGEST     → REST API pipelines (find-source → create → debug → validate)
+INGEST     → REST API pipelines (find-source → create → debug → harden → validate)
 EXPLORE    → Marimo dashboards (explore-data → build-notebook)
 TRANSFORM  → Canonical data model — Kimball (annotate-sources → generate-cdm → create-transformation)
 DEPLOY     → dltHub Runtime on a schedule (setup-runtime → prepare-deployment → deploy-workspace)
 
-Pick a depth:
-  [1] Discover    — ingest + visualize (3 prompts, great for demos)
-  [2] Inspect     — ingest + validate schema/data + visualize (one inspection checkpoint)
-  [3] Production  — ingest + validate + deploy + visualize
-  [4] Full CDM    — ingest + validate + model + transform + visualize (~8 steps)
+Pick a depth (default is Production):
+  [1] Production  — ingest + harden + validate + deploy + visualize  ← default
+  [2] Full CDM    — ingest + harden + validate + model + transform + deploy + visualize (~8 steps)
+  [3] Inspect     — ingest + harden + validate + visualize (no deploy)
+  [4] Discover    — ingest (demo only, leaves dev artifacts; explicit opt-in)
 
 What do you want to extract data from?
 ```
 
-If the user answers with just a source name, default to **Discover** unless they also pick a depth.
+**Default routing rule**: if the user answers with just a source name, or names a source without picking a depth, route to **Production**. Pick another path **only** if the user explicitly names it (e.g. "just a quick demo", "discover path", "skip deploy", "I just want to see the data", "no need to deploy", "Full CDM").
 
 ## Step 3 — Confirm path and hand off
 
@@ -55,12 +55,21 @@ Announce the step sequence for the chosen path, then invoke `find-source` with t
 
 | Path | Sequence |
 |---|---|
-| Discover | find-source → create-rest-api-pipeline → debug-pipeline → explore-data → build-notebook |
-| Inspect | find-source → create-rest-api-pipeline → debug-pipeline → validate-data → explore-data → build-notebook |
-| Production | find-source → create-rest-api-pipeline → debug-pipeline → validate-data → setup-runtime → prepare-deployment → deploy-workspace → explore-data → build-notebook |
-| Full CDM | find-source → create-rest-api-pipeline → debug-pipeline → validate-data → annotate-sources → create-ontology → generate-cdm → create-transformation → explore-data → build-notebook |
+| **Production** (default) | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → setup-runtime → prepare-deployment → deploy-workspace → explore-data → build-notebook |
+| Full CDM | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → annotate-sources → create-ontology → generate-cdm → create-transformation → setup-runtime → prepare-deployment → deploy-workspace → explore-data → build-notebook |
+| Inspect | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → explore-data → build-notebook |
+| Discover (demo only) | find-source → create-rest-api-pipeline → debug-pipeline → explore-data → build-notebook |
+
+**Why every non-Discover path includes `adjust-endpoint`**: `create-rest-api-pipeline` intentionally leaves debug artifacts behind for fast iteration — `dev_mode=True`, `single_page` paginators, low `per_page`, no incremental. `adjust-endpoint` removes those before validation/deploy/exploration. Skipping it leads to deploying a sample loader, not a real pipeline.
 
 Announce the path name and sequence to orient the user, then immediately invoke `find-source` with the source name as its argument. The path name is for user expectations only — it does NOT change `find-source`'s behaviour. Downstream toolkit `workflow.md` rules handle subsequent steps.
+
+**Production path hardening checklist** (delegated to `adjust-endpoint`, but state explicitly when announcing the path so the user knows the toy run will get hardened):
+- Remove `dev_mode=True` from the pipeline
+- Replace `single_page` paginators with the API-appropriate paginator (e.g. `header_link` for GitHub, `json_link` / `offset` / `page_number` elsewhere)
+- Restore `per_page` to a normal value (typically 100)
+- Add `incremental` cursors on resources that support it
+- Remove any `.add_limit(N)` calls left from the first run
 
 ## What NOT to do
 
