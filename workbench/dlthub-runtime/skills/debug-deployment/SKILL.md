@@ -1,9 +1,9 @@
 ---
 name: debug-deployment
-description: Debug a failed or misbehaving dltHub Runtime deployment. Use when a runtime job fails, produces unexpected results, or the user wants to check job status and logs.
+description: Debug a failed or misbehaving dltHub Platform deployment. Use when a runtime job fails, produces unexpected results, or the user wants to check job status and logs.
 ---
 
-# Debug dltHub Runtime deployment
+# Debug dltHub Platform deployment
 
 
 ## Check job status

@@ -1,9 +1,9 @@
 ---
 name: setup-runtime
-description: Verify dlt workspace is ready for dltHub Runtime. Use when user wants to deploy for the first time, or when another skill reports missing prerequisites like .workspace file or dlt[hub] dependency.
+description: Verify dlt workspace is ready for dltHub Platform. Use when user wants to deploy for the first time, or when another skill reports missing prerequisites like .workspace file or dlt[hub] dependency.
 ---
 
-# Verify workspace for dltHub Runtime
+# Verify workspace for dltHub Platform
 
 Lightweight check that the workspace is ready for runtime work. Run through each check and fix issues as found.
 
@@ -17,7 +17,7 @@ Check `pyproject.toml` exists in the project root. If not:
 uv init
 ```
 
-Runtime uses `pyproject.toml` to install dependencies remotely.
+dltHub Platform uses `pyproject.toml` to install dependencies remotely.
 
 ## 2. Check `.dlt/.workspace` file
 
@@ -47,7 +47,7 @@ uv add "dlt[workspace,hub]"
 
 If adding `dlt` to `pyproject.toml`, pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions.
 
-## 4. Login to dltHub Runtime
+## 4. Login to dltHub Platform
 
 ```bash
 dlt runtime login

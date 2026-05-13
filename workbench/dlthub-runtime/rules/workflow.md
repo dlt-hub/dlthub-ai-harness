@@ -1,4 +1,4 @@
-# Deploy to dltHub Runtime
+# Deploy to dltHub Platform
 
 ## Workflow Entry
 **ALWAYS** start with **Setup runtime** (`setup-runtime`) — ensure workspace, dependencies, and runtime login are ready

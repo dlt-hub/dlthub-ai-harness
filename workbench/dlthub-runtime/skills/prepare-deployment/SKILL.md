@@ -1,6 +1,6 @@
 ---
 name: prepare-deployment
-description: Prepare production credentials and destinations for dltHub Runtime. Use when setting up prod profile secrets, splitting dev/prod credentials, or configuring a production destination like Motherduck.
+description: Prepare production credentials and destinations for dltHub Platform. Use when setting up prod profile secrets, splitting dev/prod credentials, or configuring a production destination like Motherduck.
 ---
 
 # Prepare workspace for production
