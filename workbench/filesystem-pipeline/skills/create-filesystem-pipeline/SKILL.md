@@ -274,14 +274,19 @@ After running `secrets_update_fragment`, **show the user a summary of changed fi
 Before running the pipeline for the first time, **always ask the user** whether they want to run now. If the backend is not Local, **explicitly remind them to fill in their credentials in `.dlt/secrets.toml` before proceeding** — the pipeline will fail with a `ConfigFieldMissingException` if the placeholders are still there. Also **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
 
 Then ask the user how they want to run (use `AskUserQuestion`):
-- **Sample run** — load a single page of files (up to 100) to verify the pipeline works before committing to a full load. Recommended if the bucket likely contains a lot of data (deep glob patterns like `**/*`, many files, large files).
+- **Sample run** — load a single file to verify the pipeline works before committing to a full load. Recommended if the bucket likely contains a lot of data (deep glob patterns like `**/*`, many files, large files).
 - **Full load** — load everything now.
 
-For a sample run, add `.add_limit(1)` on the filesystem resource before running:
+For a sample run, set `files_per_page=1` **and** `.add_limit(1)` on the `filesystem(...)` call — always both, regardless of whether you use a built-in reader or a custom transformer. `add_limit(1)` limits to 1 yield from the resource generator; `files_per_page` (default 100) controls how many files are in each yield, so without `files_per_page=1` you'd still load up to 100 files:
 
 ```python
-files = filesystem(files_per_page=1).add_limit(1)         # just 1 file
+# built-in reader
+files = filesystem(file_glob="<pattern>", files_per_page=1).add_limit(1)
 reader = (files | read_csv()).with_name("<table_name>")
+
+# custom transformer — same rule, files_per_page=1 must not be omitted
+files = filesystem(file_glob="<pattern>", files_per_page=1).add_limit(1)
+reader = files | read_<format>()
 ```
 
 Show a summary of changed files and the planned run command. Only run when the user confirms.
