@@ -201,7 +201,7 @@ Wire it into the pipeline the same way as a built-in reader:
 reader = (filesystem(file_glob="<pattern>") | read_<format>()).with_name("<table_name>")
 ```
 
-Use the advanced docs (fetched above) for format-specific parsing examples (Excel, XML, etc.). If the format needs a third-party library, install it with `uv pip install <library>` before running.
+Use the advanced docs (fetched above) for format-specific parsing examples (Excel, XML, etc.). If the format needs a third-party library, install it with `uv add <library>` before running.
 
 ### 6. Configure
 
@@ -316,8 +316,8 @@ When the user confirms, run `uv run python filesystem_pipeline.py`. Common first
 
 | Error | Fix |
 |-------|-----|
-| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv pip install "dlt[s3]"`, GCS → `uv pip install "dlt[gs]"`, Azure → `uv pip install "dlt[az]"`, SFTP → `uv pip install "dlt[sftp]"`. |
-| `No module named 'pandas'` (or `pyarrow`) | Run `uv pip install pandas` / `pyarrow`. |
+| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv add "dlt[s3]"`, GCS → `uv add "dlt[gs]"`, Azure → `uv add "dlt[az]"`, SFTP → `uv add "dlt[sftp]"`. |
+| `No module named 'pandas'` (or `pyarrow`) | Run `uv add pandas` / `uv add pyarrow`. |
 | `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6b. |
 | `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
 | `FileNotFoundError` / empty load | `file_glob` doesn't match anything — list the bucket with the `fsspec_from_resource` helper from the advanced docs, or relax the pattern. |

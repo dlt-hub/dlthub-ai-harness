@@ -45,8 +45,7 @@ If validation fails:
 
 The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt[workspace]`. Before launching, check if they are available and if any are missing, **ask the user** how they want to install them:
 
-1. **Add to `pyproject.toml`** — preferred for production projects: `uv add pandas numpy altair`
-2. **Install into venv directly** — quick for experimentation: `uv pip install pandas numpy altair`
+Run `uv add pandas numpy altair` to add them to `pyproject.toml`.
 
 Also add `marimo` if not already installed, and `ibis-framework[duckdb]` if any chart uses ibis.
 
@@ -73,7 +72,7 @@ When re-invoked after iteration (see `workflow.md`): re-read the full analysis_p
 Two cells export the same variable name. Fix: follow the naming conventions in `references/notebook-patterns.md`.
 
 ### marimo check fails with import errors
-A dependency is missing from the environment. Install it with `uv pip install <package>` and re-check.
+A dependency is missing from the environment. Install it with `uv add <package>` and re-check.
 
 ### Notebook runs but charts are empty
 The SQL query returns no rows. Common causes:
