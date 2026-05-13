@@ -73,6 +73,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "data-quality", "validation", "checks", "metrics"]
+    },
+    {
+      "name": "filesystem-pipeline",
+      "source": "./workbench/filesystem-pipeline",
+      "description": "Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination using dlt's filesystem source.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "filesystem", "s3", "gcs", "azure", "sftp", "csv", "parquet", "jsonl"]
     }
   ]
 }

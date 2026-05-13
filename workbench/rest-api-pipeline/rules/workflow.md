@@ -32,3 +32,4 @@ When the user's needs go beyond this toolkit, hand over to:
 - **dlthub-runtime** — two entry points:
   - **Early** (after `create-rest-api-pipeline` or `debug-pipeline`): when the user wants to run the pipeline on dltHub right away — a working pipeline is enough to deploy
   - **Later** (after `adjust-endpoint`, incremental loading, `add-endpoints`, or a subsequent `debug-pipeline` run): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
+- **filesystem-pipeline** — from (`find-source`) when the user's data source is file-based (S3, GCS, local CSV, SFTP, etc.) rather than a REST API
