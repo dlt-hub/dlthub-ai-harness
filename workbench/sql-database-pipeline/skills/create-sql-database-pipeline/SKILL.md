@@ -73,17 +73,20 @@ uv add "dlt[sql_database]" <driver-package>
 ### 5. Read generated files
 
 Read the following (do NOT read `secrets.toml`):
-- `sql_database_pipeline.py` — scaffold patterns
+- `sql_database_pipeline.py` — read for scaffold patterns, then **overwrite it** with the real pipeline in step 6
 - `.dlt/config.toml` — pipeline config structure
 
 ### 6. Write the pipeline
 
-Use `sql_table` for a single table, `sql_database` for multiple tables.
+**Write the actual pipeline into `sql_database_pipeline.py`** — overwrite the scaffold entirely. Do not create a separate file. The scaffold was only useful to read; once replaced it becomes the real pipeline.
+
+**Choose one scenario based on how many tables to load:**
+
+#### Scenario A — Single table: use `sql_table`
 
 ```python
 import dlt
-from dlt.sources.sql_database import sql_table  # single table
-# from dlt.sources.sql_database import sql_database  # all / selected tables
+from dlt.sources.sql_database import sql_table
 
 
 def main() -> None:
@@ -109,47 +112,53 @@ if __name__ == "__main__":
     main()
 ```
 
+#### Scenario B — Multiple tables: use `sql_database`
+
+```python
+import dlt
+from dlt.sources.sql_database import sql_database
+
+
+def main() -> None:
+    pipeline = dlt.pipeline(
+        pipeline_name="<name>",
+        destination="<destination>",
+        dataset_name="<name>",
+        dev_mode=True,
+        progress="log",
+    )
+
+    source = sql_database(
+        schema="<schema>",           # set if not the default schema
+        table_names=["<t1>", "<t2>"],  # always pass table_names — avoids full-schema reflection
+        chunk_size=500,
+    )
+
+    load_info = pipeline.run(source.add_limit(1), write_disposition="replace")
+    print(load_info)
+
+
+if __name__ == "__main__":
+    main()
+```
+
 Key rules:
 - `progress="log"` belongs on `dlt.pipeline()`, **not** on `pipeline.run()` — that parameter does not exist on `run()`
 - `dev_mode=True` creates a new timestamped dataset on every run — keeps test runs non-destructive
 - `.add_limit(1)` loads one chunk only — always use for first/test runs
+- **Always pass `table_names=`** to `sql_database()` — omitting it reflects the entire schema, which is slow and loads unwanted tables
 - Do not hardcode credentials in the script — they are auto-injected from `.dlt/secrets.toml`
-
-#### Optionally: parameterize the source function
-
-Wrap `sql_table` in a `@dlt.source` to expose useful parameters for callers:
-
-```python
-@dlt.source
-def my_database(
-    table_name: str = dlt.config.value,
-    schema: str = None,
-) -> Any:
-    """Load tables from My Database.
-
-    Args:
-        table_name: Table to load. Auto-loaded from config.toml.
-        schema: Optional schema name.
-    """
-    yield sql_table(table=table_name, schema=schema, chunk_size=500)
-```
-
-Users can then call:
-```python
-pipeline.run(my_database())                       # auto-inject from TOML
-pipeline.run(my_database(table_name="orders"))    # explicit
-```
 
 ### 7. Apply reflection level
 
-Using the reflection level chosen in `find-source`, set it on `sql_table` or `sql_database`:
+Using the reflection level chosen in `find-source`, set it on the source:
 
 ```python
-table = sql_table(
-    table="<table_name>",
-    chunk_size=500,
-    reflection_level="full",  # minimal | full (default) | full_with_precision
-)
+# Scenario A
+table = sql_table(table="<table_name>", chunk_size=500, reflection_level="full")
+
+# Scenario B
+source = sql_database(table_names=[...], chunk_size=500, reflection_level="full")
 ```
 
 - `minimal` — column names and nullability only; types inferred from data. Use when `full` causes casting errors.
@@ -185,7 +194,9 @@ If the user needs to transform data before or during loading, introduce the righ
 
 Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/usage
 
-If no transformation is needed, skip this step — heavier logic is better handled after loading (see **transformations** toolkit).
+If no transformation is needed, skip this step.
+
+> **Boundary:** these callbacks are for *extraction-time* transforms — filtering, masking, or reshaping data before it hits the destination. For *post-load* modeling (Kimball dimensions, CDM, cross-source joins) hand off to the **transformations** toolkit instead.
 
 ### 9. Set up config and secrets
 
@@ -226,7 +237,7 @@ credentials = "<dialect+driver>://user:password@host:port/database"
 
 When user is ready, run:
 ```
-uv run python <name>_pipeline.py
+uv run python sql_database_pipeline.py
 ```
 
 Expected output shows extract/normalize/load steps with row counts and timing from `progress="log"`.
