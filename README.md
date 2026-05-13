@@ -63,6 +63,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 |---------|-------|---------------|-------------|---------------|--------------|
 | `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlt ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
+| `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
 | `dlthub-runtime` | Run | `setup-runtime` | Deploy pipelines to the dltHub platform | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlt transformation functions from existing pipelines | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
@@ -130,6 +131,7 @@ Install toolkits (if you are not sure which toolkits to install we recommend ins
 ```bash
 uv run dlt ai toolkit bootstrap install
 uv run dlt ai toolkit rest-api-pipeline install
+uv run dlt ai toolkit filesystem-pipeline install
 uv run dlt ai toolkit dlthub-runtime install
 uv run dlt ai toolkit data-exploration install
 uv run dlt ai toolkit transformations install
