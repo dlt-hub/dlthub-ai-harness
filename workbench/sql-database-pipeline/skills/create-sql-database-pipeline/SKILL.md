@@ -73,12 +73,12 @@ uv add "dlt[sql_database]" <driver-package>
 ### 5. Read generated files
 
 Read the following (do NOT read `secrets.toml`):
-- `sql_database_pipeline.py` — read for scaffold patterns, then **overwrite it** with the real pipeline in step 6
+- `sql_database_pipeline.py` — read for scaffold patterns, then replace its contents with the real pipeline in step 6
 - `.dlt/config.toml` — pipeline config structure
 
 ### 6. Write the pipeline
 
-**Write the actual pipeline into `sql_database_pipeline.py`** — overwrite the scaffold entirely. Do not create a separate file. The scaffold was only useful to read; once replaced it becomes the real pipeline.
+**Replace the scaffold** — write the real pipeline into the generated `sql_database_pipeline.py`, or rename the file to match the use case (e.g. `movies_pipeline.py`). Either way: do not create a second file alongside the scaffold. The scaffold has no further purpose once replaced.
 
 **Choose one scenario based on how many tables to load:**
 
@@ -237,7 +237,7 @@ credentials = "<dialect+driver>://user:password@host:port/database"
 
 When user is ready, run:
 ```
-uv run python sql_database_pipeline.py
+uv run python <pipeline_script>.py
 ```
 
 Expected output shows extract/normalize/load steps with row counts and timing from `progress="log"`.
