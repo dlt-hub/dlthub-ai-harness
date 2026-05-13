@@ -311,7 +311,7 @@ If this was a sample run, ask the user if they want to do a full load now — re
 
 **Do not add a second reader, incremental loading, or merge keys until the single-resource pipeline runs end-to-end and the user has reviewed the loaded data.**
 
-For failures not covered above (schema errors, bad data types, failed jobs, normalisation issues), use the (`debug-pipeline`) skill from the **rest-api-pipeline** toolkit — it covers post-run trace inspection, load package analysis, and iterative fixes.
+For failures not covered above (schema errors, bad data types, failed jobs, normalisation issues), hand off to the **rest-api-pipeline** toolkit's `debug-pipeline` skill — it covers post-run trace inspection, load package analysis, and iterative fixes.
 
 Once the pipeline is verified, suggest next steps in this order:
 1. **Add incremental loading** (`add-incremental-loading`) — load only new or modified files on each run
