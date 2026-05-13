@@ -24,7 +24,7 @@ Read the pipeline file. Note:
 
 ### 2. Ask about incremental strategy
 
-Ask the user (one `AskUserQuestion` call, parallel questions):
+Ask the user in one round (parallel questions):
 
 - **Record-level filtering** — should individual records also be filtered by a timestamp column (e.g. only rows where `updated_at` is newer than the last run)? If yes, which column?
 - **Primary key** — which column(s) uniquely identify a record? Required for `merge` deduplication. If the data has no natural key, `append` write disposition is the fallback (no deduplication).

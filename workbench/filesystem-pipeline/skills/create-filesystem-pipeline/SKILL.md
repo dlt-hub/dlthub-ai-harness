@@ -18,13 +18,13 @@ Before scaffolding, check session context — if the user has already stated any
 
 Collect all unknown inputs in **one round** — never split into separate back-and-forth turns. The inputs split into two kinds:
 
-**Structured choices** (use a single `AskUserQuestion` call with up to three parallel questions):
+**Structured choices** (ask in one round with multiple-choice options, up to three parallel questions):
 - **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
 - **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
 
-**Free-text input** (`bucket_url` — do NOT use `AskUserQuestion` for this):
-- Ask for it as a plain-text line in the same response as the AskUserQuestion call, e.g. "Also please share your bucket URL (e.g. s3://my-bucket/data/) in your reply."
+**Free-text input** (`bucket_url` — ask as plain text, not structured choices):
+- Include it as a plain-text line in the same response as the structured questions, e.g. *"Also please share your bucket URL (e.g. `s3://my-bucket/data/`) in your reply."*
 - If the user does not have a bucket / files yet, stop and ask them to provide one — do **not** invent a bucket URL.
 
 Do **not** ask about layout (single vs multi-table). Assume **single-table** — all files matched by the glob share one schema and load into one destination table. The confirmation in step 1b is the user's chance to correct that assumption.
@@ -45,7 +45,7 @@ End the confirmation with a single sentence flagging the single-table assumption
 
 > "I'm assuming all files matched by `<glob>` belong to the **same logical table**, which I'll call `files` by default. If you'd like a different name, say so now. If your bucket actually contains multiple distinct tables in different sub-folders (e.g. `reports/*.csv` and `transactions/*.csv` going into separate tables), say so now and I'll use the multi-table pattern instead (step 4b)."
 
-Use `AskUserQuestion` with options `Confirm — proceed` / `It's actually multi-table` / `Change something`. Only continue past this step on explicit confirmation.
+Ask for confirmation with three options: `Confirm — proceed` / `It's actually multi-table` / `Change something`. Only continue past this step on explicit confirmation.
 
 **Do not run `dlt init` until the user confirms.**
 
@@ -273,7 +273,7 @@ After running `secrets_update_fragment`, **show the user a summary of changed fi
 
 Before running the pipeline for the first time, **always ask the user** whether they want to run now. If the backend is not Local, **explicitly remind them to fill in their credentials in `.dlt/secrets.toml` before proceeding** — the pipeline will fail with a `ConfigFieldMissingException` if the placeholders are still there. Also **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
 
-Then ask the user how they want to run (use `AskUserQuestion`):
+Then ask the user how they want to run:
 - **Sample run** — load a single file to verify the pipeline works before committing to a full load. Recommended if the bucket likely contains a lot of data (deep glob patterns like `**/*`, many files, large files).
 - **Full load** — load everything now.
 
