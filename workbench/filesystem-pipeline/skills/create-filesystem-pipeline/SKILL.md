@@ -222,6 +222,8 @@ The scaffold's `local_dir = "<configure me>"` line is unused for cloud backends 
 
 **Never read or write `.dlt/secrets.toml` directly. Never run commands that print secret values** (`cat`, `env | grep`, `gcloud auth print-access-token`, etc.).
 
+**Do not ask the user which auth method to use.** Pick the standard placeholder for the backend (below) and call `secrets_update_fragment` immediately. The user edits the real values themselves — they can adjust the auth method then if needed.
+
 Use `dlt-workspace-mcp` tools — `secrets_list`, `secrets_view_redacted`, `secrets_update_fragment` — to write **placeholders only**. The user fills the real values themselves by editing the file. (See the `setup-secrets` skill for full details.)
 
 Per-backend placeholder fragments (pass via `secrets_update_fragment`):
