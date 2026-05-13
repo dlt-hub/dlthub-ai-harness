@@ -271,10 +271,29 @@ After running `secrets_update_fragment`, **show the user a summary of changed fi
 
 ### 7. Ask before running
 
-Before running the pipeline for the first time, **always ask the user** whether they want to run now. If the backend is not Local, **explicitly remind them to fill in their credentials in `.dlt/secrets.toml` before proceeding** — the pipeline will fail with a `ConfigFieldMissingException` if the placeholders are still there. Also **warn them if the bucket likely contains a lot of data** (large files, deep glob patterns like `**/*`, many CSVs).
+If the backend is not Local, **explicitly remind the user to fill in their credentials in `.dlt/secrets.toml` before proceeding** — the pipeline will fail with a `ConfigFieldMissingException` if the placeholders are still there.
+
+**Enumerate the files before asking how to run.** `filesystem()` yields individual `FileItemDict` objects with metadata (including `size_in_bytes`) — no data is read or transferred:
+
+```python
+from dlt.sources.filesystem import filesystem
+
+items = list(filesystem(file_glob="<pattern>"))
+total_mb = sum(f["size_in_bytes"] for f in items) / 1024**2
+print(f"{len(items)} files · {total_mb:.1f} MB total · largest: {max(f['size_in_bytes'] for f in items)/1024**2:.1f} MB")
+```
+
+For cloud backends this requires real credentials to be filled first. If not yet filled, skip the inventory and default to recommending a sample run.
+
+Use the result to calibrate your recommendation:
+- **< 10 files and < 50 MB** — full load is fine; still offer sample as an option
+- **≥ 10 files or ≥ 50 MB** — recommend sample first
+- **≥ 100 files or ≥ 500 MB** — strongly recommend sample; warn about load time
+
+If the glob matches **zero files**, stop — help the user fix the pattern before offering any run option.
 
 Then ask the user how they want to run:
-- **Sample run** — load a single file to verify the pipeline works before committing to a full load. Recommended if the bucket likely contains a lot of data (deep glob patterns like `**/*`, many files, large files).
+- **Sample run** — load a single file to verify the pipeline works before committing to a full load.
 - **Full load** — load everything now.
 
 For a sample run, set `files_per_page=1` **and** `.add_limit(1)` on the `filesystem(...)` call — always both, regardless of whether you use a built-in reader or a custom transformer. `add_limit(1)` limits to 1 yield from the resource generator; `files_per_page` (default 100) controls how many files are in each yield, so without `files_per_page=1` you'd still load up to 100 files:
