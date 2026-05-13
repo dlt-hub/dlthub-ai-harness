@@ -14,14 +14,18 @@ The argument is the destination (e.g. `duckdb`, `postgres`, `filesystem`). Defau
 
 ### 1. Gather inputs
 
-Before scaffolding, check session context — if the user has already stated any of these values, use them and do not ask again. Ask only for what is still unknown (one `AskUserQuestion` call, parallel questions):
+Before scaffolding, check session context — if the user has already stated any of these values (destination, file format, backend, and bucket url), use them and do not ask again.
 
-- **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Picks what gets passed to `dlt init filesystem <destination>` and the `destination=` argument on `dlt.pipeline(...)`. **Always ask** — even if `$ARGUMENTS` provided one, confirm it before running `dlt init`. Default to `duckdb` if the user has no preference. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
+Collect all unknown inputs in **one round** — never split into separate back-and-forth turns. The inputs split into two kinds:
+
+**Structured choices** (use a single `AskUserQuestion` call with up to three parallel questions):
+- **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
-- **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`. If the user selects `Custom`, ask a follow-up: what is the actual format (e.g. Excel, XML, JSON-array, binary)? This determines what parsing library to use in step 5.
-- **`bucket_url`** — full URL with path, e.g. `gs://my-bucket/data` or `file:///abs/path` or `s3://bucket/prefix`.
+- **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
 
-If the user does not have a bucket / files yet, stop and ask them to provide one — do **not** invent a bucket URL.
+**Free-text input** (`bucket_url` — do NOT use `AskUserQuestion` for this):
+- Ask for it as a plain-text line in the same response as the AskUserQuestion call, e.g. "Also please share your bucket URL (e.g. s3://my-bucket/data/) in your reply."
+- If the user does not have a bucket / files yet, stop and ask them to provide one — do **not** invent a bucket URL.
 
 Do **not** ask about layout (single vs multi-table). Assume **single-table** — all files matched by the glob share one schema and load into one destination table. The confirmation in step 1b is the user's chance to correct that assumption.
 
