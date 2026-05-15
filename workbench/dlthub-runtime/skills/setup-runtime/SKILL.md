@@ -68,6 +68,7 @@ dlthub workspace connect <name_or_id> --org-id <id>  # specify org
 
 - The selected workspace ID is stored in `config.toml` under `[runtime] workspace_id`
 - To **switch workspaces** (no re-login needed): `dlthub workspace connect <name_or_id>`
+- To **log out**: `dlthub logout`
 
 ## 5. Verify profile files exist
 

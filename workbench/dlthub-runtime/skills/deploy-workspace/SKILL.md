@@ -37,7 +37,10 @@ Summarize the output (which jobs created/updated/archived)
 
 ```bash
 dlthub run my_pipeline.py              # sync code + run batch job on cloud
+dlthub run my_pipeline.py -f           # sync + run, stream logs while running
+dlthub run my_pipeline.py --refresh    # sync + run with a refresh signal
 dlthub serve my_notebook.py           # sync code + run interactive job on cloud
+dlthub serve my_notebook.py -f        # sync + serve, stream logs
 dlthub local run my_pipeline.py       # run locally (uses deployment manifest, no sync)
 dlthub local serve my_notebook.py     # serve locally
 ```
