@@ -16,7 +16,7 @@
 
 - **data-exploration** — after the pipeline runs and data is loaded, when the user wants to explore, chart, or build dashboards from the loaded files
 - **data-quality** — after the pipeline runs, when the user wants column-level validation or load metrics on every run
-- **dlthub-runtime** — when the pipeline is working and the user wants to deploy or schedule it on dltHub
+- **dlthub-platform** — when the pipeline is working and the user wants to deploy or schedule it on dltHub
 - **rest-api-pipeline** → `debug-pipeline` — for complex pipeline failures (schema errors, failed jobs, normalisation issues) beyond the first-run debug table
 
 ### Incoming (to filesystem-pipeline)

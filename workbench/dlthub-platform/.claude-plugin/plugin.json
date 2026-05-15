@@ -1,5 +1,5 @@
 {
-  "name": "dlthub-runtime",
+  "name": "dlthub-platform",
   "description": "Deploy dlt workspace and pipelines to the dltHub Platform",
   "version": "0.1.2",
   "author": {

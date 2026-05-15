@@ -1,7 +1,7 @@
 ---
 name: build-notebook
 argument-hint: "[spec-path]"
-description: This skill should be used when the user asks to "build the notebook", "launch the dashboard", "generate the marimo notebook", or when an analysis_plan.md artifact exists and the user wants to assemble or regenerate the dashboard. Reads chart specs with ibis queries and altair code from analysis_plan.md, assembles a marimo Python file, validates, and launches. Do NOT use for exploring data or planning charts (use explore-data), building pipelines (use rest-api-pipeline toolkit), or deploying (use dlthub-runtime toolkit).
+description: This skill should be used when the user asks to "build the notebook", "launch the dashboard", "generate the marimo notebook", or when an analysis_plan.md artifact exists and the user wants to assemble or regenerate the dashboard. Reads chart specs with ibis queries and altair code from analysis_plan.md, assembles a marimo Python file, validates, and launches. Do NOT use for exploring data or planning charts (use explore-data), building pipelines (use rest-api-pipeline toolkit), or deploying (use dlthub-platform toolkit).
 ---
 
 # Build notebook from spec

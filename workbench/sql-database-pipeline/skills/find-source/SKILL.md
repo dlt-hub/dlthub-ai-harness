@@ -16,7 +16,7 @@ Parse `$ARGUMENTS`:
 
 **Before running any steps**, check whether the pipeline already exists in this session:
 
-- **Arriving from `dlthub-runtime`** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
+- **Arriving from `dlthub-platform`** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
   - Pipeline errors or connection issues → `debug-pipeline`
   - Schema or column changes needed → `adjust-table`
   - Adding more tables → `add-table`

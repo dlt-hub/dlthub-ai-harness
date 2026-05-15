@@ -12,12 +12,12 @@
 
 ## Handover to other toolkits
 
-### Outgoing (from dlthub-runtime)
+### Outgoing (from dlthub-platform)
 
 - **rest-api-pipeline** → `debug-pipeline` / `adjust-endpoint` (modify existing) — when the user needs to build or modify a pipeline before deploying
 - **data-exploration** → `build-notebook` — when the user wants to create marimo notebooks to deploy as interactive jobs
 
-### Incoming (to dlthub-runtime)
+### Incoming (to dlthub-platform)
 
 - From **rest-api-pipeline** (after `debug-pipeline` or hardening steps) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` and `deploy-workspace` without re-discovery
 - From **sql-database-pipeline** (after `create-sql-database-pipeline`, `debug-pipeline`, `adjust-table`, or `add-table`) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` and `deploy-workspace` without re-discovery

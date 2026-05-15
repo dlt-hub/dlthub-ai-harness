@@ -336,4 +336,4 @@ Once the pipeline is verified, suggest next steps in this order:
 1. **Add incremental loading** (`add-incremental-loading`) — load only new or modified files on each run
 2. **Explore the data** — hand off to **data-exploration** toolkit to profile and visualise the loaded tables
 3. **Add data quality checks** — hand off to **data-quality** toolkit
-4. **Deploy** — hand off to **dlthub-runtime** toolkit to schedule the pipeline on dltHub
+4. **Deploy** — hand off to **dlthub-platform** toolkit to schedule the pipeline on dltHub

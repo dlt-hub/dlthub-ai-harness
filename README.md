@@ -66,7 +66,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 | `sql-database-pipeline` | Build | `find-source` | Scaffold, debug, and validate SQL database ingestion pipelines | *"Use find-source to load tables from my Postgres database into DuckDB"* | Run `/find-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
-| `dlthub-runtime` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
+| `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlt transformation functions from existing pipelines | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 
@@ -134,7 +134,7 @@ uv run dlt ai toolkit bootstrap install
 uv run dlt ai toolkit rest-api-pipeline install
 uv run dlt ai toolkit sql-database-pipeline install
 uv run dlt ai toolkit filesystem-pipeline install
-uv run dlt ai toolkit dlthub-runtime install
+uv run dlt ai toolkit dlthub-platform install
 uv run dlt ai toolkit data-exploration install
 uv run dlt ai toolkit transformations install
 uv run dlt ai toolkit data-quality install
@@ -162,7 +162,7 @@ The workbench is also available as a Claude Code plugin via the marketplace. Sta
 /plugin install bootstrap@dlthub-ai-workbench --scope project
 /plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
 /plugin install sql-database-pipeline@dlthub-ai-workbench --scope project
-/plugin install dlthub-runtime@dlthub-ai-workbench --scope project
+/plugin install dlthub-platform@dlthub-ai-workbench --scope project
 /plugin install data-exploration@dlthub-ai-workbench --scope project
 /plugin install transformations@dlthub-ai-workbench --scope project
 /plugin install data-quality@dlthub-ai-workbench --scope project
