@@ -55,24 +55,39 @@ dlthub job runs cancel <name> [run#]         # cancel a specific run
 5. pin **dev** profile after work is done
 
 to run a single command on given profile use:
-```
-WORKSPACE__PROFILE=prod dlt pipeline my_pipeline info
+```bash
+dlthub local run my_pipeline.py --profile prod          # run under prod profile
+WORKSPACE__PROFILE=prod dlt pipeline my_pipeline info   # env var for dlt commands
 ```
 Note: you must pin the production profile for mcp server to see the change
 
 ## Other useful commands
 
 ```bash
-dlthub job trigger <selector>               # trigger jobs by selector (e.g. tag:backfill)
-dlthub job trigger <selector> --refresh     # trigger with refresh signal
-dlthub job trigger <selector> --dry-run     # preview which jobs would fire
+dlthub job trigger <selector>                        # trigger jobs by selector (e.g. tag:backfill)
+dlthub job trigger <selector> --refresh              # trigger with refresh signal
+dlthub job trigger <selector> --profile <name>       # trigger under a specific profile (e.g. prod)
+dlthub job trigger <selector> --dry-run              # preview which jobs would fire
 dlthub pipeline run <pipeline_name>         # trigger job by pipeline name
 dlthub workspace connect <name_or_id>       # switch workspace without re-login
 dlthub info                                 # workspace deployment overview
-dlthub workspace deployment list            # deployment version history
-dlthub workspace deployment info [version]  # details for a deployment version
-dlthub workspace configuration list         # configuration version history
-dlthub workspace configuration info [version]  # details for a configuration version
+dlthub workspace deployment list                        # deployment version history
+dlthub workspace deployment info [version]              # details for a deployment version
+dlthub workspace deployment sync [version] [--dry-run]  # roll back to a deployment version
+dlthub workspace configuration list                     # configuration version history
+dlthub workspace configuration info [version]           # details for a configuration version
+dlthub workspace configuration sync [version] [--dry-run]  # roll back to a configuration version
+dlthub local clean                          # clean local workspace state
+dlthub local clean --skip-data-dir          # clean but keep data directory
+```
+
+## Inspect local pipeline state
+
+```bash
+dlthub local pipeline list                        # all local pipelines
+dlthub local pipeline info [pipeline_name]        # local pipeline details
+dlthub local pipeline failed-jobs [pipeline_name] # list failed load packages
+dlthub local pipeline trace [pipeline_name]       # show last trace
 ```
 
 ## Open the web dashboard (for humans)

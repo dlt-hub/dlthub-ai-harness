@@ -32,7 +32,7 @@ Per-profile files **may** exist. You will create some of them below:
 
 ## 2. Split dev/prod secrets
 
-Use `secrets_list`, `secrets_view_redacted`, and `secrets_update_fragment` MCP tools (or `dlt ai secrets` CLI as fallback) — see (`setup-secrets`) skill for details.
+Use `secrets_list`, `secrets_view_redacted`, and `secrets_update_fragment` MCP tools (or `dlthub ai secrets` CLI as fallback) — see (`setup-secrets`) skill for details.
 
 1. Use `secrets_list` to see all secret files. Then `secrets_view_redacted` (no path) for the unified merged view, or with `path` to inspect individual files.
 2. If user has put dev-only settings in workspace-scoped toml files, help them split: move dev-only settings into a `dev` profile file via `secrets_update_fragment` with `path=".dlt/dev.secrets.toml"`.
