@@ -14,6 +14,6 @@
 
 # Switch profile
 * set `WORKSPACE__PROFILE` env variable when running Python commands to temporarily switch profile
-* pin profile with `dlt profile <name> pin` to change profile in this session. **require to switch mcp server**
+* pin profile with `dlthub local profile use <name>` to change profile in this session. **require to switch mcp server**
 
 **Reference** https://dlthub.com/docs/hub/core-concepts/profiles-dlthub.md

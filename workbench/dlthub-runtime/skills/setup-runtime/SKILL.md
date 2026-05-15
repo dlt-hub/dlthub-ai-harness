@@ -25,11 +25,15 @@ dltHub Platform uses `pyproject.toml` to install dependencies remotely.
 ls .dlt/.workspace
 ```
 
-This file enables profiles and the runtime CLI. If missing:
+This file enables profiles and the runtime CLI. If missing, use `dlthub init` (preferred):
 
 ```bash
-touch .dlt/.workspace
+dlthub init                    # creates .dlt/.workspace, prompts for workspace name
+dlthub init --name <workspace> # skip prompt
+dlthub init --dry-run          # preview only
 ```
+
+Or manually as fallback: `touch .dlt/.workspace`
 
 ## 3. Check `dlt[hub]` dependency
 
@@ -42,7 +46,7 @@ uv pip show dlt
 If not installed or missing the `hub` extra:
 
 ```bash
-uv add "dlt[workspace,hub]"
+uv add "dlt[hub]"
 ```
 
 If adding `dlt` to `pyproject.toml`, pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions.
@@ -50,14 +54,20 @@ If adding `dlt` to `pyproject.toml`, pin the exact installed version (`==`) — 
 ## 4. Login to dltHub Platform
 
 ```bash
-dlt runtime login
+dlthub login
 ```
 
 - Opens a device-code OAuth flow (user visits URL + enters code in browser)
-- After auth, CLI prompts to select or create a remote workspace
-- Use `dlt runtime login --workspace <name_or_id>` to skip the interactive prompt
+- After login, connect to a workspace:
+
+```bash
+dlthub workspace connect                          # interactive prompt to select or create
+dlthub workspace connect <name_or_id>             # skip prompt
+dlthub workspace connect <name_or_id> --org-id <id>  # specify org
+```
+
 - The selected workspace ID is stored in `config.toml` under `[runtime] workspace_id`
-- To **switch workspaces**: `dlt runtime workspace switch <name_or_id>` (no re-login needed)
+- To **switch workspaces** (no re-login needed): `dlthub workspace connect <name_or_id>`
 
 ## 5. Verify profile files exist
 

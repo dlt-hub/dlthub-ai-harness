@@ -87,7 +87,7 @@ Use `secrets_view_redacted` to see the final unified view across all workspace s
 **Reference**: [deployment-module.md](deployment-module.md)
 **Full Documentation** https://raw.githubusercontent.com/dlt-hub/runtime-starter-pack/refs/heads/main/REFERENCE.md
 
-- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlt runtime launch <file>` directly instead (see Chapter 1 in the starter pack)
+- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlthub run <file>` directly instead (see Chapter 1 in the starter pack)
 - This step is **mandatory** for workspaces with transformations, multiple pipelines, scheduled jobs, or followup triggers
 - This step will be repeated when more notebooks or pipelines are added to the workspace
 
@@ -132,8 +132,8 @@ import my_notebook
 __all__ = ["ingest_data", "my_notebook"]
 ```
 
-5. **Verify**: `dlt runtime deploy --dry-run` -- shows what would be created/updated/archived
-6. **Debug**: `dlt -v runtime deploy --dry-run --show-manifest` -- dumps full manifest as YAML
+5. **Verify**: `dlthub deploy --dry-run` -- shows what would be created/updated/archived
+6. **Debug**: `dlthub deploy --show-manifest` -- dumps full manifest as YAML
 
 ### Job references
 
@@ -141,7 +141,7 @@ Every deployed job gets a `job_ref` in `jobs.<module>.<function>` form:
 - `from my_pipeline import ingest_data` -> `jobs.my_pipeline.ingest_data`
 - `import my_notebook` -> `jobs.my_notebook`
 
-**Job names**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves automatically.
+**Job names**: bare names work when unambiguous. `dlthub run ingest_data` resolves automatically.
 
 **STOP** before making changes. Show your **plan** and get approval from the user.
 

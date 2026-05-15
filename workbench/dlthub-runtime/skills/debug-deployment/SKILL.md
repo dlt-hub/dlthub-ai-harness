@@ -8,39 +8,41 @@ description: Debug a failed or misbehaving dltHub Platform deployment. Use when 
 
 ## Check job status
 
-Commands accept job names, script paths, or **selectors** (fnmatch patterns):
+Commands accept job names or **selectors** (fnmatch patterns):
 
 ```bash
-dlt runtime job list                              # all jobs
-dlt runtime job batch list                        # only batch jobs
-dlt runtime job "tag:ingest" list                 # jobs tagged "ingest"
-dlt runtime job "schedule:*" list                 # jobs with a schedule trigger
-dlt runtime job <name> info                       # details for one job
-dlt runtime job-run <name_or_selector> list       # runs for matching jobs
-dlt runtime job-run <name> [run#] info            # specific run details
+dlthub job list                              # all jobs
+dlthub job list batch                        # only batch jobs
+dlthub job list "tag:ingest"                 # jobs tagged "ingest"
+dlthub job list "schedule:*"                 # jobs with a schedule trigger
+dlthub job info <name>                       # details for one job
+dlthub job runs list [name_or_selector]      # runs for matching jobs
+dlthub job runs list [name_or_selector] --running  # only active runs
+dlthub job runs info <name> [run#]           # specific run details
 ```
 
 ## Debug job definitions
 
 ```bash
-dlt runtime deploy --dry-run                      # preview manifest reconciliation
-dlt -v runtime deploy --dry-run --show-manifest   # dump full manifest as YAML
+dlthub deploy --dry-run                      # preview manifest reconciliation
+dlthub deploy --show-manifest                # dump full manifest as YAML
 ```
 
 ## View logs
 
 ```bash
-dlt runtime logs <name_or_selector>               # latest run
-dlt runtime logs <name> <run#>                    # specific run
-dlt runtime logs <name> -f                        # stream in real-time
+dlthub job logs <name_or_selector>           # latest run
+dlthub job runs logs <name> [run#]           # specific run
+dlthub job logs <name> -f                    # stream in real-time
 ```
 
 ## Cancel running jobs
 
 ```bash
-dlt runtime cancel <name>                         # cancel active runs for one job
-dlt runtime cancel "tag:backfill"                 # cancel by selector
-dlt runtime cancel batch --dry-run                # preview what would be cancelled
+dlthub job cancel <name>                     # cancel active runs for one job
+dlthub job cancel "tag:backfill"             # cancel by selector
+dlthub job cancel batch --dry-run            # preview what would be cancelled
+dlthub job runs cancel <name> [run#]         # cancel a specific run
 ```
 
 ## Access production data (read only)
@@ -61,27 +63,31 @@ Note: you must pin the production profile for mcp server to see the change
 ## Other useful commands
 
 ```bash
-dlt runtime trigger <selector>               # trigger jobs by selector without syncing (e.g. tag:backfill)
-dlt runtime trigger <selector> --refresh     # trigger with refresh signal
-dlt runtime trigger <selector> --dry-run     # preview which jobs would fire
-dlt runtime run-pipeline <pipeline_name>     # trigger job by pipeline name
-dlt runtime workspace switch <name_or_id>    # switch workspace without re-login
-dlt runtime info                             # workspace deployment overview
+dlthub job trigger <selector>               # trigger jobs by selector (e.g. tag:backfill)
+dlthub job trigger <selector> --refresh     # trigger with refresh signal
+dlthub job trigger <selector> --dry-run     # preview which jobs would fire
+dlthub pipeline run <pipeline_name>         # trigger job by pipeline name
+dlthub workspace connect <name_or_id>       # switch workspace without re-login
+dlthub info                                 # workspace deployment overview
+dlthub workspace deployment list            # deployment version history
+dlthub workspace deployment info [version]  # details for a deployment version
+dlthub workspace configuration list         # configuration version history
+dlthub workspace configuration info [version]  # details for a configuration version
 ```
 
 ## Open the web dashboard (for humans)
 
 ```bash
-dlt runtime dashboard
+dlthub show
 ```
 
-Opens a hosted notebook on dltHub.
+Opens the dltHub web UI.
 
 ## Quick diagnosis
 
 If a job failed:
-1. `dlt runtime job-run <name> [run#] info` -- check exit status and timing
-2. `dlt runtime logs <name> [run#]` -- read the error output
+1. `dlthub job runs info <name> [run#]` -- check exit status and timing
+2. `dlthub job runs logs <name> [run#]` -- read the error output
 3. Common causes:
    - **Missing dependencies** in `pyproject.toml` -- all packages must be declared, not just locally installed
    - **Secrets not configured for `prod` profile** -- runtime uses `prod` profile, ask the user to check `.dlt/prod.secrets.toml` — NEVER access it directly, only the user may modify it
@@ -89,4 +95,4 @@ If a job failed:
    - **`dev_mode=True` left in** -- drops and recreates dataset on every run
    - **Wrong destination credentials** -- prod profile may point to a different destination than dev
    - **Job timeout** -- default is 120 minutes; override with `execute={"timeout": "6h"}` in the decorator
-4. After fixing, relaunch with `dlt runtime launch <name_or_file>`
+4. After fixing, relaunch with `dlthub run <name_or_file>`
