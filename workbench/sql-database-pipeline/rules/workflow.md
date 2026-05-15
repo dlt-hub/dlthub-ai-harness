@@ -12,7 +12,7 @@
 
 ## Extend and harden
 
-1. **Deploy to runtime** — hand off to **dlthub-platform** to deploy and run the pipeline on dltHub; can be done with a working pipeline
+1. **Deploy to dltHub Platform** — hand off to **dlthub-platform** to deploy and run the pipeline on dltHub; can be done with a working pipeline
 2. **Adjust table** (`adjust-table`) — remove dev limits, add incremental loading with a cursor column, configure merge keys, fix column types and schema
 3. **Add tables** (`add-table`) — add more tables or views from the same database into the pipeline
 4. **Transform before loading** — use `query_adapter_callback` to filter rows at SQL level, `table_adapter_callback` to modify schema, or `add_map` to transform rows after extraction; see `create-sql-database-pipeline` — "Add transformation callbacks" section
