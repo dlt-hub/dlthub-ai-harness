@@ -16,11 +16,14 @@
 
 - From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name, destination, and dataset are already known. `annotate-sources` should skip `list_pipelines` discovery and go straight to schema extraction on the known pipeline. Business context may already be available from the ingestion session.
 - From **data-exploration** (after exploring raw pipeline data) — pipeline name, dataset, and table structure are already understood. The user has decided the raw tables need proper modeling before further analysis. `annotate-sources` can skip discovery and lean on the already-profiled table structure; natural key candidates and data quality observations from the exploration session should carry over — but always re-confirmed.
+- From **dlthub-runtime** (during `prepare-deployment` or `deploy-workspace`) — when the prod destination differs from dev and SQL dialect errors surface. Go to `debug-transformation` section 1 (static dialect check) with the dev and prod destination types already known.
 
 ## Handover to other toolkits
 
 When the user's needs go beyond this toolkit, hand over to:
 
-- **rest-api-pipeline** — at `annotate-sources` step 1, when a stated source has no local dlt pipeline yet; or at `create-transformation` step 8, when the pipeline fails with a state/infrastructure error (`debug-pipeline` skill)
+- **rest-api-pipeline**
+  - At `annotate-sources` step 1, when a stated source has no local dlt pipeline yet
+  - At `create-transformation` step 8 (Run), when the run fails with a pipeline state or infrastructure error — use the `debug-pipeline` skill
 - **data-exploration** — after `create-transformation`, when the user wants to explore, visualise, or validate the CDM output interactively
 - **dlthub-runtime** — when the transformation is working and the user wants to deploy or schedule it on the dltHub platform
