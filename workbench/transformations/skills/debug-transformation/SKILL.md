@@ -1,11 +1,11 @@
 ---
 name: debug-transformation
-description: Debug dlt transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, or pipeline recovery is needed after a failed run.
+description: Debug dlthub transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, or pipeline recovery is needed after a failed run.
 ---
 
 # Debug transformation
 
-Diagnose and fix dlt transformation failures. Two main failure classes: **SQL dialect incompatibility** (transformation works on dev destination, fails on production) and **pipeline state errors** (stale packages, schema drift, failed jobs).
+Diagnose and fix dlthub transformation failures. Two main failure classes: **SQL dialect incompatibility** (transformation works on dev destination, fails on production) and **pipeline state errors** (stale packages, schema drift, failed jobs).
 
 ## When to use this skill
 
@@ -148,11 +148,11 @@ References:
 
 ## 3. Missing columns and schema issues
 
-dlt silently drops columns it cannot type-infer — no error, no warning. Two root causes:
+dlthub silently drops columns it cannot type-infer — no error, no warning. Two root causes:
 
 ### 3a. NULL-only columns
 
-When a column is NULL-only on the first run and no `columns=` hint was provided, dlt strips the column from the schema. Subsequent runs write data but the column is absent.
+When a column is NULL-only on the first run and no `columns=` hint was provided, dlthub strips the column from the schema. Subsequent runs write data but the column is absent.
 
 ### 3b. Computed / derived columns
 

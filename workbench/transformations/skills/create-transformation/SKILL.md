@@ -212,7 +212,7 @@ When to add `columns=`:
 - Any cast from string to typed value where source may be empty
 - Any column that was NULL-only in a prior run
 
-Omitting `columns=` causes **silent data loss** — dlt strips the column from the outer SELECT if its schema entry has no `data_type`.
+Omitting `columns=` causes **silent data loss** — dlthub strips the column from the outer SELECT if its schema entry has no `data_type`.
 
 **Do NOT use `execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
 
@@ -309,4 +309,4 @@ Transformation validated successfully. What would you like to do next?
 
 ## Output
 
-- `transformations/<dataset_name>_to_cdm.py` — dlt transformation script
+- `transformations/<dataset_name>_to_cdm.py` — dlthub transformation script
