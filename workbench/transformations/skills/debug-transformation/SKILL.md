@@ -1,6 +1,6 @@
 ---
 name: debug-transformation
-description: Debug dlthub transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, or pipeline recovery is needed after a failed run.
+description: Debug dlthub transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, pipeline recovery is needed after a failed run, or columns are silently dropped from output.
 ---
 
 # Debug transformation
@@ -144,7 +144,8 @@ dlt pipeline <pipeline_name> drop --drop-all   # only with explicit user confirm
 
 References:
 - dlt CLI reference: https://dlthub.com/docs/reference/command-line-interface
-- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
+- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop 
+Link back here if the debug steps extend to dialect issues.  
 
 ## 3. Missing columns and schema issues
 
@@ -206,17 +207,4 @@ Reference: https://dlthub.com/docs/hub/features/transformations
 
 ## 4. Validate transformation output
 
-After a successful run, verify the transformation produced the expected result before treating it as done. Use the MCP tools:
-
-- `list_tables` — confirm all CDM tables are present in the target dataset
-- `get_row_counts` — verify counts are non-zero and plausible relative to source
-- `get_table_schema` — confirm column names and types match the CDM spec
-- `preview_table` — inspect a sample of rows for unexpected NULLs, wrong grain, or type mismatches
-
-**What to check:**
-- All expected CDM tables exist (no silent skip due to empty resource)
-- Row counts are non-zero and plausible relative to source table sizes
-- Surrogate key columns are populated (not all NULL)
-- Foreign keys in fact tables resolve to values present in dimension tables
-- No unexpected duplicate rows (grain violation)
-- Computed columns (`md5`, date buckets, etc.) are present and non-NULL where expected
+After fixing an issue and re-running, validate the output using the same checks as the happy path — see **`create-transformation` Step 9**.
