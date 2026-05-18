@@ -54,9 +54,9 @@ Walk the user through the results:
 - **ERROR** — the SQL will likely fail on the target destination; rewrite to ANSI SQL (see section 1b)
 - **skipped** — SQL is dynamically constructed and can't be statically analysed; inspect those functions manually
 
-This check catches the most common issues, but does not replace inspecting `Relation.sql()` output if deployment still fails after fixes.
+This check catches the most common issues, but does not replace inspecting `Relation.to_sql()` output if deployment still fails after fixes:
 
-If either dlt destination is not covered by SQLGlot, the script stops and prints the available SQLGlot dialects. In that case, inspect dlt's actual `Relation.sql()` output or run a target-destination test pipeline instead. SQLGlot supports 31+ dialects — see https://sqlglot.com/sqlglot.html for dialect names.
+If either dlt destination is not covered by SQLGlot, the script stops and prints the available SQLGlot dialects. In that case, inspect dlt's actual `Relation.to_sql()` output or run a target-destination test pipeline instead. SQLGlot supports 31+ dialects — see https://sqlglot.com/sqlglot.html for dialect names.
 
 ### 1b. Common dialect-specific patterns to fix
 
