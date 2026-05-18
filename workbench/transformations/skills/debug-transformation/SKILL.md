@@ -144,8 +144,7 @@ dlt pipeline <pipeline_name> drop --drop-all   # only with explicit user confirm
 
 References:
 - dlt CLI reference: https://dlthub.com/docs/reference/command-line-interface
-- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop 
-Link back here if the debug steps extend to dialect issues.  
+- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
 
 ## 3. Missing columns and schema issues
 
