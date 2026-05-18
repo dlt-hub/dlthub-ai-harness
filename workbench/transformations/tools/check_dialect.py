@@ -3,7 +3,6 @@
 # Usage: uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py <transform_file.py> --read <dev_dialect> --write <prod_dialect>
 import argparse
 import ast
-import re
 import sys
 from pathlib import Path
 
@@ -31,12 +30,13 @@ def _is_transformation_decorator(node: ast.expr) -> bool:
     return isinstance(node, ast.Attribute) and node.attr == "transformation"
 
 
-def extract_queries(transform_file: Path) -> dict[str, str]:
+def extract_queries(transform_file: Path) -> tuple[dict[str, str], list[str]]:
     """Extract SQL from @dlt.hub.transformation functions via AST.
 
     Handles both inline literals (dataset("SELECT ...")) and local variable
     assignments (sql = "SELECT ..."; dataset(sql)). Skips f-strings and
-    dynamically constructed SQL — those are printed as warnings.
+    dynamically constructed SQL.
+    Returns (queries, skipped) where skipped is a list of function names.
     """
     tree = ast.parse(transform_file.read_text())
     queries = {}
@@ -76,15 +76,14 @@ def extract_queries(transform_file: Path) -> dict[str, str]:
                     break
         if not found:
             skipped.append(node.name)
-    if skipped:
-        print(f"WARNING: skipped {skipped} — SQL is not a static string in dataset(); inspect manually")
-    return queries
+    return queries, skipped
 
 
 parser = argparse.ArgumentParser(description="Check SQL dialect compatibility for dlt transformations")
 parser.add_argument("transform_file", type=Path, help="Path to the transformation Python file")
 parser.add_argument("--read", required=True, metavar="DIALECT", help="Dev/source destination type (e.g. duckdb, motherduck)")
 parser.add_argument("--write", required=True, metavar="DIALECT", help="Prod/target destination type (e.g. bigquery, snowflake, postgres)")
+parser.add_argument("--strict", action="store_true", help="Treat warnings as errors (exit non-zero on any warning)")
 args = parser.parse_args()
 
 if not args.transform_file.exists():
@@ -104,10 +103,12 @@ for label, raw, resolved in [
         print(f"Available SQLGlot dialects: {', '.join(available)}")
         sys.exit(1)
 
-QUERIES = extract_queries(args.transform_file)
+QUERIES, SKIPPED = extract_queries(args.transform_file)
+if SKIPPED:
+    print(f"WARNING: skipped {SKIPPED} — SQL is not a static string in dataset(); inspect manually")
 if not QUERIES:
     print(f"No @dlt.hub.transformation functions with extractable SQL found in {args.transform_file}")
-    sys.exit(0)
+    sys.exit(1 if SKIPPED else 0)
 
 print(f"Dialects: {READ_DIALECT} -> {WRITE_DIALECT}")
 print(f"Checking {len(QUERIES)} transformation(s) from {args.transform_file}\n")
@@ -119,6 +120,7 @@ for name, sql in QUERIES.items():
     query_warnings = []
     query_errors = []
 
+    parsed = None
     try:
         parsed = sqlglot.parse_one(sql, read=READ_DIALECT)
         if not isinstance(parsed, exp.Select):
@@ -128,10 +130,15 @@ for name, sql in QUERIES.items():
     except Exception as e:
         query_errors.append(f"parse failed for {READ_DIALECT}: {e}")
 
-    for identifier in sorted(set(re.findall(r'"([^"\n]+)"', sql))):
-        query_warnings.append(
-            f'double-quoted identifier "{identifier}"; verify destination quoting in {WRITE_DIALECT}'
-        )
+    if parsed is not None:
+        for identifier in sorted(set(
+            node.name
+            for node in parsed.find_all(exp.Identifier)
+            if node.quoted
+        )):
+            query_warnings.append(
+                f'double-quoted identifier "{identifier}"; verify destination quoting in {WRITE_DIALECT}'
+            )
 
     try:
         sqlglot.transpile(
@@ -158,4 +165,5 @@ for name, sql in QUERIES.items():
 print("\nSUMMARY")
 print(f"  warnings: {warnings}")
 print(f"  errors: {errors}")
-sys.exit(1 if warnings or errors else 0)
+print(f"  skipped: {len(SKIPPED)}")
+sys.exit(1 if errors or SKIPPED or (args.strict and warnings) else 0)
