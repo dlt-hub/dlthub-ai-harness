@@ -15,6 +15,7 @@ workbench/
     .mcp.json
     .claudeignore
   rest-api-pipeline/        # feature toolkit (depends on init)
+  sql-database-pipeline/    # feature toolkit (depends on init)
     .claude-plugin/
       plugin.json           # Claude plugin manifest
       toolkit.json          # dlt-specific metadata (dependencies, listed)
@@ -194,6 +195,18 @@ rest-api-pipeline:
   workflow_entry_skill: find-source
   files:
     .claude/rules/rest-api-pipeline-workflow.md:
+      sha3_256: "abc123..."
+  mcp_servers:
+    - dlt-workspace-mcp
+sql-database-pipeline:
+  version: "0.1.0"
+  installed_at: "2026-02-28T10:30:00+00:00"
+  agent: claude
+  description: "Build SQL database pipelines with dlt"
+  tags: [dlt, sql, database, data-pipeline, python]
+  workflow_entry_skill: find-source
+  files:
+    .claude/rules/sql-database-pipeline-workflow.md:
       sha3_256: "abc123..."
   mcp_servers:
     - dlt-workspace-mcp
