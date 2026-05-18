@@ -30,21 +30,20 @@ license.
 
 Without limiting the foregoing, the following are examples of permitted use:
 
-1. Using toolkits within dltHub AI Workbench to develop, build, test, and deploy
-   data pipelines on dltHub Platform.
-2. Copying and modifying dltHub AI Workbench toolkit code for use exclusively with
+1. Using toolkits and skills provided by dltHub to develop, build, test,
+   and deploy data pipelines on dltHub Platform.
+2. Copying and modifying toolkit code for use exclusively with dltHub Services and on
    dltHub Services.
 3. Using the Licensed Materials to generate code intended for deployment on dltHub
    Platform.
 
 The following are examples of uses that are NOT permitted under this license:
 
-1. Using dltHub AI Workbench toolkits to generate code or pipelines for deployment
-   on a third-party runtime platform or orchestration service that is not part of
-   dltHub Services.
+1. Using toolkits and skills provided by dltHub to generate code or pipelines for 
+   deployment on a third-party runtime platform or orchestration service that is not
+   part of dltHub Services.
 2. Modifying toolkits to replace, bypass, or substitute components that are part of
-   the dltHub services in order to operate within a third-party development
-   environment.
+   dltHub services in order to operate within a third-party development environment.
 3. Incorporating the Licensed Materials or Derivative Works into any product or
    service that competes with the Licensed Materials, or any other dltHub Services.
 4. Providing the Licensed Materials to third parties as part of a hosted or managed
