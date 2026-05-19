@@ -4,7 +4,7 @@
 
 ![AI Workbench Components](images/ai_workbench_components.png)
 
-The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlt ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
+The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlthub ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
 **Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code.
 
@@ -33,7 +33,7 @@ The workbench gives your coding assistant **toolkits** — that contain a struct
 
 A **Toolkit** contains skills, commands, rules, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP. 
 
-All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlt ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
+All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
 
 ![AI Workbench](images/ai_workbench.png)
 
@@ -53,7 +53,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 Two MCP servers give the agent structured context throughout the workflow to avoid the need for manual copy-pasting.
 
-**dlt-workspace-mcp** (local, installed by `dlt ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
+**dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
 
 **[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
 
@@ -61,7 +61,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 | Toolkit | Phase | Workflow entry | What it does | Example prompts | Availability |
 |---------|-------|---------------|-------------|---------------|--------------|
-| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlt ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
+| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-source` | Scaffold, debug, and validate SQL database ingestion pipelines | *"Use find-source to load tables from my Postgres database into DuckDB"* | Run `/find-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
@@ -70,12 +70,12 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlt transformation functions from existing pipelines | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Join early access](https://dlthub.com/solutions/for-small-data-teams) |
 
-> `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlt ai init` or as a separate plugin via the Claude marketplace.
+> `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlthub ai init` or as a separate plugin via the Claude marketplace.
 
 
 ## Getting started
 
-> **Note:** All `dlt ai` commands below use `uv run dlt ...` syntax. If you have `dlt` installed globally or in an active virtual environment, you can omit `uv run` and call `dlt` directly. We recommend using uv.
+> **Note:** All `dlthub ai` commands below use `uv run dlt ...` syntax. If you have `dlt` installed globally or in an active virtual environment, you can omit `uv run` and call `dlt` directly. We recommend using uv.
 
 ### Installation
 
@@ -90,13 +90,13 @@ uv pip install --upgrade "dlt[workspace]"
 uv pip install "dlt[hub]"
 
 # Set up your workspace (auto-detects your coding assistant)
-uv run dlt ai init
+uv run dlthub ai init
 
 # If multiple coding assistants are detected, specify one explicitly:
-uv run dlt ai init --agent <agent>  # <agent>: claude | cursor | codex
+uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 ```
 
-`dlt ai init` detects your coding assistant from environment variables and config files, then installs skills, rules, and the MCP server in the correct locations for that tool.
+`dlthub ai init` detects your coding assistant from environment variables and config files, then installs skills, rules, and the MCP server in the correct locations for that tool.
 
 > **Claude Code note:** Add the following to your `CLAUDE.md` to enforce safe credential handling:
 > ```markdown
@@ -124,20 +124,20 @@ uv run dlt ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 
 ```bash
-uv run dlt ai toolkit list
+uv run dlthub ai toolkit list
 ```
 
 Install toolkits (if you are not sure which toolkits to install we recommend installing all of them):
 
 ```bash
-uv run dlt ai toolkit bootstrap install
-uv run dlt ai toolkit rest-api-pipeline install
-uv run dlt ai toolkit sql-database-pipeline install
-uv run dlt ai toolkit filesystem-pipeline install
-uv run dlt ai toolkit dlthub-platform install
-uv run dlt ai toolkit data-exploration install
-uv run dlt ai toolkit transformations install
-uv run dlt ai toolkit data-quality install
+uv run dlthub ai toolkit bootstrap install
+uv run dlthub ai toolkit rest-api-pipeline install
+uv run dlthub ai toolkit sql-database-pipeline install
+uv run dlthub ai toolkit filesystem-pipeline install
+uv run dlthub ai toolkit dlthub-platform install
+uv run dlthub ai toolkit data-exploration install
+uv run dlthub ai toolkit transformations install
+uv run dlthub ai toolkit data-quality install
 ```
 
 ### Starting the workbench
@@ -152,7 +152,7 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. We recommend using the `dlt ai` CLI above for the most up-to-date experience.
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. We recommend using the `dlthub ai` CLI above for the most up-to-date experience.
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 
@@ -173,34 +173,34 @@ Start a new session — plugins take effect only after restarting Claude Code: `
 > **Resuming a session?** Plugins installed mid-session are not active until you start a new one.
 
 
-## The `dlt ai` CLI
+## The `dlthub ai` CLI
 
-The `dlt ai` subcommand is the bridge between the workbench and your coding assistant. `dlt ai init` installs project rules, a secrets management skill, appropriate ignore files, and configures the dlt MCP server for your agent. `dlt ai toolkit install` copies additional toolkit components (skills, rules, commands) into the right locations for your assistant.
+The `dlthub ai` subcommand is the bridge between the workbench and your coding assistant. `dlthub ai init` installs project rules, a secrets management skill, appropriate ignore files, and configures the dlt MCP server for your agent. `dlthub ai toolkit install` copies additional toolkit components (skills, rules, commands) into the right locations for your assistant.
 
 **Toolkit management** — copies skills, rules, commands, and MCP config from the workbench into your project's agent config directory (`.claude/`, `.cursor/`, `.agents/`, etc.):
 
 ```bash
-uv run dlt ai status                        # show installed agent, dlt version, active toolkits
-uv run dlt ai toolkit list                  # list available toolkits from the workbench
-uv run dlt ai toolkit <name> info           # show a toolkit's skills, commands, and workflow
-uv run dlt ai toolkit <name> install        # install a toolkit for the detected agent
-uv run dlt ai toolkit <name> install --agent <agent>  # <agent>: claude | cursor | codex  - override agent detection
+uv run dlthub ai status                        # show installed agent, dlt version, active toolkits
+uv run dlthub ai toolkit list                  # list available toolkits from the workbench
+uv run dlthub ai toolkit <name> info           # show a toolkit's skills, commands, and workflow
+uv run dlthub ai toolkit <name> install        # install a toolkit for the detected agent
+uv run dlthub ai toolkit <name> install --agent <agent>  # <agent>: claude | cursor | codex  - override agent detection
 ```
 
 **Secrets management** — dlt stores credentials in TOML files; these commands let the assistant inspect and update them without reading raw secret values:
 
 ```bash
-uv run dlt ai secrets list                  # show which secret files exist and where
-uv run dlt ai secrets view-redacted         # print secrets with values masked
-uv run dlt ai secrets update-fragment --path <file> '<toml>'  # merge a TOML snippet into a secrets file
+uv run dlthub ai secrets list                  # show which secret files exist and where
+uv run dlthub ai secrets view-redacted         # print secrets with values masked
+uv run dlthub ai secrets update-fragment --path <file> '<toml>'  # merge a TOML snippet into a secrets file
 ```
 
 **MCP server** — starts a local server that exposes your dlt workspace (pipelines, schemas, tables, secrets) as tools the assistant can call:
 
 ```bash
-uv run dlt ai mcp run                       # run in SSE mode (default)
-uv run dlt ai mcp run --stdio               # run in stdio mode (for assistants that require it)
-uv run dlt ai mcp install                   # register the MCP server in the agent's config
+uv run dlthub ai mcp run                       # run in SSE mode (default)
+uv run dlthub ai mcp run --stdio               # run in stdio mode (for assistants that require it)
+uv run dlthub ai mcp install                   # register the MCP server in the agent's config
 ```
 
 The MCP server allows the assistant to answer questions like "what tables were loaded?" or "show me the schema" without you having to copy-paste output into the chat.
