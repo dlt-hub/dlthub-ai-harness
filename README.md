@@ -80,13 +80,13 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 The fastest way to get started is [`dlthub-start`](https://pypi.org/project/dlthub-start/) — no prior setup needed:
 
 ```bash
-uvx dlthub-start my-project
+uvx dlthub-start@latest my-workspace
 ```
 
 This interactive prompt scaffolds a ready-to-run workspace: picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done:
 
 ```bash
-cd my-project
+cd my-workspace
 uv run dlthub run load_breweries   # run the example pipeline on dltHub
 uv run dlthub show                 # open the dltHub dashboard
 ```
