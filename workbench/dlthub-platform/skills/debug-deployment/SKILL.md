@@ -96,7 +96,7 @@ dlthub local pipeline trace [pipeline_name]       # show last trace
 dlthub show
 ```
 
-Opens the dltHub web UI.
+Prints the dltHub web UI URL. It should open automatically, but if the user says it does not, ask them to open it themselves.
 
 ## Quick diagnosis
 

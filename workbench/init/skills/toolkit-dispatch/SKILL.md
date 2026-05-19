@@ -17,14 +17,14 @@ Toolkits marked `(installed: <version>)` are ready to use. Others need installin
 
 ## Step 2: For installed toolkits, get skill details
 
-Use `toolkit_info` MCP tool (or `dlt --non-interactive ai toolkit <name> info` CLI) on each **installed** toolkit.
+Use `toolkit_info` MCP tool (or `dlt ai toolkit info <name>` CLI) on each **installed** toolkit.
 This returns skill names, descriptions (with "Use when..." patterns), and workflow rules — use these to match user intent.
 
 ## Step 3: Route by intent
 
 Match the user's request to the best skill using descriptions from step 2. If no installed toolkit matches, suggest installing one.
 
-**Install command:** `dlt --non-interactive ai toolkit <name> install`
+**Install command:** `dlt ai toolkit install <name>`
 
 ## Step 4. Confirm & enable mcp
 ```

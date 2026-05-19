@@ -67,7 +67,9 @@ Recommend to user switching to a named destination:
 
 **STOP** before making changes. Show your **plan** and get approval from the user.
 
-### 3c. Verify production destination access
+### 3c. Verify production destination access (optional)
+
+Skip this step if prod credentials were already configured and verified before this session. Run it when setting up prod credentials for the first time or after changing them.
 
 Read [check_destination.py](check_destination.py) and run it to verify credentials work:
 ```
