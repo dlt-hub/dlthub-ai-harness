@@ -130,14 +130,14 @@ uv run dlthub ai toolkit list
 Install toolkits (if you are not sure which toolkits to install we recommend installing all of them):
 
 ```bash
-uv run dlthub ai toolkit bootstrap install
-uv run dlthub ai toolkit rest-api-pipeline install
-uv run dlthub ai toolkit sql-database-pipeline install
-uv run dlthub ai toolkit filesystem-pipeline install
-uv run dlthub ai toolkit dlthub-platform install
-uv run dlthub ai toolkit data-exploration install
-uv run dlthub ai toolkit transformations install
-uv run dlthub ai toolkit data-quality install
+uv run dlthub ai toolkit install bootstrap
+uv run dlthub ai toolkit install rest-api-pipeline
+uv run dlthub ai toolkit install sql-database-pipeline
+uv run dlthub ai toolkit install filesystem-pipeline
+uv run dlthub ai toolkit install dlthub-platform
+uv run dlthub ai toolkit install data-exploration
+uv run dlthub ai toolkit install transformations
+uv run dlthub ai toolkit install data-quality
 ```
 
 ### Starting the workbench
@@ -182,9 +182,9 @@ The `dlthub ai` subcommand is the bridge between the workbench and your coding a
 ```bash
 uv run dlthub ai status                        # show installed agent, dlt version, active toolkits
 uv run dlthub ai toolkit list                  # list available toolkits from the workbench
-uv run dlthub ai toolkit <name> info           # show a toolkit's skills, commands, and workflow
-uv run dlthub ai toolkit <name> install        # install a toolkit for the detected agent
-uv run dlthub ai toolkit <name> install --agent <agent>  # <agent>: claude | cursor | codex  - override agent detection
+uv run dlthub ai toolkit info <name>           # show a toolkit's skills, commands, and workflow
+uv run dlthub ai toolkit install <name>        # install a toolkit for the detected agent
+uv run dlthub ai toolkit install <name> --agent <agent>  # <agent>: claude | cursor | codex  - override agent detection
 ```
 
 **Secrets management** — dlt stores credentials in TOML files; these commands let the assistant inspect and update them without reading raw secret values:
