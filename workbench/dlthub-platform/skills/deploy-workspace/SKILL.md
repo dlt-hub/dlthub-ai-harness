@@ -115,9 +115,11 @@ See [advanced-patterns.md](advanced-patterns.md) for full examples of each patte
 Share an interactive job (notebook or dashboard) publicly:
 
 ```bash
-dlthub job publish path/to/notebook.py    # generate a public URL
-dlthub job unpublish path/to/notebook.py  # revoke public access
+dlthub job publish <job_name>    # generate a public URL
+dlthub job unpublish <job_name>  # revoke public access
 ```
+
+> **Note:** the argument is a job name (e.g. `my_notebook`), not a file path. Drop any `.py` extension — passing `my_notebook.py` will fail because the CLI looks for a job literally named `my_notebook.py`.
 
 ## Important
 
