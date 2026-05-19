@@ -98,8 +98,11 @@ To add the AI workbench to an existing project:
 > **Note:** All `dlthub ai` commands below use `uv run dlthub ...` syntax. If you have `dlthub` installed globally or in an active virtual environment, you can omit `uv run` and call `dlthub` directly. We recommend using uv.
 
 ```bash
-# If you intend to use the transformations toolkit, also install:
-uv pip install "dlt[hub]"
+# Initialize the environment 
+uv init 
+
+# Install dlthub
+uv add "dlt[hub]"
 
 # Set up your workspace (auto-detects your coding assistant)
 uv run dlthub ai init
