@@ -73,10 +73,10 @@ dlthub workspace connect <name_or_id>       # switch workspace without re-login
 dlthub info                                 # workspace deployment overview
 dlthub workspace deployment list                        # deployment version history
 dlthub workspace deployment info [version]              # details for a deployment version
-dlthub workspace deployment sync [version] [--dry-run]  # roll back to a deployment version
+dlthub workspace deployment sync [version] [--dry-run]  # sync local files to remote (creates new deployment)
 dlthub workspace configuration list                     # configuration version history
 dlthub workspace configuration info [version]           # details for a configuration version
-dlthub workspace configuration sync [version] [--dry-run]  # roll back to a configuration version
+dlthub workspace configuration sync [version] [--dry-run]  # sync local config files to remote
 dlthub local clean                          # clean local workspace state
 dlthub local clean --skip-data-dir          # clean but keep data directory
 ```

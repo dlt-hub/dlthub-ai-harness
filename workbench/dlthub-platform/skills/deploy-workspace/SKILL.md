@@ -41,7 +41,11 @@ dlthub run my_pipeline.py -f           # sync + run, stream logs while running
 dlthub run my_pipeline.py --refresh    # sync + run with a refresh signal
 dlthub serve my_notebook.py           # sync code + run interactive job on cloud
 dlthub serve my_notebook.py -f        # sync + serve, stream logs
-dlthub local run my_pipeline.py       # run locally (uses deployment manifest, no sync)
+dlthub local run <job_name>            # run locally (uses deployment manifest, no sync)
+dlthub local run <job_name> --profile prod             # run under a specific profile
+dlthub local run <job_name> --start 2024-01-01 --end 2024-02-01  # interval override (ISO 8601)
+dlthub local run <job_name> --config KEY=VALUE         # ad-hoc config override (short: -c)
+dlthub local run <job_name> --dry-run                  # resolve entry point without launching
 dlthub local serve my_notebook.py     # serve locally
 ```
 
