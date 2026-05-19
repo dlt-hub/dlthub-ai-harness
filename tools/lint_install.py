@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install all toolkits for every supported agent into temp directories.
 
-Verifies that `dlt ai init` and `dlt ai toolkit <name> install` succeed
+Verifies that `dlthub ai init` and `dlthub ai toolkit install <name>` succeed
 for claude, cursor, and codex without errors.
 """
 
@@ -22,7 +22,7 @@ def get_toolkit_names() -> list[str]:
 
 
 def run_dlt(args: list[str], cwd: Path) -> tuple[bool, str]:
-    cmd = ["uv", "run", "dlt", "--non-interactive"] + args
+    cmd = ["uv", "run", "dlthub", "--non-interactive"] + args
     result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120)
     output = result.stdout + result.stderr
     return result.returncode == 0, output
@@ -45,9 +45,9 @@ def main() -> int:
                 cwd=project,
             )
             status = "ok" if ok else "FAIL"
-            print(f"  [{agent}] dlt ai init ... {status}")
+            print(f"  [{agent}] dlthub ai init ... {status}")
             if not ok:
-                errors.append(f"[{agent}] dlt ai init failed:\n{output}")
+                errors.append(f"[{agent}] dlthub ai init failed:\n{output}")
                 continue
 
             # each toolkit
@@ -57,8 +57,8 @@ def main() -> int:
                     [
                         "ai",
                         "toolkit",
-                        name,
                         "install",
+                        name,
                         "--agent",
                         agent,
                         "--location",
@@ -69,7 +69,7 @@ def main() -> int:
                     cwd=project,
                 )
                 status = "ok" if ok else "FAIL"
-                print(f"  [{agent}] dlt ai toolkit {name} install ... {status}")
+                print(f"  [{agent}] dlthub ai toolkit install {name} ... {status}")
                 if not ok:
                     errors.append(f"[{agent}] toolkit {name} install failed:\n{output}")
 

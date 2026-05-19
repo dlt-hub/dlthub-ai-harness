@@ -208,7 +208,7 @@ Then recommend one of these next steps based on what was found:
 - **Checks need adjustment** (check was too strict, enum values changed) → loop back to `define-data-quality-checks` with the specific checks pre-targeted
 - **Source data has real problems** → hand over to **rest-api-pipeline** toolkit (`adjust-endpoint` or `new-endpoint`) to fix the data at the source
 - **Anomalies need deeper investigation** → hand over to **data-exploration** toolkit (`explore-data`) with the table name and failing column already in context
-- **Everything looks good** → hand over to **dlthub-runtime** toolkit (`setup-runtime`). Use the execution context carried over from `run-data-quality`:
+- **Everything looks good** → hand over to **dlthub-platform** toolkit (`setup-runtime`). Use the execution context carried over from `run-data-quality`:
   - If checks are embedded in the pipeline via decorators: deploy the pipeline script — checks run automatically on every load
   - If checks run via a standalone script: deploy that script as a separate scheduled job, passing the script path and pipeline name to `setup-runtime`
 

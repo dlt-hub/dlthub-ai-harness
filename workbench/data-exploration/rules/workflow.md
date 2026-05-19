@@ -22,7 +22,7 @@ Infer intent from the user's message — never ask "do you have a specific quest
 
 - **rest-api-pipeline** → `find-source` (new data source) or `new-endpoint` (missing column/concept) or `adjust-endpoint` (data exists but looks truncated/stale) — when `explore-data` finds a data gap and the user wants to extend or fix the pipeline
 - **transformations** — when the user decides the raw tables need proper modeling before further analysis; pipeline name, dataset, and profiled table structure carry over to `annotate-sources`
-- **dlthub-runtime** → `setup-runtime` — when the pipeline and notebook are working and the user wants to deploy or schedule
+- **dlthub-platform** → `setup-runtime` — when the pipeline and notebook are working and the user wants to deploy or schedule
 
 ### Incoming (to data-exploration)
 
@@ -30,7 +30,7 @@ Infer intent from the user's message — never ask "do you have a specific quest
 - From **sql-database-pipeline** (after `validate-data` or `view-data`) — pipeline name, destination, and loaded table names are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **filesystem-pipeline** (after `create-filesystem-pipeline`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From transformation toolkit (after `validate-transformed-data` or `new-endpoint`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
-- From **dlthub-runtime** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
+- From **dlthub-platform** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 - From **data-quality** (after `review-data-quality`) — failing table name and metric anomaly are already known; `explore-data` should skip broad profiling and target those specific tables directly.
 
 ## Bulk requests
