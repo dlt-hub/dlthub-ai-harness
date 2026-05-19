@@ -50,10 +50,10 @@ uv venv
 
 **Install dlt** (if missing or outdated):
 ```
-uv pip install --upgrade dlt[workspace]
+uv add "dlt[hub]"
 ```
 
-This installs (or upgrades) dlt with marimo, ibis, and other workspace tools.
+This installs (or upgrades) dlt with the hub extras.
 **Note**: - if adding `dlt` to `pyproject.toml` you must pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions
 
 

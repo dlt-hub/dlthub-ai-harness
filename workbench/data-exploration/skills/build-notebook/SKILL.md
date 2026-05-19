@@ -43,7 +43,7 @@ If validation fails:
 
 ## Step 4: Ensure dependencies
 
-The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt[workspace]`. Before launching, check if they are available and if any are missing, **ask the user** how they want to install them:
+The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt[hub]`. Before launching, check if they are available and if any are missing, **ask the user** how they want to install them:
 
 Run `uv add pandas numpy altair` to add them to `pyproject.toml`.
 
