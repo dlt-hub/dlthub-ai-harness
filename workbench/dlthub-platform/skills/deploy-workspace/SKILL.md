@@ -55,6 +55,7 @@ dlthub job logs my_pipeline -f         # stream logs in real-time
 After launching:
 - Check the first run completes successfully with `dlthub job logs`
 - If it fails, use (`debug-deployment`) to diagnose
+- Once successful, run `dlthub show` to open the dltHub web UI and show the user their pipeline is live
 
 ## Step 3: Schedule a pipeline (cron)
 
