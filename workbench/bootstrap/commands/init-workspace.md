@@ -66,7 +66,7 @@ uv run dlt --non-interactive ai init
 
 2. Show ai setup info
 ```
-uv run dlt ai status
+uv run dlthub ai status
 ```
 
 NOTE: WARNING that mcp cannot be started is most probably a result of missing dependencies. Help user
@@ -74,7 +74,7 @@ to solve it before proceeding.
 
 3. Show available toolkits
 ```
-uv run dlt ai toolkit list
+uv run dlthub ai toolkit list
 ```
 
 3. Tell user:
