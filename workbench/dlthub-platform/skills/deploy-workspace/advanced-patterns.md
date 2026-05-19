@@ -78,7 +78,7 @@ A backfill job with `refresh="always"` triggers a full reprocess cascade:
 
 ```python
 @run.job(
-    expose={"tags": ["backfill"]},
+    expose={"tags": ["backfill"], "display_name": "Full backfill"},
     refresh="always",
 )
 def backfill():

@@ -50,10 +50,10 @@ uv venv
 
 **Install dlt** (if missing or outdated):
 ```
-uv pip install --upgrade dlt[workspace]
+uv add "dlt[hub]"
 ```
 
-This installs (or upgrades) dlt with marimo, ibis, and other workspace tools.
+This installs (or upgrades) dlt with the hub extras.
 **Note**: - if adding `dlt` to `pyproject.toml` you must pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions
 
 
@@ -66,7 +66,7 @@ uv run dlt --non-interactive ai init
 
 2. Show ai setup info
 ```
-uv run dlt ai status
+uv run dlthub ai status
 ```
 
 NOTE: WARNING that mcp cannot be started is most probably a result of missing dependencies. Help user
@@ -74,7 +74,7 @@ to solve it before proceeding.
 
 3. Show available toolkits
 ```
-uv run dlt ai toolkit list
+uv run dlthub ai toolkit list
 ```
 
 3. Tell user:

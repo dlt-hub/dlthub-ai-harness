@@ -8,11 +8,11 @@ argument-hint: "[source-name]"
 
 **Essential Reading** Credentials & config resolution: `https://dlthub.com/docs/general-usage/credentials/setup.md` `https://dlthub.com/docs/general-usage/credentials/advanced`
 
-Configure credentials in `.dlt/secrets.toml`. **Never read secrets files directly** — use `dlt-workspace-mcp` tools or `dlt ai secrets` CLI commands.
+Configure credentials in `.dlt/secrets.toml`. **Never read secrets files directly** — use `dlt-workspace-mcp` tools or `dlthub ai secrets` CLI commands.
 
 **Prefer MCP** — use `secrets_list`, `secrets_view_redacted`, `secrets_update_fragment` tools from `dlt-workspace-mcp`.
 
-**CLI fallback**: If MCP is not connected, see [cli-reference.md](cli-reference.md) for equivalent `dlt ai secrets` commands.
+**CLI fallback**: If MCP is not connected, see [cli-reference.md](cli-reference.md) for equivalent `dlthub ai secrets` commands.
 
 **Read additional docs as needed:**
 - Connection string credentials (databases, warehouses): `https://dlthub.com/docs/general-usage/credentials/complex_types.md`

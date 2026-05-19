@@ -81,6 +81,6 @@ Use `debug-pipeline` to inspect the first full run — large tables can surface 
 
 ## Next steps
 
-- **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-runtime** to deploy
+- **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-platform** to deploy
 - **Errors on full load** → use `debug-pipeline`; consider reducing `chunk_size` or switching backend
 - **Need more tables** → use `add-table`

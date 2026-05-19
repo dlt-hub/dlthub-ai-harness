@@ -192,6 +192,6 @@ Pass to `review-data-quality`:
 
 ```
 
-If the user chooses [1], hand over to **dlthub-runtime** (start at `setup-runtime`), passing:
+If the user chooses [1], hand over to **dlthub-platform** (start at `setup-runtime`), passing:
 - The script path (`<script_path>`) as the deployment target
 - The confirmed pipeline name and destination

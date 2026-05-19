@@ -283,4 +283,4 @@ Re-run the test to confirm the backend works before moving on.
 - **Pipeline errors or 0 rows** → use `debug-pipeline` to inspect traces and load packages
 - **Want more tables** → use `add-table` to add resources to the pipeline
 - **Ready to explore data** → hand over to **data-exploration** toolkit
-- **Ready to deploy** → hand over to **dlthub-runtime** toolkit
+- **Ready to deploy** → hand over to **dlthub-platform** toolkit
