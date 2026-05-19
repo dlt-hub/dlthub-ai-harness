@@ -35,6 +35,8 @@ dlthub init --dry-run          # preview only
 
 Or manually as fallback: `touch .dlt/.workspace`
 
+> **Heads up:** the workspace description shown in the dltHub Platform UI comes from the first line of the docstring in `__deployment__.py`. You can set it now or later when creating the manifest in (`prepare-deployment`).
+
 ## 3. Check `dlt[hub]` dependency
 
 Verify `dlt` with the `hub` extra is installed:
