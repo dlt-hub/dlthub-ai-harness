@@ -75,14 +75,29 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 ## Getting started
 
-> **Note:** All `dlthub ai` commands below use `uv run dlt ...` syntax. If you have `dlt` installed globally or in an active virtual environment, you can omit `uv run` and call `dlt` directly. We recommend using uv.
+### New project (recommended)
 
-### Installation
+The fastest way to get started is [`dlthub-start`](https://pypi.org/project/dlthub-start/) — no prior setup needed:
 
 ```bash
-# Install uv (fast Python package manager) if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh
+uvx dlthub-start my-project
+```
 
+This interactive prompt scaffolds a ready-to-run workspace: picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done:
+
+```bash
+cd my-project
+uv run dlthub run load_breweries   # run the example pipeline on dltHub
+uv run dlthub show                 # open the dltHub dashboard
+```
+
+### Existing project
+
+To add the AI workbench to an existing project:
+
+> **Note:** All `dlthub ai` commands below use `uv run dlthub ...` syntax. If you have `dlthub` installed globally or in an active virtual environment, you can omit `uv run` and call `dlthub` directly. We recommend using uv.
+
+```bash
 # Install dlt with workspace support
 uv pip install --upgrade "dlt[workspace]"
 
