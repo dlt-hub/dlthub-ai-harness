@@ -1,7 +1,6 @@
 ---
 name: incremental-transformation
 description: Switch a dlt transformation from full-replace to incremental loading. Use when the user wants to process only new or changed rows, reduce transformation run time, or schedule frequent transformation runs without reprocessing all data.
-argument-hint: "[pipeline-name]"
 ---
 
 # Incremental transformation
@@ -49,6 +48,7 @@ The type annotation on the parameter (`dlt.sources.incremental[T]`) must match t
 Use when aggregations or lookups produce a row per date/ID that should be upserted on each run.
 
 ```python
+from typing import Any
 import pendulum
 import dlt
 
@@ -60,13 +60,13 @@ def crawl_counts_by_date(
         initial_value=pendulum.datetime(2020, 1, 1, tz="UTC"),
         range_start="open",
     ),
-):
+) -> Any:
     yield dataset("SELECT date, COUNT(*) FROM connectors GROUP BY date").incremental(crawled_at)
 ```
 
 **Pattern 2 — Load-based (`_dlt_loads.inserted_at`)**
 
-Use when you want exactly the rows that arrived in new ingestion loads. dlt joins `_dlt_loads` automatically — no manual JOIN needed in SQL or relation chains.
+Use when you want exactly the rows that arrived in new ingestion loads. dlt joins `_dlt_loads` automatically — no manual JOIN needed in SQL or relation chains. `initial_value` is intentionally omitted here — the first run will process all existing loads; add `initial_value=pendulum.now("UTC")` to skip historical loads and start from now.
 
 ```python
 from typing import Any
@@ -97,7 +97,7 @@ from typing import Any
 import pendulum
 import dlt
 
-@dlt.hub.transformation(write_disposition="replace")
+@dlt.hub.transformation(write_disposition="append")
 def orders_window(
     dataset: dlt.Dataset,
     window: dlt.sources.incremental[pendulum.DateTime] = dlt.sources.incremental(
