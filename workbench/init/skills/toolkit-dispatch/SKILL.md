@@ -11,20 +11,20 @@ Route the user to the right toolkit and skill.
 
 **Prefer MCP** — use the `list_toolkits` tool from `dlt-workspace-mcp` to get the current toolkit catalog.
 
-**CLI fallback** (if MCP is not connected): `dlt --non-interactive ai toolkit list`
+**CLI fallback** (if MCP is not connected): `dlthub --non-interactive ai toolkit list`
 
 Toolkits marked `(installed: <version>)` are ready to use. Others need installing first.
 
 ## Step 2: For installed toolkits, get skill details
 
-Use `toolkit_info` MCP tool (or `dlthub ai toolkit info <name>` CLI) on each **installed** toolkit.
+Use `toolkit_info` MCP tool (or `dlthub --non-interactive ai toolkit info <name>` CLI) on each **installed** toolkit.
 This returns skill names, descriptions (with "Use when..." patterns), and workflow rules — use these to match user intent.
 
 ## Step 3: Route by intent
 
 Match the user's request to the best skill using descriptions from step 2. If no installed toolkit matches, suggest installing one.
 
-**Install command:** `dlthub ai toolkit install <name>`
+**Install command:** `dlthub --non-interactive ai toolkit install <name>`
 
 ## Step 4. Confirm & enable mcp
 ```

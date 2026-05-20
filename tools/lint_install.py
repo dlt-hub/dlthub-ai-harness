@@ -38,7 +38,7 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix=f"lint-{agent}-") as tmpdir:
             project = Path(tmpdir)
 
-            # dlt ai init
+            # dlthub ai init
             total += 1
             ok, output = run_dlt(
                 ["ai", "init", "--agent", agent, "--location", location],

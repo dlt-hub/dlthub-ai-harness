@@ -16,10 +16,16 @@ Parse `$ARGUMENTS`:
 
 ## Step 1 — Check workspace status
 
-Run `uv run dlt ai status`.
+Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
-- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then offer to run `/init-workspace` (from the **bootstrap** toolkit). Do not auto-install — wait for confirmation.
+- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then point them to the authoritative bootstrap command:
+
+  ```
+  uvx dlthub-start@latest my-workspace
+  ```
+
+  This is the canonical way to get started with the dltHub AI workbench — it sets up the workspace and installs the toolkits needed downstream. Do not auto-run it — wait for the user to run it themselves, then re-check status before continuing to Step 2.
 
 ## Step 2 — Present capability index and ask one question
 

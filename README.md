@@ -80,6 +80,8 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 The fastest way to get started is [`dlthub-start`](https://pypi.org/project/dlthub-start/) — no prior setup needed:
 
+The fastest way to start a new dltHub project:
+
 ```bash
 uvx dlthub-start@latest my-workspace
 ```
@@ -112,6 +114,7 @@ uv run dlthub ai init
 uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 ```
 
+
 `dlthub ai init` detects your coding assistant from environment variables and config files, then installs skills, rules, and the MCP server in the correct locations for that tool.
 
 > **Claude Code note:** Add the following to your `CLAUDE.md` to enforce safe credential handling:
@@ -136,7 +139,7 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 ### Browse and install toolkits
 
-> **No Python environment yet?** The `bootstrap` toolkit (installed above) sets up `uv`, Python, and `dlt` for you — run `/init-workspace` to get started.
+> **No Python environment yet?** `uvx dlthub-start@latest my-workspace` (see [Installation](#installation)) handles this in one command. If you're going through the Claude Code marketplace instead, the `bootstrap` toolkit's `/init-workspace` does the same from inside Claude Code.
 
 
 ```bash
@@ -169,7 +172,7 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. We recommend using the `dlthub ai` CLI above for the most up-to-date experience.
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For new projects we recommend `uvx dlthub-start@latest` (see [Installation](#installation)). The marketplace path below is useful when you don't have `uv`/Python and want to bootstrap from inside Claude Code via the `bootstrap` toolkit.
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 

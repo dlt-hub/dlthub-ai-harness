@@ -26,7 +26,7 @@
 - From **data-exploration** (after `build-notebook`) — notebook file already exists; `deploy-workspace` should use `dlthub serve` for the notebook job
 - From **data-quality** Profile A (after `run-data-quality`) — pipeline script with embedded `@dq.with_checks` decorators is the deployment target; carry the pipeline script path, pipeline name, and destination into `setup-runtime`
 - From **data-quality** Profile B (after `run-data-quality`) — `tools/dq_run.py` already exists with confirmed checks; carry the script path, pipeline name, and destination into `setup-runtime` as the deployment target
-- From **quick-start** (shortcut path when a working pipeline exists) — pipeline name and destination may be inferred from `dlt ai status`; `setup-runtime` runs full discovery if not.
+- From **quick-start** (shortcut path when a working pipeline exists) — pipeline name and destination may be inferred from `dlthub ai status`; `setup-runtime` runs full discovery if not.
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt

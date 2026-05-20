@@ -22,7 +22,7 @@ Create `evals/<toolkit>/<skill>/` if it doesn't exist.
 Ask the user which workspace configurations to test. Each workspace represents a different set of installed toolkits — this tests how the skill behaves when competing with other skills.
 
 Common patterns:
-- **init-only** — just `dlt ai init` (minimum skills: `setup-secrets`, `toolkit-dispatch`). Tests cold-start triggering.
+- **init-only** — just `dlthub ai init` (minimum skills: `setup-secrets`, `toolkit-dispatch`). Tests cold-start triggering.
 - **with-\<toolkit\>** — init + the skill's own toolkit installed. Tests triggering with competing sibling skills.
 
 Write `config.json`:

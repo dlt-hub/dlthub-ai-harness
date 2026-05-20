@@ -1,1 +1,1 @@
-Shared rules, secrets handling, and workspace MCP server for dlt. Installed by `dlt ai init` and silently with any other toolkit.
+Shared rules, secrets handling, and workspace MCP server for dlt. Installed by `dlthub ai init` and silently with any other toolkit.
