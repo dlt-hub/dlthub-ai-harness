@@ -137,7 +137,7 @@ base_url = "https://api.example.com/v1/"
 
 **Secrets** (API keys, tokens, passwords): **never** read or write `secrets.toml` directly.  **Never** run commands that output secret values (e.g. `gh auth token`, `env | grep KEY`).
 
-Use `secrets_view_redacted`, `secrets_list`, and `secrets_update_fragment` MCP tools (or equivalent `dlt ai secrets` CLI commands) — see `setup-secrets` skill for details.
+Use `secrets_view_redacted`, `secrets_list`, and `secrets_update_fragment` MCP tools (or equivalent `dlthub ai secrets` CLI commands) — see `setup-secrets` skill for details.
 
 Use `secrets_list` to pick the target file, then `secrets_update_fragment` with the TOML fragment:
 ```toml

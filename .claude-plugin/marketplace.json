@@ -81,6 +81,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlt", "filesystem", "s3", "gcs", "azure", "sftp", "csv", "parquet", "jsonl"]
+    },
+    {
+      "name": "quick-start",
+      "source": "./workbench/quick-start",
+      "description": "Full-path guided start: ingest → visualize → transform → deploy in 3-5 prompts. Routes to the right entry skill based on a chosen depth.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlt", "quick-start", "onboarding", "demo", "router"]
     }
   ]
 }

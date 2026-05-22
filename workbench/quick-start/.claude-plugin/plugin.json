@@ -1,0 +1,12 @@
+{
+  "name": "quick-start",
+  "description": "Full-path guided start: ingest → visualize → transform → deploy in 3-5 prompts",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlt", "quick-start", "onboarding", "demo", "pipeline"]
+}

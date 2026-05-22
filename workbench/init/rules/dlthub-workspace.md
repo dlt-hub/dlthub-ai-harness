@@ -1,7 +1,8 @@
 # setup
-* On new session verify: is `uv` available? is Python running in uv venv? `uv run dlt --version`?
-If anything is missing suggest using `bootstrap` toolkit: (bootstrap workbench /bootstrap:init-workspace )
-* On failed check: `dlthub ai toolkit bootstrap install` (**if dlt present**)
+* On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`?
+* If anything is missing, the canonical bootstrap is `uvx dlthub-start@latest my-workspace` — it installs `uv` (if needed), scaffolds the workspace, syncs `dlt[hub]`, and vendors the core toolkits in one command. Surface it to the user; do not auto-run.
+* The `bootstrap` toolkit / `/bootstrap:init-workspace` flow does the same from inside Claude Code via the marketplace.
+* On failed check inside an existing project: `dlthub ai toolkit install bootstrap` (**if dlt present**)
 
 # communication
 * Before each major step, briefly explain to the user what you are about to do and why, in one sentence.
@@ -20,7 +21,7 @@ If anything is missing suggest using `bootstrap` toolkit: (bootstrap workbench /
 # dltHub workspace
 * **ALWAYS** run all commands with **cwd** in the project root. `dlt` uses **cwd** to find `.dlt` location ie. `uv run python pipelines/my_pipeline.py`.
 * use `uv run` to run anything Python
-* **ALWAYS** pass `--non-interactive` when running `dlt` commands (e.g. `uv run dlt --non-interactive init ...`). This prevents prompts that block execution.
+* **ALWAYS** pass `--non-interactive` when running `dlthub` commands (e.g. `uv run dlthub --non-interactive pipeline init ...`). This prevents prompts that block execution.
 * **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging.
 * **ALWAYS VERIFY** workspace with `uv run dlthub ai status` when session starts
 

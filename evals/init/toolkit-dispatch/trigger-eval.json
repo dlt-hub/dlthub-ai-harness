@@ -32,7 +32,7 @@
     "should_trigger": true
   },
   {
-    "query": "I'm confused, I ran dlt ai init but nothing happened, what am I supposed to do with this?",
+    "query": "I'm confused, I ran dlthub ai init but nothing happened, what am I supposed to do with this?",
     "should_trigger": true
   },
   {

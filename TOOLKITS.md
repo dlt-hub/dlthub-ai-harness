@@ -1,6 +1,6 @@
 # Toolkits
 
-How the dlt AI workbench organizes toolkits and how `dlt ai toolkit` installs them across AI platforms.
+How the dlt AI workbench organizes toolkits and how `dlthub ai toolkit` installs them across AI platforms.
 
 ## Repository structure
 
@@ -84,24 +84,24 @@ dlt-specific metadata goes in `.claude-plugin/toolkit.json` alongside `plugin.js
 |-------|---------|-------------|
 | `listed` | `true` | When `false`, toolkit is hidden from `toolkit list` and `list_toolkits` MCP tool but can still be installed by name |
 | `dependencies` | `[]` | Toolkits that are auto-installed before this one |
-| `workflow_entry_skill` | — | Name of the skill where the workflow starts. Shown after install and in `dlt ai status` |
+| `workflow_entry_skill` | — | Name of the skill where the workflow starts. Shown after install and in `dlthub ai status` |
 
 ## CLI commands
 
 ```
-dlt ai status
-dlt ai toolkit list                            [--location] [--branch]
-dlt ai toolkit <name> info                     [--location] [--branch]
-dlt ai toolkit <name> install [--agent] [--overwrite] [--strict] [--location] [--branch]
-dlt ai init              [--agent] [--location] [--branch]
+dlthub ai status
+dlthub ai toolkit list                            [--location] [--branch]
+dlthub ai toolkit info <name>                     [--location] [--branch]
+dlthub ai toolkit install <name> [--agent] [--overwrite] [--strict] [--location] [--branch]
+dlthub ai init              [--agent] [--location] [--branch]
 ```
 
 | Command | Description |
 |---------|-------------|
 | `info` | Show current AI setup: dlt version, detected agent, installed toolkits with entry skills |
 | `list` | List available toolkits with name, description, and install status |
-| `<name> info` | Show toolkit contents (skills, commands, rules, MCP servers) |
-| `<name> install` | Install toolkit components into the current project |
+| `info <name>` | Show toolkit contents (skills, commands, rules, MCP servers) |
+| `install <name>` | Install toolkit components into the current project |
 | `init` | Shortcut for installing the `init` toolkit |
 
 `list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name.
@@ -157,7 +157,7 @@ When the `toolkit` feature is enabled, the dlt MCP server exposes:
 
 ## Dependencies and the `init` toolkit
 
-The `init` toolkit contains shared rules, secrets handling, and the workspace MCP server. It is automatically installed (without overwrite) whenever any other toolkit is installed. It can also be installed explicitly via `dlt ai init`.
+The `init` toolkit contains shared rules, secrets handling, and the workspace MCP server. It is automatically installed (without overwrite) whenever any other toolkit is installed. It can also be installed explicitly via `dlthub ai init`.
 
 Dependencies are declared in `plugin.json` under `"dependencies"`. The CLI resolves them in topological order and installs any that are missing before installing the requested toolkit. Circular dependencies are detected and rejected.
 
@@ -212,7 +212,7 @@ sql-database-pipeline:
     - dlt-workspace-mcp
 ```
 
-This enables version comparison on subsequent installs, entry skill display in `dlt ai status`, and integrity tracking via SHA3-256 file hashes.
+This enables version comparison on subsequent installs, entry skill display in `dlthub ai status`, and integrity tracking via SHA3-256 file hashes.
 
 ## Auto-detection priority
 

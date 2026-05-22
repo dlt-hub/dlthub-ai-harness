@@ -70,7 +70,7 @@ Check `README.md`, `CLAUDE.md`, and `EVALS.md` in the repo root for content that
 
 - **Toolkit listings** — are all toolkits mentioned? Are descriptions accurate? Are any listed toolkits missing or renamed?
 - **Skill/command tables** — do skill names, step numbers, and descriptions match the actual SKILL.md frontmatter and workflow?
-- **CLI examples** — do `dlt ai` commands shown in the docs match the current CLI interface? Run `dlt ai --help` and `dlt ai toolkit --help` to verify.
+- **CLI examples** — do `dlthub ai` commands shown in the docs match the current CLI interface? Run `dlthub ai --help` and `dlthub ai toolkit --help` to verify.
 - **Architecture diagrams** — do mermaid diagrams reflect the current toolkit set and their relationships?
 - **Marketplace references** — does the marketplace.json content (names, descriptions, tags) match what README/CLAUDE.md say?
 - **EVALS.md** — do the documented tools, directory structure, config format, and CLI examples match the actual scripts in `tools/` and skill files in `.claude/skills/`? Check that `create_eval_workspace.py`, `run_trigger_eval.py`, `list_skill_descriptions.py` usage examples are accurate.

@@ -160,6 +160,8 @@ Do NOT remove settings the user had before you started debugging.
 
 ## Next steps
 
+*If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
+
 - **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (data-exploration toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → check TOML sections, revisit `create-rest-api-pipeline` step 6b for credential setup
 - **No pipeline exists** → use `create-rest-api-pipeline` to scaffold one first

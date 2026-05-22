@@ -14,7 +14,7 @@ will not work as well.
 
 1. `uv --version` — is uv installed?
 2. `ls .venv/` — does a venv exist?
-3. `uv run dlt --version` — is dlt installed in the venv?
+3. `uv run dlthub --version` — is dlt installed in the venv?
 
 ## Step 2: Present plan
 
@@ -61,7 +61,7 @@ This installs (or upgrades) dlt with the hub extras.
 
 1. Setup essential skills and rules from dlthub init toolkit:
 ```
-uv run dlt --non-interactive ai init
+uv run dlthub --non-interactive ai init
 ```
 
 2. Show ai setup info

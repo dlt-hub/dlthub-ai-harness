@@ -21,6 +21,7 @@
 - From **data-exploration** (after exploring raw pipeline data) — pipeline name, dataset, and table structure are already understood. The user has decided the raw tables need proper modeling before further analysis. `annotate-sources` can skip discovery and lean on the already-profiled table structure; natural key candidates and data quality observations from the exploration session should carry over — but always re-confirmed.
 - From **dlthub-runtime** (during `prepare-deployment` or `deploy-workspace`) — when the prod destination differs from dev and SQL dialect errors surface. Go to `debug-transformation` section 1 (static dialect check) with the dev and prod destination types already known.
 - From **data-quality** (after `review-data-quality`) — DQ failures revealed upstream modeling issues; the failing tables and check results are known. `annotate-sources` should focus on those specific tables.
+- From **quick-start** (shortcut path when a pipeline already exists) — pipeline name may be inferred from `dlthub ai status`. `annotate-sources` should still confirm pipelines and use cases; no shortcuts to schema extraction unless `dlthub ai status` shows a single loaded pipeline.
 
 ## Handover to other toolkits
 

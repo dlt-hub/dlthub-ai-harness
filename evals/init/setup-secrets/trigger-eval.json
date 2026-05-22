@@ -8,7 +8,7 @@
     "should_trigger": true
   },
   {
-    "query": "dlt ai secrets view-redacted shows all stars for my github token but the pipeline still says 401 unauthorized, can you check what's wrong with my secrets?",
+    "query": "dlthub ai secrets view-redacted shows all stars for my github token but the pipeline still says 401 unauthorized, can you check what's wrong with my secrets?",
     "should_trigger": true
   },
   {
