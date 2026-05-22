@@ -19,7 +19,7 @@ Reference: https://dlthub.com/docs/devel/hub/features/transformations#incrementa
 |-----------|---------|
 | Output table has a date/timestamp/ID column you control (e.g. daily aggregates) | **Direct column** — cursor on the output table's own column |
 | Process only rows from new source ingestion loads; no meaningful output cursor | **Load-based** — cursor on `_dlt_loads.inserted_at`; dlt auto-joins the loads table |
-| An external orchestrator (Airflow, CI) controls the time window | **External scheduler** — `allow_external_schedulers=True`; reads `DLT_INTERVAL_START` / `DLT_INTERVAL_END` env vars |
+| The dltHub Platform scheduler controls the time window | **dltHub Platform scheduler** — `allow_external_schedulers=True`; reads `DLT_INTERVAL_START` / `DLT_INTERVAL_END` env vars |
 
 Ask the user which situation applies if it is not obvious from the transformation.
 
@@ -29,7 +29,7 @@ Ask the user which situation applies if it is not obvious from the transformatio
 |---------|--------------|-------------|
 | Direct | A column on the output table (e.g. `"date"`, `"created_at"`) | `pendulum.DateTime` or `int` |
 | Load-based | `"_dlt_loads.inserted_at"` (fixed — no user choice) | `pendulum.DateTime` |
-| External scheduler | A source column the orchestrator will filter on | `pendulum.DateTime` |
+| External scheduler | A source column the dltHub Platform scheduler will filter on | `pendulum.DateTime` |
 
 The type annotation on the parameter (`dlt.sources.incremental[T]`) must match the column type in the destination.
 
@@ -88,9 +88,9 @@ def connectors_from_new_loads(
     )
 ```
 
-**Pattern 3 — External scheduler**
+**Pattern 3 — dltHub Platform scheduler**
 
-Use when an orchestrator sets the window via env vars. `initial_value` sets the fallback start for the first run before the scheduler takes over.
+Use when the dltHub Platform scheduler sets the time window via env vars. `initial_value` sets the fallback start for the first run before the scheduler takes over.
 
 ```python
 from typing import Any
@@ -111,7 +111,7 @@ def orders_window(
     yield dataset.table("orders").incremental(window)
 ```
 
-The orchestrator sets:
+The dltHub Platform scheduler sets:
 ```
 DLT_INTERVAL_START=2024-01-01T00:00:00Z
 DLT_INTERVAL_END=2024-01-02T00:00:00Z
