@@ -111,11 +111,6 @@ def orders_window(
     yield dataset.table("orders").incremental(window)
 ```
 
-The dltHub Platform scheduler sets:
-```
-DLT_INTERVAL_START=2024-01-01T00:00:00Z
-DLT_INTERVAL_END=2024-01-02T00:00:00Z
-```
 
 ### 5. Rules and gotchas
 
