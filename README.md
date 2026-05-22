@@ -6,7 +6,7 @@
 
 The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlthub ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
-**Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code.
+**Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code. New users can start with the `quick-start` toolkit for a guided end-to-end run from data to dashboard.
 
 The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI workbench.
 
@@ -61,6 +61,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
+| `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
 | `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-source to load tables from my Postgres database into DuckDB"* | Run `/find-source` |
@@ -78,6 +79,8 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 ### New project (recommended)
 
 The fastest way to get started is [`dlthub-start`](https://pypi.org/project/dlthub-start/) — no prior setup needed:
+
+The fastest way to start a new dltHub project:
 
 ```bash
 uvx dlthub-start@latest my-workspace
@@ -111,6 +114,7 @@ uv run dlthub ai init
 uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 ```
 
+
 `dlthub ai init` detects your coding assistant from environment variables and config files, then installs skills, rules, and the MCP server in the correct locations for that tool.
 
 > **Claude Code note:** Add the following to your `CLAUDE.md` to enforce safe credential handling:
@@ -135,7 +139,7 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 ### Browse and install toolkits
 
-> **No Python environment yet?** The `bootstrap` toolkit (installed above) sets up `uv`, Python, and `dlt` for you — run `/init-workspace` to get started.
+> **No Python environment yet?** `uvx dlthub-start@latest my-workspace` (see [Installation](#installation)) handles this in one command. If you're going through the Claude Code marketplace instead, the `bootstrap` toolkit's `/init-workspace` does the same from inside Claude Code.
 
 
 ```bash
@@ -145,6 +149,7 @@ uv run dlthub ai toolkit list
 Install toolkits (if you are not sure which toolkits to install we recommend installing all of them):
 
 ```bash
+uv run dlthub ai toolkit install quick-start
 uv run dlthub ai toolkit install bootstrap
 uv run dlthub ai toolkit install rest-api-pipeline
 uv run dlthub ai toolkit install sql-database-pipeline
@@ -167,13 +172,14 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. We recommend using the `dlthub ai` CLI above for the most up-to-date experience.
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For new projects we recommend `uvx dlthub-start@latest` (see [Installation](#installation)). The marketplace path below is useful when you don't have `uv`/Python and want to bootstrap from inside Claude Code via the `bootstrap` toolkit.
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-workbench
 /plugin install init@dlthub-ai-workbench --scope project
+/plugin install quick-start@dlthub-ai-workbench --scope project
 /plugin install bootstrap@dlthub-ai-workbench --scope project
 /plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
 /plugin install sql-database-pipeline@dlthub-ai-workbench --scope project

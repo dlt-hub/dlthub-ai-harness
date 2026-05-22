@@ -54,7 +54,7 @@ The workflow rule must open with a `## Workflow Entry` section referencing this 
 **ALWAYS** start with **Find source** (`find-source`) SKILL — discover the right dlt source for the user's data provider
 ```
 
-After install, `dlt ai status` and `dlt ai toolkit <name> install` display: `Use find-source skill to start!`
+After install, `dlthub ai status` and `dlthub ai toolkit install <name>` display: `Use find-source skill to start!`
 
 #### Required sections
 

@@ -80,7 +80,7 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
 
     # AI init
     run(
-        ["uv", "run", "dlt", "--non-interactive", "ai", "init", "--agent", "claude"],
+        ["uv", "run", "dlthub", "--non-interactive", "ai", "init", "--agent", "claude"],
         cwd=workspace,
     )
 
@@ -136,7 +136,7 @@ def create_workspaces(eval_dir: Path) -> list[Path]:
         workspaces_config = {"default": ws_config}
 
     dlt_version = get_dlt_version()
-    dlt_pkg = f"dlt[workspace]=={dlt_version}"
+    dlt_pkg = f"dlt[hub]=={dlt_version}"
     EVALS_DIR.mkdir(parents=True, exist_ok=True)
 
     created = []
