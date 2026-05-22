@@ -112,6 +112,8 @@ If a prior run failed mid-load and left pending packages that keep retrying old 
 dlt pipeline <pipeline_name> drop-pending-packages
 ```
 
+<!-- TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages; track https://github.com/dlt-hub/dlt/issues/3375 -->
+
 Re-run after clearing. If the underlying SQL was fixed, this is often all that is needed.
 
 ### Step 3: Reconcile local state
