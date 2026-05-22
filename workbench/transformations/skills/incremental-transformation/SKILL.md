@@ -90,7 +90,7 @@ def connectors_from_new_loads(
 
 **Pattern 3 — dltHub Platform scheduler**
 
-Use when the dltHub Platform scheduler sets the time window via env vars. `initial_value` sets the fallback start for the first run before the scheduler takes over.
+Use when the dltHub Platform scheduler sets the time window. `initial_value` sets the fallback start for the first run before the scheduler takes over.
 
 ```python
 from typing import Any
