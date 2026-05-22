@@ -9,6 +9,8 @@ If this is a first deployment, complete (`setup-runtime`) and (`prepare-deployme
 
 ## Step 1: Prepare scripts for production
 
+**If transformation scripts are included in this deployment and the production destination differs from the dev destination (e.g. DuckDB → BigQuery): STOP. Run (`debug-transformation`) from the transformations toolkit first and confirm no dialect and schema issues before continuing. Skipping this check is the most common cause of failed remote runs.**
+
 Review each script being deployed and fix patterns that are safe locally but harmful in production:
 
 1. **Remove `dev_mode=True`** from `dlt.pipeline()` calls — it drops and recreates the dataset on every run, destroying production data.

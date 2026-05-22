@@ -132,7 +132,16 @@ def dim_users(dataset: dlt.Dataset):
     yield dataset("SELECT user_id, email, created_at FROM users")
 ```
 
-Use `query_dialect` if your SQL dialect differs from the destination.
+**Write all transformation SQL in ANSI-standard SQL.** This ensures transformations are portable across destinations without modification. dlt uses SQLGlot to transpile queries, but transpilation can only bridge dialect gaps when the input SQL uses constructs that have mappings across dialects. ANSI SQL is the baseline that all supported destinations understand.
+
+Concretely:
+- Use `CAST(x AS type)` not `x::type`
+- Use `COALESCE(a, b)` not `IFNULL(a, b)`
+- Use standard type names: `VARCHAR`, `BIGINT`, `BOOLEAN`, `TIMESTAMP`
+- Use `CASE WHEN` for conditional logic
+- Use standard aggregates: `SUM`, `AVG`, `COUNT`, `MIN`, `MAX`
+
+When a transformation genuinely requires a dialect-specific function with no ANSI equivalent (e.g., `EPOCH_MS`, `STRFTIME`, array operations), pass `query_dialect` to `dataset()` so dlt knows how to transpile it.
 
 **Cross-dataset SQL must use fully qualified source references.**
 When writing into `<target_dataset>` from a different source dataset, unqualified table names may resolve against the target dataset and fail with "table not found". For BigQuery, always use ``project.dataset.table`` for source-side refs.
@@ -180,11 +189,16 @@ def dim_person(dataset: dlt.Dataset):
 
 If ibis is needed for cross-source composition, initialise connections **before** the CDM pipeline starts — see the [ibis Table expression API](https://ibis-project.org/reference/expression-tables) for join, union, and window function patterns.
 
-**`columns=` hint — REQUIRED for any column that may be NULL on first run:**
+**`columns=` hint — REQUIRED for any column that may be NULL on first run, and for any computed or derived column:**
 ```python
 @dlt.hub.transformation(
     write_disposition="replace",
-    columns={"company_sk": {"data_type": "text", "nullable": True}},
+    columns={
+        "company_sk":   {"data_type": "text",     "nullable": False},
+        "email_hash":   {"data_type": "text",     "nullable": True},  # md5()
+        "month_bucket": {"data_type": "text",     "nullable": True},  # strftime()
+        "event_count":  {"data_type": "bigint",   "nullable": True},  # COUNT() alias
+    },
 )
 def dim_person(dataset: dlt.Dataset):
     ...
@@ -193,11 +207,12 @@ def dim_person(dataset: dlt.Dataset):
 `columns=` `data_type` values for keys must match the key type contract selected in Step 4.
 
 When to add `columns=`:
+- **Any computed or derived column** — scan the SELECT list: every `md5()`, `strftime()`, `TRY_CAST`, `CASE WHEN`, aggregate alias (`COUNT(*) AS event_count`), or function chain needs a hint. These are visible directly in the SQL.
 - Any column from a LEFT JOIN (lookup may return NULL)
 - Any cast from string to typed value where source may be empty
 - Any column that was NULL-only in a prior run
 
-Omitting `columns=` causes **silent data loss** — dlt strips the column from the outer SELECT if its schema entry has no `data_type`.
+Omitting `columns=` causes **silent data loss** — dlthub strips the column from the outer SELECT if its schema entry has no `data_type`.
 
 **Do NOT use `execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
 
@@ -225,12 +240,10 @@ def dim_person(dataset: dlt.Dataset):
 # ... remaining functions
 
 if __name__ == "__main__":
-    pipeline = dlt.pipeline(
-        pipeline_name="<business_domain>_pipeline",   # e.g. person_interactions_pipeline
-        destination="<destination>",
-        dataset_name="<business_domain>",             # no _pipeline suffix on dataset
-    )
-    load_info = pipeline.run(<business_domain>_to_cdm())
+    source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
+    source_dataset = source_pipeline.dataset()
+
+    load_info = source_pipeline.run(<business_domain>_to_cdm(source_dataset))
     print(load_info)
 ```
 
@@ -251,7 +264,7 @@ Show a summary of:
 
 Ask user to confirm before running the transformation.
 
-### 8. Run and recover safely
+### 8. Run
 
 Run the script from the project root so `.dlt` state resolves correctly. If needed, enforce root CWD in entrypoint:
 
@@ -262,42 +275,38 @@ import os
 os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 ```
 
-**During development iterations**, use the `debug-pipeline` skill from the **rest-api-pipeline** toolkit — it offers more help with failing pipelines, and particularly sets up `dev_mode=True` for development iterations.
+If the run fails, read the error before deciding where to go — do not proceed to step 9:
 
-**When `dev_mode` is not suitable (production datasets or shared destinations):**
+- **SQL syntax error, unsupported function, dialect error** → (`debug-transformation`) skill
+- **Pipeline state error, stale packages, schema drift, connection error** → `debug-pipeline` skill in the **rest-api-pipeline** toolkit (also use this for development iterations — it sets up `dev_mode=True`)
 
-If stale pending packages exist after a failed run, clear them before re-running:
+### 9. Validate output
+
+After a successful run, verify the transformation produced the expected result using the MCP tools:
+
+- `list_tables` — confirm all CDM tables are present in the target dataset
+- `get_row_counts` — verify counts are non-zero and plausible relative to source table sizes
+- `get_table_schema` — confirm column names and types match the CDM spec
+- `preview_table` — inspect a sample of rows for unexpected NULLs, wrong grain, or type mismatches
+
+**What to check:**
+- All expected CDM tables exist (no silent skip due to empty resource)
+- Row counts are non-zero and plausible relative to source table sizes
+- Surrogate key columns are populated (not all NULL)
+- Foreign keys in fact tables resolve to values present in dimension tables
+- No unexpected duplicate rows (grain violation)
+- Computed columns (`md5`, date buckets, etc.) are present and non-NULL where expected
+
+If any check fails, go to the (`debug-transformation`) skill.
+
+If all checks pass, ask the user what they'd like to do next:
 
 ```
-# TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages
-dlt pipeline <pipeline_name> drop-pending-packages
+Transformation validated successfully. What would you like to do next?
+  1. Deploy and schedule this transformation → dlthub-runtime toolkit
+  2. Explore and visualise the CDM output → data-exploration toolkit
 ```
-
-Use `sync` and `drop-pending-packages` for different failure classes:
-- `dlt pipeline <pipeline_name> sync` — recover/refresh local pipeline state from destination state.
-- `dlt pipeline <pipeline_name> drop-pending-packages` — remove stale failed/pending load packages that can keep retrying old SQL and mask new fixes.
-
-If no recoverable destination state exists, `sync` may not resolve partial package retries; use `drop-pending-packages` before re-run.
-
-**If incorrect schema/tables were already loaded to destination, treat `drop` as last resort.**
-Use this escalation order:
-1. Inspect first: `dlt pipeline <pipeline_name> failed-jobs` and `dlt pipeline <pipeline_name> trace`
-2. Clear stale retries: `dlt pipeline <pipeline_name> drop-pending-packages`
-3. Reconcile local state: `dlt pipeline <pipeline_name> sync`
-4. Only then consider selective drop: `dlt pipeline <pipeline_name> drop <resource>` (or `--drop-all` only with explicit user confirmation)
-
-Safety rules for `drop`:
-- Prefer dropping specific resources over `--drop-all`
-- Confirm pipeline name, destination, dataset, and selected resources before accepting the prompt
-- Explain that drop removes destination tables and resets matching state; this can force full reloads and may remove good data with bad data
-- If uncertain which resources are safe to drop, stop and ask the user before executing
-- After drop, re-run transformations and validate schema/tables before further loads
-
-References:
-- CLI docs: https://dlthub.com/docs/reference/command-line-interface
-- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
-- Transformations docs: https://dlthub.com/docs/hub/features/transformations
 
 ## Output
 
-- `transformations/<dataset_name>_to_cdm.py` — dlt transformation script
+- `transformations/<dataset_name>_to_cdm.py` — dlthub transformation script

@@ -12,7 +12,7 @@ If missing, run `create-ontology` first.
 
 Read `_name` from `.schema/<cdm-name>/taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
 
-Reference: DBML format — https://dbml.org/docs/
+Reference: DBML format — https://dbml.dbdiagram.io/
 
 ## Steps
 
