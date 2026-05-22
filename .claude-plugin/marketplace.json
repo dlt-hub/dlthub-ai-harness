@@ -35,8 +35,8 @@
       "tags": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
     },
     {
-      "name": "dlthub-runtime",
-      "source": "./workbench/dlthub-runtime",
+      "name": "dlthub-platform",
+      "source": "./workbench/dlthub-platform",
       "description": "Deploy dlt workspace and pipelines to the dltHub platform",
       "version": "0.1.2",
       "category": "data",

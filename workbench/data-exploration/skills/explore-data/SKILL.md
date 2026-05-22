@@ -1,7 +1,7 @@
 ---
 name: explore-data
 argument-hint: "[pipeline-name] [question]"
-description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "analyze my data", "profile data quality", "what questions can I ask about my data", "map my data to business concepts", or wants to explore, profile, analyze, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use dlthub-runtime toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
+description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "analyze my data", "profile data quality", "what questions can I ask about my data", "map my data to business concepts", or wants to explore, profile, analyze, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use dlthub-platform toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
 ---
 
 # Explore data and plan charts
@@ -157,4 +157,4 @@ Tell the user the plan was updated, then ask: "Ready to build the notebook — s
 ## Troubleshooting
 
 - **Pipeline not found** — check spelling (case-sensitive), run `list_pipelines`, or use explicit `.duckdb` path via `dlt.pipeline(..., destination=dlt.destinations.duckdb("<path>"))`.
-- **MCP tools unavailable** — run `uv run dlt ai status` to diagnose. If the MCP server is not running or misconfigured, attempt to fix it (e.g., `dlt ai init`). Only fall back to Python path (`dlt.attach` / `dlt.pipeline`) if MCP cannot be restored.
+- **MCP tools unavailable** — run `uv run dlthub ai status` to diagnose. If the MCP server is not running or misconfigured, attempt to fix it (e.g., `dlthub ai init`). Only fall back to Python path (`dlt.attach` / `dlt.pipeline`) if MCP cannot be restored.

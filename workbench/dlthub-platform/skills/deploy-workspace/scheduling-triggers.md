@@ -76,7 +76,7 @@ def daily_load():
 Deploy and verify:
 
 ```bash
-dlt runtime deploy                    # sync manifest to Runtime
-dlt runtime deploy --dry-run          # preview without applying
-dlt runtime job list                  # confirm triggers are set
+dlthub deploy                    # sync manifest to Runtime
+dlthub deploy --dry-run          # preview without applying
+dlthub job list                  # confirm triggers are set
 ```

@@ -10,7 +10,7 @@
 
 ## Extend and harden
 
-4. **Deploy to runtime** — hand off to **dlthub-runtime** to deploy and run the pipeline on dltHub; can be done with a working pipeline
+4. **Deploy to dltHub Platform** — hand off to **dlthub-platform** to deploy and run the pipeline on dltHub; can be done with a working pipeline
 5. **Adjust endpoint** (`adjust-endpoint`) — add pagination, remove limits, add hints, mappings, correct schema etc.
 6. **Add incremental loading** — set up `dlt.sources.incremental`, merge keys, and lag windows for production efficiency
 7. **Add endpoints** (`new-endpoint`) — add more resources to the source
@@ -20,7 +20,7 @@
 
 ### Incoming (to rest-api-pipeline)
 
-- From **dlthub-runtime** (from `deploy-workspace` when the pipeline needs modification before deploying) — pipeline name and destination are already known; skip `find-source` discovery and go straight to the relevant fix skill (`debug-pipeline`, `adjust-endpoint`, or `new-endpoint`).
+- From **dlthub-platform** (from `deploy-workspace` when the pipeline needs modification before deploying) — pipeline name and destination are already known; skip `find-source` discovery and go straight to the relevant fix skill (`debug-pipeline`, `adjust-endpoint`, or `new-endpoint`).
 
 ### Outgoing (from rest-api-pipeline)
 
@@ -29,7 +29,7 @@ When the user's needs go beyond this toolkit, hand over to:
 - **data-exploration** — after `validate-data` or `view-data`, when the user wants interactive notebooks, charts, dashboards, or deeper analysis with marimo
 - **transformations** — after `validate-data` or `view-data`, when the user wants to model the ingested data into a CDM or run cross-source transformations
 - **data-quality** — after `validate-data`, when the user wants ongoing validation, check contracts, or quality guarantees on every pipeline load
-- **dlthub-runtime** — two entry points:
+- **dlthub-platform** — two entry points:
   - **Early** (after `create-rest-api-pipeline` or `debug-pipeline`): when the user wants to run the pipeline on dltHub right away — a working pipeline is enough to deploy
   - **Later** (after `adjust-endpoint`, incremental loading, `add-endpoints`, or a subsequent `debug-pipeline` run): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
 - **filesystem-pipeline** — from (`find-source`) when the user's data source is file-based (S3, GCS, local CSV, SFTP, etc.) rather than a REST API

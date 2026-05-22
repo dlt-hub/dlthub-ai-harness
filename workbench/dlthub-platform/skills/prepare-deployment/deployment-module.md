@@ -1,7 +1,7 @@
 # Creating `__deployment__.py`
 
 The deployment module declares what exists in the workspace. Runtime discovers
-jobs by inspecting its contents when you run `dlt runtime deploy`.
+jobs by inspecting its contents when you run `dlthub deploy`.
 
 ## Minimal example
 
@@ -43,13 +43,13 @@ Every job gets a reference in `jobs.<section>.<name>` form:
 | `from my_pipeline import ingest_data` | `jobs.my_pipeline.ingest_data` | Function: section=module, name=function |
 | `import my_notebook` | `jobs.my_notebook` | Module: section=module name |
 
-**Job names**: bare names work when unambiguous. `dlt runtime launch ingest_data` resolves to `jobs.my_pipeline.ingest_data` if there's only one `ingest_data` in the workspace.
+**Job names**: bare names work when unambiguous. `dlthub run ingest_data` resolves to `jobs.my_pipeline.ingest_data` if there's only one `ingest_data` in the workspace.
 
 ## Verify and debug
 
 ```bash
-dlt runtime deploy --dry-run              # preview what would change
-dlt -v runtime deploy --dry-run --show-manifest  # dump full manifest as YAML
+dlthub deploy --dry-run              # preview what would change
+dlthub deploy --show-manifest        # dump full manifest as YAML
 ```
 
 ## Defining jobs inline

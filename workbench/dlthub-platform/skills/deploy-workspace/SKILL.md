@@ -28,30 +28,40 @@ Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns
 
 ### Step 2a. Deploy a workspace
 **SKIP** for simple workspaces without deployment manifest
-If `__deployment__.py` is set up, first run `dlt runtime deploy --dry-run` to preview changes, then **STOP** — show the plan and get approval from the user before deploying.
+If `__deployment__.py` is set up, first run `dlthub deploy --dry-run` to preview changes, then **STOP** — show the plan and get approval from the user before deploying.
 
 ```bash
-dlt runtime deploy  # synchronizes deployment module with runtime
+dlthub deploy  # synchronizes deployment module with runtime
 ```
 Summarize the output (which jobs created/updated/archived)
 
 ### Step 2b. Run pipelines and notebooks
 
 ```bash
-dlt runtime launch my_pipeline.py             # sync code + run batch job once (i.e. pipeline)
-dlt runtime serve my_notebook.py             # sync code + run interactive job (i.e. notebook or data app)
+dlthub run my_pipeline.py              # sync code + run batch job on cloud
+dlthub run my_pipeline.py -f           # sync + run, stream logs while running
+dlthub run my_pipeline.py --refresh    # sync + run with a refresh signal
+dlthub serve my_notebook.py           # sync code + run interactive job on cloud
+dlthub serve my_notebook.py -f        # sync + serve, stream logs
+dlthub local run <job_name>            # run locally (uses deployment manifest, no sync)
+dlthub local run <job_name> --profile prod             # run under a specific profile
+dlthub local run <job_name> --start 2024-01-01 --end 2024-02-01  # interval override (ISO 8601)
+dlthub local run <job_name> --config KEY=VALUE         # ad-hoc config override (short: -c)
+dlthub local run <job_name> --dry-run                  # resolve entry point without launching
+dlthub local serve my_notebook.py     # serve locally
 ```
 
 ### Step 2c. Read logs and debug
 
 ```bash
-dlt runtime logs my_pipeline.py              # check output (use job name or script path)
-dlt runtime logs jobs.my_pipeline --follow   # stream logs in real-time
+dlthub job logs my_pipeline            # check output (use job name)
+dlthub job logs my_pipeline -f         # stream logs in real-time
 ```
 
 After launching:
-- Check the first run completes successfully with `dlt runtime logs`
+- Check the first run completes successfully with `dlthub job logs`
 - If it fails, use (`debug-deployment`) to diagnose
+- Once successful, run `dlthub show` to open the dltHub web UI and show the user their pipeline is live
 
 ## Step 3: Schedule a pipeline (cron)
 
@@ -78,9 +88,9 @@ A bare cron string also works: `trigger="0 0 * * *"`.
 Then deploy:
 
 ```bash
-dlt runtime deploy                    # sync manifest to Runtime
-dlt runtime deploy --dry-run          # preview without applying
-dlt runtime job list                  # confirm triggers are set
+dlthub deploy                    # sync manifest to Runtime
+dlthub deploy --dry-run          # preview without applying
+dlthub job list                  # confirm triggers are set
 ```
 
 **Other trigger types** (from `dlt.hub.run.trigger`):
@@ -90,7 +100,7 @@ dlt runtime job list                  # confirm triggers are set
 
 **Notes:**
 - Triggers declared in code are the **source of truth** -- there is no CLI command for adding/removing schedules.
-- `dlt runtime deploy` reconciles all jobs -- new ones are added, removed ones are archived, unchanged ones are left alone.
+- `dlthub deploy` reconciles all jobs -- new ones are added, removed ones are archived, unchanged ones are left alone.
 
 See [scheduling-triggers.md](scheduling-triggers.md) for the full trigger types table and more examples.
 
@@ -106,6 +116,17 @@ See [advanced-patterns.md](advanced-patterns.md) for full examples of each patte
 - **Dependency groups** -- `require={"dependency_groups": ["ibis"]}` installs extra packages only for jobs that need them. Declare groups in `[dependency-groups]` in `pyproject.toml`.
 - **Timeouts** -- `execute={"timeout": "6h"}` overrides the default 120-minute limit. Use for backfill or long-running jobs.
 
+
+## Step 5: Public links for interactive jobs
+
+Share an interactive job (notebook or dashboard) publicly:
+
+```bash
+dlthub job publish <job_name>    # generate a public URL
+dlthub job unpublish <job_name>  # revoke public access
+```
+
+> **Note:** the argument is a job name (e.g. `my_notebook`), not a file path. Drop any `.py` extension — passing `my_notebook.py` will fail because the CLI looks for a job literally named `my_notebook.py`.
 
 ## Important
 
