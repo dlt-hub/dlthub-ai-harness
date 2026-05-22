@@ -10,7 +10,9 @@
 4. **Create transformation** (`create-transformation`) — write SQL-first `@dlt.hub.transformation` functions (with optional ibis) that map source tables to CDM entities
 
 ## Extend and harden
-5. **Debug transformation** (`debug-transformation`) — diagnose SQL dialect incompatibility, fix failing transformations, validate portability across destinations, recover from pipeline state errors
+
+5. **Incremental transformation** (`incremental-transformation`) — switch replace→incremental when data volume grows or transformation runs are scheduled frequently; processes only new/changed rows instead of reprocessing all data
+6. **Debug transformation** (`debug-transformation`) — diagnose SQL dialect incompatibility, fix failing transformations, validate portability across destinations, recover from pipeline state errors
 
 ## Incoming
 

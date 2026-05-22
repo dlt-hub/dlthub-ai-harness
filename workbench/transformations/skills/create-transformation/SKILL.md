@@ -185,6 +185,8 @@ def dim_person(dataset: dlt.Dataset):
     ...
 ```
 
+> For scheduled or high-volume pipelines, use the `incremental-transformation` skill to switch `replace` → incremental so only new/changed rows are processed on each run.
+
 **Cross-source transformations:** use SQL-first where possible by selecting from available datasets in SQL; use ibis connections only when cross-dataset SQL composition is not practical in the current environment.
 
 If ibis is needed for cross-source composition, initialise connections **before** the CDM pipeline starts — see the [ibis Table expression API](https://ibis-project.org/reference/expression-tables) for join, union, and window function patterns.
