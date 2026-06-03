@@ -26,7 +26,7 @@ Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` 
 
 ## Marimo patterns
 
-For general marimo cell structure, reactivity, and best practices, fetch https://github.com/marimo-team/skills/tree/main/skills/marimo-notebook. For SQL-specific patterns in marimo, fetch https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/references/SQL.md. For dlt-dashboard-specific templates, see `references/notebook-patterns.md`.
+For general marimo cell structure, reactivity, and best practices, fetch https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/SKILL.md. For SQL-specific patterns in marimo, fetch https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/references/SQL.md. For dlt-dashboard-specific templates, see `references/notebook-patterns.md`.
 
 ## Step 3: Validate
 
@@ -43,9 +43,12 @@ If validation fails:
 
 ## Step 4: Ensure dependencies
 
-The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt[hub]`. Before launching, check if they are available and if any are missing, **ask the user** how they want to install them:
+The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt[hub]`. In a dlthub workspace (`dlthub init`) they are already declared in `pyproject.toml` — running `uv sync` installs them.
 
-Run `uv add pandas numpy altair` to add them to `pyproject.toml`.
+Before launching, check if they are available. If any are missing, **ask the user** how they want to install them:
+
+- If they are declared in `pyproject.toml` (workspace scaffolded by `dlthub init`): run `uv sync`.
+- Otherwise: run `uv add pandas numpy altair` to add them to `pyproject.toml`.
 
 Also add `marimo` if not already installed, and `ibis-framework[duckdb]` if any chart uses ibis.
 
@@ -81,7 +84,7 @@ The SQL query returns no rows. Common causes:
 3. Table is empty — check `row_counts`.
 
 ### dlt.attach fails in notebook
-Pipeline name is wrong or pipeline hasn't been run. Run `dlt pipeline <name> info` to verify.
+Pipeline name is wrong or pipeline hasn't been run. Run `dlthub local pipeline info <name>` to verify.
 
 ## Example
 

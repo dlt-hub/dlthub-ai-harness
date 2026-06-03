@@ -27,6 +27,8 @@ A bare cron string also works as shorthand:
 @run.pipeline("my_pipeline", trigger="0 0 * * *")
 ```
 
+**Reference**: https://dlthub.com/docs/hub/pipeline-operations/triggers.md (cron, intervals, follow-up chains, freshness constraints)
+
 ## Common cron patterns
 
 Use [crontab.guru](https://crontab.guru) to build and test expressions.

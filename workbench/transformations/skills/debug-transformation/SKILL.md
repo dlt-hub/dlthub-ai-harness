@@ -98,8 +98,8 @@ Use this escalation order. Do not skip steps.
 ### Step 1: Inspect failures
 
 ```bash
-dlt pipeline <pipeline_name> failed-jobs
-dlt pipeline <pipeline_name> trace
+uv run dlthub local pipeline failed-jobs <pipeline_name>
+uv run dlthub local pipeline trace <pipeline_name>
 ```
 
 Read the error messages before taking any recovery action. Most failures are fixable without touching destination state.
@@ -109,7 +109,7 @@ Read the error messages before taking any recovery action. Most failures are fix
 If a prior run failed mid-load and left pending packages that keep retrying old (broken) SQL:
 
 ```bash
-dlt pipeline <pipeline_name> drop-pending-packages
+uv run dlthub local pipeline drop-pending-packages <pipeline_name>
 ```
 
 <!-- TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages; track https://github.com/dlt-hub/dlt/issues/3375 -->
@@ -121,20 +121,20 @@ Re-run after clearing. If the underlying SQL was fixed, this is often all that i
 If local pipeline state has drifted from the destination (e.g. after a partial load or schema change):
 
 ```bash
-dlt pipeline <pipeline_name> sync
+uv run dlthub local pipeline sync <pipeline_name>
 ```
 
 If no recoverable destination state exists, `sync` may not resolve partial retries — use `drop-pending-packages` first.
 
 ### Step 4: Selective drop (last resort)
 
-> **DuckDB only:** if the failure is `"Parser Error: Adding columns with constraints not yet supported"`, `dlt pipeline drop` will not fix it — go to section 3's DuckDB workaround instead.
+> **DuckDB only:** if the failure is `"Parser Error: Adding columns with constraints not yet supported"`, `dlthub local pipeline drop` will not fix it — go to section 3's DuckDB workaround instead.
 
 Only if the steps above do not resolve the failure and incorrect schema or tables were already loaded to the destination:
 
 ```bash
-dlt pipeline <pipeline_name> drop <resource>   # drop a specific resource
-dlt pipeline <pipeline_name> drop --drop-all   # only with explicit user confirmation
+uv run dlthub local pipeline drop <pipeline_name> <resource>   # drop a specific resource
+uv run dlthub local pipeline drop <pipeline_name> --drop-all   # only with explicit user confirmation
 ```
 
 **Safety rules before dropping:**
@@ -145,8 +145,7 @@ dlt pipeline <pipeline_name> drop --drop-all   # only with explicit user confirm
 - After drop: re-run transformations and validate schema/tables before further loads
 
 References:
-- dlt CLI reference: https://dlthub.com/docs/reference/command-line-interface
-- `dlt pipeline drop`: https://dlthub.com/docs/reference/command-line-interface#dlt-pipeline-drop
+- dlthub CLI reference: https://dlthub.com/docs/hub/command-line-interface
 
 ## 3. Missing columns and schema issues
 
@@ -158,12 +157,12 @@ When a column is NULL-only on the first run and no `columns=` hint was provided,
 
 ### 3b. Computed / derived columns
 
-When a transformation uses derived expressions — `md5()`, `strftime()`, `TRY_CAST`, `CASE WHEN ... END`, aggregates with aliases, or function chains — dlt cannot infer the output type from the SQL alone. Without a `columns=` hint the column is silently dropped.
+When a transformation uses derived expressions — `md5()`, `strftime()`, `TRY_CAST`, `CASE WHEN ... END`, aggregates with aliases, or function chains — dlthub cannot infer the output type from the SQL alone. Without a `columns=` hint the column is silently dropped.
 
 **Diagnose:** compare expected vs actual columns using the MCP `get_table_schema` tool, or inspect via:
 
 ```bash
-dlt pipeline <pipeline_name> show
+uv run dlthub local pipeline show <pipeline_name>
 ```
 
 Identify which computed columns are absent from the output schema. Each missing column needs an explicit `columns=` hint.
@@ -202,9 +201,9 @@ This error surfaces when re-running a transformation with new or modified `colum
 duckdb <path_to_db_file> "DROP SCHEMA <dataset_name> CASCADE;"
 ```
 
-Then re-run the transformation script. This is DuckDB-specific behavior and will not occur on cloud destinations (BigQuery, Snowflake, Postgres). Do not use `dlt pipeline drop` for this error — it does not clear the DuckDB schema and will not resolve the constraint conflict.
+Then re-run the transformation script. This is DuckDB-specific behavior and will not occur on cloud destinations (BigQuery, Snowflake, Postgres). Do not use `dlthub local pipeline drop` for this error — it does not clear the DuckDB schema and will not resolve the constraint conflict.
 
-Reference: https://dlthub.com/docs/hub/features/transformations
+Reference: https://dlthub.com/docs/hub/transformations.md
 
 ## 4. Validate transformation output
 

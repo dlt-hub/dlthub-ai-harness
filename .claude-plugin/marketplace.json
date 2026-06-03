@@ -6,89 +6,89 @@
   },
   "metadata": {
     "description": "Data engineering agent that creates, extends, and explores dlt data pipelines",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
   },
   "plugins": [
     {
       "name": "rest-api-pipeline",
       "source": "./workbench/rest-api-pipeline",
-      "description": "One shot REST API data pipelines with dlt (data load tool). Find sources, scaffold pipelines, debug, validate data, add endpoints, configure incremental loading, query data, and create interactive reports.",
-      "version": "0.1.0",
+      "description": "REST API data pipelines with dlt (data load tool). Find sources, scaffold pipelines, debug, validate data, add endpoints, configure incremental loading, query data, and create interactive reports.",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "etl", "data-pipeline", "python"]
+      "tags": ["dlthub", "etl", "data-pipeline", "python"]
     },
     {
       "name": "bootstrap",
       "source": "./workbench/bootstrap",
       "description": "Prepare Python environment for dlthub workspace",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "workspace", "setup"]
+      "tags": ["dlthub", "workspace", "setup"]
     },
     {
       "name": "data-exploration",
       "source": "./workbench/data-exploration",
       "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
+      "tags": ["dlthub", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
     },
     {
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
-      "description": "Deploy dlt workspace and pipelines to the dltHub platform",
-      "version": "0.1.2",
+      "description": "Deploy dlthub workspace and pipelines to the dltHub platform",
+      "version": "0.1.3",
       "category": "data",
-      "tags": ["dlt", "deploy", "dlthub", "platform"]
+      "tags": ["dlthub", "deploy", "platform"]
     },
     {
       "name": "init",
       "source": "./workbench/init",
-      "description": "Shared rules, secrets handling, and workspace MCP for dlt",
-      "version": "0.1.0",
+      "description": "Shared rules, secrets handling, and workspace MCP for dlthub",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "init", "rules", "secrets", "mcp"]
+      "tags": ["dlthub", "init", "rules", "secrets", "mcp"]
     },
     {
       "name": "transformations",
       "source": "./workbench/transformations",
       "description": "Transform raw dlt pipeline data into a Canonical Data Model. Annotate sources, build an ontology, design a CDM with Kimball dimensional modeling, and write @dlt.hub.transformation functions.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
+      "tags": ["dlthub", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
     },
     {
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
       "description": "Build SQL database pipelines with dlt: connect to any SQLAlchemy-supported database, load tables to a destination, tune performance with backends.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "etl", "data-pipeline", "python", "sql", "database"]
+      "tags": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"]
     },
     {
       "name": "data-quality",
       "source": "./workbench/data-quality",
       "description": "Add checks and metrics to dlt pipelines — inspect schema for candidates, define column-level validations and load metrics, run them on every pipeline load, and review results with failure diagnosis.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "data-quality", "validation", "checks", "metrics"]
+      "tags": ["dlthub", "data-quality", "validation", "checks", "metrics"]
     },
     {
       "name": "filesystem-pipeline",
       "source": "./workbench/filesystem-pipeline",
       "description": "Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination using dlt's filesystem source.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "filesystem", "s3", "gcs", "azure", "sftp", "csv", "parquet", "jsonl"]
+      "tags": ["dlthub", "filesystem", "s3", "gcs", "azure", "sftp", "csv", "parquet", "jsonl"]
     },
     {
       "name": "quick-start",
       "source": "./workbench/quick-start",
       "description": "Full-path guided start: ingest → visualize → transform → deploy in 3-5 prompts. Routes to the right entry skill based on a chosen depth.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
-      "tags": ["dlt", "quick-start", "onboarding", "demo", "router"]
+      "tags": ["dlthub", "quick-start", "onboarding", "demo", "router"]
     }
   ]
 }

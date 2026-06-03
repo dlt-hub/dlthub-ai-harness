@@ -20,7 +20,7 @@ Collect all unknown inputs in **one round** — never split into separate back-a
 
 **Structured choices** (ask in one round with multipl   e-choice options, up to three parallel questions):
 - **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
-- **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs no extra) and the credential layout.
+- **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[hub,s3]`, `dlt[hub,gs]`, `dlt[hub,az]`, `dlt[hub,sftp]`; local needs only `dlt[hub]`) and the credential layout.
 - **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
 
 **Free-text input** (`bucket_url` — ask as plain text, not structured choices):
@@ -34,7 +34,7 @@ Do **not** ask about layout (single vs multi-table). Assume **single-table** —
 Before running anything, lay out the plan and ask the user to confirm. Include:
 
 - Working directory (current `pwd`)
-- The exact `dlt init` command that will run
+- The exact `dlthub pipeline init` command that will run
 - Backend, file format, reader (`read_csv` / `read_parquet` / `read_jsonl` / custom)
 - `bucket_url`
 - `file_glob` — infer a sensible default from the bucket URL, file format, and any domain context (e.g. `*.csv` for CSV format, `**/*.parquet` for nested Parquet). Present it clearly so the user can correct it.
@@ -47,26 +47,28 @@ End the confirmation with a single sentence flagging the single-table assumption
 
 Ask for confirmation with three options: `Confirm — proceed` / `It's actually multi-table` / `Change something`. Only continue past this step on explicit confirmation.
 
-**Do not run `dlt init` until the user confirms.**
+**Do not run `dlthub pipeline init` until the user confirms.**
 
 ### 2. Scaffold in the current working directory
 
-While `dlt init` runs (below), fetch the relevant docs in parallel based on what the user chose in step 1:
-- **If backend is not Local**: Basic configuration & credentials — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic.md`
+While `dlthub pipeline init` runs (below), fetch the relevant docs in parallel based on what the user chose in step 1:
+- **If backend is not Local**: Basic configuration & credentials — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem`
 - **If backend is SFTP**: SFTP destination setup — `https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem#sftp`
-- **If file format is Custom**: Advanced (custom readers, transformers, glob patterns) — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/advanced.md`
+- **If file format is Custom**: Advanced (custom readers, transformers, glob patterns) — `https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem#create-your-own-readers`
 
-Run `dlt init` directly in current directory. Pipeline artifacts (`.dlt/`, the `.duckdb` file, generated Python) belong in the user's working directory so they can version-control or move them.
+Run `dlthub pipeline init` directly in current directory. Pipeline artifacts (`.dlt/`, the `.duckdb` file, generated Python) belong in the user's working directory so they can version-control or move them.
 
 ```bash
 ls -la                                        # snapshot before scaffolding
-dlt --non-interactive init filesystem <destination>
+uv run dlthub --non-interactive pipeline init filesystem <destination>
 ls -la                                        # confirm what was created
 ```
 
-Note: `--non-interactive` is a **global** flag on `dlt`, not on `init`. The wrong order (`dlt init filesystem duckdb --non-interactive`) errors out.
+Note: `--non-interactive` is a global flag on `dlthub` and may appear at any position in the command. Always pass it to prevent prompts that block execution.
 
-`dlt init` is safe to re-run in a project that already has files — it adds new ones without overwriting `filesystem_pipeline.py`, and updates shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `.gitignore`).
+If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uv run dlthub init` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
+
+`dlthub pipeline init` is safe to re-run in a project that already has files — it adds new ones without overwriting `filesystem_pipeline.py`, and updates shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `.gitignore`).
 
 The scaffold creates:
 - `filesystem_pipeline.py` — kitchen-sink demo with 7 functions; you will replace it
@@ -316,7 +318,7 @@ When the user confirms, run `uv run python filesystem_pipeline.py`. Common first
 
 | Error | Fix |
 |-------|-----|
-| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv add "dlt[s3]"`, GCS → `uv add "dlt[gs]"`, Azure → `uv add "dlt[az]"`, SFTP → `uv add "dlt[sftp]"`. |
+| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv add "dlt[hub,s3]"`, GCS → `uv add "dlt[hub,gs]"`, Azure → `uv add "dlt[hub,az]"`, SFTP → `uv add "dlt[hub,sftp]"`. |
 | `No module named 'pandas'` (or `pyarrow`) | Run `uv add pandas` / `uv add pyarrow`. |
 | `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6b. |
 | `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
@@ -324,7 +326,7 @@ When the user confirms, run `uv run python filesystem_pipeline.py`. Common first
 
 After a clean run, verify the load:
 - `list_tables`, `get_row_counts`, `preview_table` MCP tools (preferred), or
-- `dlt pipeline <pipeline_name> show` for a quick browser dashboard.
+- `dlthub local pipeline show <pipeline_name>` for a quick browser dashboard.
 
 If this was a sample run, ask the user if they want to do a full load now — remove `.add_limit(1)` and `files_per_page=1` from the pipeline and run again.
 

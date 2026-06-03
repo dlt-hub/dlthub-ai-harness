@@ -60,7 +60,7 @@
     "should_trigger": false
   },
   {
-    "query": "run dlt pipeline -vv stripe_pipeline trace and show me what happened in the last load",
+    "query": "run dlthub local pipeline trace stripe_pipeline -vv and show me what happened in the last load",
     "should_trigger": false
   },
   {

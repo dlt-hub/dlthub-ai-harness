@@ -1,11 +1,11 @@
 ---
 name: init-workspace
-description: Sets up dlthub workspace. Ensures `uv`, Python env and dlt are present. Installs LLM toolkit to kickstart future work.
+description: Sets up dlthub workspace. Ensures `uv`, Python env and dlthub are present. Installs LLM toolkit to kickstart future work.
 ---
 
-# Initialize dlt workspace
+# Initialize dlthub workspace
 
-Makes sure that `uv`, Python `venv` and `dlt` is installed, then sets up AI support.
+Makes sure that `uv`, Python `venv` and `dlthub` is installed, then sets up AI support.
 
 ## Step 1: Gather evidence
 
@@ -14,7 +14,8 @@ will not work as well.
 
 1. `uv --version` — is uv installed?
 2. `ls .venv/` — does a venv exist?
-3. `uv run dlthub --version` — is dlt installed in the venv?
+3. `uv run dlthub --version` — is dlthub installed in the venv?
+4. `ls .dlt/.workspace` - is dlthub workspace present?
 
 ## Step 2: Present plan
 
@@ -24,12 +25,14 @@ Show the user what was found and what needs to be done:
 Workspace status:
   uv:    ✓ installed (x.y.z) / ✗ not found
   venv:  ✓ exists (.venv/) / ✗ missing
-  dlt:   ✓ installed (x.y.z) / ✗ not found
+  dlthub:   ✓ installed (x.y.z) / ✗ not found
+  workspace:   ✓ exists / ✗ not found
 
 Actions needed:
   1. Install uv          (if missing)
   2. Create venv         (if missing)
-  3. Install dlt         (if missing)
+  3. Install dlthub        (if missing)
+  4. Initialize workspace (if missing)
 ```
 
 If everything is already set up, say so and skip to the report. Otherwise, ask the user to confirm before proceeding.
@@ -48,13 +51,28 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv venv
 ```
 
-**Install dlt** (if missing or outdated):
+**Install dlthub** (if missing or outdated):
+
+* if no `pyproject.toml` in current folder:
+```
+uv pip install "dlt[hub]"
+```
+
+* if `pyproject.toml` already exists:
+
 ```
 uv add "dlt[hub]"
 ```
 
 This installs (or upgrades) dlt with the hub extras.
 **Note**: - if adding `dlt` to `pyproject.toml` you must pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions
+
+**Initialize workspace**
+
+```
+uv run dlthub init
+```
+and follow the instructions: most importantly **uv sync** to pull required dependencies!
 
 
 ## Step 4: AI init and report

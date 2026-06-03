@@ -1,14 +1,14 @@
 ---
 name: define-data-quality-checks
 argument-hint: "[pipeline-name] [table]"
-description: Use when the user asks to "define checks", "add validation rules", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlt data quality check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
+description: Use when the user asks to "define checks", "add validation rules", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlthub data quality check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
 ---
 
 # Define data quality checks
 
-Translate business requirements into concrete dlt data quality checks and metrics, then write them into the pipeline code.
+Translate business requirements into concrete dlthub data quality checks and metrics, then write them into the pipeline code.
 
-Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
+Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.md)
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): carry-over from `setup-data-quality`. If missing, ask the user.
@@ -143,7 +143,7 @@ Produce ready-to-paste code for each table. Use the correct API form determined 
 **Decorator form** (custom `@dlt.resource`):
 
 ```python
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 @dq.with_checks(
     dq.checks.is_unique("id"),
@@ -164,7 +164,7 @@ def orders():
 **Dynamic form** (built-in sources like `rest_api`, `sql_database`, `filesystem`):
 
 ```python
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 source = rest_api_source(...)  # or sql_database(...), filesystem(...)
 orders = source.resources["orders"]
@@ -190,7 +190,7 @@ Generate one block per table. Do not merge unrelated tables into a single decora
 Do not modify any pipeline file. Produce a `checks` dict to pass directly to `dq.run_checks`:
 
 ```python
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 checks = {
     "orders": [

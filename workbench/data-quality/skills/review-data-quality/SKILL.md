@@ -8,7 +8,7 @@ description: Use when the user asks to "review data quality results", "what fail
 
 Read data quality check and metric results incrementally, surface failures with remediation suggestions, and recommend next steps.
 
-Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
+Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.md)
 
 ## Session context — carry-over from run-data-quality
 
@@ -21,11 +21,11 @@ Expected from prior steps:
 
 ## Quick summary mode
 
-If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlt library:
+If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlthub library:
 
 ```python
 import dlt
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 pipeline = dlt.attach(pipeline_name="<name>")
 results = dq.read_check(pipeline.dataset())
@@ -67,11 +67,11 @@ Flag any table where the count is 0 or significantly lower than expected (if pri
 
 ### 2. Build a table-level check summary
 
-Read check results using internal dlt functionality:
+Read check results using internal dlthub functionality:
 
 ```python
 import dlt
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 pipeline = dlt.attach(pipeline_name="<name>")
 results = dq.read_check(pipeline.dataset(), table="<table>")
@@ -101,11 +101,11 @@ Do not move to metrics until all tables have been summarised this way.
 
 ### 3. Read metric results
 
-For each table, read metric results using the dlt library:
+For each table, read metric results using the dlthub library:
 
 ```python
 import dlt
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 pipeline = dlt.attach(pipeline_name="<pipeline-name>")
 

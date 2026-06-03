@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 ### Export schema as mermaid
 
 ```
-dlt pipeline <pipeline_name> schema --format mermaid
+uv run dlthub local pipeline schema <pipeline_name> --format mermaid
 ```
 Show the mermaid diagram to the user. This gives a quick overview of tables, columns, types, and relationships (parent/child).
 
@@ -27,7 +27,7 @@ Show the mermaid diagram to the user. This gives a quick overview of tables, col
 
 Tell the user to run Workspace Dashboard:
 ```
-dlt pipeline <pipeline_name> show
+uv run dlthub local pipeline show <pipeline_name>
 ```
 This opens a browser with table schemas, row counts, and sample data.
 
@@ -63,7 +63,7 @@ Columns that are all-null on first load won't have inferred types. Options:
 
 ## 4. Iterate
 
-Re-run the pipeline after changes (`dev_mode` gives a fresh dataset each time). Use `debug-pipeline` to inspect traces and load packages after each run. Inspect again with MCP or `dlt pipeline <name> schema --format mermaid`. Repeat until the user is happy with the schema.
+Re-run the pipeline after changes (`dev_mode` gives a fresh dataset each time). Use `debug-pipeline` to inspect traces and load packages after each run. Inspect again with MCP or `dlthub local pipeline schema <name> --format mermaid`. Repeat until the user is happy with the schema.
 
 ## Next steps
 
