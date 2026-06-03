@@ -7,7 +7,7 @@ description: Use when the user asks to "run data quality checks", "execute check
 
 Execute checks against the already-loaded destination data using `dq.run_checks()`. No source re-extraction happens — this reads only from the destination.
 
-Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
+Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.md)
 
 ## Session context — carry-over from define-data-quality-checks
 
@@ -58,7 +58,7 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
    ```python
    import dlt
-   from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+   from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
    pipeline = dlt.attach(pipeline_name="<pipeline-name>")
    load_info = dq.run_checks(pipeline, checks={
@@ -109,10 +109,9 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
    | Error pattern | Likely cause | Action |
    |---|---|---|
-   | `DestinationTerminalException` containing "database is locked" (DuckDB) | Another process holds the DuckDB file — dlt dashboard open, a pipeline EL/T run in progress, or a second terminal session | Close the dashboard and any other pipeline processes, then re-run |
+   | `DestinationTerminalException` containing "database is locked" (DuckDB) | Another process holds the DuckDB file — dlthub dashboard open, a pipeline EL/T run in progress, or a second terminal session | Close the dashboard and any other pipeline processes, then re-run |
    | `DestinationTerminalException` (other) | Destination config / credential issue | Ask user to check secrets and destination setup |
    | `LineageFailedException` | SQL generation bug in a check (e.g. `is_primary_key`) | Remove the failing check, use `is_unique` instead, rewrite `<script_path>` |
-   | `DltLicenseScopeInvalidException` | Missing `dlthub.data_quality` license scope | Run `dlt license issue dlthub.data_quality` |
    | Any other exception | Infrastructure or code error | Surface the full traceback and stop |
 
    Do not proceed to step 2 (Surface check failures) if the script failed.
@@ -125,7 +124,7 @@ Read check results using the library:
 
 ```python
 import dlt
-from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/features/quality/data-quality
+from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
 pipeline = dlt.attach(pipeline_name="<pipeline-name>")
 results = dq.read_check(pipeline.dataset())

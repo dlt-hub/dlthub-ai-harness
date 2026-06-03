@@ -70,7 +70,7 @@
     "should_trigger": false
   },
   {
-    "query": "run dlt pipeline -vv my_pipeline trace and tell me why the last load failed",
+    "query": "run dlthub local pipeline trace my_pipeline -vv and tell me why the last load failed",
     "should_trigger": false
   },
   {

@@ -1,6 +1,6 @@
 # dltHub AI Workbench
 
-A collection of **toolkits** (compatible with Claude Code plugins) for data engineering with [dlt](https://dlthub.com).
+A collection of **toolkits** (compatible with Claude Code plugins) for data engineering with [dlthub](https://dlthub.com).
 
 ## Structure
 
@@ -9,7 +9,7 @@ A collection of **toolkits** (compatible with Claude Code plugins) for data engi
 workbench/                                # All toolkits live here
   <toolkit-name>/                  # One directory per toolkit
     .claude-plugin/plugin.json     # Plugin manifest (strict Claude schema, name must match directory)
-    .claude-plugin/toolkit.json    # dlt-specific metadata: dependencies, listed (optional)
+    .claude-plugin/toolkit.json    # dlthub-specific metadata: dependencies, listed (optional)
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session

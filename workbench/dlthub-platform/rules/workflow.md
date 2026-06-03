@@ -5,7 +5,7 @@
 
 ## Core workflow
 1. **Prepare workspace** (`prepare-deployment`) — split dev/prod credentials, set up production destination
-2. **Deploy pipeline** (`deploy-workspace`) — prepare scripts for production, deploy, launch, schedule
+2. **Deploy pipeline** (`deploy-workspace`) — prepare scripts for production, simulate job runs locally (`dlthub local run`/`serve`), deploy, launch, schedule
 
 ## Extend and harden
 3. **Debug deployment** (`debug-deployment`) — check job status, view logs, diagnose failures
@@ -30,7 +30,6 @@
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt
-* **Workspace deployment reference**: https://raw.githubusercontent.com/dlt-hub/runtime-starter-pack/refs/heads/main/REFERENCE.md
-  <!-- TODO: replace with stable docs URL when official runtime docs are published -->
-* **Runtime overview**: https://feat-workspace-deployment-2-docs.services4758.workers.dev/docs/devel/hub/runtime/overview.md
-  <!-- TODO: replace with stable docs URL when official runtime docs are published -->
+* **Workspace deployment reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments.md
+* **Runtime overview**: https://dlthub.com/docs/hub/pipeline-operations/overview.md
+* **Platform tutorial**: https://dlthub.com/docs/hub/getting-started/platform-tutorial.md

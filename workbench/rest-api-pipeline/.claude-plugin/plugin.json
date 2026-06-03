@@ -1,18 +1,18 @@
 {
   "name": "rest-api-pipeline",
   "description": "Build REST API pipelines with dlt: scope, debug and validate data",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
   "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
-  "keywords": ["dlt", "etl", "data-pipeline", "python"],
+  "keywords": ["dlthub", "etl", "data-pipeline", "python"],
   "mcpServers": {
     "dlt-workspace-mcp": {
       "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
+      "args": ["run", "dlthub", "ai", "mcp", "--stdio"]
     }
   }
 }

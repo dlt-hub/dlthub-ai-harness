@@ -63,7 +63,7 @@ Some endpoints can't be described in `RESTAPIConfig`:
 
 Define a custom `@dlt.resource` inside the `@dlt.source` function. Use `RESTClient` (from `dlt.sources.helpers.rest_client`) for HTTP calls with built-in auth and pagination. Loop over dates (or other dimensions) in the resource, call `client.paginate()` for each, and yield the data. The source then yields both `rest_api_resources(config)` and the custom resource.
 
-Read dlt docs on `RESTClient`: `https://dlthub.com/docs/general-usage/http/rest-client.md`
+Read dlt docs on `RESTClient`: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md`
 
 Update the source docstring to list the new resource and show `with_resources()` examples.
 

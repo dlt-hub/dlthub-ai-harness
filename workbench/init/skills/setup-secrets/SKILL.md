@@ -1,10 +1,10 @@
 ---
 name: setup-secrets
-description: Safely manage dlt secrets in *.secrets.toml. Use when the user directly asks to set up, configure, or inspect credentials (API keys, database passwords, tokens). Also use when writing Python code that needs to read secrets via dlt.secrets without exposing values. Do NOT use for pipeline creation, source discovery, or debugging pipeline execution — those skills call setup-secrets when they need credentials configured.
+description: Safely manage dlthub secrets in *.secrets.toml. Use when the user directly asks to set up, configure, or inspect credentials (API keys, database passwords, tokens). Also use when writing Python code that needs to read secrets via dlt.secrets without exposing values. Do NOT use for pipeline creation, source discovery, or debugging pipeline execution — those skills call setup-secrets when they need credentials configured.
 argument-hint: "[source-name]"
 ---
 
-# Set up dlt secrets
+# Set up dlthub secrets
 
 **Essential Reading** Credentials & config resolution: `https://dlthub.com/docs/general-usage/credentials/setup.md` `https://dlthub.com/docs/general-usage/credentials/advanced`
 

@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 ### Export schema as mermaid
 
 ```
-dlt pipeline <pipeline_name> schema --format mermaid
+uv run dlthub local pipeline schema <pipeline_name> --format mermaid
 ```
 
 Show the mermaid diagram to the user. This gives a quick overview of tables, columns, types, and relationships.
@@ -28,7 +28,7 @@ Show the mermaid diagram to the user. This gives a quick overview of tables, col
 
 Tell the user to run the Workspace Dashboard:
 ```
-dlt pipeline <pipeline_name> show
+uv run dlthub local pipeline show <pipeline_name>
 ```
 This opens a browser with table schemas, row counts, and sample data.
 

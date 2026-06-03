@@ -79,7 +79,7 @@ def extract_queries(transform_file: Path) -> tuple[dict[str, str], list[str]]:
     return queries, skipped
 
 
-parser = argparse.ArgumentParser(description="Check SQL dialect compatibility for dlt transformations")
+parser = argparse.ArgumentParser(description="Check SQL dialect compatibility for dlthub transformations")
 parser.add_argument("transform_file", type=Path, help="Path to the transformation Python file")
 parser.add_argument("--read", required=True, metavar="DIALECT", help="Dev/source destination type (e.g. duckdb, motherduck)")
 parser.add_argument("--write", required=True, metavar="DIALECT", help="Prod/target destination type (e.g. bigquery, snowflake, postgres)")
@@ -125,7 +125,7 @@ for name, sql in QUERIES.items():
         parsed = sqlglot.parse_one(sql, read=READ_DIALECT)
         if not isinstance(parsed, exp.Select):
             query_warnings.append(
-                f"top-level is {type(parsed).__name__}, not Select; dlt SqlModel may reject it"
+                f"top-level is {type(parsed).__name__}, not Select; dlthub SqlModel may reject it"
             )
     except Exception as e:
         query_errors.append(f"parse failed for {READ_DIALECT}: {e}")

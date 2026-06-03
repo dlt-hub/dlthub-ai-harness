@@ -1,7 +1,7 @@
 ---
 name: quick-start
 description: "Use when the user wants a guided end-to-end run from data to dashboard in a few prompts: 'show me a demo', 'give me a quick start', 'take me through the full workflow', 'how do I go from data to dashboard', 'walk me through ingestion to visualization', 'I want to try everything end-to-end'.
-  Do NOT use when the user is asking what's available or where to start in general — use the `toolkit-dispatch` skill (in init) for capability-discovery questions ('what can you do', 'what toolkits are there', 'I'm new to dlt').
+  Do NOT use when the user is asking what's available or where to start in general — use the `toolkit-dispatch` skill (in init) for capability-discovery questions ('what can you do', 'what toolkits are there', 'I'm new to dlthub').
   Do NOT use when the user already has a specific task underway (debugging, adding an endpoint, deploying)."
 argument-hint: "[data-source] [path]"
 ---
@@ -80,6 +80,6 @@ Announce the path name and sequence to orient the user, then immediately invoke 
 ## What NOT to do
 
 - Do not re-explain downstream skills after handing off
-- Do not run `dlt init` or create any files yourself
+- Do not run `dlthub pipeline init` or create any files yourself
 - Do not ask more than one question before routing
 - Do not re-invoke this skill after handing off to `find-source`

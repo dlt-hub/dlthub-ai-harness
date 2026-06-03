@@ -8,7 +8,7 @@ description: Use when the user asks to "set up data quality", "enable data quali
 
 Orient the user, inspect what data exists, and prepare the pipeline for data quality.
 
-Reference: [dlt data quality docs](https://dlthub.com/docs/hub/features/quality/data-quality)
+Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.md)
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, list pipelines and ask the user to choose.
@@ -18,49 +18,17 @@ Parse `$ARGUMENTS`:
 Before any discovery step, check what is already known:
 
 1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, or from `transformations` after `create-transformation`), skip `list_pipelines` discovery.
-2. **License already confirmed** — if the session already verified the `dlthub.data_quality` license scope, skip step 1.
 
 ## Steps
 
-### 1. Verify license
-
-The `dlthub.data_quality` scope is required to run checks. Check for it before the user invests time defining checks — if it becomes a paid scope in the future, the user should know up front.
-
-Run the CLI command:
-
-```
-dlt license info
-```
-
-This prints the installed license and its scopes. Check that `dlthub.data_quality` appears in the `Scopes` field.
-
-If the command errors ("no license found") or `dlthub.data_quality` is not in the scopes, tell the user:
-
-```
-Running data quality checks requires the dlthub.data_quality license scope.
-This is currently available as a free trial. To proceed, run:
-
-    dlt license issue dlthub.data_quality
-
-Important: run this command from the same working directory where your pipeline
-runs. The license is tied to that directory — issuing it elsewhere will cause
-checks to fail with a license error at runtime.
-
-You will be asked to agree to the dltHub EULA before the license is issued.
-```
-
-Wait for the user to confirm they've run the command before continuing. Do not issue the license yourself.
-
-Once the license is confirmed (scopes include `dlthub.data_quality`), continue.
-
-### 2. Confirm pipeline
+### 1. Confirm pipeline
 
 Use the `list_pipelines` MCP tool to list all local dlt pipelines.
 
 **If `list_pipelines` returns an empty list**, do not stop silently. Fall back to the CLI:
 
 ```
-dlt pipeline --list-pipelines
+uv run dlthub local pipeline list
 ```
 
 If the CLI also returns nothing, tell the user:
@@ -86,7 +54,7 @@ Then ask the user to provide the pipeline name manually and continue once they d
 
 **IMPORTANT: Confirm the exact pipeline name before any further MCP calls.** A wrong name causes all subsequent schema lookups to fail silently or return empty results.
 
-### 3. Discover tables
+### 2. Discover tables
 
 Use the `list_tables` MCP tool for the confirmed pipeline. Collect the table names and column counts. Skip `_dlt_*` system tables.
 
@@ -106,7 +74,7 @@ If there are no non-system tables, stop:
 No data tables found in pipeline "<name>". Run the pipeline at least once to load data.
 ```
 
-### 4. Inspect schema and auto-detect check candidates
+### 3. Inspect schema and auto-detect check candidates
 
 Run a small inline script to generate check candidates directly from the pipeline schema:
 
@@ -140,7 +108,7 @@ Collect candidates per table. Ignore tables where `hints["tables"]` returns an e
 
 **Important — source of truth:** The schema state, pipeline code, and destination can get out of sync. If the schema already shows `x-dq-checks` metadata (from a previous session or external edit) but the code has no decorators, or vice versa, make this explicit to the user: for Profile A the code is the source of truth (re-running the pipeline overwrites schema hints with whatever the decorators say); for Profile B the `dq.run_checks` call is the source of truth; the `_dlt_checks` destination table reflects only what was last executed.
 
-### 5. Present summary to the user
+### 4. Present summary to the user
 
 Present a summary table. Do not ask for decisions yet — that happens in `define-data-quality-checks`. This step is read-only.
 

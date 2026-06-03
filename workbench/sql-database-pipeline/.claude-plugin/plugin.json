@@ -1,18 +1,18 @@
 {
   "name": "sql-database-pipeline",
   "description": "Build SQL database pipelines with dlt: connect to any SQL source, load tables to a destination, tune performance with backends",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
   "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
-  "keywords": ["dlt", "etl", "data-pipeline", "python", "sql", "database"],
+  "keywords": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"],
   "mcpServers": {
     "dlt-workspace-mcp": {
       "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
+      "args": ["run", "dlthub", "ai", "mcp", "--stdio"]
     }
   }
 }

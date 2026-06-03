@@ -50,21 +50,21 @@ Before assuming `sql_database` is the right tool, check what the user actually n
 | User intent                                                                | Source | Docs |
 |----------------------------------------------------------------------------| --- | --- |
 | Postgres CDC (change data capture) / logical replication                   | `pg_replication` (verified, free) | https://dlthub.com/docs/dlt-ecosystem/verified-sources/pg_replication.md |
-| MS SQL Server / Change Tracking, managed or hosted, need advanced features | `ms_sql` (hub, **paid**) | https://dlthub.com/docs/hub/ecosystem/ms-sql |
+| MS SQL Server / Change Tracking, managed or hosted, need advanced features | `ms_sql` (hub) | https://dlthub.com/docs/hub/ingestion/ms-sql.md |
 | _add more as discovered: check dlthub and verified sources_                | | |
 
-> **Note:** All sources from the dlthub require the `dlthub` package and an active paid license. Always inform the user before recommending a dlthub source.
+> **Note:** Sources from the dlthub require the `hub` extra: `uv add "dlt[hub]"`.
 
 Tell the user which source fits and the install/init command. Do not continue with `sql_database` for these cases — the wrong source will produce incorrect or incomplete results.
 
-**Also search the dlt hub** for the specific database type — community and ecosystem sources are not listed by `dlt init --list-sources`:
+**Also search the dlthub** for the specific database type — community and ecosystem sources are not listed by `dlthub pipeline init --list-sources`:
 ```
 https://dlthub.com/docs/hub
 ```
 
 **Then run** to check verified sources for any SaaS product built on top of the database (e.g. `salesforce`, `hubspot`):
 ```
-dlt --non-interactive init --list-sources
+uv run dlthub --non-interactive pipeline init --list-sources
 ```
 
 If a maintained connector exists, inform the user — it is almost always better than building from scratch.

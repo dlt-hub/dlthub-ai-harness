@@ -1,6 +1,6 @@
 # Toolkits
 
-How the dlt AI workbench organizes toolkits and how `dlthub ai toolkit` installs them across AI platforms.
+How the dltHub AI workbench organizes toolkits and how `dlthub ai toolkit` installs them across AI platforms.
 
 ## Repository structure
 
@@ -18,7 +18,7 @@ workbench/
   sql-database-pipeline/    # feature toolkit (depends on init)
     .claude-plugin/
       plugin.json           # Claude plugin manifest
-      toolkit.json          # dlt-specific metadata (dependencies, listed)
+      toolkit.json          # dlthub-specific metadata (dependencies, listed)
     skills/
       skill-name/
         SKILL.md
@@ -43,17 +43,17 @@ Each toolkit has `.claude-plugin/plugin.json` — the Claude plugin manifest wit
 ```json
 {
   "name": "rest-api-pipeline",
-  "description": "One shot REST API pipelines with dlt",
-  "version": "0.1.0",
+  "description": "Build REST API pipelines with dlt: scope, debug and validate data",
+  "version": "0.1.1",
   "author": {"name": "dlthub"},
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
-  "license": "ELv2",
-  "keywords": ["dlt", "etl", "data-pipeline"],
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlthub", "etl", "data-pipeline"],
   "mcpServers": {
     "dlt-workspace-mcp": {
       "command": "uv",
-      "args": ["run", "dlt", "ai", "mcp", "--stdio"]
+      "args": ["run", "dlthub", "ai", "mcp", "--stdio"]
     }
   }
 }
@@ -66,11 +66,11 @@ Each toolkit has `.claude-plugin/plugin.json` — the Claude plugin manifest wit
 | `version` | yes | `""` | Semver string for install/upgrade tracking |
 | `mcpServers` | no | — | MCP server definitions (alternative: standalone `.mcp.json` or `mcp.json`) |
 
-Other Claude-valid fields (`author`, `homepage`, `repository`, `license`, `keywords`, `skills`, `commands`, `hooks`, `agents`, `outputStyles`, `lspServers`) are accepted by Claude but ignored by the dlt CLI.
+Other Claude-valid fields (`author`, `homepage`, `repository`, `license`, `keywords`, `skills`, `commands`, `hooks`, `agents`, `outputStyles`, `lspServers`) are accepted by Claude but ignored by the dlthub CLI.
 
 ## toolkit.json
 
-dlt-specific metadata goes in `.claude-plugin/toolkit.json` alongside `plugin.json`. This file is optional and read only by the dlt CLI — Claude ignores it. Its keys are merged on top of `plugin.json` values.
+dlthub-specific metadata goes in `.claude-plugin/toolkit.json` alongside `plugin.json`. This file is optional and read only by the dlthub CLI — Claude ignores it. Its keys are merged on top of `plugin.json` values.
 
 ```json
 {
@@ -98,7 +98,7 @@ dlthub ai init              [--agent] [--location] [--branch]
 
 | Command | Description |
 |---------|-------------|
-| `info` | Show current AI setup: dlt version, detected agent, installed toolkits with entry skills |
+| `status` | Show current AI setup: dlthub version, detected agent, installed toolkits with entry skills |
 | `list` | List available toolkits with name, description, and install status |
 | `info <name>` | Show toolkit contents (skills, commands, rules, MCP servers) |
 | `install <name>` | Install toolkit components into the current project |
@@ -108,7 +108,7 @@ dlthub ai init              [--agent] [--location] [--branch]
 
 ## MCP tools
 
-When the `toolkit` feature is enabled, the dlt MCP server exposes:
+When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 
 | Tool | Description |
 |------|-------------|
@@ -187,11 +187,11 @@ Installed toolkits are recorded in `.dlt/.toolkits` (YAML):
 
 ```yaml
 rest-api-pipeline:
-  version: "0.1.0"
+  version: "0.1.1"
   installed_at: "2026-02-28T10:30:00+00:00"
   agent: claude
-  description: "One shot REST API pipelines with dlt"
-  tags: [dlt, etl, data-pipeline, python]
+  description: "Build REST API pipelines with dlt: scope, debug and validate data"
+  tags: [dlthub, etl, data-pipeline, python]
   workflow_entry_skill: find-source
   files:
     .claude/rules/rest-api-pipeline-workflow.md:
@@ -199,11 +199,11 @@ rest-api-pipeline:
   mcp_servers:
     - dlt-workspace-mcp
 sql-database-pipeline:
-  version: "0.1.0"
+  version: "0.1.1"
   installed_at: "2026-02-28T10:30:00+00:00"
   agent: claude
   description: "Build SQL database pipelines with dlt"
-  tags: [dlt, sql, database, data-pipeline, python]
+  tags: [dlthub, sql, database, data-pipeline, python]
   workflow_entry_skill: find-source
   files:
     .claude/rules/sql-database-pipeline-workflow.md:

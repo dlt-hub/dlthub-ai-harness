@@ -15,7 +15,7 @@ Trigger evals measure these systematically.
 
 ### Eval workspace
 
-An eval workspace is a fresh dlt project (`uv venv` + `dlt ai init` + optional toolkits) created under `evals/.evals/`. It simulates what a real user has after bootstrapping — the same skills, rules, and MCP servers, but in an isolated directory.
+An eval workspace is a fresh dlthub project (`uv venv` + `dlthub ai init` + optional toolkits) created under `evals/.evals/`. It simulates what a real user has after bootstrapping — the same skills, rules, and MCP servers, but in an isolated directory.
 
 Each eval can define **multiple workspaces** with different toolkit combinations. This tests how a skill behaves:
 - **Alone** (init-only) — minimal competition, should have high recall

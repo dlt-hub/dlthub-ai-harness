@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 Tell the user to run Workspace Dashboard **if no precise query or instructions were give**, this
 assumes user wants to just look at the data. Otherwise
 ```
-dlt pipeline <pipeline_name> show
+uv run dlthub local pipeline show <pipeline_name>
 ```
 This opens a browser with table schemas, row counts, and sample data.
 
@@ -62,7 +62,7 @@ Ibis is lazy, composable, and destination agnostic. Key operations:
 - `table.mutate(new_col=table.col * 100)` — computed columns
 - `table.select("col1", "col2")` — column selection
 
-Read ibis docs: `https://ibis-project.org/reference/expression-collections`
+Read ibis docs: `https://ibis-project.org/reference/expression-tables`
 
 ### Joining parent/child tables
 

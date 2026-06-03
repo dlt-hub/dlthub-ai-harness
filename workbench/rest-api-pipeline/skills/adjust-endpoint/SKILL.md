@@ -26,4 +26,4 @@ Pipeline worked with `.add_limit(1)`. After removing the limit, it hung forever 
 
 *If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
 
-- Full load complete → invoke `explore-data` to chart and analyze the data
+- Full load complete → hand over to **data-exploration** (`explore-data`) to chart and analyze the data

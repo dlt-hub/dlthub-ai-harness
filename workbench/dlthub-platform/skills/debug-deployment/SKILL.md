@@ -5,6 +5,7 @@ description: Debug a failed or misbehaving dltHub Platform deployment. Use when 
 
 # Debug dltHub Platform deployment
 
+**Reference**: https://dlthub.com/docs/hub/pipeline-operations/monitoring.md (pipeline health, logs, failure diagnosis)
 
 ## Check job status
 
@@ -57,7 +58,7 @@ dlthub job runs cancel <name> [run#]         # cancel a specific run
 to run a single command on given profile use:
 ```bash
 dlthub local run my_pipeline.py --profile prod          # run under prod profile
-WORKSPACE__PROFILE=prod dlt pipeline my_pipeline info   # env var for dlt commands
+WORKSPACE__PROFILE=prod uv run dlthub local pipeline info my_pipeline   # env var for dlthub commands
 ```
 Note: you must pin the production profile for mcp server to see the change
 

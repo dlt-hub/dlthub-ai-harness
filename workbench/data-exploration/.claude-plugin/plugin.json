@@ -1,12 +1,12 @@
 {
   "name": "data-exploration",
   "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
   "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
-  "keywords": ["dlt", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
+  "keywords": ["dlthub", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
 }

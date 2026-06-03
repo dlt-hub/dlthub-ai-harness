@@ -7,7 +7,7 @@ description: Prepare production credentials and destinations for dltHub Platform
 
 Set up profile-scoped credentials and production destinations so the runtime can run pipelines with the right config.
 
-**Reference**: https://dlthub.com/docs/hub/core-concepts/profiles-dlthub.md
+**Reference**: https://dlthub.com/docs/hub/pipeline-operations/profiles.md
 
 ## 1. Verify `.dlt/` config structure
 
@@ -89,9 +89,9 @@ Use `secrets_view_redacted` to see the final unified view across all workspace s
 ## 5. Create deployment manifest (`__deployment__.py`)
 
 **Reference**: [deployment-module.md](deployment-module.md)
-**Full Documentation** https://raw.githubusercontent.com/dlt-hub/runtime-starter-pack/refs/heads/main/REFERENCE.md
+**Full Documentation** https://dlthub.com/docs/hub/pipeline-operations/deployments.md
 
-- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlthub run <file>` directly instead (see Chapter 1 in the starter pack)
+- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlthub run <file>` directly instead (see the [platform tutorial](https://dlthub.com/docs/hub/getting-started/platform-tutorial.md))
 - This step is **mandatory** for workspaces with transformations, multiple pipelines, scheduled jobs, or followup triggers
 - This step will be repeated when more notebooks or pipelines are added to the workspace
 

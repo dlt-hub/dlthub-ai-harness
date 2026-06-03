@@ -5,7 +5,7 @@
 
 ## Core workflow
 1. **Find source** (`find-source`) — classify the database type, explore schemas and tables, gather connection details, pick first table and destination
-2. **Create pipeline** (`create-sql-database-pipeline`) — scaffold with `dlt init sql_database`, write code, set up credentials, test load, choose backend
+2. **Create pipeline** (`create-sql-database-pipeline`) — scaffold with `dlthub pipeline init sql_database`, write code, set up credentials, test load, choose backend
 3. **Debug pipeline** (`debug-pipeline`) — run it, inspect traces and load packages, fix connection or driver errors
 4. **Validate data** (`validate-data`) — inspect schema and data, fix types and column mappings, iterate until correct
 5. **Clean up** — once the pipeline is working, remove temporary ad-hoc scripts (e.g. `explore_db.py`, `inspect_schema.py`, any throwaway `.py` files created during exploration). Keep only the pipeline script and config files.

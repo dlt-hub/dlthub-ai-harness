@@ -62,13 +62,13 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
 | `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlt`; installs what's missing; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlt"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
+| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlthub`; installs what's missing; initializes the workspace; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlthub"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-source to load tables from my Postgres database into DuckDB"* | Run `/find-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
 | `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform                                        | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlt transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
+| `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
 
 > `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlthub ai init` or as a separate plugin via the Claude marketplace.
@@ -107,7 +107,10 @@ uv init
 # Install dlthub
 uv add "dlt[hub]"
 
-# Set up your workspace (auto-detects your coding assistant)
+# Initialize the dlthub workspace and follow its instructions (most importantly `uv sync`)
+uv run dlthub init
+
+# Set up AI support (auto-detects your coding assistant)
 uv run dlthub ai init
 
 # If multiple coding assistants are detected, specify one explicitly:
@@ -201,7 +204,7 @@ The `dlthub ai` subcommand is the bridge between the workbench and your coding a
 **Toolkit management** — copies skills, rules, commands, and MCP config from the workbench into your project's agent config directory (`.claude/`, `.cursor/`, `.agents/`, etc.):
 
 ```bash
-uv run dlthub ai status                        # show installed agent, dlt version, active toolkits
+uv run dlthub ai status                        # show installed agent, dlthub version, active toolkits
 uv run dlthub ai toolkit list                  # list available toolkits from the workbench
 uv run dlthub ai toolkit info <name>           # show a toolkit's skills, commands, and workflow
 uv run dlthub ai toolkit install <name>        # install a toolkit for the detected agent
@@ -216,7 +219,7 @@ uv run dlthub ai secrets view-redacted         # print secrets with values maske
 uv run dlthub ai secrets update-fragment --path <file> '<toml>'  # merge a TOML snippet into a secrets file
 ```
 
-**MCP server** — starts a local server that exposes your dlt workspace (pipelines, schemas, tables, secrets) as tools the assistant can call:
+**MCP server** — starts a local server that exposes your dlthub workspace (pipelines, schemas, tables, secrets) as tools the assistant can call:
 
 ```bash
 uv run dlthub ai mcp run                       # run in SSE mode (default)

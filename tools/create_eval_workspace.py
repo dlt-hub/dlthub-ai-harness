@@ -75,8 +75,8 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
     run(["uv", "pip", "install", dlt_pkg], cwd=workspace)
 
     # Verify
-    result = run(["uv", "run", "dlt", "--version"], cwd=workspace)
-    print(f"  dlt: {result.stdout.strip()}")
+    result = run(["uv", "run", "dlthub", "--version"], cwd=workspace)
+    print(f"  dlthub: {result.stdout.strip()}")
 
     # AI init
     run(
@@ -91,12 +91,12 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
             [
                 "uv",
                 "run",
-                "dlt",
+                "dlthub",
                 "--non-interactive",
                 "ai",
                 "toolkit",
-                toolkit,
                 "install",
+                toolkit,
                 "--agent",
                 "claude",
             ],

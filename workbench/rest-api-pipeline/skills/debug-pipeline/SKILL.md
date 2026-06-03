@@ -36,7 +36,7 @@ Always do this first before any pipeline debugging:
    ```
 
 This shows HTTP requests being made, data extracted, pagination steps, and normalize/load progress. Essential for diagnosing any issue.
-**Essential reading if problems PERSIST**: https://dlthub.com/docs/general-usage/http/rest-client.md
+**Essential reading if problems PERSIST**: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md
 
 ## Run the pipeline
 
@@ -61,7 +61,7 @@ Expected: a `ConfigFieldMissingException` or `401 Unauthorized` error confirming
 
 Tell the user what credentials to fill in and how to get them. If credentials are unknown, research the data source (web search for API docs, auth setup guides — similar to what `find-source` does).
 
-After any run (success or failure), use the dlt CLI for inspection:
+After any run (success or failure), use the dlthub CLI for inspection:
 
 ### Pipeline appears stuck / runs too long
 
@@ -81,7 +81,7 @@ A pipeline that runs for a long time is suspicious but MAY be normal (large data
   request_timeout = 15
   request_max_attempts = 2
   ```
-- Ref: https://dlthub.com/docs/general-usage/http/requests.md (timeouts and retries)
+- Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md (timeouts and retries)
 
 **Working but slow** — each request returns new data and URL changes. Use `.add_limit(N)` to cap pages during development.
 
@@ -101,7 +101,7 @@ Likely a wrong or missing `data_selector`. dlt auto-detects the data array in th
 
 Inspect pipeline state to check the stored cursor value:
 ```
-dlt pipeline -v <pipeline_name> info
+uv run dlthub local pipeline info <pipeline_name> -v
 ```
 Look for `last_value` in the resource state — verify it updates between runs. Also check logs for `"Bind incremental on <resource_name>"` to confirm the incremental param was bound.
 Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
@@ -111,21 +111,21 @@ Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 You can inspect last pipeline run:
 
 ```
-dlt pipeline -vv <pipeline_name> trace
+uv run dlthub local pipeline trace <pipeline_name> -vv
 ```
-Note: `-vv` goes BEFORE the pipeline name. Shows config/secret resolution, step timing, failures.
+Shows config/secret resolution, step timing, failures.
 
 ## Load packages
 Each pipeline run generated one or more load packages. Use trace tool to find their ids.
 
 ```
-dlt pipeline -v <pipeline_name> load-package          # most recent package
-dlt pipeline -v <pipeline_name> load-package <load_id> # specific package
+uv run dlthub local pipeline load-package <pipeline_name> -v           # most recent package
+uv run dlthub local pipeline load-package <pipeline_name> <load_id> -v # specific package
 ```
 Shows package state, per-job details (table, file type, size, timing), and **error messages for failed jobs**. With `-v` also shows schema updates applied.
 
 ```
-dlt pipeline <pipeline_name> failed-jobs
+uv run dlthub local pipeline failed-jobs <pipeline_name>
 ```
 Scans all packages for failed jobs and displays error messages from the destination.
 

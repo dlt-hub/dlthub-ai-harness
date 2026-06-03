@@ -57,7 +57,7 @@ dataset(expr).df()  # execute ibis expression back through the dataset
 
 Key ibis operations: `group_by/aggregate`, `filter`, `join`, `order_by(ibis.desc(...))`, `mutate`.
 
-Ibis docs: https://ibis-project.org/reference/expression-collections
+Ibis docs: https://ibis-project.org/reference/expression-tables
 
 ## Chainable query methods
 
