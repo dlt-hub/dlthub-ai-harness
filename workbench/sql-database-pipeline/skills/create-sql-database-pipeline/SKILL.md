@@ -8,7 +8,7 @@ argument-hint: "[database-url-or-description] [destination]"
 
 Build the simplest working pipeline — one table, no incremental loading — to get data flowing fast.
 
-**Docs:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/basic
+**Docs:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database
 
 Parse `$ARGUMENTS`:
 - `database` (required): description of the source database (e.g. "postgres on localhost", "Rfam MySQL", a connection URL, or just the DB type)
@@ -30,11 +30,15 @@ Key rules regardless of scale:
 
 Run `ls -la` to see the current state before scaffolding.
 
-### 3. Run dlt init
+### 3. Run dlthub pipeline init
 
 ```
-dlt init sql_database <destination> --non-interactive
+uv run dlthub --non-interactive pipeline init sql_database <destination>
 ```
+
+Note: `--non-interactive` is a global flag on `dlthub` and may appear at any position in the command. Always pass it to prevent prompts that block execution.
+
+If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uv run dlthub init` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
 
 This creates:
 - `sql_database_pipeline.py` — working example
@@ -49,7 +53,7 @@ Run `ls -la` again to confirm what was created.
 Do these in parallel:
 
 **Read essential dlt docs upfront:**
-- SQL database source overview: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/basic.md`
+- SQL database source overview: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database` (setup steps: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/setup.md`)
 - Backend options and performance: `https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration.md`
 - Credentials setup: `https://dlthub.com/docs/general-usage/credentials/setup.md`
 
@@ -67,7 +71,7 @@ Different databases need different SQLAlchemy dialect + driver packages:
 
 Install the driver + sql_database extras if missing:
 ```
-uv add "dlt[sql_database]" <driver-package>
+uv add "dlt[hub,sql_database]" <driver-package>
 ```
 
 ### 5. Read generated files
@@ -212,7 +216,7 @@ table_name = "<table>"
 
 **Secrets** (credentials): **never** read or write `secrets.toml` directly.
 
-Present this template to the user and ask them to fill it in. Use `secrets_update_fragment` MCP tool (or `dlt ai secrets` CLI) to write the fragment — do not edit the file directly:
+Present this template to the user and ask them to fill it in. Use `secrets_update_fragment` MCP tool (or `dlthub ai secrets` CLI) to write the fragment — do not edit the file directly:
 
 ```toml
 # .dlt/secrets.toml
@@ -247,7 +251,7 @@ Expected output shows extract/normalize/load steps with row counts and timing fr
 Common first-run errors:
 - `ConfigFieldMissingException` — a credentials field is missing or misnamed in secrets.toml
 - `OperationalError` / `Can't connect` — wrong host/port/credentials or DB unreachable
-- `ModuleNotFoundError: No module named 'sqlalchemy'` — run `uv add "dlt[sql_database]"`
+- `ModuleNotFoundError: No module named 'sqlalchemy'` — run `uv add "dlt[hub,sql_database]"`
 - `MissingDependencyException: numpy required` — the pyarrow backend also needs numpy: `uv add numpy`
 
 ### 11. Suggest backend after a successful test run

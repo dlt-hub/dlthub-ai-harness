@@ -1,4 +1,4 @@
-# CLI reference for dlt secrets
+# CLI reference for dlthub secrets
 
 Use these commands when `dlt-workspace-mcp` is not connected. All MCP tools have CLI equivalents:
 

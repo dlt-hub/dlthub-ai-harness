@@ -1,13 +1,15 @@
 ---
 name: setup-runtime
-description: Verify dlt workspace is ready for dltHub Platform. Use when user wants to deploy for the first time, or when another skill reports missing prerequisites like .workspace file or dlt[hub] dependency.
+description: Verify dlthub workspace is ready for dltHub Platform. Use when user wants to deploy for the first time, or when another skill reports missing prerequisites like .workspace file or dlt[hub] dependency.
 ---
 
 # Verify workspace for dltHub Platform
 
 Lightweight check that the workspace is ready for runtime work. Run through each check and fix issues as found.
 
-**Reference**: https://feat-workspace-deployment-2-docs.services4758.workers.dev/docs/devel/hub/runtime/overview.md
+**Reference**:
+- Workspace intro (install `dlt[hub]`, create a workspace): https://dlthub.com/docs/hub/getting-started/installation.md
+- Workspace setup (convert a Python project, credentials per profile): https://dlthub.com/docs/hub/pipeline-operations/workspace-setup.md
 
 ## 1. Verify Python project
 

@@ -82,7 +82,7 @@ load_info = pipeline.run(reader, write_disposition="merge")
 
 Run the pipeline twice to confirm incremental behaviour:
 
-1. **First run** — loads all files matching the glob. Check row count with `get_row_counts` MCP tool or `dlt pipeline <name> show`.
+1. **First run** — loads all files matching the glob. Check row count with `get_row_counts` MCP tool or `dlthub local pipeline show <name>`.
 2. **Second run (no new files)** — should load 0 rows. Check pipeline state with `get_local_pipeline_state` MCP tool to confirm the `modification_date` cursor advanced.
 
 If the user can add a test file to the bucket, run a third time to confirm only the new file is picked up.

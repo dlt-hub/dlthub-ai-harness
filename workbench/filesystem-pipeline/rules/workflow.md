@@ -4,7 +4,7 @@
 **ALWAYS** start with **Create filesystem pipeline** (`create-filesystem-pipeline`) SKILL — gather inputs, scaffold, configure credentials, and run the pipeline
 
 ## Core workflow
-1. **Create pipeline** (`create-filesystem-pipeline`) — scaffold with `dlt init filesystem`, configure bucket URL, credentials, file glob, and reader; run and verify the load
+1. **Create pipeline** (`create-filesystem-pipeline`) — scaffold with `dlthub pipeline init filesystem`, configure bucket URL, credentials, file glob, and reader; run and verify the load
 
 ## Extend and harden
 2. **Debug pipeline** — for failures beyond first-run errors, hand off to **rest-api-pipeline** → `debug-pipeline`

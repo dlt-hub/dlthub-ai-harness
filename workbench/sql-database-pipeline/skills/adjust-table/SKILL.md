@@ -38,7 +38,7 @@ load_info = pipeline.run(table, write_disposition="replace")  # remove .add_limi
 
 Incremental loading fetches only new or updated rows on each run using a cursor column.
 
-**Ref:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/basic#incremental-loading
+**Ref:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration#incremental-loading
 
 ```python
 import dlt
@@ -65,7 +65,7 @@ Key decisions:
 
 Check stored cursor state between runs:
 ```
-dlt pipeline -v <pipeline_name> info
+uv run dlthub local pipeline info <pipeline_name> -v
 ```
 Look for `last_value` in the resource state.
 

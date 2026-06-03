@@ -46,7 +46,7 @@ uv run python <source>_pipeline.py
 |---|---|
 | `ConfigFieldMissingException` | A credentials field is missing or misnamed in `secrets.toml` — check the section name and field names exactly |
 | `OperationalError` / `Can't connect` | Wrong host, port, or credentials; DB not reachable from this network |
-| `ModuleNotFoundError: No module named 'sqlalchemy'` | Run `uv add "dlt[sql_database]"` |
+| `ModuleNotFoundError: No module named 'sqlalchemy'` | Run `uv add "dlt[hub,sql_database]"` |
 | `ModuleNotFoundError: No module named 'pymysql'` | Install the dialect driver, e.g. `uv add pymysql` |
 | `MissingDependencyException: numpy required` | The pyarrow backend also needs numpy: `uv add numpy` |
 | `NoSuchTableError` | Table name or schema is wrong — check spelling and schema parameter |
@@ -105,7 +105,7 @@ Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configu
 
 Inspect pipeline state to check the stored cursor value:
 ```
-dlt pipeline -v <pipeline_name> info
+uv run dlthub local pipeline info <pipeline_name> -v
 ```
 Look for `last_value` in the resource state — verify it updates between runs. Also check logs for `"Bind incremental on <resource_name>"` to confirm the incremental param was bound.
 Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
@@ -116,22 +116,22 @@ Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 Inspect the last pipeline run:
 
 ```
-dlt pipeline -vv <pipeline_name> trace
+uv run dlthub local pipeline trace <pipeline_name> -vv
 ```
 
-`-vv` goes BEFORE the pipeline name. Shows credentials resolution, step timing, and failures.
+Shows credentials resolution, step timing, and failures.
 
 ## Load packages
 Each pipeline run generated one or more load packages. Use trace tool to find their ids.
 
 ```
-dlt pipeline -v <pipeline_name> load-package          # most recent package
-dlt pipeline -v <pipeline_name> load-package <load_id> # specific package
+uv run dlthub local pipeline load-package <pipeline_name> -v           # most recent package
+uv run dlthub local pipeline load-package <pipeline_name> <load_id> -v # specific package
 ```
 Shows package state, per-job details (table, file type, size, timing), and **error messages for failed jobs**. With `-v` also shows schema updates applied.
 
 ```
-dlt pipeline <pipeline_name> failed-jobs
+uv run dlthub local pipeline failed-jobs <pipeline_name>
 ```
 Scans all packages for failed jobs and displays error messages from the destination.
 

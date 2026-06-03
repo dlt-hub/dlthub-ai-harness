@@ -1,6 +1,6 @@
 ---
 name: create-transformation
-description: Write dlt transformation functions that map source tables to CDM entities. Use after generate-cdm to produce the transformation Python script.
+description: Write dlthub transformation functions that map source tables to CDM entities. Use after generate-cdm to produce the transformation Python script.
 argument-hint: "[pipeline-name]"
 ---
 
@@ -41,12 +41,6 @@ Then install dlt[hub]:
 
 ```
 uv add "dlt[hub]"
-```
-
-Ask the user if they have their dlthub license. If they do not, ask them to obtain one using:
-
-```
-dlt license issue dlthub.transformations
 ```
 
 ### 2. Read inputs
@@ -115,8 +109,8 @@ def dim_company(dataset: dlt.Dataset):
     yield dataset("SELECT company_id, name FROM hubspot__companies")
 ```
 
-**Default to SQL transformation logic** — pass a SQL string directly to `dataset()` (https://dlthub.com/docs/hub/features/transformations#31-alternatively-use-pure-sql-for-the-transformation).
-Use SQL first because it is easier for users to review, generally more reliable for LLM generation, and dlt can transpile dialect differences when needed.
+**Default to SQL transformation logic** — pass a SQL string directly to `dataset()` (see "Writing your queries in SQL" in https://dlthub.com/docs/hub/transformations.md).
+Use SQL first because it is easier for users to review, generally more reliable for LLM generation, and dlthub can transpile dialect differences when needed.
 
 ```python
 @dlt.hub.transformation
@@ -132,7 +126,7 @@ def dim_users(dataset: dlt.Dataset):
     yield dataset("SELECT user_id, email, created_at FROM users")
 ```
 
-**Write all transformation SQL in ANSI-standard SQL.** This ensures transformations are portable across destinations without modification. dlt uses SQLGlot to transpile queries, but transpilation can only bridge dialect gaps when the input SQL uses constructs that have mappings across dialects. ANSI SQL is the baseline that all supported destinations understand.
+**Write all transformation SQL in ANSI-standard SQL.** This ensures transformations are portable across destinations without modification. dlthub uses SQLGlot to transpile queries, but transpilation can only bridge dialect gaps when the input SQL uses constructs that have mappings across dialects. ANSI SQL is the baseline that all supported destinations understand.
 
 Concretely:
 - Use `CAST(x AS type)` not `x::type`
@@ -141,7 +135,7 @@ Concretely:
 - Use `CASE WHEN` for conditional logic
 - Use standard aggregates: `SUM`, `AVG`, `COUNT`, `MIN`, `MAX`
 
-When a transformation genuinely requires a dialect-specific function with no ANSI equivalent (e.g., `EPOCH_MS`, `STRFTIME`, array operations), pass `query_dialect` to `dataset()` so dlt knows how to transpile it.
+When a transformation genuinely requires a dialect-specific function with no ANSI equivalent (e.g., `EPOCH_MS`, `STRFTIME`, array operations), pass `query_dialect` to `dataset()` so dlthub knows how to transpile it.
 
 **Cross-dataset SQL must use fully qualified source references.**
 When writing into `<target_dataset>` from a different source dataset, unqualified table names may resolve against the target dataset and fail with "table not found". For BigQuery, always use ``project.dataset.table`` for source-side refs.
@@ -216,7 +210,7 @@ When to add `columns=`:
 
 Omitting `columns=` causes **silent data loss** — dlthub strips the column from the outer SELECT if its schema entry has no `data_type`.
 
-**Do NOT use `execute_sql_query` for cloud destinations** — use dlt transformations with SQL-first (or ibis when explicitly selected).
+**Do NOT use `execute_sql_query` for cloud destinations** — use dlthub transformations with SQL-first (or ibis when explicitly selected).
 
 ### 6. Write the script
 
@@ -305,7 +299,7 @@ If all checks pass, ask the user what they'd like to do next:
 
 ```
 Transformation validated successfully. What would you like to do next?
-  1. Deploy and schedule this transformation → dlthub-runtime toolkit
+  1. Deploy and schedule this transformation → dlthub-platform toolkit
   2. Explore and visualise the CDM output → data-exploration toolkit
 ```
 

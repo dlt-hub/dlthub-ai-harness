@@ -30,7 +30,7 @@ If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix
 
 ## Step 1: Connect to pipeline
 
-Use the dlt MCP tools as the primary discovery path:
+Use the dlthub MCP tools as the primary discovery path:
 
 1. **`list_pipelines`** — discover available pipelines. If multiple exist and target is ambiguous, ask the user and stop.
 2. **`list_tables`** — enumerate tables in the selected pipeline.

@@ -54,12 +54,12 @@ NOTE: we can handle only REST API (**step 5**) and sometimes GraphQL.
 This toolkit builds **REST API pipelines**. Before continuing, check if the user's data source actually fits.
 
 **STOP and hand off** if any of these are true:
-- **Core source is NOT `rest_api`** — the user needs `sql_database`, `filesystem`, or another core source. For `filesystem`, hand off to the **filesystem-pipeline** toolkit (`create-filesystem-pipeline`). For others, tell them which one and the `dlt init` command, then suggest a general coding session.
-- **A verified source exists** (from step 2) — a pre-built, maintained connector is almost always better than building from scratch. Tell the user about it and the `dlt init <source> <destination>` command. Suggest they try the verified source first.
+- **Core source is NOT `rest_api`** — the user needs `sql_database`, `filesystem`, or another core source. For `filesystem`, hand off to the **filesystem-pipeline** toolkit (`create-filesystem-pipeline`). For others, tell them which one and the `dlthub pipeline init` command, then suggest a general coding session.
+- **A verified source exists** (from step 2) — a pre-built, maintained connector is almost always better than building from scratch. Tell the user about it and the `dlthub pipeline init <source> <destination>` command. Suggest they try the verified source first.
 
 ```
 Found: <verified source or non-REST core source>
-  Command: dlt init <source> <destination>
+  Command: dlthub pipeline init <source> <destination>
 
 This is outside the REST API pipeline workflow. You can:
   1. Use the verified source / core source above (recommended)
@@ -82,5 +82,5 @@ A **viable option** is one that genuinely differs in tradeoffs — not every sea
 ### 7. Ask to pick single endpoint
 Ask user to pick a single endpoint to start the work - do it directly or infer it from conversation.
 
-Do NOT run `dlt init` yet — wait for user confirmation.
+Do NOT run `dlthub pipeline init` yet — wait for user confirmation.
 After that continue workflow in `create-rest-api-pipeline` skill

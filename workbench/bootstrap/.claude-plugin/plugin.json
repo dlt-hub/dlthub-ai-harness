@@ -1,7 +1,7 @@
 {
   "name": "bootstrap",
   "description": "Prepare Python environment for dlthub workspace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },

@@ -5,6 +5,8 @@ description: Deploy dlt pipelines to dltHub Platform. Use when the user says "de
 
 # Deploy to dltHub Platform
 
+**Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments.md | per-job options: https://dlthub.com/docs/hub/pipeline-operations/job-configuration.md
+
 If this is a first deployment, complete (`setup-runtime`) and (`prepare-deployment`) first — they set up the workspace, configure credentials, and log in to runtime. Otherwise, continue from here.
 
 ## Step 1: Prepare scripts for production
@@ -35,7 +37,22 @@ dlthub deploy  # synchronizes deployment module with runtime
 ```
 Summarize the output (which jobs created/updated/archived)
 
-### Step 2b. Run pipelines and notebooks
+### Step 2b. Simulate job runs locally
+
+**Before running on the cloud**, simulate each job locally. `dlthub local run` resolves the job exactly like the runtime does (deployment manifest, triggers, profile config) but executes on your machine — failures surface immediately without a deploy cycle:
+
+```bash
+dlthub local run <job_name>            # simulate a batch job locally (uses deployment manifest, no sync)
+dlthub local run <job_name> --profile prod             # simulate with production credentials
+dlthub local run <job_name> --start 2024-01-01 --end 2024-02-01  # interval override (ISO 8601)
+dlthub local run <job_name> --config KEY=VALUE         # ad-hoc config override (short: -c)
+dlthub local run <job_name> --dry-run                  # resolve entry point without launching
+dlthub local serve my_notebook.py     # serve an interactive job locally (notebook, dashboard, app)
+```
+
+A `--profile prod` simulation is the fastest way to catch missing prod credentials or destination misconfiguration before anything reaches the platform.
+
+### Step 2c. Run pipelines and notebooks on the cloud
 
 ```bash
 dlthub run my_pipeline.py              # sync code + run batch job on cloud
@@ -43,15 +60,9 @@ dlthub run my_pipeline.py -f           # sync + run, stream logs while running
 dlthub run my_pipeline.py --refresh    # sync + run with a refresh signal
 dlthub serve my_notebook.py           # sync code + run interactive job on cloud
 dlthub serve my_notebook.py -f        # sync + serve, stream logs
-dlthub local run <job_name>            # run locally (uses deployment manifest, no sync)
-dlthub local run <job_name> --profile prod             # run under a specific profile
-dlthub local run <job_name> --start 2024-01-01 --end 2024-02-01  # interval override (ISO 8601)
-dlthub local run <job_name> --config KEY=VALUE         # ad-hoc config override (short: -c)
-dlthub local run <job_name> --dry-run                  # resolve entry point without launching
-dlthub local serve my_notebook.py     # serve locally
 ```
 
-### Step 2c. Read logs and debug
+### Step 2d. Read logs and debug
 
 ```bash
 dlthub job logs my_pipeline            # check output (use job name)

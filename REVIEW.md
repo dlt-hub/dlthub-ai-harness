@@ -172,7 +172,7 @@ Flag any broken pair: A says it sends to B, but B has no incoming entry for A, o
 | Annotated sources | Python with dlt decorators (`@dlt.resource`, `@dlt.source`) |
 | Human-readable definitions | Markdown files (`.md`) |
 | Config / metadata | YAML |
-| Secrets | Never in output; via `dlt --redacted secrets list` or MCP |
+| Secrets | Never in output; via `dlthub ai secrets view-redacted` or MCP |
 
 - [ ] Format choices match table above
 - [ ] SQL uses ANSI syntax, not destination-specific dialects (unless PR explicitly targets one)

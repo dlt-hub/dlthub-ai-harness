@@ -1,6 +1,6 @@
 ---
 name: incremental-transformation
-description: Switch a dlt transformation from full-replace to incremental loading. Use when the user wants to process only new or changed rows, reduce transformation run time, or schedule frequent transformation runs without reprocessing all data.
+description: Switch a dlthub transformation from full-replace to incremental loading. Use when the user wants to process only new or changed rows, reduce transformation run time, or schedule frequent transformation runs without reprocessing all data.
 ---
 
 # Incremental transformation
@@ -9,7 +9,7 @@ Switch an existing `@dlt.hub.transformation` from `write_disposition="replace"` 
 
 **Requires:** an existing transformation script from `create-transformation`. If you don't have one, run that skill first.
 
-Reference: https://dlthub.com/docs/devel/hub/features/transformations#incremental-transformations
+Reference: https://dlthub.com/docs/hub/transformations.md#incremental-transformations
 
 ## Steps
 
@@ -18,7 +18,7 @@ Reference: https://dlthub.com/docs/devel/hub/features/transformations#incrementa
 | Situation | Pattern |
 |-----------|---------|
 | Output table has a date/timestamp/ID column you control (e.g. daily aggregates) | **Direct column** — cursor on the output table's own column |
-| Process only rows from new source ingestion loads; no meaningful output cursor | **Load-based** — cursor on `_dlt_loads.inserted_at`; dlt auto-joins the loads table |
+| Process only rows from new source ingestion loads; no meaningful output cursor | **Load-based** — cursor on `_dlt_loads.inserted_at`; dlthub auto-joins the loads table |
 | The dltHub Platform scheduler controls the time window | **dltHub Platform scheduler** — `allow_external_schedulers=True`; reads `DLT_INTERVAL_START` / `DLT_INTERVAL_END` env vars |
 
 Ask the user which situation applies if it is not obvious from the transformation.
@@ -66,7 +66,7 @@ def crawl_counts_by_date(
 
 **Pattern 2 — Load-based (`_dlt_loads.inserted_at`)**
 
-Use when you want exactly the rows that arrived in new ingestion loads. dlt joins `_dlt_loads` automatically — no manual JOIN needed in SQL or relation chains. `initial_value` is intentionally omitted here — the first run will process all existing loads; add `initial_value=pendulum.now("UTC")` to skip historical loads and start from now.
+Use when you want exactly the rows that arrived in new ingestion loads. dlthub joins `_dlt_loads` automatically — no manual JOIN needed in SQL or relation chains. `initial_value` is intentionally omitted here — the first run will process all existing loads; add `initial_value=pendulum.now("UTC")` to skip historical loads and start from now.
 
 ```python
 from typing import Any
@@ -118,7 +118,7 @@ def orders_window(
 - **`merge` requires `primary_key`**: without it, rows are not deduped — merge silently behaves like append.
 - **Load-based auto-join**: the dotted path `_dlt_loads.inserted_at` triggers an automatic join to the `_dlt_loads` table. Do not write the JOIN yourself.
 - **`columns=` hints still apply**: any column that may be NULL on the first incremental run needs an explicit `columns=` hint, same as in `create-transformation`.
-- **Same vs. different destination**: when source and target use the same physical destination (same DB file or host), dlt pushes SQL directly without materializing data. Across different destinations, dlt streams Arrow chunks automatically.
+- **Same vs. different destination**: when source and target use the same physical destination (same DB file or host), dlthub pushes SQL directly without materializing data. Across different destinations, dlthub streams Arrow chunks automatically.
 
 ### 6. Test incrementally
 
@@ -127,10 +127,10 @@ def orders_window(
 python transformations/<dataset_name>_to_cdm.py
 
 # Inspect stored cursor state
-dlt pipeline <pipeline_name> info
+uv run dlthub local pipeline info <pipeline_name>
 
 # Second run — should process 0 new rows if no new data arrived
 python transformations/<dataset_name>_to_cdm.py
 ```
 
-Verify row counts with `dlt pipeline <pipeline_name> show` or the `preview_table` MCP tool. If the second run still reprocesses everything, check that `primary_key` is set and that the cursor column name matches exactly (case-sensitive).
+Verify row counts with `dlthub local pipeline show <pipeline_name>` or the `preview_table` MCP tool. If the second run still reprocesses everything, check that `primary_key` is set and that the cursor column name matches exactly (case-sensitive).
