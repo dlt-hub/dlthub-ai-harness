@@ -72,10 +72,18 @@ A pipeline that runs for a long time is suspicious but MAY be normal (large data
 - `OffsetPaginator`/`PageNumberPaginator` without `stop_after_empty_page=True` require `total_path` or `maximum_offset`/`maximum_page`, otherwise they loop forever.
 - `JSONResponseCursorPaginator` with wrong `cursor_path` → cursor never advances → infinite loop.
 
-**Silent retries look like a hang** — the pipeline may be retrying failed HTTP requests:
-- Default: 5 retries with exponential backoff (up to 16s per attempt), 60s request timeout.
-- A single failing endpoint can stall for 60-80+ seconds before raising an error.
-- Override in `.dlt/config.toml` for faster failure during debugging:
+**Silent retries look like a hang / HTTP 429 rate limits** — the pipeline may be retrying failed HTTP requests:
+- dlt **automatically retries HTTP 429 (Too Many Requests)** and respects `Retry-After` response headers — no custom retry code needed.
+- Default retry config: 5 attempts, exponential backoff (factor=1, max delay=300s), 60s timeout.
+- A 429 with a long `Retry-After` header can stall the pipeline for minutes — this is normal behaviour.
+- If the pipeline keeps hitting 429 even after retries, the API has strict rate limits. Tune in `.dlt/config.toml`:
+  ```toml
+  [runtime]
+  request_max_attempts = 10    # more retries (default: 5)
+  request_backoff_factor = 1.5 # steeper backoff so waits grow longer (default: 1)
+  ```
+  Do NOT lower `request_max_retry_delay` for rate limits — longer delays let the rate-limit window reset.
+- For faster failure **during debugging**, reduce retries instead:
   ```toml
   [runtime]
   request_timeout = 15

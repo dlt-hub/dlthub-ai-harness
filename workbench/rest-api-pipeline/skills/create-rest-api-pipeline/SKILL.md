@@ -153,6 +153,8 @@ access_token = "ak-*******-cae"
 
 For more complex credential setup (research where to get keys, multiple providers), use `setup-secrets` skill.
 
+**Rate limits**: dlt handles HTTP 429 and `Retry-After` automatically — no custom retry code needed. For strict rate-limited APIs, tune retry settings in `adjust-endpoint`.
+
 **ALWAYS Get Feedback** before you run the pipeline for a first time. Show summary of files that you changed or generated.
 
 ### 7. Debug pipeline - first run
