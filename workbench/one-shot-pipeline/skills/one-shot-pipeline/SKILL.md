@@ -168,7 +168,7 @@ Report what table was created and how many rows loaded (visible in output).
 Then open the local data viewer:
 
 ```
-uv run dlthub --non-interactive local show
+uv run dlthub local show
 ```
 
 This opens the dltHub local UI where the user can browse the loaded rows in DuckDB.
