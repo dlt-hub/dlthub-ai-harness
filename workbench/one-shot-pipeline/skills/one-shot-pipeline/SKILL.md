@@ -14,7 +14,7 @@ To install: `uv run dlthub --non-interactive ai toolkit install <toolkit-name>`
 
 **This skill loads 50 rows only.** It is a first-run validation, not a production pipeline.
 
-Only mention toolkit installation if the user explicitly asks for something this skill does not cover (full data load, pagination, incremental loading, schema hints, multiple endpoints). Do not proactively suggest installing toolkits — mention them only when directly asked.
+Only propose toolkit installation if the user explicitly asks for something this skill does not cover (full data load, pagination, incremental loading, schema hints, multiple endpoints). Do not proactively suggest installing toolkits — mention them only when directly asked.
 
 **Reference**: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
 
