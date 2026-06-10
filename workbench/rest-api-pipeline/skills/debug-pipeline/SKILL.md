@@ -91,7 +91,9 @@ A pipeline that runs for a long time is suspicious but MAY be normal (large data
   ```
 - Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md (timeouts and retries)
 
-**Working but slow** — each request returns new data and URL changes. Use `.add_limit(N)` to cap pages during development.
+### Pipeline runs slower than expected
+
+Each request returns new data and URL changes — this is a large dataset, not a hang. Use `.add_limit(N)` to cap pages during development. For rate-limit-induced slowdowns (429 + `Retry-After` stalls), see **Silent retries / HTTP 429 rate limits** above.
 
 **Can't tell which resource is stuck** in a multi-resource pipeline — switch to sequential extraction:
 ```toml

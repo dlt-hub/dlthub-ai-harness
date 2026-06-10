@@ -56,7 +56,7 @@ If the endpoint fits the existing client config (base_url, auth, paginator), add
 - **Pagination**: inherits from `client.paginator` — override per-resource if different
 - **processing_steps**: add `map`/`filter`/`yield_map` if needed (e.g., `Decimal` for money — NEVER `float`)
 
-**`response_actions`** — handle specific HTTP responses declaratively, without custom Python:
+##### Prevent optional endpoints from failing the pipeline with `response_actions`
 
 ```python
 {
@@ -75,7 +75,7 @@ If the endpoint fits the existing client config (base_url, auth, paginator), add
 
 Use `"ignore"` for optional endpoints that return 404 for some parent items (e.g. repos with no issues). Use a callable to fix encoding, add/remove fields, or patch malformed responses before dlt parses them. **Never write a `processing_steps` workaround for something `response_actions` handles.** Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md
 
-**`parallelized`** — concurrent child-resource fetching for dependent resources:
+##### Fetch child resources concurrently with `parallelized`
 
 ```python
 {
