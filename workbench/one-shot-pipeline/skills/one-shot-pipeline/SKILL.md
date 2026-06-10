@@ -1,5 +1,5 @@
 ---
-name: quick-pipeline
+name: one-shot-pipeline
 description: Create and run a custom REST API pipeline on dltHub. Use when the user names an API or data source they want to connect to and load data from.
 argument-hint: "<api-name> [endpoint-hint]"
 ---

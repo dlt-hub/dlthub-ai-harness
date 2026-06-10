@@ -1,6 +1,6 @@
 {
   "name": "one-shot-pipeline",
-  "description": "Build a dlt pipeline in one shot from a source description",
+  "description": "Create and run a custom REST API pipeline on dltHub in one shot",
   "version": "0.1.0",
   "author": {
     "name": "ScaleVector GmbH"
