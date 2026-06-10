@@ -4,7 +4,7 @@ description: Build and run a minimal REST API pipeline locally against DuckDB. U
 argument-hint: "[api-name] [endpoint-hint]"
 ---
 
-Build a minimal single-endpoint pipeline for the user's API and run it locally against DuckDB with a row limit. Goal is a working first run with viewable data, not a production pipeline.
+Build a minimal single-endpoint pipeline and run it locally against DuckDB. The finish line is `dlthub local show` — the moment the user sees their loaded data in the local UI. Every feature beyond the minimum (pagination, incremental loading, multiple endpoints) increases run time and failure surface, delaying that moment.
 
 **This skill is for REST API / HTTP API sources only.** If the user is asking about:
 - A SQL database (Postgres, MySQL, BigQuery, etc.) → install the `sql-database-pipeline` toolkit
@@ -43,6 +43,13 @@ One or two targeted searches is enough. If auth docs are on a separate page, fet
 ## Step 2 — Write the pipeline file
 
 Create `<source>_pipeline.py`. Follow the exact pattern from `pipeline.py`:
+
+### Rules
+
+- `destination="duckdb"` always — runs locally against DuckDB
+- `.add_limit(50)` always — this is a validation run, not a full load
+- Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
+- Omit pagination config — `.add_limit(50)` caps the run; let dlt auto-detect or stop naturally
 
 ```python
 """<Source> dlt pipeline.
@@ -113,13 +120,6 @@ Pick the one that matches the API. Add it under `"client"`:
 # HTTP Basic
 "auth": {"type": "http_basic", "username": dlt.secrets["sources.<source>.username"], "password": dlt.secrets["sources.<source>.password"]}
 ```
-
-### Rules
-
-- `destination="duckdb"` always — runs locally against DuckDB
-- `.add_limit(50)` always — this is a validation run, not a full load
-- Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
-- Omit pagination config — `.add_limit(50)` caps the run; let dlt auto-detect or stop naturally
 
 ## Step 3 — Handle credentials
 
