@@ -1,7 +1,7 @@
 ---
 name: one-shot-pipeline
 description: Create and run a custom REST API pipeline on dltHub. Use when the user names a REST API Source they want to connect to and load data from.
-argument-hint: "<api-name> [endpoint-hint]"
+argument-hint: "[api-name] [endpoint-hint]"
 ---
 
 Build a minimal single-endpoint pipeline for the user's API and run it on dltHub with a row limit. No local execution. Goal is a working first run, not a production pipeline.
