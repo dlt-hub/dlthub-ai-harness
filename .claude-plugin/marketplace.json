@@ -89,6 +89,14 @@
       "version": "0.1.1",
       "category": "data",
       "tags": ["dlthub", "quick-start", "onboarding", "demo", "router"]
+    },
+    {
+      "name": "one-shot-pipeline",
+      "source": "./workbench/one-shot-pipeline",
+      "description": "Build a dlt pipeline in one shot from a source description.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlthub", "pipeline", "one-shot", "data-pipeline", "python"]
     }
   ]
 }

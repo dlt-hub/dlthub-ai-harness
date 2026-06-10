@@ -1,0 +1,12 @@
+{
+  "name": "one-shot-pipeline",
+  "description": "Build a dlt pipeline in one shot from a source description",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlthub", "pipeline", "one-shot", "data-pipeline", "python"]
+}
