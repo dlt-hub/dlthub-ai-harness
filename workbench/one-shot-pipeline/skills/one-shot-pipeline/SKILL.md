@@ -1,10 +1,10 @@
 ---
 name: one-shot-pipeline
-description: Create and run a custom REST API pipeline on dltHub. Use when the user names a REST API Source they want to connect to and load data from.
+description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user names a REST API source they want to connect to and load data from.
 argument-hint: "[api-name] [endpoint-hint]"
 ---
 
-Build a minimal single-endpoint pipeline for the user's API and run it on dltHub with a row limit. No local execution. Goal is a working first run, not a production pipeline.
+Build a minimal single-endpoint pipeline for the user's API and run it locally against DuckDB with a row limit. Goal is a working first run with viewable data, not a production pipeline.
 
 **This skill is for REST API / HTTP API sources only.** If the user is asking about:
 - A SQL database (Postgres, MySQL, BigQuery, etc.) → install the `sql-database-pipeline` toolkit
@@ -12,7 +12,7 @@ Build a minimal single-endpoint pipeline for the user's API and run it on dltHub
 
 To install: `uv run dlthub --non-interactive ai toolkit install <toolkit-name>`
 
-**This skill loads 3 rows only.** It is a first-run validation, not a production pipeline.
+**This skill loads 50 rows only.** It is a first-run validation, not a production pipeline.
 
 Only mention toolkit installation if the user explicitly asks for something this skill does not cover (full data load, pagination, incremental loading, schema hints, multiple endpoints). Do not proactively suggest installing toolkits — mention them only when directly asked.
 
@@ -26,7 +26,7 @@ Check for a verified source first:
 uv run dlthub --non-interactive pipeline init --list-sources | grep -i <api-name>
 ```
 
-If a match is found, tell the user: "A verified source exists for `<api-name>` — you can use `dlthub pipeline init <source> warehouse` for a maintained connector. Continuing with custom pipeline unless you say otherwise." Then proceed.
+If a match is found, tell the user: "A verified source exists for `<api-name>` — you can use `dlthub pipeline init <source> warehouse` for a maintained connector." Then proceed with the custom pipeline.
 
 Web search: `<api-name> REST API documentation` and `<api-name> REST API authentication`.
 
@@ -80,17 +80,19 @@ def load_<source>():
 
     pipeline = dlt.pipeline(
         pipeline_name="<source>_pipeline",
-        destination="warehouse",
+        destination="duckdb",
         dataset_name="<source>",
     )
 
-    load_info = pipeline.run(<source>().add_limit(3), write_disposition="replace")
+    load_info = pipeline.run(<source>().add_limit(50), write_disposition="replace")
     print(load_info)
 
 
 if __name__ == "__main__":
     load_<source>()
 ```
+
+If the API is public (no auth needed), skip auth entirely — omit the `"auth"` key from `"client"`.
 
 ### Auth patterns
 
@@ -112,38 +114,27 @@ Pick the one that matches the API. Add it under `"client"`:
 
 ### Rules
 
-- `destination="warehouse"` always — already configured in `.dlt/config.toml`
-- `.add_limit(3)` always — this is a validation run, not a full load
+- `destination="duckdb"` always — runs locally against DuckDB
+- `.add_limit(50)` always — this is a validation run, not a full load
 - Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
-- Omit pagination config — `.add_limit(3)` caps the run; let dlt auto-detect or stop naturally
-- Omit auth entirely if the API is public
+- Omit pagination config — `.add_limit(50)` caps the run; let dlt auto-detect or stop naturally
 
-## Step 3 — Update `__deployment__.py`
-
-Add one import and one entry to `__all__`:
-
-```python
-from <source>_pipeline import load_<source>
-
-__all__ = ["load_<source>", ...]  # add as a string alongside existing entries
-```
-
-## Step 4 — Handle credentials
+## Step 3 — Handle credentials
 
 **Skip this step entirely if the API is public (no auth needed).**
 
 Do not read or write `.dlt/secrets.toml` directly — use the CLI instead.
 
-**4a. Check what's already configured:**
+**3a. Check what's already configured:**
 
 ```
 uv run dlthub ai secrets list
 uv run dlthub ai secrets view-redacted
 ```
 
-`view-redacted` shows all configured keys with values replaced by `***`. If `[sources.<source>]` already has the required field populated (shown as `***`), skip to Step 5.
+`view-redacted` shows all configured keys with values replaced by `***`. If `[sources.<source>]` already has the required field populated (shown as `***`), skip to Step 4.
 
-**4b. If the credential is missing**, show the user exactly what to add:
+**3b. If the credential is missing**, show the user exactly what to add:
 
 > Open `.dlt/secrets.toml` (not `dev.secrets.toml`) and add:
 >
@@ -158,7 +149,7 @@ Use `secrets.toml` (workspace-scoped) so credentials are visible to all profiles
 
 **Stop and wait** for the user to confirm they've added the credential.
 
-**4c. Verify** the credential is in place:
+**3c. Verify** the credential is in place:
 
 ```
 uv run dlthub ai secrets view-redacted
@@ -166,30 +157,32 @@ uv run dlthub ai secrets view-redacted
 
 Confirm `[sources.<source>].<field>` now shows `***`. If it's still absent, the user hasn't saved or used the wrong section name — ask them to check before continuing.
 
-## Step 5 — Deploy and run
+## Step 4 — Run locally
 
 ```
-uv run dlthub --non-interactive deploy
-uv run dlthub --non-interactive run load_<source> -f
+uv run python <source>_pipeline.py
 ```
 
-Report what table was created and how many rows loaded (visible in log output).
+Report what table was created and how many rows loaded (visible in output).
 
-> **Note:** The data loaded in this run is not queryable after the job finishes. The platform's default warehouse destination uses an ephemeral DuckDB instance that exists only for the duration of the pipeline run — once the job ends, the data is gone. If you want to inspect or query your data, you'll need a persistent destination (e.g. MotherDuck, BigQuery, Snowflake). Would you like to set one up?
+Then open the local data viewer:
+
+```
+uv run dlthub --non-interactive local show
+```
+
+This opens the dltHub local UI where the user can browse the loaded rows in DuckDB.
 
 ---
 
 ## If the job fails
 
-Fix the pipeline file and re-run from Step 5.
+Fix the pipeline file and re-run from Step 4.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| 0 rows loaded | Wrong `data_selector` | Check raw response shape in logs; update key or omit entirely |
+| 0 rows loaded | Wrong `data_selector` | Check raw response shape in output; update key or omit entirely |
 | 401 / 403 error | Auth misconfigured | Verify credential is in `secrets.toml` (not `dev.secrets.toml`) and header name/location are correct |
-| Job runs indefinitely | Paginator looping | Add `"paginator": "single_page"` to the resource's `endpoint` config |
+| Script runs indefinitely | Paginator looping | Add `"paginator": "single_page"` to the resource's `endpoint` config |
 | `ConfigFieldMissingException` | Secret key path mismatch | Check that `dlt.secrets["sources.<source>.<field>"]` matches the `[sources.<source>]` section in `secrets.toml` |
-| `deploy` fails immediately | Not logged in | Run `dlthub login` then `dlthub workspace connect` |
-| `deploy` fails immediately | Missing `pyproject.toml` | Run `uv init` in the project root |
 | `from dlt.hub import run` error | `dlt[hub]` not installed | Run `uv add "dlt[hub]"` |
-| Job does nothing / 0 runs | Missing `if __name__ == "__main__":` | Add the block to the pipeline script |

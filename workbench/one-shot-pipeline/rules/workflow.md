@@ -1,7 +1,7 @@
 # One-shot pipeline workflow
 
 ## Core workflow
-1. **One-shot pipeline** (`one-shot-pipeline`) — research API, scaffold pipeline, configure auth, deploy and run with a 3-row limit
+1. **One-shot pipeline** (`one-shot-pipeline`) — research API, scaffold pipeline, configure auth, run locally with a 50-row limit
 
 ## Handover to other toolkits
 
