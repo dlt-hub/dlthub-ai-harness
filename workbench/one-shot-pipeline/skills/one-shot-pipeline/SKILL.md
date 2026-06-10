@@ -1,6 +1,6 @@
 ---
 name: one-shot-pipeline
-description: Create and run a custom REST API pipeline on dltHub. Use when the user names an API or data source they want to connect to and load data from.
+description: Create and run a custom REST API pipeline on dltHub. Use when the user names a REST API Source they want to connect to and load data from.
 argument-hint: "<api-name> [endpoint-hint]"
 ---
 
@@ -114,7 +114,7 @@ Pick the one that matches the API. Add it under `"client"`:
 
 - `destination="warehouse"` always — already configured in `.dlt/config.toml`
 - `.add_limit(3)` always — this is a validation run, not a full load
-- Omit `data_selector` if the response is a root JSON array
+- Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
 - Omit pagination config — `.add_limit(3)` caps the run; let dlt auto-detect or stop naturally
 - Omit auth entirely if the API is public
 
