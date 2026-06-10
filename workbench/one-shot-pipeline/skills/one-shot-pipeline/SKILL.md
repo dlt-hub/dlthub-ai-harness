@@ -26,7 +26,9 @@ Check for a verified source first:
 uv run dlthub --non-interactive pipeline init --list-sources | grep -i <api-name>
 ```
 
-If a match is found, tell the user: "A verified source exists for `<api-name>` — you can use `dlthub pipeline init <source> warehouse` for a maintained connector." Then proceed with the custom pipeline.
+If a match is found, tell the user: "A verified source exists for `<api-name>` — you can use `dlthub pipeline init <source> duckdb` for a maintained connector." Then proceed with the custom pipeline.
+
+Use your web search tool directly — do not spawn subagents, research agents, or delegate this step. One or two inline searches is all that's needed.
 
 Web search: `<api-name> REST API documentation` and `<api-name> REST API authentication`.
 
@@ -45,7 +47,7 @@ Create `<source>_pipeline.py`. Follow the exact pattern from `pipeline.py`:
 ```python
 """<Source> dlt pipeline.
 
-Loads <endpoint> from the <Source> REST API into the dltHub warehouse.
+Loads <endpoint> from the <Source> REST API into the duckdb.
 """
 
 import dlt
