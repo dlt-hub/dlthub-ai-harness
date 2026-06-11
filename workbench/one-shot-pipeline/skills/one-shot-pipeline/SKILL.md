@@ -18,9 +18,28 @@ Only propose toolkit installation if the user explicitly asks for something this
 
 **Reference**: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
 
+## Step 0 — No source named?
+
+If the user hasn't named a specific API, run:
+
+```
+uv run dlthub --non-interactive pipeline init --list-sources
+```
+
+Take the first 3 sources from the output and suggest them:
+
+> Here are a few real sources you can try:
+> - `<source-1>`
+> - `<source-2>`
+> - `<source-3>`
+>
+> There are more available — run `uv run dlthub --non-interactive pipeline init --list-sources` to see the full list.
+
+Wait for the user to pick one, then continue to Step 1.
+
 ## Step 1 — Research the API
 
-Check for a verified source first:
+Check for a verified source first. If you already fetched the sources list in Step 0, grep that output directly. Otherwise run:
 
 ```
 uv run dlthub --non-interactive pipeline init --list-sources | grep -i <api-name>
