@@ -1,5 +1,5 @@
 ---
-name: one-shot-pipeline
+name: create-minimal-pipeline
 description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user names a REST API source they want to connect to and load data from.
 argument-hint: "[api-name] [endpoint-hint]"
 ---

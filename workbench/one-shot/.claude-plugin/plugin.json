@@ -1,5 +1,5 @@
 {
-  "name": "one-shot-pipeline",
+  "name": "one-shot",
   "description": "Build and run a minimal REST API pipeline locally against DuckDB in one shot",
   "version": "0.1.0",
   "author": {

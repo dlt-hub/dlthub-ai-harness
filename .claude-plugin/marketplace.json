@@ -91,8 +91,8 @@
       "tags": ["dlthub", "quick-start", "onboarding", "demo", "router"]
     },
     {
-      "name": "one-shot-pipeline",
-      "source": "./workbench/one-shot-pipeline",
+      "name": "one-shot",
+      "source": "./workbench/one-shot",
       "description": "Build and run a minimal REST API pipeline locally against DuckDB. Name an API, get a working pipeline with viewable data in minutes.",
       "version": "0.1.0",
       "category": "data",
