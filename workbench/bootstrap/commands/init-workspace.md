@@ -7,6 +7,8 @@ description: Sets up dlthub workspace. Ensures `uv`, Python env and dlthub are p
 
 Makes sure that `uv`, Python `venv` and `dlthub` is installed, then sets up AI support.
 
+> **This is the fallback (agent-run) path.** The preferred way to bootstrap is for the **user** to run `uvx dlthub-start@latest my-workspace` themselves — in their terminal, or inline via `!` mode in Claude Code / Codex (`! uvx dlthub-start@latest my-workspace`), or Cursor's integrated terminal. `uvx dlthub-start` is interactive and does not work when an agent runs it, so **never run it yourself**. Use the manual steps below only when the user prefers the agent to set things up.
+
 ## Step 1: Gather evidence
 
 Run all checks **silently** — do NOT install or change anything yet. Execute in order! If previous check does not work - others

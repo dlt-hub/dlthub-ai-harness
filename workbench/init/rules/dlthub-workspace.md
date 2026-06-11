@@ -1,7 +1,12 @@
 # setup
 * On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`?
-* If anything is missing, the canonical bootstrap is `uvx dlthub-start@latest my-workspace` — it installs `uv` (if needed), scaffolds the workspace, syncs `dlt[hub]`, and vendors the core toolkits in one command. Surface it to the user; do not auto-run.
-* The `bootstrap` toolkit / `/bootstrap:init-workspace` flow does the same from inside Claude Code via the marketplace.
+* If anything is missing, the canonical bootstrap is `uvx dlthub-start@latest my-workspace` — it installs `uv` (if needed), scaffolds the workspace, syncs `dlt[hub]`, and vendors the core toolkits in one command.
+* **DO NOT run `uvx dlthub-start` yourself.** It is interactive and scaffolds the whole workspace — it does not work when an agent runs it. **Ask the user to run it**, either in their terminal or inline via `!` mode:
+  * Claude Code and Codex support a `!` shell prefix in the prompt — tell the user to type `! uvx dlthub-start@latest my-workspace`.
+  * In Cursor there is no `!` prefix — tell the user to run `uvx dlthub-start@latest my-workspace` in the integrated terminal instead.
+  * Re-check `uv run dlthub ai status` once the user confirms it finished.
+* **Last-resort fallback only if the user declines to run uvx:** you may run `uv add "dlt[hub]"` to install the dependency. This installs dlt only — it does NOT scaffold the workspace or vendor toolkits, so the user-run uvx path is strongly preferred.
+* The `bootstrap` toolkit / `/bootstrap:init-workspace` flow does the manual install steps from inside the coding assistant (the fallback path) via the marketplace.
 * On failed check inside an existing project: `dlthub ai toolkit install bootstrap` (**if dlthub present**)
 
 # communication

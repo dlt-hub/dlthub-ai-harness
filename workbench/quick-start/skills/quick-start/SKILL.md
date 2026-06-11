@@ -19,13 +19,18 @@ Parse `$ARGUMENTS`:
 Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
-- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then point them to the authoritative bootstrap command:
+- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then **ask the user to run** the authoritative bootstrap command — **do not run it yourself**, it is interactive and does not work when an agent runs it:
 
   ```
   uvx dlthub-start@latest my-workspace
   ```
 
-  This is the canonical way to get started with the dltHub AI workbench — it sets up the workspace and installs the toolkits needed downstream. Do not auto-run it — wait for the user to run it themselves, then re-check status before continuing to Step 2.
+  This is the canonical way to get started with the dltHub AI workbench — it sets up the workspace and installs the toolkits needed downstream.
+  - In Claude Code and Codex the user can run it inline via `!` mode: tell them to type `! uvx dlthub-start@latest my-workspace`.
+  - In Cursor there is no `!` prefix — tell the user to run it in the integrated terminal.
+  - **Last-resort fallback only if the user declines:** you may run `uv add "dlt[hub]"` to install the dependency, but this installs dlt only (no workspace scaffold, no toolkits), so the user-run uvx path is strongly preferred.
+
+  Wait for the user to confirm, then re-check status before continuing to Step 2.
 
 ## Step 2 — Present capability index and ask one question
 
