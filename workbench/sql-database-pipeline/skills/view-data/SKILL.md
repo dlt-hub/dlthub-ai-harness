@@ -25,7 +25,7 @@ This opens a browser with table schemas, row counts, and sample data.
 
 **Essential Reading:**
 - `https://dlthub.com/docs/general-usage/dataset-access/dataset.md`
-- `https://dlthub.com/docs/general-usage/dataset-access/ibis-backend.md`
+- `https://dlthub.com/docs/general-usage/dataset-access/dataset#ibis`
 
 Use `pipeline.dataset()` to access loaded data. This is **destination agnostic** — works the same on duckdb, postgres, bigquery, etc. NEVER import destination libraries (like `duckdb`) directly.
 
