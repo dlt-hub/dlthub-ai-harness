@@ -66,9 +66,9 @@ Create `<source>_pipeline.py`. Follow the exact pattern from `pipeline.py`:
 ### Rules
 
 - `destination="duckdb"` always — runs locally against DuckDB
-- `.add_limit(50)` always — this is a validation run, not a full load
+- `.add_limit(50, count_rows=True)` always — row limit, not page limit; omitting `count_rows=True` silently loads the entire dataset when a paginator is active
 - Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
-- Omit pagination config — `.add_limit(50)` caps the run; let dlt auto-detect or stop naturally
+- Omit pagination config — `.add_limit(50, count_rows=True)` caps the run; let dlt auto-detect or stop naturally
 
 ```python
 """<Source> dlt pipeline.
@@ -112,7 +112,7 @@ def load_<source>():
         dataset_name="<source>",
     )
 
-    load_info = pipeline.run(<source>().add_limit(50), write_disposition="replace")
+    load_info = pipeline.run(<source>().add_limit(50, count_rows=True), write_disposition="replace")  # row limit, not page limit
     print(load_info)
 
 
