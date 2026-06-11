@@ -76,13 +76,15 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 ## Getting started
 
-### New project (recommended)
+### First-time onboarding / no project yet
 
-The fastest way to start a new dltHub project is [`dlthub-start`](https://pypi.org/project/dlthub-start/) — no prior setup needed:
+If you don't have a project yet and just want to try dltHub, [`dlthub-start`](https://pypi.org/project/dlthub-start/) is the fastest way in — no prior setup needed:
 
 ```bash
 uvx dlthub-start@latest my-workspace
 ```
+
+> **This is an onboarding / playground experience.** It scaffolds a fresh playground workspace to explore the workbench — **not** the place to build production workflows. If you already have a project, skip this and use [Existing project](#existing-project) below instead.
 
 > **Run this yourself in your terminal — don't ask your coding assistant to run it.** `uvx dlthub-start` is interactive (it prompts you to pick a scaffold and assistants) and does not work when an agent runs it. In Claude Code or Codex you can also run it inline via `!` mode (`! uvx dlthub-start@latest my-workspace`); in Cursor use the integrated terminal.
 
@@ -142,7 +144,7 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 ### Browse and install toolkits
 
-> **No Python environment yet?** Run `uvx dlthub-start@latest my-workspace` (see [Installation](#installation)) yourself in your terminal — it handles this in one command. (It's interactive, so run it yourself rather than asking your coding assistant to.) If you're going through the Claude Code marketplace instead, the `bootstrap` toolkit's `/init-workspace` does the equivalent manual install steps (`uv`, venv, `uv add "dlt[hub]"`, `dlthub init`) from inside the assistant as a fallback.
+> **No Python environment yet?** If you're just onboarding with no project yet, run `uvx dlthub-start@latest my-workspace` (see [First-time onboarding](#first-time-onboarding--no-project-yet)) yourself in your terminal — it scaffolds a playground workspace in one command. (It's interactive, so run it yourself rather than asking your coding assistant to.) If you already have a project, use the `bootstrap` toolkit's `/init-workspace` instead — it does the in-place install steps (`uv`, venv, `uv add "dlt[hub]"`, `dlthub init`) and the assistant can drive it.
 
 
 ```bash
@@ -175,7 +177,7 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For new projects we recommend running `uvx dlthub-start@latest` yourself (see [Installation](#installation)) — it's interactive, so run it in your terminal rather than asking your assistant to. The marketplace path below is useful when you don't have `uv`/Python and want to bootstrap from inside Claude Code via the `bootstrap` toolkit (which runs the manual install steps as a fallback).
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For first-time onboarding with no project yet, we recommend running `uvx dlthub-start@latest` yourself (see [First-time onboarding](#first-time-onboarding--no-project-yet)) — it's interactive, so run it in your terminal rather than asking your assistant to. The marketplace path below is useful when you want to bootstrap an existing/empty project from inside Claude Code via the `bootstrap` toolkit (which runs the in-place install steps).
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 

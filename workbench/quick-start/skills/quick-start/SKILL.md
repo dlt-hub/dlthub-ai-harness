@@ -19,18 +19,20 @@ Parse `$ARGUMENTS`:
 Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
-- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then **ask the user to run** the authoritative bootstrap command — **do not run it yourself**, it is interactive and does not work when an agent runs it:
+- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then pick the path that matches their situation:
+
+  **Existing project (has a `pyproject.toml`/venv, or has onboarded before) — set it up in place.** This is the path for almost everyone already working in a project. Drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`. Do **not** suggest `uvx dlthub-start` here — it scaffolds a separate playground workspace, not your existing project.
+
+  **No working project yet (fresh onboarding) — ask the user to run `uvx dlthub-start`.** This scaffolds a fresh **playground** workspace; it is an onboarding experience, **not** where production workflows should live. **Do not run it yourself** — it is interactive and does not work when an agent runs it:
 
   ```
-  uvx dlthub-start@latest my-workspace
+  uvx dlthub-start@latest
   ```
 
-  This is the canonical way to get started with the dltHub AI workbench — it sets up the workspace and installs the toolkits needed downstream.
-  - In Claude Code and Codex the user can run it inline via `!` mode: tell them to type `! uvx dlthub-start@latest my-workspace`.
+  - In Claude Code and Codex the user can run it inline via `!` mode: tell them to type `! uvx dlthub-start@latest`.
   - In Cursor there is no `!` prefix — tell the user to run it in the integrated terminal.
-  - **Last-resort fallback only if the user declines:** you may run `uv add "dlt[hub]"` to install the dependency, but this installs dlt only (no workspace scaffold, no toolkits), so the user-run uvx path is strongly preferred.
 
-  Wait for the user to confirm, then re-check status before continuing to Step 2.
+  In either case, wait for the user to confirm, then re-check status before continuing to Step 2.
 
 ## Step 2 — Present capability index and ask one question
 
