@@ -78,20 +78,20 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 ### First-time onboarding / no project yet
 
-If you don't have a project yet and just want to try dltHub, [`dlthub-start`](https://pypi.org/project/dlthub-start/) is the fastest way in — no prior setup needed:
+> **`uvx dlthub-start@latest` is ONLY for first-time dlthub users with no project yet.** It is an onboarding / playground experience that scaffolds a fresh playground workspace to explore the workbench — it is **not** for production workflows and **not** for an existing project. If you already have a project (or have onboarded before), skip this entirely and use [Existing project](#existing-project) below.
+
+If this is your first time with dltHub and you don't have a project yet, [`dlthub-start`](https://pypi.org/project/dlthub-start/) is the fastest way in — no prior setup needed. Run it **without a workspace name** and follow the interactive prompts:
 
 ```bash
-uvx dlthub-start@latest my-workspace
+uvx dlthub-start@latest
 ```
 
-> **This is an onboarding / playground experience.** It scaffolds a fresh playground workspace to explore the workbench — **not** the place to build production workflows. If you already have a project, skip this and use [Existing project](#existing-project) below instead.
+> **Run this yourself in your terminal — don't ask your coding assistant to run it.** `uvx dlthub-start` is interactive (it prompts you for a workspace name, scaffold, and assistants) and does not work when an agent runs it. In Claude Code or Codex you can also run it inline via `!` mode (`! uvx dlthub-start@latest`); in Cursor use the integrated terminal.
 
-> **Run this yourself in your terminal — don't ask your coding assistant to run it.** `uvx dlthub-start` is interactive (it prompts you to pick a scaffold and assistants) and does not work when an agent runs it. In Claude Code or Codex you can also run it inline via `!` mode (`! uvx dlthub-start@latest my-workspace`); in Cursor use the integrated terminal.
-
-This interactive prompt scaffolds a ready-to-run workspace: picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done:
+This interactive prompt scaffolds a ready-to-run workspace: asks for a workspace name, picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done, `cd` into the workspace it created:
 
 ```bash
-cd my-workspace
+cd <your-workspace-name>
 uv run dlthub run load_breweries   # run the example pipeline on dltHub
 uv run dlthub show                 # open the dltHub dashboard
 ```
@@ -144,7 +144,7 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 ### Browse and install toolkits
 
-> **No Python environment yet?** If you're just onboarding with no project yet, run `uvx dlthub-start@latest my-workspace` (see [First-time onboarding](#first-time-onboarding--no-project-yet)) yourself in your terminal — it scaffolds a playground workspace in one command. (It's interactive, so run it yourself rather than asking your coding assistant to.) If you already have a project, use the `bootstrap` toolkit's `/init-workspace` instead — it does the in-place install steps (`uv`, venv, `uv add "dlt[hub]"`, `dlthub init`) and the assistant can drive it.
+> **No Python environment yet?** Only if you're a first-time dlthub user with no project yet, run `uvx dlthub-start@latest` (no workspace name — see [First-time onboarding](#first-time-onboarding--no-project-yet)) yourself in your terminal — it scaffolds a playground workspace in one command. (It's interactive, so run it yourself rather than asking your coding assistant to.) If you already have a project, use the `bootstrap` toolkit's `/init-workspace` instead — it does the in-place install steps (`uv`, venv, `uv add "dlt[hub]"`, `dlthub init`) and the assistant can drive it.
 
 
 ```bash
