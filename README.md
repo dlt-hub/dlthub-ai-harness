@@ -76,11 +76,11 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 ## Getting started
 
-### First-time onboarding / no project yet
+### First-time onboarding (want to try or learn dltHub)
 
-> **`uvx dlthub-start@latest` is ONLY for first-time dlthub users with no project yet.** It is an onboarding / playground experience that scaffolds a fresh playground workspace to explore the workbench — it is **not** for production workflows and **not** for an existing project. If you already have a project (or have onboarded before), skip this entirely and use [Existing project](#existing-project) below.
+> **`uvx dlthub-start@latest` is ONLY for first-time dlthub users who want to onboard or learn dltHub.** It is an onboarding / playground experience that scaffolds a fresh playground workspace to explore the workbench — it is **not** for production workflows and **not** for setting up an existing project. If you already have a project, skip this entirely and use [Existing project](#existing-project) below. (Coding assistants only suggest this when *you* ask to be onboarded — they never run it for you.)
 
-If this is your first time with dltHub and you don't have a project yet, [`dlthub-start`](https://pypi.org/project/dlthub-start/) is the fastest way in — no prior setup needed. Run it **without a workspace name** and follow the interactive prompts:
+If you're new to dltHub and want to try or learn it, [`dlthub-start`](https://pypi.org/project/dlthub-start/) is the fastest way in — no prior setup needed. Run it **without a workspace name** and follow the interactive prompts:
 
 ```bash
 uvx dlthub-start@latest
@@ -144,7 +144,7 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 ### Browse and install toolkits
 
-> **No Python environment yet?** Only if you're a first-time dlthub user with no project yet, run `uvx dlthub-start@latest` (no workspace name — see [First-time onboarding](#first-time-onboarding--no-project-yet)) yourself in your terminal — it scaffolds a playground workspace in one command. (It's interactive, so run it yourself rather than asking your coding assistant to.) If you already have a project, use the `bootstrap` toolkit's `/init-workspace` instead — it does the in-place install steps (`uv`, venv, `uv add "dlt[hub]"`, `dlthub init`) and the assistant can drive it.
+> **Don't have dlthub set up yet?** Follow [Existing project](#existing-project) above first (or the `bootstrap` toolkit's `/init-workspace`, which the assistant can drive). The toolkit commands below assume `dlthub` is installed in your environment.
 
 
 ```bash
@@ -177,7 +177,7 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For first-time onboarding with no project yet, we recommend running `uvx dlthub-start@latest` yourself (see [First-time onboarding](#first-time-onboarding--no-project-yet)) — it's interactive, so run it in your terminal rather than asking your assistant to. The marketplace path below is useful when you want to bootstrap an existing/empty project from inside Claude Code via the `bootstrap` toolkit (which runs the in-place install steps).
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. If you're new to dltHub and want to try or learn it, see [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub) — you run `uvx dlthub-start@latest` yourself. The marketplace path below is useful when you want to bootstrap an existing/empty project from inside Claude Code via the `bootstrap` toolkit (which runs the in-place install steps).
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 

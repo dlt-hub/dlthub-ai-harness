@@ -1,10 +1,9 @@
 # setup
-* On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`? Then pick the path that matches the user's situation:
+* On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`? If anything is missing, set it up **in place**:
+  * Use the `bootstrap` toolkit / `/bootstrap:init-workspace` flow, which you (the agent) can drive: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, and `uv run dlthub ai init`. If bootstrap isn't installed, `dlthub ai toolkit install bootstrap` (**if dlthub present**). Re-check `uv run dlthub ai status` when done.
 
-* **Existing project (already has a `pyproject.toml` / venv, or the user has onboarded before) — set it up in place.** This is the path for almost everyone who already has a project. Use the `bootstrap` toolkit / `/bootstrap:init-workspace` flow, which you (the agent) can drive: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, and `uv run dlthub ai init`. If bootstrap isn't installed, `dlthub ai toolkit install bootstrap` (**if dlthub present**). Re-check `uv run dlthub ai status` when done.
-
-* **No working project yet (fresh onboarding) — point the user to `uvx dlthub-start`.** `uvx dlthub-start@latest` scaffolds a fresh **playground** workspace (installs `uv` if needed, syncs `dlt[hub]`, vendors the core toolkits). It is an onboarding/playground experience — **not** where production workflows should be built — so only suggest it when there is no project to set up in place.
-  * **DO NOT run `uvx dlthub-start` yourself.** It is interactive and does not work when an agent runs it. **Ask the user to run it** in their terminal, or inline via `!` mode:
+* **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me to dltHub", "I want to learn how to use dltHub"): point them to `uvx dlthub-start@latest`. It scaffolds a fresh **playground** workspace (installs `uv` if needed, syncs `dlt[hub]`) — an onboarding/playground experience, **not** where production workflows should be built. Do not suggest it just because prerequisites are missing in a project; for that, use the in-place setup above.
+  * **NEVER run `uvx dlthub-start` yourself.** It is interactive and does not work when an agent runs it. **Ask the user to run it** in their terminal, or inline via `!` mode:
     * Claude Code and Codex support a `!` shell prefix in the prompt — tell the user to type `! uvx dlthub-start@latest`.
     * In Cursor there is no `!` prefix — tell the user to run `uvx dlthub-start@latest` in the integrated terminal instead.
     * Re-check `uv run dlthub ai status` once the user confirms it finished.

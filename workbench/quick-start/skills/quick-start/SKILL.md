@@ -19,11 +19,9 @@ Parse `$ARGUMENTS`:
 Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
-- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then pick the path that matches their situation:
+- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**. Drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`. Wait for completion, then re-check status before continuing to Step 2.
 
-  **Existing project (has a `pyproject.toml`/venv, or has onboarded before) — set it up in place.** This is the path for almost everyone already working in a project. Drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`. Do **not** suggest `uvx dlthub-start` here — it scaffolds a separate playground workspace, not your existing project.
-
-  **No working project yet (fresh onboarding) — ask the user to run `uvx dlthub-start`.** This scaffolds a fresh **playground** workspace; it is an onboarding experience, **not** where production workflows should live. **Do not run it yourself** — it is interactive and does not work when an agent runs it:
+  **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me", "I want to learn dltHub"): ask the user to run `uvx dlthub-start@latest`. This scaffolds a fresh **playground** workspace — an onboarding experience, **not** where production workflows should live, and not for setting up an existing project. **NEVER run it yourself** — it is interactive and does not work when an agent runs it:
 
   ```
   uvx dlthub-start@latest
@@ -31,8 +29,6 @@ Run `uv run dlthub ai status`.
 
   - In Claude Code and Codex the user can run it inline via `!` mode: tell them to type `! uvx dlthub-start@latest`.
   - In Cursor there is no `!` prefix — tell the user to run it in the integrated terminal.
-
-  In either case, wait for the user to confirm, then re-check status before continuing to Step 2.
 
 ## Step 2 — Present capability index and ask one question
 

@@ -7,9 +7,9 @@ description: Sets up dlthub workspace. Ensures `uv`, Python env and dlthub are p
 
 Makes sure that `uv`, Python `venv` and `dlthub` is installed, then sets up AI support.
 
-> **This is the right path for an existing project** — i.e. when the user already has a `pyproject.toml`/venv or has onboarded before. It sets dlthub up **in place** and the agent can drive it end to end.
+> **This is the right path for an existing project** — i.e. when the user already has a `pyproject.toml`/venv. It sets dlthub up **in place** and the agent can drive it end to end.
 >
-> **Do NOT use this for fresh onboarding with no project yet.** In that case point the user to `uvx dlthub-start@latest`, which scaffolds a separate **playground** workspace (not for production workflows). `uvx dlthub-start` is interactive and does not work when an agent runs it, so **never run it yourself** — ask the user to run it in their terminal, or inline via `!` mode in Claude Code / Codex (`! uvx dlthub-start@latest`), or Cursor's integrated terminal.
+> In case the user asks to be onboarded to dltHub (or similar, like "I want to learn how to use dltHub"), recommend them to run `uvx dlthub-start@latest` in their terminal, which scaffolds a separate **playground** workspace (not for production workflows). `uvx dlthub-start` is interactive and does not work when an agent runs it, so **never run it yourself** — ask the user to run it in their terminal, or inline via `!` mode in Claude Code / Codex (`! uvx dlthub-start@latest`), or Cursor's integrated terminal.
 
 ## Step 1: Gather evidence
 
