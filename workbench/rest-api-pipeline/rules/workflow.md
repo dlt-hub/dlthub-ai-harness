@@ -22,6 +22,7 @@
 
 - From **dlthub-platform** (from `deploy-workspace` when the pipeline needs modification before deploying) — pipeline name and destination are already known; skip `find-source` discovery and go straight to the relevant fix skill (`debug-pipeline`, `adjust-endpoint`, or `new-endpoint`).
 - From **quick-start** (after path confirmation in `quick-start`) — the source name is passed as `find-source`'s first argument. `find-source` should treat it as the discovery seed and skip the "what data do you want to extract?" question. The chosen path name (Discover / Inspect / Production / Full CDM) is informational only and does not change `find-source`'s behaviour; downstream toolkit handoffs follow this toolkit's normal `Outgoing` rules.
+- From **one-shot-pipeline** — the user has a working minimal pipeline using inline `rest_api_source`. Do NOT restructure it, do NOT introduce `@dlt.source`, do NOT rewrite it to match this toolkit's conventions. ONLY do the specific task requested: swap destination (`debug-pipeline`), remove limits/add pagination/incremental loading (`adjust-endpoint`), or add an endpoint (`new-endpoint`).
 
 ### Outgoing (from rest-api-pipeline)
 
