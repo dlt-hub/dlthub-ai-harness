@@ -20,26 +20,20 @@ Only propose toolkit installation if the user explicitly asks for something this
 
 ## Step 0 — No source named?
 
-If the user hasn't named a specific API, run:
+If the user hasn't named a specific API, suggest these three directly:
 
-```
-uv run dlthub --non-interactive pipeline init --list-sources
-```
-
-Take the first 3 sources from the output and suggest them:
-
-> Here are a few real sources you can try:
-> - github
-> - hubspot
-> - stripe_analytics
+> Here are a few popular sources you can try:
+> - `github` — issues, pull requests, repositories
+> - `hubspot` — contacts, companies, deals, tickets
+> - `stripe_analytics` — customers, subscriptions, events
 >
-> There are more available — run `uv run dlthub --non-interactive pipeline init --list-sources` to see the full list.
+> You can also name any REST API not in the list (e.g. Notion, Jira, Shopify) and I'll build a custom connector for it.
 
-Wait for the user to pick one, then continue to Step 1.
+Wait for the user to pick or name one. Then check if an endpoint was mentioned in the original prompt — if not, ask which endpoint they'd like to load. Then continue to Step 1.
 
 ## Step 1 — Research the API
 
-Check for a verified source first. If you already fetched the sources list in Step 0, grep that output directly. Otherwise run:
+Check for a verified source first. Tell the user you're doing this because a pre-maintained dlt source — if one exists — which is more reliable than a custom connector:
 
 ```
 uv run dlthub --non-interactive pipeline init --list-sources | grep -i <api-name>
