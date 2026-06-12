@@ -171,7 +171,7 @@ uv run python <source>_pipeline.py
 
 Report what table was created and how many rows loaded (visible in output).
 
-Then open the local data viewer:
+Then open the local data viewer. Run this command **in the background** (it starts a server and never exits — running it in the foreground will block):
 
 ```
 uv run dlthub local show
