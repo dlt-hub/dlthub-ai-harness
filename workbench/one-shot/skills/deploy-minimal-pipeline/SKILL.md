@@ -7,6 +7,23 @@ Deploy `<source>_pipeline.py` to dltHub Platform. The pipeline keeps the 50-row 
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments.md
 
+## Step 0 — Verify workspace connection
+
+Check that the local workspace is connected to a dltHub Platform workspace:
+
+```bash
+dlthub workspace list
+```
+
+If no workspace is connected, connect one:
+
+```bash
+dlthub workspace connect              # interactive — lists available workspaces to pick from
+dlthub workspace connect <name_or_id> # skip prompt if name is known
+```
+
+Once connected, continue to Step 1.
+
 ## Step 1 — Set up production destination
 
 The pipeline currently loads into `duckdb`, which only works locally — the runtime's ephemeral storage is wiped after each job run. A cloud destination is required for data to persist.
@@ -113,6 +130,10 @@ If it fails:
 ```bash
 dlthub job logs load_<source>
 ```
+
+| Error | Cause | Fix                        |
+|---|---|----------------------------|
+| `Trial period has ended` | Billing issue — your organization's plan has expired | Please pay to move forward |
 
 Once successful, open the dltHub web UI to confirm the pipeline is live:
 ```bash
