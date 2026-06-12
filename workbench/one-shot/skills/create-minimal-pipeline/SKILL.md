@@ -138,39 +138,30 @@ Pick the one that matches the API. Add it under `"client"`:
 
 **Skip this step entirely if the API is public (no auth needed).**
 
-Do not read or write `.dlt/secrets.toml` directly — use the CLI instead.
+Do not read or write `.dlt/secrets.toml` directly — use the MCP secrets tools.
 
 **3a. Check what's already configured:**
 
+Use `secrets_view_redacted` — if `[sources.<source>]` already has the required field populated (shown as `***`), skip to Step 4.
+
+**3b. If the credential is missing**, use `secrets_update_fragment` with `path=".dlt/secrets.toml"` to write the credential skeleton with an empty placeholder value:
+
+```toml
+[sources.<source>]
+token = ""
 ```
-uv run dlthub ai secrets list
-uv run dlthub ai secrets view-redacted
-```
-
-`view-redacted` shows all configured keys with values replaced by `***`. If `[sources.<source>]` already has the required field populated (shown as `***`), skip to Step 4.
-
-**3b. If the credential is missing**, show the user exactly what to add:
-
-> Open `.dlt/secrets.toml` (not `dev.secrets.toml`) and add:
->
-> ```toml
-> [sources.<source>]
-> token = "paste-your-token-here"
-> ```
->
-> Get your token from: `<direct link from API docs>`
 
 Use `secrets.toml` (workspace-scoped) so credentials are visible to all profiles — credentials in `dev.secrets.toml` are not visible to the platform's prod profile and the job will fail.
 
-**Stop and wait** for the user to confirm they've added the credential.
+Then tell the user:
 
-**3c. Verify** the credential is in place:
+> I've added the credential structure to `.dlt/secrets.toml`. Please open that file, fill in your token, and let me know when done.
+>
+> Get your token from: `<direct link from API docs>`
 
-```
-uv run dlthub ai secrets view-redacted
-```
+**Stop and wait** for the user to confirm before continuing.
 
-Confirm `[sources.<source>].<field>` now shows `***`. If it's still absent, the user hasn't saved or used the wrong section name — ask them to check before continuing.
+**3c. Verify** with `secrets_view_redacted` — confirm `[sources.<source>].<field>` now shows `***`. If it's still empty, ask the user to check before continuing.
 
 ## Step 4 — Run locally
 
