@@ -89,8 +89,16 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
     # the eval tests working-tree changes, not the published dlthub snapshot.
     run(
         [
-            "uv", "run", cli, "--non-interactive", "ai", "init",
-            "--agent", "claude", "--location", str(ROOT),
+            "uv",
+            "run",
+            cli,
+            "--non-interactive",
+            "ai",
+            "init",
+            "--agent",
+            "claude",
+            "--location",
+            str(ROOT),
         ],
         cwd=workspace,
     )
@@ -100,8 +108,18 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
         print(f"  Installing toolkit: {toolkit}")
         run(
             [
-                "uv", "run", cli, "--non-interactive", "ai", "toolkit",
-                toolkit, "install", "--agent", "claude", "--location", str(ROOT),
+                "uv",
+                "run",
+                cli,
+                "--non-interactive",
+                "ai",
+                "toolkit",
+                toolkit,
+                "install",
+                "--agent",
+                "claude",
+                "--location",
+                str(ROOT),
             ],
             cwd=workspace,
         )

@@ -286,9 +286,7 @@ def validate_index_drift(
         }
         fname = Path(rel).name
         for name in sorted(expected - indexed):
-            errors.append(
-                f"[init] {fname} intent index is missing workflow toolkit '{name}'"
-            )
+            errors.append(f"[init] {fname} intent index is missing workflow toolkit '{name}'")
         for name in sorted(indexed - expected):
             errors.append(
                 f"[init] {fname} intent index lists '{name}' "

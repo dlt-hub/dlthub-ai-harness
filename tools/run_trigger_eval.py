@@ -289,9 +289,7 @@ def run_eval_on_workspace(
 
 def main():
     parser = argparse.ArgumentParser(description="Run trigger evaluation for a skill")
-    parser.add_argument(
-        "eval_dir", help="Path to eval directory (e.g. evals/init/dlthub-router)"
-    )
+    parser.add_argument("eval_dir", help="Path to eval directory (e.g. evals/init/dlthub-router)")
     parser.add_argument("--workspace", default=None, help="Run only this workspace (default: all)")
     parser.add_argument(
         "--num-workers", type=int, default=10, help="Parallel workers (default: 10)"
