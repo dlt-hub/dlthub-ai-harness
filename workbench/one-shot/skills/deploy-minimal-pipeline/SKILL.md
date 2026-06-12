@@ -5,7 +5,7 @@ description: Deploy the minimal REST API pipeline to dltHub Platform. Use when t
 
 Deploy `<source>_pipeline.py` to dltHub Platform. The pipeline keeps the 50-row limit — this is a first-run cloud validation, not a full load. The only code change needed is swapping `destination="duckdb"` for a cloud destination.
 
-**Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments.md
+**Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
 
 ## Step 0 — Verify workspace connection
 
@@ -28,7 +28,7 @@ Once connected, continue to Step 1.
 
 The pipeline currently loads into `duckdb`, which only works locally — the runtime's ephemeral storage is wiped after each job run. A cloud destination is required for data to persist.
 
-**Reference**: https://dlthub.com/docs/general-usage/destination.md
+**Reference**: https://dlthub.com/docs/general-usage/destination
 
 ### 1a. Choose a destination
 
