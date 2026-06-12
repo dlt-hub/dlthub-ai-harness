@@ -40,5 +40,5 @@
 * toolkits are data engineering workflows automated via skills, commands and rules.
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
 * workflows end with handover to other workflows, also `toolkit-dispatch` skill may be helpful
-* **DO NOT** start data engineering work in no toolkits are installed - see `dlthub ai status` output!
-* **NEVER assume a handover target toolkit is installed** — before following any handover, always run `uv run dlthub --non-interactive ai toolkit install <toolkit-name>` first, then invoke the entry skill. Do not do the work yourself (web research, manual code edits) as a substitute.
+* **DO NOT** start data engineering work when no toolkits are installed - see `dlthub ai status` output!
+* **NEVER assume a handover target toolkit is installed** — before following any handover, always run `uv run dlthub --non-interactive ai toolkit install <toolkit-name>` first, then invoke the entry skill. Do NOT run web research, manual code edits but use the entry skill.
