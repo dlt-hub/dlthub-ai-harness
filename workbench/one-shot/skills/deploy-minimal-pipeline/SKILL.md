@@ -38,11 +38,19 @@ Ask the user which cloud destination they want to use. If unsure, recommend **Mo
 
 A named destination acts as an alias that maps to `duckdb` in dev and to the cloud destination in prod — the pipeline code stays the same in both environments. Pick a name (e.g. `warehouse`).
 
-Use `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"` to write the credential skeleton for the chosen destination — use empty strings as placeholder values:
+**Check `config.toml` first.** If a `[destination.warehouse]` block with `destination_type` already exists there, it is workspace-scoped and will override prod settings. Move it to `dev.config.toml` so it only applies to the dev profile:
+
+```bash
+# Read config.toml, remove [destination.warehouse] from it, write to dev.config.toml instead
+```
+
+Use the MCP secrets tools for both files — do not edit them directly.
+
+**Write the prod credential skeleton** using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"` — use empty strings as placeholder values. Use `destination_type` (not `type`):
 
 ```toml
 [destination.warehouse]
-type = "motherduck"  # replace with the actual destination type
+destination_type = "motherduck"  # or bigquery, snowflake, redshift
 
 [destination.warehouse.credentials]
 database = ""
@@ -51,11 +59,25 @@ token = ""
 
 Then tell the user:
 
-> I've created the credential structure in `.dlt/prod.secrets.toml`. Please open that file and fill in your `database` and `token` values, then let me know when done.
+> I've created the credential structure in `.dlt/prod.secrets.toml`. Please open that file and fill in your values, then let me know when done.
 
 **Stop and wait** for the user to confirm before continuing.
 
-Once confirmed, use `secrets_view_redacted` to verify the destination section is populated — confirm `[destination.warehouse]` credentials appear as `***`. If any field is still empty, ask the user to fill it in before proceeding.
+Once confirmed, use `secrets_view_redacted` to verify — confirm `[destination.warehouse]` credentials appear as `***`. If any field is still empty, ask the user to fill it in before proceeding.
+
+**Install the destination package.** Add the required dlt extra for the chosen destination and sync:
+
+| Destination | Command |
+|---|---|
+| MotherDuck | `uv add "dlt[motherduck]"` |
+| BigQuery | `uv add "dlt[bigquery]"` |
+| Snowflake | `uv add "dlt[snowflake]"` |
+| Redshift | `uv add "dlt[redshift]"` |
+
+```bash
+uv add "dlt[<extra>]"
+uv sync
+```
 
 ## Step 2 — Update destination in pipeline file
 
