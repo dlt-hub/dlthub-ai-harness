@@ -21,7 +21,7 @@ This skill is usually entered with context already in session:
 - Table list (names + column counts)
 - Auto-detected check candidates per table (from `display_schema` hints)
 
-If this context is missing (skill invoked directly), run steps 2–3 of `setup-data-quality` inline: call `display_schema` for each table to recover the schema hints before continuing.
+If this context is missing (skill invoked directly), run steps 2–3 of `setup-data-quality` inline: one `export_schema` call for table names and columns, then the schema-hints script, to recover the check candidates before continuing.
 
 ## Steps
 
@@ -144,6 +144,7 @@ Produce ready-to-paste code for each table. Use the correct API form determined 
 
 ```python
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
+
 
 @dq.with_checks(
     dq.checks.is_unique("id"),

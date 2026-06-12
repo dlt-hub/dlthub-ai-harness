@@ -16,7 +16,7 @@ Parse `$ARGUMENTS`:
 
 Before discovery, check what's already available:
 
-1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (e.g., arriving from `rest-api-pipeline` after `validate-data` or `view-data`), skip `list_pipelines` and go straight to the single `export_schema` call.
+1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (e.g., arriving from `rest-api-pipeline` after `validate-data` or `view-data`), skip `list_pipelines` and go straight to schema discovery (Step 1.2).
 2. **Existing analysis_plan.md** — if `*_analysis_plan.md` exists, skip to the iteration path (see "Iteration: existing analysis_plan.md" below).
 3. **Standalone .duckdb file** — if the user points to a `.duckdb` file instead of a named pipeline, connect with an explicit destination: `dlt.pipeline(pipeline_name="adhoc", destination=dlt.destinations.duckdb("<path>"))`. Then proceed normally — `pipeline.dataset()` works the same way.
 
@@ -33,7 +33,9 @@ If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix
 Use the dlthub MCP tools as the primary discovery path:
 
 1. **`list_pipelines`** — discover available pipelines. If multiple exist and target is ambiguous, ask the user and stop.
-2. **`export_schema`** (`output_format="yaml"`) — all tables, columns, and types in **one call**. Do not enumerate with `list_tables` + per-table `get_table_schema` — that costs N+1 calls for the same information.
+2. Schema discovery depends on intent (see Step 2):
+   - **High-intent** — **`export_schema`** (`output_format="yaml"`): all tables, columns, and types in **one call**. Do not enumerate with `list_tables` + per-table `get_table_schema` — that costs N+1 calls for the same information.
+   - **Low-intent** — make **no** schema call here; `profile_tables` in Step 2 already returns every table's schema.
 
 If MCP tools are unavailable, fall back to Python:
 ```python
@@ -58,12 +60,12 @@ The single `export_schema` call from Step 1 already has all of this — do not m
 
 Profile all tables relevant to the user's domain.
 
-**Primary path — one call**: use the **`profile_tables`** tool from `dlt-profiling-mcp` (pass `pipeline_name`, optionally `table_names`). It returns, for every table at once: schema, row count, per-column stats (null count, distinct count, min/max), and sample rows. One MCP call replaces the entire profiling sweep — never follow it with `get_table_schema`, `get_row_counts`, or per-column `execute_sql_query` calls.
+**Primary path — one call**: use the **`profile_tables`** tool from `dlt-profiling-mcp` (pass `pipeline_name`, optionally `table_names`). It returns, for every table at once: schema, row count, per-column stats (null count, distinct count, min/max), and sample rows. One MCP call replaces the entire profiling sweep — never follow it with `get_table_schema`, `get_row_counts`, or per-column `execute_sql_query` calls. The call is capped at 20 tables (the rest come back in `skipped_tables`) — on large pipelines pass `table_names` with the tables relevant to the user's domain instead of profiling everything.
 
 **Fallback** (if `dlt-profiling-mcp` is not connected), still batch aggressively:
 
 1. **Row counts** — one `get_row_counts` call (all tables).
-2. **Schemas** — the `export_schema` call from Step 1 (all tables).
+2. **Schemas** — one `export_schema` call (all tables), if not already made in Step 1.
 3. **Per-column stats** — **one `execute_sql_query` per table** computing null counts, distinct counts, and min/max for **all columns in a single SELECT** (e.g. `SELECT COUNT(*), COUNT(*) - COUNT(col_a), COUNT(DISTINCT col_a), MIN(col_b), MAX(col_b), ... FROM t`). Never one query per metric or per column.
 4. **Samples** — `preview_table` for each table, all calls issued in a single message so they run in parallel.
 
@@ -124,7 +126,7 @@ After the spec is confirmed, generate the SQL query and altair chart code.
 - Default to SQL: `dataset("SELECT ... FROM table_name ...").df()`
 - Chart queries produce aggregated data — always GROUP BY and aggregate rather than selecting raw rows
 - Use ibis (`dataset["table"].to_ibis()`) only for complex joins or computed columns
-- Use exact column names from the schema — verify against `get_table_schema`
+- Use exact column names from the schema already in context (the `export_schema` / `profile_tables` output) — no extra schema calls
 - See `references/dlt-relation-api.md` for full API reference
 
 ### altair rules

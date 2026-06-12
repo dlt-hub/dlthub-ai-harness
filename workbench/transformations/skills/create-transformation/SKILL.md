@@ -104,6 +104,7 @@ def hubspot_activity_schema(source_dataset: dlt.Dataset):
     yield dim_company(source_dataset)
     yield fact_activity(source_dataset)
 
+
 @dlt.hub.transformation
 def dim_company(dataset: dlt.Dataset):
     yield dataset("SELECT company_id, name FROM hubspot__companies")
@@ -175,8 +176,7 @@ For more complex ibis patterns (joins, aggregations, unions, `row_number`, windo
 @dlt.hub.transformation(
     write_disposition="replace",
 )
-def dim_person(dataset: dlt.Dataset):
-    ...
+def dim_person(dataset: dlt.Dataset): ...
 ```
 
 > For scheduled or high-volume pipelines, use the `incremental-transformation` skill to switch `replace` → incremental so only new/changed rows are processed on each run.
@@ -190,14 +190,13 @@ If ibis is needed for cross-source composition, initialise connections **before*
 @dlt.hub.transformation(
     write_disposition="replace",
     columns={
-        "company_sk":   {"data_type": "text",     "nullable": False},
-        "email_hash":   {"data_type": "text",     "nullable": True},  # md5()
-        "month_bucket": {"data_type": "text",     "nullable": True},  # strftime()
-        "event_count":  {"data_type": "bigint",   "nullable": True},  # COUNT() alias
+        "company_sk": {"data_type": "text", "nullable": False},
+        "email_hash": {"data_type": "text", "nullable": True},  # md5()
+        "month_bucket": {"data_type": "text", "nullable": True},  # strftime()
+        "event_count": {"data_type": "bigint", "nullable": True},  # COUNT() alias
     },
 )
-def dim_person(dataset: dlt.Dataset):
-    ...
+def dim_person(dataset: dlt.Dataset): ...
 ```
 
 `columns=` `data_type` values for keys must match the key type contract selected in Step 4.
@@ -280,10 +279,9 @@ If the run fails, read the error before deciding where to go — do not proceed 
 
 After a successful run, verify the transformation produced the expected result using the MCP tools:
 
-- `list_tables` — confirm all CDM tables are present in the target dataset
-- `get_row_counts` — verify counts are non-zero and plausible relative to source table sizes
-- `get_table_schema` — confirm column names and types match the CDM spec
-- `preview_table` — inspect a sample of rows for unexpected NULLs, wrong grain, or type mismatches
+- `export_schema` — one call confirms all CDM tables are present with the column names and types the CDM spec expects (replaces `list_tables` + per-table `get_table_schema`)
+- `get_row_counts` — one call verifies counts are non-zero and plausible relative to source table sizes
+- `preview_table` — inspect a sample of rows for unexpected NULLs, wrong grain, or type mismatches; issue the calls for all CDM tables in a single message so they run in parallel
 
 **What to check:**
 - All expected CDM tables exist (no silent skip due to empty resource)

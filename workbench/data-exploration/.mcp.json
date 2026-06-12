@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "dlt-profiling-mcp": {
-      "command": "uv",
-      "args": ["run", "python", "${CLAUDE_PLUGIN_ROOT}/mcp/profile_server.py"]
+      "command": "sh",
+      "args": [
+        "-c",
+        "p=\"${CLAUDE_PLUGIN_ROOT}/skills/explore-data/mcp/profile_server.py\"; [ -f \"$p\" ] || p=\".claude/skills/explore-data/mcp/profile_server.py\"; exec uv run python \"$p\""
+      ]
     }
   }
 }
