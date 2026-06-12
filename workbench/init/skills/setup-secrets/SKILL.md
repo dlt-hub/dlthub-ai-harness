@@ -91,7 +91,7 @@ Use **meaningful placeholders** that hint at the format:
 
 ## 5. Verify
 
-`secrets_update_fragment` already returned the redacted content of the updated file — **that is your verification, do not make another call** if you only touched one file. Only call `secrets_view_redacted` (no path) when several files changed or you need the merged cross-profile view.
+`secrets_update_fragment` already returned the redacted content of the updated file — **that is your verification, do not make another call** when no other secrets file contains the same sections (you know this from step 2's unified view). If sections overlap across files, or several files changed, call `secrets_view_redacted` (no path) once to confirm what the merged configuration actually resolves to.
 
 Tell the user which fields still have placeholders and how to obtain real values.
 

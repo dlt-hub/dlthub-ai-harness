@@ -80,7 +80,7 @@ A dependency is missing from the environment. Install it with `uv add <package>`
 ### Notebook runs but charts are empty
 The SQL query returns no rows. Common causes:
 1. Filter is too restrictive — check `where` clauses.
-2. Column names don't match schema — verify against `get_table_schema`.
+2. Column names don't match schema — verify against the schema already in context from `explore-data` (`export_schema` / `profile_tables` output); only if missing, make one `export_schema` call.
 3. Table is empty — check `row_counts`.
 
 ### dlt.attach fails in notebook

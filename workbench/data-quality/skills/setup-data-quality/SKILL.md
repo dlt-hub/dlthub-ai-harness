@@ -56,7 +56,7 @@ Then ask the user to provide the pipeline name manually and continue once they d
 
 ### 2. Discover tables
 
-Use the `list_tables` MCP tool for the confirmed pipeline. Collect the table names and column counts. Skip `_dlt_*` system tables.
+Use one `export_schema` MCP call (`output_format="yaml"`) for the confirmed pipeline — it returns all table names and their columns at once (`list_tables` alone has no column info and per-table follow-ups cost N extra calls). Skip `_dlt_*` system tables.
 
 Present a compact list to the user:
 
@@ -80,7 +80,10 @@ Run a small inline script to generate check candidates directly from the pipelin
 
 ```python
 import dlt
-from dlthub.data_quality.checks._definitions import create_check_hints_from_schema, _check_hints_to_def
+from dlthub.data_quality.checks._definitions import (
+    create_check_hints_from_schema,
+    _check_hints_to_def,
+)
 
 pipeline = dlt.attach(pipeline_name="<name>")
 hints = create_check_hints_from_schema(pipeline.default_schema)

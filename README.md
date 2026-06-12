@@ -29,9 +29,9 @@ The outer loop connects the two phases: insights from the transformation and ser
 
 ## dltHub AI Workbench Toolkits
 
-The workbench gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
+The workbench gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish.
 
-A **Toolkit** contains skills, commands, rules, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP. 
+A **Toolkit** contains skills, commands, rules, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP.
 
 All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
 
@@ -51,11 +51,13 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 ### MCP tools
 
-Two MCP servers give the agent structured context throughout the workflow to avoid the need for manual copy-pasting.
+Three MCP servers give the agent structured context throughout the workflow to avoid the need for manual copy-pasting.
 
 **dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
 
 **[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
+
+**dlt-profiling-mcp** (local, ships with the `data-exploration` toolkit) provides `profile_tables` — schema, row counts, per-column stats, and sample rows for many tables in a single call, used by the `explore-data` skill for broad profiling.
 
 ### Available toolkits
 
@@ -101,8 +103,8 @@ To add the AI workbench to an existing project:
 > **Note:** All `dlthub ai` commands below use `uv run dlthub ...` syntax. If you have `dlthub` installed globally or in an active virtual environment, you can omit `uv run` and call `dlthub` directly. We recommend using uv.
 
 ```bash
-# Initialize the environment 
-uv init 
+# Initialize the environment
+uv init
 
 # Install dlthub
 uv add "dlt[hub]"
@@ -142,7 +144,7 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 
 ### Browse and install toolkits
 
-> **No Python environment yet?** `uvx dlthub-start@latest my-workspace` (see [Installation](#installation)) handles this in one command. If you're going through the Claude Code marketplace instead, the `bootstrap` toolkit's `/init-workspace` does the same from inside Claude Code.
+> **No Python environment yet?** `uvx dlthub-start@latest my-workspace` (see [Getting started](#getting-started)) handles this in one command. If you're going through the Claude Code marketplace instead, the `bootstrap` toolkit's `/init-workspace` does the same from inside Claude Code.
 
 
 ```bash
@@ -175,7 +177,7 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For new projects we recommend `uvx dlthub-start@latest` (see [Installation](#installation)). The marketplace path below is useful when you don't have `uv`/Python and want to bootstrap from inside Claude Code via the `bootstrap` toolkit.
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For new projects we recommend `uvx dlthub-start@latest` (see [Getting started](#getting-started)). The marketplace path below is useful when you don't have `uv`/Python and want to bootstrap from inside Claude Code via the `bootstrap` toolkit.
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 

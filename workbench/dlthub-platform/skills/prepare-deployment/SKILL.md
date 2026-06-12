@@ -37,10 +37,12 @@ Use `secrets_list`, `secrets_view_redacted`, and `secrets_update_fragment` MCP t
 **Minimize MCP calls**: inspect once, then write one complete fragment per file. The redacted file content returned by each `secrets_update_fragment` call is the per-file verification — do not re-view files you just wrote.
 
 1. Use `secrets_list` once to see all secret files, then `secrets_view_redacted` (no path) once for the unified merged view. That is all the inspection needed — skip per-file views.
-2. Plan the full dev/prod split first (which sections go where, including the production destination credentials from step 3), then:
+2. Plan the full dev/prod split first (which sections go where), then:
    - write **one** `secrets_update_fragment` with the complete dev fragment (`path=".dlt/dev.secrets.toml"`) — all dev-only sections in a single TOML fragment
-   - write **one** `secrets_update_fragment` with the complete prod fragment (`path=".dlt/prod.secrets.toml"`) — all sources and the production destination, placeholders for values the user must fill in
-3. Each call returns the redacted result for that file — use it to confirm the write; no extra view calls.
+   - write **one** `secrets_update_fragment` with the complete prod fragment (`path=".dlt/prod.secrets.toml"`) — all sources (and the production destination if already decided), placeholders for values the user must fill in
+   - if the production destination is only chosen later in step 3, add its credentials then with one additional fragment write — do not force the decision early to save a call
+3. `secrets_update_fragment` **cannot delete keys** — after copying dev-only sections into the dev profile, tell the user to remove them from workspace-scoped `.dlt/secrets.toml` by editing the file themselves. Workspace scope applies to **all** profiles: a dev credential left there leaks into prod wherever the prod file doesn't shadow the exact key.
+4. Each call returns the redacted result for that file — use it to confirm the write; no extra view calls.
 
 ## 3. Set up production destination
 
@@ -66,7 +68,7 @@ Recommend to user switching to a named destination:
    - Pick destination $name
    - Set up the right destination types in profile-scoped toml files for that $name (**MUST** read the reference!)
    - Change the `destination` to $name for pipelines being deployed (all scripts — including notebooks)
-   - Set up credentials using profile-scoped secret files — fold them into the single per-file fragments from step 2 rather than extra `secrets_update_fragment` calls. Make sure they overwrite workspace secrets correctly
+   - Set up credentials using profile-scoped secret files — fold them into the step 2 fragments when the destination was already decided there; otherwise one additional `secrets_update_fragment` per file is fine. Make sure they overwrite workspace secrets correctly
    - Offer to run pipeline locally (preferably in debug mode) to confirm settings. NOTE: pipeline will run on **dev** destination!
    - **DO NOT** run pipeline on **prod** profile. That happens on runtime deployment!
 
@@ -83,7 +85,7 @@ uv run python .claude/skills/prepare-deployment/check_destination.py <profile> <
 
 ## 4. Verify secrets state
 
-Use a **single** `secrets_view_redacted` call (no path) to see the final unified view across all workspace secret files — per-file states were already returned by the `secrets_update_fragment` calls in step 2. Confirm:
+Use a **single** `secrets_view_redacted` call (no path) to see the final unified view across all workspace secret files — per-file states were already returned by the `secrets_update_fragment` calls in step 2. **Exception**: if the same section exists in more than one file (e.g. workspace `secrets.toml` and a profile file), inspect those files with `path` — the merged view cannot show which file wins, and confirming the override is exactly what this step is for. Confirm:
 - Dev profile has local/test credentials
 - Prod profile has production credentials
 - No placeholder values remain in prod secrets
