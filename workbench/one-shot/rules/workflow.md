@@ -7,6 +7,7 @@ When the user sends **"Build a dlt pipeline for [your data source] API and load 
 
 ## Core workflow
 1. **Create minimal pipeline** (`create-minimal-pipeline`) — research API, scaffold pipeline, configure auth, run locally with a 50-row limit
+2. **Deploy minimal pipeline** (`deploy-minimal-pipeline`) — set up production destination, deploy the pipeline to dltHub Platform, and verify it runs on the cloud
 
 ## Handover to other toolkits
 
