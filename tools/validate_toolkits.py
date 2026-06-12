@@ -28,13 +28,20 @@ from pathlib import Path
 
 AI_DIR = "workbench"
 
-# Always-loaded compact intent->toolkit index lives in this rule.
-_INDEX_RULE = "workbench/init/rules/dlthub-workspace.md"
+# The always-loaded compact intent->toolkit index is duplicated across two
+# always-loaded surfaces: the rule (native on Claude/Cursor) and AGENTS.md
+# (the only always-loaded surface on Codex, where rules become opt-in skills).
+# Both must list the same workflow toolkits.
+_INDEX_FILES = (
+    "workbench/init/rules/dlthub-workspace.md",
+    "workbench/init/AGENTS.md",
+)
 # Toolkits that are NOT workflow toolkits, so they don't belong in the intent index:
 # `init` is the lean base itself; `bootstrap` only scaffolds the environment.
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
-# A line in the index code block: "<toolkit-name>   → description"
-_INDEX_ENTRY = re.compile(r"^([a-z][\w-]*)\s+→")
+# An index row: "<intent text> → <toolkit> | <install> | <entry skill>".
+# Capture the toolkit name (the token right after the arrow, before the pipe).
+_INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 
 # Expected plugin.json author and license values
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
@@ -256,35 +263,37 @@ def validate_index_drift(
     marketplace_names: set[str],
     errors: list[str],
 ) -> None:
-    """Check the always-loaded intent->toolkit index lists exactly the workflow toolkits.
+    """Check every always-loaded intent->toolkit index lists exactly the workflow toolkits.
 
-    The compact index in dlthub-workspace.md is loaded every session, so it can
-    silently go stale when toolkits are added or removed. Enforce that it lists
-    exactly the marketplace toolkits minus the non-workflow ones (init, bootstrap).
+    The compact index is loaded every session, so it can silently go stale when
+    toolkits are added or removed. It is duplicated across the rule and AGENTS.md
+    (two always-loaded surfaces, see _INDEX_FILES); enforce that each lists exactly
+    the marketplace toolkits minus the non-workflow ones (init, bootstrap).
     """
-    rule_path = root / _INDEX_RULE
-    if not rule_path.exists():
-        errors.append(f"index rule not found: {_INDEX_RULE}")
-        return
-
-    indexed = {
-        m.group(1)
-        for line in rule_path.read_text().splitlines()
-        if (m := _INDEX_ENTRY.match(line.strip()))
-    }
     expected = marketplace_names - _NON_WORKFLOW_TOOLKITS
 
-    missing = expected - indexed
-    extra = indexed - expected
-    for name in sorted(missing):
-        errors.append(
-            f"[init] dlthub-workspace.md intent index is missing workflow toolkit '{name}'"
-        )
-    for name in sorted(extra):
-        errors.append(
-            f"[init] dlthub-workspace.md intent index lists '{name}' "
-            f"which is not a workflow toolkit in marketplace.json"
-        )
+    for rel in _INDEX_FILES:
+        path = root / rel
+        if not path.exists():
+            errors.append(f"index file not found: {rel}")
+            continue
+
+        indexed = {
+            m.group(1)
+            for line in path.read_text().splitlines()
+            # data rows carry an install command; this skips the column header
+            if "ai toolkit" in line and (m := _INDEX_ENTRY.search(line))
+        }
+        fname = Path(rel).name
+        for name in sorted(expected - indexed):
+            errors.append(
+                f"[init] {fname} intent index is missing workflow toolkit '{name}'"
+            )
+        for name in sorted(indexed - expected):
+            errors.append(
+                f"[init] {fname} intent index lists '{name}' "
+                f"which is not a workflow toolkit in marketplace.json"
+            )
 
 
 def validate(

@@ -82,7 +82,7 @@ and follow the instructions: most importantly **uv sync** to pull required depen
 uv run dlthub --non-interactive ai init
 ```
 
-This installs **only the lean `init` toolkit** (shared rules, secrets handling, workspace MCP, and the `dlthub` entry skill). It does **not** install any workflow toolkits (rest-api-pipeline, sql-database-pipeline, transformations, …) — the project starts clean. Workflow toolkits get pulled in **on demand** by the `dlthub` skill once the user states what they want to build.
+This installs **only the lean `init` toolkit** (shared rules, secrets handling, workspace MCP, and the `dlthub-router` entry skill). It does **not** install any workflow toolkits (rest-api-pipeline, sql-database-pipeline, transformations, …) — the project starts clean. Workflow toolkits get pulled in **on demand** via the always-loaded toolkit index (and the `dlthub-router` skill) once the user states what they want to build.
 
 2. Show ai setup info
 ```
@@ -94,4 +94,4 @@ to solve it before proceeding.
 
 3. Tell user:
 * To restart the session **NOW** so the MCP server can run and skills are visible.
-* After restarting, just say what data you want to load or ask **"what can I build?"** — the `dlthub` skill will discover and install the right toolkit for the job.
+* After restarting, just say what data you want to load or ask **"what can I build?"** — the always-loaded toolkit index (and the `dlthub-router` skill) will install the right toolkit for the job.

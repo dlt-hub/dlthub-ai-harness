@@ -5,7 +5,7 @@ Reads config.json from an eval directory and creates fresh workspaces under
 evals/.evals/ for each workspace definition.
 
 Usage:
-    python tools/create_eval_workspace.py evals/init/dlthub
+    python tools/create_eval_workspace.py evals/init/dlthub-router
 
 config.json format:
     {
@@ -163,7 +163,7 @@ def create_workspaces(eval_dir: Path) -> list[Path]:
 def main():
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <eval-dir>")
-        print(f"  e.g.: {sys.argv[0]} evals/init/dlthub")
+        print(f"  e.g.: {sys.argv[0]} evals/init/dlthub-router")
         sys.exit(1)
 
     eval_dir = Path(sys.argv[1])

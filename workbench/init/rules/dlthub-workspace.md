@@ -39,20 +39,23 @@
 # toolkits
 * toolkits are data engineering workflows automated via skills, commands and rules.
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
-* workflows end with handover to other workflows, also the `dlthub` skill may be helpful
+* workflows end with handover to other workflows, also the `dlthub-router` skill may be helpful
 * **DO NOT** start data engineering work if no workflow toolkit is installed - see `dlthub ai status` output!
 
-## toolkits — match intent, then open the `dlthub` skill to route/install
+## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
+This index is authoritative for shipped toolkits. Match the user's intent, run the install command, then hand over to the entry skill. No MCP call needed for these.
 ```
-rest-api-pipeline      → ingest from REST / HTTP APIs
-sql-database-pipeline  → ingest from SQL databases (SQLAlchemy)
-filesystem-pipeline    → load files (CSV/Parquet/JSONL) from disk/S3/GCS/Azure/SFTP
-data-exploration       → profile data, charts, marimo dashboards
-transformations        → model raw data into a CDM (Kimball)
-data-quality           → column checks + load metrics
-dlthub-platform        → deploy to the dltHub platform and schedule jobs
-quick-start            → guided end-to-end demo (ingest→deploy)
-one-shot-pipeline      → minimal REST pipeline against local DuckDB and fast path to deployment
+intent                                              → toolkit                | install                                           | entry skill
+REST / HTTP APIs                                    → rest-api-pipeline      | dlthub ai toolkit rest-api-pipeline install       | find-source
+SQL databases (SQLAlchemy)                          → sql-database-pipeline  | dlthub ai toolkit sql-database-pipeline install   | find-source
+files CSV/Parquet/JSONL (disk/S3/GCS/Azure/SFTP)    → filesystem-pipeline    | dlthub ai toolkit filesystem-pipeline install     | create-filesystem-pipeline
+profile data, charts, marimo dashboards             → data-exploration       | dlthub ai toolkit data-exploration install        | explore-data
+model raw data into a CDM (Kimball)                 → transformations        | dlthub ai toolkit transformations install         | annotate-sources
+column checks + load metrics                        → data-quality           | dlthub ai toolkit data-quality install            | setup-data-quality
+deploy / schedule on the dltHub platform            → dlthub-platform        | dlthub ai toolkit dlthub-platform install         | setup-runtime
+guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub ai toolkit quick-start install             | quick-start
+minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub ai toolkit one-shot-pipeline install       | one-shot-pipeline
 ```
-* Source of truth is live `list_toolkits` (MCP); open the `dlthub` skill to discover + install.
-* DO NOT start data engineering work if no workflow toolkit is installed — the `dlthub` skill installs them on demand.
+* Always run installs with `--non-interactive` (see workspace rule above), then `uv run dlthub ai status` to confirm and ask the user to restart.
+* The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).
+* DO NOT start data engineering work if no workflow toolkit is installed.

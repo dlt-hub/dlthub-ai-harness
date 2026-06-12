@@ -1,0 +1,39 @@
+---
+name: dlthub-router
+description: "The entry point for building anything with dlthub. Use this skill to route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'what's available', 'how do I build a pipeline', 'how do I load data from <source>', 'I want to pull data from a REST API', 'ingest from a SQL database', 'load CSVs from S3', 'how do I make reports / dashboards', 'how do I transform / model my data', 'how do I add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', or seems unsure what to do next after setup. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
+---
+
+# dlthub-router
+
+Route the user to the right toolkit and skill, then install it. **Fast path first** — the always-loaded toolkit index (in your project rules / `AGENTS.md`) already maps intent → toolkit → install command → entry skill, so you usually do **not** need any discovery round-trip.
+
+## Step 1: Route from the always-loaded index (fast path)
+
+The `# toolkits` index is already in your context. Match the user's intent to a row, then:
+
+1. **Install** it: `dlthub --non-interactive ai toolkit <name> install`
+2. **Confirm** (Step 3) and **hand over** to that toolkit's entry skill (Step 4).
+
+This needs **no MCP call** — the index is authoritative for the shipped toolkits and is the fast path. Use it whenever the intent matches a row.
+
+## Step 2: Live discovery (fallback only)
+
+Use this **only** when the index has no matching row (an unfamiliar need, or you suspect a newer toolkit exists):
+
+- **Prefer MCP** — `list_toolkits` from `dlt-workspace-mcp` for the live catalog, then `toolkit_info <name>` for skill details.
+- **CLI fallback** (MCP not connected): `dlthub --non-interactive ai toolkit list`, then `dlthub --non-interactive ai toolkit info <name>`.
+
+Match intent to the best toolkit, then install as in Step 1. Toolkits marked `(installed: <version>)` are already available.
+
+## Step 3: Confirm & enable MCP
+
+```
+uv run dlthub ai status
+```
+1. You should see the new toolkit and its entry skill.
+2. If you see any **WARNING** about the MCP server (e.g. cannot be started), **fix it** using the error message.
+
+## Step 4: Handover
+
+1. If a new toolkit got installed, ask the user to **restart the session** so its skills load.
+2. Do **not** start any workflows or skills on your own — the toolkit's workflow rule and entry skill take over after restart.
