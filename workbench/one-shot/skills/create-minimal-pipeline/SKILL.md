@@ -1,6 +1,6 @@
 ---
 name: create-minimal-pipeline
-description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user names a REST API source they want to connect to and load data from.
+description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user wants to create a REST API pipeline, or names a REST API source and/or endpoint they want to connect to and load data from.
 argument-hint: "[api-name] [endpoint-hint]"
 ---
 
@@ -29,9 +29,9 @@ uv run dlthub --non-interactive pipeline init --list-sources
 Take the first 3 sources from the output and suggest them:
 
 > Here are a few real sources you can try:
-> - `<source-1>`
-> - `<source-2>`
-> - `<source-3>`
+> - github
+> - hubspot
+> - stripe_analytics
 >
 > There are more available — run `uv run dlthub --non-interactive pipeline init --list-sources` to see the full list.
 
@@ -54,7 +54,7 @@ Web search: `<api-name> REST API documentation` and `<api-name> REST API authent
 Extract:
 - `base_url` — root URL shared by all endpoints (e.g. `https://api.github.com`)
 - Auth method — Bearer token, API key (header or query param), HTTP Basic, or none
-- One clear endpoint — the most useful starting resource (e.g. `/repos`, `/orders`, `/events`)
+- One clear endpoint — if the user named one in their prompt, use it; otherwise pick the most useful starting resource (e.g. `/repos`, `/orders`, `/events`)
 - Response wrapper key — does data sit under `"data"`, `"items"`, `"results"`, or is it a root array?
 
 One or two targeted searches is enough. If auth docs are on a separate page, fetch it too.
