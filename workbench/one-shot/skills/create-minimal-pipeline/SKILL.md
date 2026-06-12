@@ -138,7 +138,7 @@ Pick the one that matches the API. Add it under `"client"`:
 
 **Skip this step entirely if the API is public (no auth needed).**
 
-Do not read or write `.dlt/secrets.toml` directly — use the MCP secrets tools.
+**NEVER** read or write `.dlt/secrets.toml` directly — use the MCP secrets tools.
 
 **3a. Check what's already configured:**
 

@@ -43,7 +43,7 @@ A named destination acts as an alias that maps to `duckdb` in dev and to the clo
 # Read config.toml, remove [destination.warehouse] from it, write to dev.config.toml instead
 ```
 
-Use the MCP secrets tools for both files — do not edit them directly.
+Use the MCP secrets tools for both files — **NEVER** edit them directly.
 
 **Write the prod credential skeleton** using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"` — use empty strings as placeholder values. Use `destination_type` (not `type`):
 
