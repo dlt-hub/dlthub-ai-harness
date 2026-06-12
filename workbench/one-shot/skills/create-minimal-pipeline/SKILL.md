@@ -1,6 +1,6 @@
 ---
 name: create-minimal-pipeline
-description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user wants to create a REST API pipeline, or names a REST API source and/or endpoint they want to connect to and load data from.
+description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user wants to create a REST API pipeline, names a REST API source and/or endpoint they want to connect to and load data from, or says "Build a dlt pipeline for [source] API and load data from [endpoint] into DuckDB".
 argument-hint: "[api-name] [endpoint-hint]"
 ---
 
