@@ -1,5 +1,10 @@
 # One-shot workflow
 
+## Workflow Entry
+**ALWAYS** start with **Create minimal pipeline** (`create-minimal-pipeline`) — research the API, scaffold a pipeline, configure auth, and run locally with a 50-row limit.
+
+When the user sends **"Build a dlt pipeline for [your data source] API and load data from [your endpoint] into DuckDB"** — even if the placeholders are literally unfilled — invoke `create-minimal-pipeline` immediately. Do **not** ask for clarification inline. The skill's Step 0 handles the no-source case.
+
 ## Core workflow
 1. **Create minimal pipeline** (`create-minimal-pipeline`) — research API, scaffold pipeline, configure auth, run locally with a 50-row limit
 
