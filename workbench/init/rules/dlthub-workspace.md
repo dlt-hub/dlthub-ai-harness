@@ -21,7 +21,7 @@
 * **ALWAYS** run all commands with **cwd** in the project root. `dlthub` uses **cwd** to find `.dlt` location ie. `uv run python pipelines/my_pipeline.py`.
 * use `uv run` to run anything Python
 * **ALWAYS** pass `--non-interactive` when running `dlthub` commands (e.g. `uv run dlthub --non-interactive pipeline init ...`). This prevents prompts that block execution.
-* **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging.
+* **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging. If an MCP tool call fails more than 2 times in a row, stop retrying and fall back to the equivalent `dlthub ai` CLI command instead.
 * **ALWAYS VERIFY** workspace with `uv run dlthub ai status` when session starts
 
 # command line interface
