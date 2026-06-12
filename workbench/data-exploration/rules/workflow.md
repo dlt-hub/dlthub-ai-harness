@@ -26,10 +26,10 @@ Infer intent from the user's message — never ask "do you have a specific quest
 
 ### Incoming (to data-exploration)
 
-- From **rest-api-pipeline** (after `validate-data`, `view-data`, `new-endpoint`, or `adjust-endpoint`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
-- From **sql-database-pipeline** (after `validate-data` or `view-data`) — pipeline name, destination, and loaded table names are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
-- From **filesystem-pipeline** (after `create-filesystem-pipeline`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
-- From **transformations** (after `create-transformation`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
+- From **rest-api-pipeline** (after `validate-data`, `view-data`, `new-endpoint`, or `adjust-endpoint`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to the single `export_schema` call.
+- From **sql-database-pipeline** (after `validate-data` or `view-data`) — pipeline name, destination, and loaded table names are already known. `explore-data` should skip `list_pipelines` discovery and go straight to the single `export_schema` call.
+- From **filesystem-pipeline** (after `create-filesystem-pipeline`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to the single `export_schema` call.
+- From **transformations** (after `create-transformation`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to the single `export_schema` call.
 - From **dlthub-platform** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 - From **data-quality** (after `review-data-quality`) — failing table name and metric anomaly are already known; `explore-data` should skip broad profiling and target those specific tables directly.
 - From **quick-start** (shortcut path when a pipeline already exists) — pipeline name may be inferred from `dlthub ai status`; if unknown, `explore-data` runs `list_pipelines` as usual. No analysis_plan.md exists yet — use the fresh path (low-intent or high-intent), not Returning.

@@ -29,6 +29,12 @@
 * use `dlthub local` for scripts, pipelines, jobs present in local environment/machine. this is similar to former `dlt` command
 * use bare `dlthub` for pipelines, jobs, logs, runs deployed on dltHub platform
 
+# MCP call efficiency
+Every MCP call blocks the session for a full roundtrip — minimize call count:
+* **BATCH** — prefer one bulk call over many small ones: `export_schema` instead of per-table `get_table_schema`; one `secrets_update_fragment` with all TOML sections instead of one call per key; one SQL query computing all metrics instead of one query per metric.
+* **PARALLELIZE** — when independent MCP calls are unavoidable (e.g. `preview_table` for several tables), issue them all in a single message so they run concurrently.
+* **DON'T RE-READ** — a tool's return value is authoritative. `secrets_update_fragment` returns the updated redacted file — that IS the verification; do not call `secrets_view_redacted` to re-check what you just received.
+
 # handle secrets with care!
 * **NEVER** read user secrets from any file containing `secrets.toml`.
 * **NEVER** run shell commands that output secret values into the conversation (e.g. `gh auth token`, `env | grep KEY`, `printenv SECRET`, `cat credentials.json`, `aws configure get`). If a secret appears in conversation context it is **compromised** — do not copy or use it.

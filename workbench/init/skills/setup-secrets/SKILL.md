@@ -37,7 +37,7 @@ Use `secrets_list` to list workspace-scoped secrets files. Profile-scoped files 
 
 **Pick the target file** from the list — you will pass it as `path` to `secrets_update_fragment` in step 4.
 
-Then use `secrets_view_redacted` (no `path` argument) to see the **unified merged** view with values replaced by `***`. To inspect a specific file, pass `path=".dlt/<profile>.secrets.toml"`.
+Then use `secrets_view_redacted` (no `path` argument) to see the **unified merged** view with values replaced by `***`. It already shows the merged content of all files — only pass `path=".dlt/<profile>.secrets.toml"` when you must know which specific file a value comes from.
 
 Look for:
 - Which sections already exist (`[sources.<name>]`, `[destination.<name>]`)
@@ -56,6 +56,8 @@ Before asking the user for values:
 ## 4. Write secrets
 
 Use `secrets_update_fragment` with `fragment` (TOML string) and `path` (target file from step 2). Creates the file if needed, deep-merges without overwriting other sections, returns the redacted result.
+
+**Batch into ONE call**: the fragment is a full TOML document — put **all** sections (every source, the destination, all keys) into a single `secrets_update_fragment` call per file. Never write keys or sections one call at a time.
 
 **CRITICAL: Only write placeholders** — never pass actual secret values through `secrets_update_fragment` or any other tool. The user fills in real values themselves by editing the file directly.
 
@@ -89,7 +91,9 @@ Use **meaningful placeholders** that hint at the format:
 
 ## 5. Verify
 
-Use `secrets_view_redacted` to see the unified merged view across all workspace secret files. Tell the user which fields still have placeholders and how to obtain real values.
+`secrets_update_fragment` already returned the redacted content of the updated file — **that is your verification, do not make another call** if you only touched one file. Only call `secrets_view_redacted` (no path) when several files changed or you need the merged cross-profile view.
+
+Tell the user which fields still have placeholders and how to obtain real values.
 
 
 ## 6. Use secrets in Python
@@ -117,4 +121,3 @@ creds = dlt.secrets.get("destination.bigquery.credentials", GcpServiceAccountCre
 ```
 
 **Reference**: https://dlthub.com/docs/general-usage/credentials/advanced.md#access-configs-and-secrets-in-code
-
