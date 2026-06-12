@@ -82,6 +82,8 @@ and follow the instructions: most importantly **uv sync** to pull required depen
 uv run dlthub --non-interactive ai init
 ```
 
+This installs **only the lean `init` toolkit** (shared rules, secrets handling, workspace MCP, and the `dlthub` entry skill). It does **not** install any workflow toolkits (rest-api-pipeline, sql-database-pipeline, transformations, …) — the project starts clean. Workflow toolkits get pulled in **on demand** by the `dlthub` skill once the user states what they want to build.
+
 2. Show ai setup info
 ```
 uv run dlthub ai status
@@ -90,10 +92,6 @@ uv run dlthub ai status
 NOTE: WARNING that mcp cannot be started is most probably a result of missing dependencies. Help user
 to solve it before proceeding.
 
-3. Show available toolkits
-```
-uv run dlthub ai toolkit list
-```
-
 3. Tell user:
-* To restart the session **NOW** so mcp server can run and skills are visible.
+* To restart the session **NOW** so the MCP server can run and skills are visible.
+* After restarting, just say what data you want to load or ask **"what can I build?"** — the `dlthub` skill will discover and install the right toolkit for the job.

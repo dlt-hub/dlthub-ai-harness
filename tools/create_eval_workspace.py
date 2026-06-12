@@ -5,7 +5,7 @@ Reads config.json from an eval directory and creates fresh workspaces under
 evals/.evals/ for each workspace definition.
 
 Usage:
-    python tools/create_eval_workspace.py evals/init/toolkit-dispatch
+    python tools/create_eval_workspace.py evals/init/dlthub
 
 config.json format:
     {
@@ -70,35 +70,38 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
         print("ERROR: uv is not installed")
         sys.exit(1)
 
-    # Create venv + install dlt
+    # Create venv + install dlt. Also install `dlthub[mcp]` (the workspace MCP
+    # server lives there), mirroring a real scaffolded workspace.
     run(["uv", "venv"], cwd=workspace)
-    run(["uv", "pip", "install", dlt_pkg], cwd=workspace)
+    run(["uv", "pip", "install", dlt_pkg, "dlthub[mcp]"], cwd=workspace)
 
-    # Verify
-    result = run(["uv", "run", "dlthub", "--version"], cwd=workspace)
-    print(f"  dlthub: {result.stdout.strip()}")
+    # Resolve the CLI name. The rebranded `dlthub` console script only ships on
+    # newer dlt builds; published PyPI releases still expose the CLI as `dlt`.
+    # Both provide identical `ai` subcommands, so fall back to `dlt`.
+    cli = "dlthub"
+    result = run(["uv", "run", cli, "--version"], cwd=workspace, check=False)
+    if result.returncode != 0:
+        cli = "dlt"
+        result = run(["uv", "run", cli, "--version"], cwd=workspace)
+    print(f"  cli: {cli} ({result.stdout.strip()})")
 
-    # AI init
+    # AI init — install the LOCAL toolkits from this repo (via --location) so
+    # the eval tests working-tree changes, not the published dlthub snapshot.
     run(
-        ["uv", "run", "dlthub", "--non-interactive", "ai", "init", "--agent", "claude"],
+        [
+            "uv", "run", cli, "--non-interactive", "ai", "init",
+            "--agent", "claude", "--location", str(ROOT),
+        ],
         cwd=workspace,
     )
 
-    # Install toolkits
+    # Install toolkits. CLI syntax is name-first: `ai toolkit <name> install`.
     for toolkit in toolkits:
         print(f"  Installing toolkit: {toolkit}")
         run(
             [
-                "uv",
-                "run",
-                "dlthub",
-                "--non-interactive",
-                "ai",
-                "toolkit",
-                "install",
-                toolkit,
-                "--agent",
-                "claude",
+                "uv", "run", cli, "--non-interactive", "ai", "toolkit",
+                toolkit, "install", "--agent", "claude", "--location", str(ROOT),
             ],
             cwd=workspace,
         )
@@ -160,7 +163,7 @@ def create_workspaces(eval_dir: Path) -> list[Path]:
 def main():
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <eval-dir>")
-        print(f"  e.g.: {sys.argv[0]} evals/init/toolkit-dispatch")
+        print(f"  e.g.: {sys.argv[0]} evals/init/dlthub")
         sys.exit(1)
 
     eval_dir = Path(sys.argv[1])

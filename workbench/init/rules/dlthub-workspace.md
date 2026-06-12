@@ -39,5 +39,20 @@
 # toolkits
 * toolkits are data engineering workflows automated via skills, commands and rules.
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
-* workflows end with handover to other workflows, also `toolkit-dispatch` skill may be helpful
-* **DO NOT** start data engineering work in no toolkits are installed - see `dlthub ai status` output!
+* workflows end with handover to other workflows, also the `dlthub` skill may be helpful
+* **DO NOT** start data engineering work if no workflow toolkit is installed - see `dlthub ai status` output!
+
+## toolkits — match intent, then open the `dlthub` skill to route/install
+```
+rest-api-pipeline      → ingest from REST / HTTP APIs
+sql-database-pipeline  → ingest from SQL databases (SQLAlchemy)
+filesystem-pipeline    → load files (CSV/Parquet/JSONL) from disk/S3/GCS/Azure/SFTP
+data-exploration       → profile data, charts, marimo dashboards
+transformations        → model raw data into a CDM (Kimball)
+data-quality           → column checks + load metrics
+dlthub-platform        → deploy to the dltHub platform and schedule jobs
+quick-start            → guided end-to-end demo (ingest→deploy)
+one-shot-pipeline      → minimal REST pipeline against local DuckDB and fast path to deployment
+```
+* Source of truth is live `list_toolkits` (MCP); open the `dlthub` skill to discover + install.
+* DO NOT start data engineering work if no workflow toolkit is installed — the `dlthub` skill installs them on demand.

@@ -11,9 +11,9 @@ Output format is compatible with skill-creator's run_eval.py (extended with
 `triggered_skill` and `clashes` fields).
 
 Usage:
-    python tools/run_trigger_eval.py evals/init/toolkit-dispatch
-    python tools/run_trigger_eval.py evals/init/toolkit-dispatch --workspace init-only
-    python tools/run_trigger_eval.py evals/init/toolkit-dispatch --runs-per-query 3
+    python tools/run_trigger_eval.py evals/init/dlthub
+    python tools/run_trigger_eval.py evals/init/dlthub --workspace init-only
+    python tools/run_trigger_eval.py evals/init/dlthub --runs-per-query 3
 """
 
 import argparse
@@ -290,7 +290,7 @@ def run_eval_on_workspace(
 def main():
     parser = argparse.ArgumentParser(description="Run trigger evaluation for a skill")
     parser.add_argument(
-        "eval_dir", help="Path to eval directory (e.g. evals/init/toolkit-dispatch)"
+        "eval_dir", help="Path to eval directory (e.g. evals/init/dlthub)"
     )
     parser.add_argument("--workspace", default=None, help="Run only this workspace (default: all)")
     parser.add_argument(

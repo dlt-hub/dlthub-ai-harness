@@ -1,4 +1,4 @@
-# toolkit-dispatch trigger eval
+# dlthub (index skill) trigger eval
 
 ## Status: eval framework bug — skill triggers correctly
 
@@ -10,7 +10,7 @@
 
 Running `claude -p "how can I build my first pipeline?"` from a clean eval workspace:
 
-1. Claude's first action: `Skill(toolkit-dispatch)` — correct trigger
+1. Claude's first action: `Skill(dlthub)` — correct trigger
 2. Skill loads, calls `list_toolkits` MCP tool
 3. Calls `toolkit_info("rest-api-pipeline")` for details
 4. Recommends installing `rest-api-pipeline`, asks user what API they want
@@ -19,14 +19,14 @@ Running `claude -p "how can I build my first pipeline?"` from a clean eval works
 
 ```bash
 # Create clean workspace
-uv run python tools/create_eval_workspace.py --name test-dispatch
+uv run python tools/create_eval_workspace.py evals/init/dlthub
 
 # Run claude -p from it
-cd evals/.evals/test-dispatch
+cd evals/.evals/init--dlthub--init-only
 CLAUDECODE= claude -p "how can I build my first pipeline?" --output-format stream-json
 ```
 
-Check the stream for `{"name":"Skill","input":{"skill":"toolkit-dispatch"}}`.
+Check the stream for `{"name":"Skill","input":{"skill":"dlthub"}}`.
 
 ### Negative cases (100% precision in automated eval)
 

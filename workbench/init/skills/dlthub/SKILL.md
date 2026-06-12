@@ -1,9 +1,9 @@
 ---
-name: toolkit-dispatch
-description: "Helps users figure out what they can build with dlthub and which workflow to start. MUST use this skill when the user asks questions like 'what can you do', 'how do I build a pipeline', 'how do I make reports', 'how do I deploy', 'what are toolkits', 'what's available', 'I'm new to dlthub', 'where do I start', or seems confused about what to do next after initial setup. Also use when the user asks broad capability questions about data engineering with dlthub. Do NOT use when the user has a specific task in progress like debugging a pipeline, validating data, or adding endpoints. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
+name: dlthub
+description: "The entry point for building anything with dlthub. Use this skill to discover dlthub's capabilities, pick the right workflow, and install the toolkit that fits the user's intent. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'what's available', 'how do I build a pipeline', 'how do I load data from <source>', 'I want to pull data from a REST API', 'ingest from a SQL database', 'load CSVs from S3', 'how do I make reports / dashboards', 'how do I transform / model my data', 'how do I add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', or seems unsure what to do next after setup. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
 ---
 
-# Toolkit dispatch
+# dlthub
 
 Route the user to the right toolkit and skill.
 

@@ -28,6 +28,14 @@ from pathlib import Path
 
 AI_DIR = "workbench"
 
+# Always-loaded compact intent->toolkit index lives in this rule.
+_INDEX_RULE = "workbench/init/rules/dlthub-workspace.md"
+# Toolkits that are NOT workflow toolkits, so they don't belong in the intent index:
+# `init` is the lean base itself; `bootstrap` only scaffolds the environment.
+_NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# A line in the index code block: "<toolkit-name>   → description"
+_INDEX_ENTRY = re.compile(r"^([a-z][\w-]*)\s+→")
+
 # Expected plugin.json author and license values
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
 _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
@@ -243,6 +251,42 @@ def validate_toolkit_content(
     return skill_names
 
 
+def validate_index_drift(
+    root: Path,
+    marketplace_names: set[str],
+    errors: list[str],
+) -> None:
+    """Check the always-loaded intent->toolkit index lists exactly the workflow toolkits.
+
+    The compact index in dlthub-workspace.md is loaded every session, so it can
+    silently go stale when toolkits are added or removed. Enforce that it lists
+    exactly the marketplace toolkits minus the non-workflow ones (init, bootstrap).
+    """
+    rule_path = root / _INDEX_RULE
+    if not rule_path.exists():
+        errors.append(f"index rule not found: {_INDEX_RULE}")
+        return
+
+    indexed = {
+        m.group(1)
+        for line in rule_path.read_text().splitlines()
+        if (m := _INDEX_ENTRY.match(line.strip()))
+    }
+    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS
+
+    missing = expected - indexed
+    extra = indexed - expected
+    for name in sorted(missing):
+        errors.append(
+            f"[init] dlthub-workspace.md intent index is missing workflow toolkit '{name}'"
+        )
+    for name in sorted(extra):
+        errors.append(
+            f"[init] dlthub-workspace.md intent index lists '{name}' "
+            f"which is not a workflow toolkit in marketplace.json"
+        )
+
+
 def validate(
     root: Path, only: str | None = None
 ) -> tuple[list[str], list[str], dict[str, set[str]]]:
@@ -335,6 +379,8 @@ def validate(
                         f"[{d.name}] directory exists in {AI_DIR}/ "
                         f"but is not listed in marketplace.json"
                     )
+
+        validate_index_drift(root, marketplace_names, errors)
 
     return errors, warnings, all_skills
 
