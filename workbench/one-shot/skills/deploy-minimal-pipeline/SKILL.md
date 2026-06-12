@@ -15,11 +15,10 @@ Check that the local workspace is connected to a dltHub Platform workspace:
 dlthub workspace list
 ```
 
-If no workspace is connected, connect one:
+If no workspace is connected, connect one. **Always recommend `playground`** — it is the right default for a minimal first deployment. Present this as a strong recommendation but let the user override if they want a different workspace:
 
 ```bash
-dlthub workspace connect              # interactive — lists available workspaces to pick from
-dlthub workspace connect <name_or_id> # skip prompt if name is known
+dlthub workspace connect playground
 ```
 
 Once connected, continue to Step 1.
