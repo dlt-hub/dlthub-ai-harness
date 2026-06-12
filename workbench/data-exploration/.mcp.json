@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dlt-profiling-mcp": {
+      "command": "uv",
+      "args": ["run", "python", "${CLAUDE_PLUGIN_ROOT}/mcp/profile_server.py"]
+    }
+  }
+}

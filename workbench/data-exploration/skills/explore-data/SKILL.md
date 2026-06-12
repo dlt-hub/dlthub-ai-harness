@@ -16,7 +16,7 @@ Parse `$ARGUMENTS`:
 
 Before discovery, check what's already available:
 
-1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (e.g., arriving from `rest-api-pipeline` after `validate-data` or `view-data`), skip `list_pipelines` and go straight to `list_tables`.
+1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (e.g., arriving from `rest-api-pipeline` after `validate-data` or `view-data`), skip `list_pipelines` and go straight to the single `export_schema` call.
 2. **Existing analysis_plan.md** — if `*_analysis_plan.md` exists, skip to the iteration path (see "Iteration: existing analysis_plan.md" below).
 3. **Standalone .duckdb file** — if the user points to a `.duckdb` file instead of a named pipeline, connect with an explicit destination: `dlt.pipeline(pipeline_name="adhoc", destination=dlt.destinations.duckdb("<path>"))`. Then proceed normally — `pipeline.dataset()` works the same way.
 
@@ -33,12 +33,12 @@ If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix
 Use the dlthub MCP tools as the primary discovery path:
 
 1. **`list_pipelines`** — discover available pipelines. If multiple exist and target is ambiguous, ask the user and stop.
-2. **`list_tables`** — enumerate tables in the selected pipeline.
-3. **`get_table_schema`** — fetch column names and types for relevant tables.
+2. **`export_schema`** (`output_format="yaml"`) — all tables, columns, and types in **one call**. Do not enumerate with `list_tables` + per-table `get_table_schema` — that costs N+1 calls for the same information.
 
 If MCP tools are unavailable, fall back to Python:
 ```python
 import dlt
+
 pipeline = dlt.attach("<pipeline_name>")
 dataset = pipeline.dataset()
 dataset.row_counts().df()
@@ -52,18 +52,25 @@ Follow data access patterns in `references/dlt-relation-api.md`.
 
 Collect table names, column names, and column types. This is enough to plan a chart for a specific question. No row counts, no stats, no anomaly detection.
 
-Use `list_tables` + `get_table_schema` MCP tools (or `table.columns_schema` in Python).
+The single `export_schema` call from Step 1 already has all of this — do not make further schema calls.
 
 ### Low-intent: Broad profiling
 
-Profile all tables relevant to the user's domain:
+Profile all tables relevant to the user's domain.
 
-1. **Row counts** — use `get_row_counts` MCP tool or `dataset.row_counts().df()`.
-2. **Schemas** — use `get_table_schema` MCP tool or `table.columns_schema`.
-3. **Per-column stats** — cardinality, null rate, min/max for numeric/temporal columns. Use `execute_sql_query` MCP tool or `.to_ibis()` with group_by/aggregate.
-4. **Anomalies** — flag columns with >50% nulls, single-value columns, suspicious distributions.
-5. **PII detection** — flag columns whose names or sample values suggest personally identifiable information (email, phone, ssn, address, ip_address, full names).
-6. **For 1-2 tables**, profile inline. **For 3+ tables**, profile in parallel using subagents (one per table, all spawned in the same message).
+**Primary path — one call**: use the **`profile_tables`** tool from `dlt-profiling-mcp` (pass `pipeline_name`, optionally `table_names`). It returns, for every table at once: schema, row count, per-column stats (null count, distinct count, min/max), and sample rows. One MCP call replaces the entire profiling sweep — never follow it with `get_table_schema`, `get_row_counts`, or per-column `execute_sql_query` calls.
+
+**Fallback** (if `dlt-profiling-mcp` is not connected), still batch aggressively:
+
+1. **Row counts** — one `get_row_counts` call (all tables).
+2. **Schemas** — the `export_schema` call from Step 1 (all tables).
+3. **Per-column stats** — **one `execute_sql_query` per table** computing null counts, distinct counts, and min/max for **all columns in a single SELECT** (e.g. `SELECT COUNT(*), COUNT(*) - COUNT(col_a), COUNT(DISTINCT col_a), MIN(col_b), MAX(col_b), ... FROM t`). Never one query per metric or per column.
+4. **Samples** — `preview_table` for each table, all calls issued in a single message so they run in parallel.
+
+From the returned stats and samples (no extra calls):
+
+- **Anomalies** — flag columns with >50% nulls, single-value columns, suspicious distributions.
+- **PII detection** — flag columns whose names or sample values suggest personally identifiable information (email, phone, ssn, address, ip_address, full names).
 
 ## Step 3: Generate questions (low-intent only)
 
