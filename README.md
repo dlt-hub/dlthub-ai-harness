@@ -98,7 +98,16 @@ uv run dlthub show                 # open the dltHub dashboard
 
 ### Existing project
 
-To add the AI workbench to an existing project:
+To add the AI workbench to an existing project.
+
+**Recommended — one command:** [`dlthub-init`](https://pypi.org/project/dlthub-init/) scaffolds AI support **in place**. Unlike `dlthub-start`, it is non-interactive and AI-aware, so your coding assistant can run it for you. It uses per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]` via a bundled lock, and runs `uv sync`:
+
+```bash
+uvx dlthub-init@latest          # set up AI support in the current directory
+uvx dlthub-init@latest <dir>    # or scaffold into a new directory
+```
+
+**Manual steps (fallback):** if you'd rather do it step by step, or `dlthub-init` isn't available:
 
 > **Note:** All `dlthub ai` commands below use `uv run dlthub ...` syntax. If you have `dlthub` installed globally or in an active virtual environment, you can omit `uv run` and call `dlthub` directly. We recommend using uv.
 

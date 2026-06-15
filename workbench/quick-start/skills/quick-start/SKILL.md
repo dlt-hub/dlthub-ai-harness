@@ -19,7 +19,11 @@ Parse `$ARGUMENTS`:
 Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
-- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**. Drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`. Wait for completion, then re-check status before continuing to Step 2.
+- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**.
+  - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, scaffolds an AI-supported project in place with per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — `dlthub init` + `dlthub ai init` in one safe step.
+  - **Fallback (if `dlthub-init` is unavailable or errors)** — drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`.
+
+  Wait for completion, then re-check status before continuing to Step 2.
 
   **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me", "I want to learn dltHub"): ask the user to run `uvx dlthub-start@latest`. This scaffolds a fresh **playground** workspace — an onboarding experience, **not** where production workflows should live, and not for setting up an existing project. **NEVER run it yourself** — it is interactive and does not work when an agent runs it:
 
