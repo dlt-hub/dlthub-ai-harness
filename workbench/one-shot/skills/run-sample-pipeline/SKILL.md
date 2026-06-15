@@ -77,21 +77,13 @@ Report the tables created and row counts from the output.
 
 ## Step 3 — Open the local UI
 
-Tell the user:
+Run the following command in a parallel task — do not wait for it to complete:
 
-> Opening the dltHub UI in your browser now.
-
-Then start the server as a fire-and-forget process — do not wait for it to exit or produce output, continue immediately to the next step.
-
-**macOS / Linux:**
 ```bash
-nohup uv run dlthub local show > /dev/null 2>&1 &
+uv run dlthub local show
 ```
 
-**Windows (PowerShell):**
-```powershell
-Start-Process -FilePath "uv" -ArgumentList "run","dlthub","local","show"
-```
+Continue to the next step immediately.
 
 ---
 

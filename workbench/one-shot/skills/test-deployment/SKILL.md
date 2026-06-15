@@ -105,15 +105,7 @@ dlthub deploy
 
 Summarize which jobs were created or updated.
 
-## Step 5 — Simulate locally with prod credentials
-
-```bash
-dlthub local run load_github --profile prod
-```
-
-This runs the pipeline on your machine using production secrets. Fix any credential or destination errors here before they reach the cloud.
-
-## Step 6 — Run on the cloud
+## Step 5 — Run on the cloud
 
 ```bash
 dlthub run load_github -f
