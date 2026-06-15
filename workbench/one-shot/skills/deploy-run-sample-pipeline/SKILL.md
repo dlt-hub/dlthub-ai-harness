@@ -8,13 +8,13 @@ Deploy `github_pipeline.py` — already present in the project root — to dltHu
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
 
-## Step 1 — Connect to the workspace
-
-Connect to the `playground` workspace — `playground` is the workspace name, use it exactly as shown:
+## Step 1 — Connect to the personal playground workspace
 
 ```bash
 uv run dlthub workspace connect playground
 ```
+
+If multiple workspaces named `playground` exist, run `uv run dlthub workspace list` first, pick the personal one (not org-level), then connect to it by name.
 
 Note the workspace ID from the output — you will need it in the final step.
 
@@ -82,14 +82,6 @@ from github_pipeline import load_github
 
 __all__ = [..., "load_github"]
 ```
-
-Preview what will change:
-
-```bash
-uv run dlthub deploy --dry-run
-```
-
-Show the user which jobs will be created or updated. **Stop and wait for approval** before proceeding.
 
 ## Step 5 — Deploy
 
