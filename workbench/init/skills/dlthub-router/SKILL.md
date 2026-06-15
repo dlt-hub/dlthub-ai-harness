@@ -37,7 +37,7 @@ uv run dlthub ai status
 
 The `dlt-workspace-mcp` server is already running (installed with `init`) and toolkits reuse it — installing one adds **no new MCP server**, so continue in this session. Do **not** ask the user to restart; that would lose the conversation context.
 
-1. **Load the new toolkit inline** — call `toolkit_info <name>` (MCP) to get its entry skill and workflow rule, or read the installed files directly: `.claude/skills/<entry-skill>/SKILL.md` and `.claude/rules/<toolkit>-workflow.md`.
+1. **Load the new toolkit inline** — prefer `toolkit_info <name>` (MCP), which is agent-agnostic and returns the entry skill + workflow rule. If MCP is unavailable, read the installed files directly; the install path depends on the agent (`.claude/`, `.cursor/`, or `.agents/`) — e.g. `<agent-dir>/skills/<entry-skill>/SKILL.md` and the toolkit's workflow rule.
 2. **Follow that workflow rule and start at the entry skill**, continuing the user's task with the context you already have. Do not start unrelated workflows on your own.
 3. The new skills become natively registered (`/`-invocable, always-loaded workflow rule) on the next natural session start — no need to restart now.
 

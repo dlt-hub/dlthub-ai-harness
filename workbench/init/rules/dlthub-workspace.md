@@ -45,16 +45,16 @@
 ## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
 This index is authoritative for shipped toolkits. Match the user's intent, run the install command, then hand over to the entry skill. No MCP call needed for these.
 ```
-intent                                              → toolkit                | install                                           | entry skill
-REST / HTTP APIs                                    → rest-api-pipeline      | dlthub --non-interactive ai toolkit install rest-api-pipeline       | find-source
-SQL databases (SQLAlchemy)                          → sql-database-pipeline  | dlthub --non-interactive ai toolkit install sql-database-pipeline   | find-source
-files CSV/Parquet/JSONL (disk/S3/GCS/Azure/SFTP)    → filesystem-pipeline    | dlthub --non-interactive ai toolkit install filesystem-pipeline     | create-filesystem-pipeline
-profile data, charts, marimo dashboards             → data-exploration       | dlthub --non-interactive ai toolkit install data-exploration        | explore-data
-model raw data into a CDM (Kimball)                 → transformations        | dlthub --non-interactive ai toolkit install transformations         | annotate-sources
-column checks + load metrics                        → data-quality           | dlthub --non-interactive ai toolkit install data-quality            | setup-data-quality
-deploy / schedule on the dltHub platform            → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform         | setup-runtime
-guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub --non-interactive ai toolkit install quick-start             | quick-start
-minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub --non-interactive ai toolkit install one-shot-pipeline       | one-shot-pipeline
+intent                                                  → toolkit                | install                                                            | entry skill
+ingest from REST / HTTP APIs                            → rest-api-pipeline      | dlthub --non-interactive ai toolkit install rest-api-pipeline      | find-source
+ingest from SQL databases (Postgres, MySQL, Snowflake…) → sql-database-pipeline  | dlthub --non-interactive ai toolkit install sql-database-pipeline  | find-source
+load files (CSV/Parquet/JSONL) from disk/S3/GCS/Azure/SFTP → filesystem-pipeline | dlthub --non-interactive ai toolkit install filesystem-pipeline    | create-filesystem-pipeline
+explore & profile loaded data, build charts & dashboards → data-exploration      | dlthub --non-interactive ai toolkit install data-exploration       | explore-data
+transform & model loaded data (dimensional / Kimball)   → transformations        | dlthub --non-interactive ai toolkit install transformations        | annotate-sources
+add data quality checks (column expectations, validation rules) → data-quality   | dlthub --non-interactive ai toolkit install data-quality           | setup-data-quality
+deploy / schedule pipelines on the dltHub platform      → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | setup-runtime
+guided end-to-end demo (ingest → deploy)                → quick-start            | dlthub --non-interactive ai toolkit install quick-start            | quick-start
+minimal REST pipeline → local DuckDB → fast deploy      → one-shot-pipeline      | dlthub --non-interactive ai toolkit install one-shot-pipeline      | one-shot-pipeline
 ```
 * After installing, run `uv run dlthub ai status` to confirm, then continue **in the same session** — load the new toolkit's entry skill + workflow rule via `toolkit_info` (or read the installed files) and proceed. No restart needed (toolkits reuse the already-running `dlt-workspace-mcp`); don't lose the user's context.
 * The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).
