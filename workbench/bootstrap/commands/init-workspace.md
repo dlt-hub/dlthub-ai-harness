@@ -9,7 +9,7 @@ Makes sure that `uv`, Python `venv` and `dlthub` is installed, then sets up AI s
 
 > **Fallback for an existing project** — prefer `uvx dlthub-init@latest` for in-place setup; use this flow only when `dlthub-init` is unavailable or errors. It sets dlthub up **in place** and the agent can drive it end to end.
 >
-> In case the user asks to be onboarded to dltHub (or similar, like "I want to learn how to use dltHub"), recommend them to run `uvx dlthub-start@latest` in their terminal, which scaffolds a separate **playground** workspace (not for production workflows). `uvx dlthub-start` is interactive and does not work when an agent runs it, so **never run it yourself** — ask the user to run it in their terminal, or inline via `!` mode in Claude Code / Codex (`! uvx dlthub-start@latest`), or Cursor's integrated terminal.
+> In case the user asks to be onboarded to dltHub (or similar, like "I want to learn how to use dltHub"), recommend them to run `uvx dlthub-start@latest` in their terminal, which scaffolds a separate **playground** workspace (not for production workflows). `uvx dlthub-start` is interactive and only works in a real terminal (it does NOT work in `!` mode), so **never run it yourself** — ask the user to run it in their own terminal.
 
 ## Step 1: Gather evidence
 

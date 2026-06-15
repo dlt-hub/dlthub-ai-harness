@@ -4,10 +4,7 @@
   * **Fallback (if `dlthub-init` is unavailable or errors)** — drive the `bootstrap` toolkit / `/bootstrap:init-workspace` flow manually: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, and `uv run dlthub ai init`. If bootstrap isn't installed, `dlthub ai toolkit install bootstrap` (**if dlthub present**). Re-check `uv run dlthub ai status` when done.
 
 * **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me to dltHub", "I want to learn how to use dltHub"): point them to `uvx dlthub-start@latest`. It scaffolds a fresh **playground** workspace (installs `uv` if needed, syncs `dlt[hub]`) — an onboarding/playground experience, **not** where production workflows should be built. Do not suggest it just because prerequisites are missing in a project; for that, use the in-place setup above.
-  * **NEVER run `uvx dlthub-start` yourself.** It is interactive and does not work when an agent runs it. **Ask the user to run it** in their terminal, or inline via `!` mode:
-    * Claude Code and Codex support a `!` shell prefix in the prompt — tell the user to type `! uvx dlthub-start@latest`.
-    * In Cursor there is no `!` prefix — tell the user to run `uvx dlthub-start@latest` in the integrated terminal instead.
-    * Re-check `uv run dlthub ai status` once the user confirms it finished.
+  * **NEVER run `uvx dlthub-start` yourself, and do NOT use `!` mode for it.** It is interactive and only works in a real terminal — `!` mode does not work for it. **Ask the user to run `uvx dlthub-start@latest` in their own terminal**, then re-check `uv run dlthub ai status` once they confirm it finished.
 
 # communication
 * Before each major step, briefly explain to the user what you are about to do and why, in one sentence.

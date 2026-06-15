@@ -86,7 +86,7 @@ If you're new to dltHub and want to try or learn it, [`dlthub-start`](https://py
 uvx dlthub-start@latest
 ```
 
-> **Run this yourself in your terminal — don't ask your coding assistant to run it.** `uvx dlthub-start` is interactive (it prompts you for a workspace name, scaffold, and assistants) and does not work when an agent runs it. In Claude Code or Codex you can also run it inline via `!` mode (`! uvx dlthub-start@latest`); in Cursor use the integrated terminal.
+> **Run this yourself in your terminal — don't ask your coding assistant to run it.** `uvx dlthub-start` is interactive (it prompts you for a workspace name, scaffold, and assistants) and only works in a real terminal. It does **not** work in your assistant's `!` shell mode — run it directly in your own terminal.
 
 This interactive prompt scaffolds a ready-to-run workspace: asks for a workspace name, picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done, `cd` into the workspace it created:
 

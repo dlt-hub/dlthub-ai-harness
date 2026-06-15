@@ -31,8 +31,7 @@ Run `uv run dlthub ai status`.
   uvx dlthub-start@latest
   ```
 
-  - In Claude Code and Codex the user can run it inline via `!` mode: tell them to type `! uvx dlthub-start@latest`.
-  - In Cursor there is no `!` prefix — tell the user to run it in the integrated terminal.
+  It is interactive and only works in a real terminal — **do NOT use `!` mode for it**. Tell the user to run it in their own terminal.
 
 ## Step 2 — Present capability index and ask one question
 
