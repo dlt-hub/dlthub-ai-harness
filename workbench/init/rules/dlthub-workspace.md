@@ -44,6 +44,8 @@
 
 ## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
 This index is authoritative for shipped toolkits. Match the user's intent, run the install command, then hand over to the entry skill. No MCP call needed for these.
+<!-- This shipped index can drift from the live catalog on a user's machine until runtime refresh lands; tracked in dlt-hub/dlthub-ai-workbench-internal#71. The build-time drift guard (validate_index_drift) only keeps this in sync with marketplace.json. -->
+
 ```
 intent                                                  → toolkit                | install                                                            | entry skill
 ingest from REST / HTTP APIs                            → rest-api-pipeline      | dlthub --non-interactive ai toolkit install rest-api-pipeline      | find-source

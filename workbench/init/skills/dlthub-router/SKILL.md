@@ -42,3 +42,6 @@ The `dlt-workspace-mcp` server is already running (installed with `init`) and to
 3. The new skills become natively registered (`/`-invocable, always-loaded workflow rule) on the next natural session start — no need to restart now.
 
 > Exception: if a future toolkit ever ships its **own** MCP server (none do today), that server only starts on restart — suggest a restart **only** in that case, and use CLI fallbacks until then.
+
+<!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. Tracked in dlt-hub/dlthub-ai-workbench-internal#72. -->
+
