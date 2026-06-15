@@ -8,9 +8,13 @@
 2. **Test deployment** (`test-deployment`) — set up a cloud destination, deploy the pipeline to dltHub Platform, and verify it runs on the cloud.
 
 ## Handover between skills
-When `run-sample-pipeline` completes (user can see data in `dlthub local show`), the next and only step is `test-deployment`. Invoke it immediately.
+When `run-sample-pipeline` completes, end with this message to the user:
 
-This workflow has exactly two steps. There is nothing between them and nothing alongside them.
+> Your data is loaded and the dltHub UI is open in your browser. Explore the tables — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
+
+Then wait. Do not proceed to `test-deployment` until the user explicitly says they are ready.
+
+When they do, invoke `test-deployment` immediately. This workflow has exactly two steps — there is nothing between them and nothing alongside them.
 
 ## Outgoing handovers
 Only surface these after **both** `run-sample-pipeline` and `test-deployment` have completed successfully, and only if the user asks what to do next.
