@@ -103,26 +103,18 @@ def create_single_workspace(workspace: Path, dlt_pkg: str, toolkits: list[str]) 
         cwd=workspace,
     )
 
-    # Install toolkits. CLI syntax is name-first: `ai toolkit <name> install`.
+    # Install toolkits. Canonical syntax is install-first: `ai toolkit install <name>`
+    # (per the dlthub CLI docs). The older published `dlt` binary parses name-first
+    # (`ai toolkit <name> install`) and rejects install-first, so fall back to it —
+    # mirroring the dlthub->dlt CLI fallback above.
+    base = ["uv", "run", cli, "--non-interactive", "ai", "toolkit"]
+    tail = ["--agent", "claude", "--location", str(ROOT)]
     for toolkit in toolkits:
         print(f"  Installing toolkit: {toolkit}")
-        run(
-            [
-                "uv",
-                "run",
-                cli,
-                "--non-interactive",
-                "ai",
-                "toolkit",
-                toolkit,
-                "install",
-                "--agent",
-                "claude",
-                "--location",
-                str(ROOT),
-            ],
-            cwd=workspace,
-        )
+        result = run(base + ["install", toolkit] + tail, cwd=workspace, check=False)
+        if result.returncode != 0:
+            # older binary: retry with name-first ordering
+            run(base + [toolkit, "install"] + tail, cwd=workspace)
 
     return workspace
 
