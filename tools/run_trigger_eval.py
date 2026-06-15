@@ -227,7 +227,14 @@ def run_eval_on_workspace(
     total_clashes = 0
     for query, triggered_skills in query_results.items():
         item = query_items[query]
-        should_trigger = item["should_trigger"]
+        # Per-workspace expectation override: a query's expected behavior depends on
+        # which toolkits are installed. Once the matching workflow toolkit is present,
+        # the router should DEFER to that toolkit's entry skill instead of triggering
+        # itself — so the same query can be should_trigger=true (cold start) yet
+        # should_trigger=false with `expect: <entry-skill>` once installed.
+        ws_override = item.get("by_workspace", {}).get(ws_id, {})
+        should_trigger = ws_override.get("should_trigger", item["should_trigger"])
+        expect_skill = ws_override.get("expect")
 
         # Count triggers for our skill
         our_triggers = sum(1 for s in triggered_skills if s == skill_name)
@@ -255,6 +262,13 @@ def run_eval_on_workspace(
                 entry["clashes"] = clash_skills
                 entry["clash_count"] = len(other_skills)
                 total_clashes += len(other_skills)
+
+        # When the router is expected to defer, record whether the intended handoff
+        # target (e.g. find-source) actually picked up the query.
+        if not should_trigger and expect_skill:
+            expect_hits = sum(1 for s in triggered_skills if s == expect_skill)
+            entry["expect_skill"] = expect_skill
+            entry["expect_rate"] = round(expect_hits / len(triggered_skills), 3)
 
         results.append(entry)
 
