@@ -1,30 +1,85 @@
 ---
-name: test-deployment
-description: Deploy the GitHub pipeline to dltHub Platform as a test run. Use when the user has seen their data locally and wants to deploy to the cloud.
+name: deploy-run-sample-pipeline
+description: Write, deploy and run a GitHub issues pipeline on dltHub Platform. Use when the user wants to load GitHub issues from dlt-hub/dlt and deploy the pipeline to the cloud.
 argument-hint: ""
 ---
 
-Deploy `github_pipeline.py` to dltHub Platform. This is a test deployment — the pipeline keeps the 50-row limit throughout. The goal is to verify the pipeline runs end-to-end on the cloud, not to do a full load.
+Write a pipeline that loads the 50 most recent issues from `dlt-hub/dlt` and deploy it to dltHub Platform.
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
 
-## Step 0 — Verify workspace connection
+## Step 1 — Write the pipeline file
+
+Create `github_pipeline.py` in the project root:
+
+```python
+"""GitHub dlt pipeline.
+
+Loads the 50 most recent issues from dlt-hub/dlt into DuckDB.
+"""
+
+import dlt
+from dlt.sources.rest_api import rest_api_source
+from dlt.hub import run
+
+
+def github():
+    return rest_api_source(
+        {
+            "client": {
+                "base_url": "https://api.github.com/",
+            },
+            "resources": [
+                {
+                    "name": "issues",
+                    "endpoint": {
+                        "path": "repos/dlt-hub/dlt/issues",
+                        "params": {
+                            "state": "all",
+                            "sort": "created",
+                            "direction": "desc",
+                        },
+                    },
+                    "primary_key": "id",
+                },
+            ],
+        }
+    )
+
+
+@run.pipeline("github_pipeline")
+def load_github():
+    """Load the 50 most recent issues from dlt-hub/dlt."""
+
+    pipeline = dlt.pipeline(
+        pipeline_name="github_pipeline",
+        destination="duckdb",
+        dataset_name="github",
+    )
+
+    load_info = pipeline.run(github().add_limit(50, count_rows=True), write_disposition="replace")
+    print(load_info)
+
+
+if __name__ == "__main__":
+    load_github()
+```
+
+## Step 2 — Verify workspace connection
 
 ```bash
-uv run dlthub workspace list
+dlthub workspace list
 ```
 
 If no workspace is connected, connect the playground workspace:
 
 ```bash
-uv run dlthub workspace connect playground
+dlthub workspace connect playground
 ```
 
-Once connected, continue to Step 1.
+## Step 3 — Set up a cloud destination
 
-## Step 1 — Set up a cloud destination
-
-The pipeline currently loads into `duckdb`, which only works locally. A cloud destination is required for data to persist on the platform.
+The pipeline loads into `duckdb` locally. A cloud destination is required for data to persist on the platform.
 
 **Reference**: https://dlthub.com/docs/general-usage/destination
 
@@ -65,7 +120,7 @@ uv add "dlt[<extra>]"
 uv sync
 ```
 
-## Step 2 — Update destination in pipeline file
+## Step 4 — Update destination in pipeline file
 
 Change `destination="duckdb"` to the named destination in `github_pipeline.py`:
 
@@ -77,9 +132,7 @@ pipeline = dlt.pipeline(
 )
 ```
 
-The `.add_limit(50, count_rows=True)` stays — this is a test deployment.
-
-## Step 3 — Register in `__deployment__.py`
+## Step 5 — Register in `__deployment__.py`
 
 Add the pipeline to the existing `__deployment__.py`:
 
@@ -92,23 +145,23 @@ __all__ = [..., "load_github"]
 Preview what will change:
 
 ```bash
-uv run dlthub deploy --dry-run
+dlthub deploy --dry-run
 ```
 
 Show the user which jobs will be created or updated. **Stop and wait for approval** before proceeding.
 
-## Step 4 — Deploy
+## Step 6 — Deploy
 
 ```bash
-uv run dlthub deploy
+dlthub deploy
 ```
 
 Summarize which jobs were created or updated.
 
-## Step 5 — Run on the cloud
+## Step 7 — Run on the cloud
 
 ```bash
-uv run dlthub run load_github -f
+dlthub run load_github -f
 ```
 
 The `-f` flag streams logs in real time. Wait for the job to complete.
@@ -116,7 +169,7 @@ The `-f` flag streams logs in real time. Wait for the job to complete.
 If it fails:
 
 ```bash
-uv run dlthub job logs load_github
+dlthub job logs load_github
 ```
 
 | Error | Cause | Fix |
@@ -126,5 +179,5 @@ uv run dlthub job logs load_github
 Once successful, open the dltHub web UI:
 
 ```bash
-uv run dlthub show
+dlthub show
 ```
