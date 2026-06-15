@@ -2,7 +2,7 @@
 * On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`?
 * If anything is missing, the canonical bootstrap is `uvx dlthub-start@latest my-workspace` — it installs `uv` (if needed), scaffolds the workspace, syncs `dlt[hub]`, and vendors the core toolkits in one command. Surface it to the user; do not auto-run.
 * The `bootstrap` toolkit / `/bootstrap:init-workspace` flow does the same from inside Claude Code via the marketplace.
-* On failed check inside an existing project: `dlthub ai toolkit install bootstrap` (**if dlthub present**)
+* On failed check inside an existing project: `dlthub --non-interactive ai toolkit install bootstrap` (**if dlthub present**)
 
 # communication
 * Before each major step, briefly explain to the user what you are about to do and why, in one sentence.
@@ -46,16 +46,16 @@
 This index is authoritative for shipped toolkits. Match the user's intent, run the install command, then hand over to the entry skill. No MCP call needed for these.
 ```
 intent                                              → toolkit                | install                                           | entry skill
-REST / HTTP APIs                                    → rest-api-pipeline      | dlthub ai toolkit install rest-api-pipeline       | find-source
-SQL databases (SQLAlchemy)                          → sql-database-pipeline  | dlthub ai toolkit install sql-database-pipeline   | find-source
-files CSV/Parquet/JSONL (disk/S3/GCS/Azure/SFTP)    → filesystem-pipeline    | dlthub ai toolkit install filesystem-pipeline     | create-filesystem-pipeline
-profile data, charts, marimo dashboards             → data-exploration       | dlthub ai toolkit install data-exploration        | explore-data
-model raw data into a CDM (Kimball)                 → transformations        | dlthub ai toolkit install transformations         | annotate-sources
-column checks + load metrics                        → data-quality           | dlthub ai toolkit install data-quality            | setup-data-quality
-deploy / schedule on the dltHub platform            → dlthub-platform        | dlthub ai toolkit install dlthub-platform         | setup-runtime
-guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub ai toolkit install quick-start             | quick-start
-minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub ai toolkit install one-shot-pipeline       | one-shot-pipeline
+REST / HTTP APIs                                    → rest-api-pipeline      | dlthub --non-interactive ai toolkit install rest-api-pipeline       | find-source
+SQL databases (SQLAlchemy)                          → sql-database-pipeline  | dlthub --non-interactive ai toolkit install sql-database-pipeline   | find-source
+files CSV/Parquet/JSONL (disk/S3/GCS/Azure/SFTP)    → filesystem-pipeline    | dlthub --non-interactive ai toolkit install filesystem-pipeline     | create-filesystem-pipeline
+profile data, charts, marimo dashboards             → data-exploration       | dlthub --non-interactive ai toolkit install data-exploration        | explore-data
+model raw data into a CDM (Kimball)                 → transformations        | dlthub --non-interactive ai toolkit install transformations         | annotate-sources
+column checks + load metrics                        → data-quality           | dlthub --non-interactive ai toolkit install data-quality            | setup-data-quality
+deploy / schedule on the dltHub platform            → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform         | setup-runtime
+guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub --non-interactive ai toolkit install quick-start             | quick-start
+minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub --non-interactive ai toolkit install one-shot-pipeline       | one-shot-pipeline
 ```
-* Always run installs with `--non-interactive` (see workspace rule above), then `uv run dlthub ai status` to confirm and ask the user to restart.
+* After installing, run `uv run dlthub ai status` to confirm, then ask the user to restart.
 * The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).
 * DO NOT start data engineering work if no workflow toolkit is installed.
