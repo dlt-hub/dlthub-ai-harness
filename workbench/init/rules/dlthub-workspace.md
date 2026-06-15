@@ -25,7 +25,7 @@
 * **ALWAYS** run all commands with **cwd** in the project root. `dlthub` uses **cwd** to find `.dlt` location ie. `uv run python pipelines/my_pipeline.py`.
 * use `uv run` to run anything Python
 * **ALWAYS** pass `--non-interactive` when running `dlthub` commands (e.g. `uv run dlthub --non-interactive pipeline init ...`). This prevents prompts that block execution.
-* **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging.
+* **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging. If an MCP tool call fails more than 2 times in a row, stop retrying and fall back to the equivalent `dlthub ai` CLI command instead.
 * **ALWAYS VERIFY** workspace with `uv run dlthub ai status` when session starts
 
 # command line interface
@@ -44,4 +44,5 @@
 * toolkits are data engineering workflows automated via skills, commands and rules.
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
 * workflows end with handover to other workflows, also `toolkit-dispatch` skill may be helpful
-* **DO NOT** start data engineering work in no toolkits are installed - see `dlthub ai status` output!
+* **DO NOT** start data engineering work when no toolkits are installed - see `dlthub ai status` output!
+* **NEVER assume a handover target toolkit is installed** — before following any handover, always run `uv run dlthub --non-interactive ai toolkit install <toolkit-name>` first, then invoke the entry skill. Do NOT run web research, manual code edits but use the entry skill.

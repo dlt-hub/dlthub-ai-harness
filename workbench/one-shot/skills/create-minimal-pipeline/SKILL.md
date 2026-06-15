@@ -1,10 +1,10 @@
 ---
-name: one-shot-pipeline
-description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user names a REST API source they want to connect to and load data from.
+name: create-minimal-pipeline
+description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user wants to build a dlt pipeline for an API, load data from an API endpoint into DuckDB, create a REST API pipeline, or names a REST API source and/or endpoint to connect to and load data from.
 argument-hint: "[api-name] [endpoint-hint]"
 ---
 
-Build a minimal single-endpoint pipeline for the user's API and run it locally against DuckDB with a row limit. Goal is a working first run with viewable data, not a production pipeline.
+Build a minimal single-endpoint pipeline and run it locally against DuckDB. The finish line is `dlthub local show` — the moment the user sees their loaded data in the local UI. Every feature beyond the minimum (pagination, incremental loading, multiple endpoints) increases run time and failure surface, delaying that moment.
 
 **This skill is for REST API / HTTP API sources only.** If the user is asking about:
 - A SQL database (Postgres, MySQL, BigQuery, etc.) → install the `sql-database-pipeline` toolkit
@@ -18,22 +18,37 @@ Only propose toolkit installation if the user explicitly asks for something this
 
 **Reference**: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
 
+## Step 0 — No source named?
+
+If the user hasn't named a specific API, suggest these three directly:
+
+> Here are a few popular sources you can try:
+> - `github` — issues, pull requests, repositories
+> - `hubspot` — contacts, companies, deals, tickets
+> - `stripe_analytics` — customers, subscriptions, events
+>
+> You can also name any REST API not in the list (e.g. Notion, Jira, Shopify) and I'll build a custom connector for it.
+
+Wait for the user to pick or name one. Then check if an endpoint was mentioned in the original prompt — if not, ask which endpoint they'd like to load. Then continue to Step 1.
+
 ## Step 1 — Research the API
 
-Check for a verified source first:
+Check for a verified source first. Tell the user you're doing this because a pre-maintained dlt source — if one exists — which is more reliable than a custom connector:
 
 ```
 uv run dlthub --non-interactive pipeline init --list-sources | grep -i <api-name>
 ```
 
-If a match is found, tell the user: "A verified source exists for `<api-name>` — you can use `dlthub pipeline init <source> warehouse` for a maintained connector." Then proceed with the custom pipeline.
+If a match is found, tell the user: "A verified source exists for `<api-name>` — you can use `dlthub pipeline init <source> duckdb` for a maintained connector." Then proceed with the custom pipeline.
+
+Use your web search tool directly — do not spawn subagents, research agents, or delegate this step. One or two inline searches is all that's needed.
 
 Web search: `<api-name> REST API documentation` and `<api-name> REST API authentication`.
 
 Extract:
 - `base_url` — root URL shared by all endpoints (e.g. `https://api.github.com`)
 - Auth method — Bearer token, API key (header or query param), HTTP Basic, or none
-- One clear endpoint — the most useful starting resource (e.g. `/repos`, `/orders`, `/events`)
+- One clear endpoint — if the user named one in their prompt, use it; otherwise pick the most useful starting resource (e.g. `/repos`, `/orders`, `/events`)
 - Response wrapper key — does data sit under `"data"`, `"items"`, `"results"`, or is it a root array?
 
 One or two targeted searches is enough. If auth docs are on a separate page, fetch it too.
@@ -42,10 +57,17 @@ One or two targeted searches is enough. If auth docs are on a separate page, fet
 
 Create `<source>_pipeline.py`. Follow the exact pattern from `pipeline.py`:
 
+### Rules
+
+- `destination="duckdb"` always — runs locally against DuckDB
+- `.add_limit(50, count_rows=True)` always — row limit, not page limit; omitting `count_rows=True` silently loads the entire dataset when a paginator is active
+- Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
+- Omit pagination config — `.add_limit(50, count_rows=True)` caps the run; let dlt auto-detect or stop naturally
+
 ```python
 """<Source> dlt pipeline.
 
-Loads <endpoint> from the <Source> REST API into the dltHub warehouse.
+Loads <endpoint> from the <Source> REST API into the duckdb.
 """
 
 import dlt
@@ -84,7 +106,7 @@ def load_<source>():
         dataset_name="<source>",
     )
 
-    load_info = pipeline.run(<source>().add_limit(50), write_disposition="replace")
+    load_info = pipeline.run(<source>().add_limit(50, count_rows=True), write_disposition="replace")  # row limit, not page limit
     print(load_info)
 
 
@@ -112,50 +134,34 @@ Pick the one that matches the API. Add it under `"client"`:
 "auth": {"type": "http_basic", "username": dlt.secrets["sources.<source>.username"], "password": dlt.secrets["sources.<source>.password"]}
 ```
 
-### Rules
-
-- `destination="duckdb"` always — runs locally against DuckDB
-- `.add_limit(50)` always — this is a validation run, not a full load
-- Omit `data_selector` if the response is a root JSON array; if the wrapper key is ambiguous or undocumented, omit it first and check the row count — dlt will raise a clear error if the selector is wrong
-- Omit pagination config — `.add_limit(50)` caps the run; let dlt auto-detect or stop naturally
-
 ## Step 3 — Handle credentials
 
 **Skip this step entirely if the API is public (no auth needed).**
 
-Do not read or write `.dlt/secrets.toml` directly — use the CLI instead.
+**NEVER** read or write `.dlt/secrets.toml` directly — use the MCP secrets tools.
 
 **3a. Check what's already configured:**
 
+Use `secrets_view_redacted` — if `[sources.<source>]` already has the required field populated (shown as `***`), skip to Step 4.
+
+**3b. If the credential is missing**, use `secrets_update_fragment` with `path=".dlt/secrets.toml"` to write the credential skeleton with an empty placeholder value:
+
+```toml
+[sources.<source>]
+token = ""
 ```
-uv run dlthub ai secrets list
-uv run dlthub ai secrets view-redacted
-```
-
-`view-redacted` shows all configured keys with values replaced by `***`. If `[sources.<source>]` already has the required field populated (shown as `***`), skip to Step 4.
-
-**3b. If the credential is missing**, show the user exactly what to add:
-
-> Open `.dlt/secrets.toml` (not `dev.secrets.toml`) and add:
->
-> ```toml
-> [sources.<source>]
-> token = "paste-your-token-here"
-> ```
->
-> Get your token from: `<direct link from API docs>`
 
 Use `secrets.toml` (workspace-scoped) so credentials are visible to all profiles — credentials in `dev.secrets.toml` are not visible to the platform's prod profile and the job will fail.
 
-**Stop and wait** for the user to confirm they've added the credential.
+Then tell the user:
 
-**3c. Verify** the credential is in place:
+> I've added the credential structure to `.dlt/secrets.toml`. Please open that file, fill in your token, and let me know when done.
+>
+> Get your token from: `<direct link from API docs>`
 
-```
-uv run dlthub ai secrets view-redacted
-```
+**Stop and wait** for the user to confirm before continuing.
 
-Confirm `[sources.<source>].<field>` now shows `***`. If it's still absent, the user hasn't saved or used the wrong section name — ask them to check before continuing.
+**3c. Verify** with `secrets_view_redacted` — confirm `[sources.<source>].<field>` now shows `***`. If it's still empty, ask the user to check before continuing.
 
 ## Step 4 — Run locally
 
@@ -165,7 +171,7 @@ uv run python <source>_pipeline.py
 
 Report what table was created and how many rows loaded (visible in output).
 
-Then open the local data viewer:
+Then open the local data viewer. Run this command **in the background** (it starts a server and never exits — running it in the foreground will block):
 
 ```
 uv run dlthub local show

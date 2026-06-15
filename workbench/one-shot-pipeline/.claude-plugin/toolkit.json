@@ -1,5 +1,0 @@
-{
-  "dependencies": ["init"],
-  "workflow_entry_skill": "one-shot-pipeline",
-  "listed": true
-}
