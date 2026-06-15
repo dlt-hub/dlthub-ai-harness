@@ -4,68 +4,11 @@ description: Write, deploy and run a GitHub issues pipeline on dltHub Platform. 
 argument-hint: ""
 ---
 
-Write a pipeline that loads the 50 most recent issues from `dlt-hub/dlt` and deploy it to dltHub Platform.
+Deploy `github_pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads the 50 most recent issues from `dlt-hub/dlt`.
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
 
-## Step 1 — Write the pipeline file
-
-Create `github_pipeline.py` in the project root:
-
-```python
-"""GitHub dlt pipeline.
-
-Loads the 50 most recent issues from dlt-hub/dlt into DuckDB.
-"""
-
-import dlt
-from dlt.sources.rest_api import rest_api_source
-from dlt.hub import run
-
-
-def github():
-    return rest_api_source(
-        {
-            "client": {
-                "base_url": "https://api.github.com/",
-            },
-            "resources": [
-                {
-                    "name": "issues",
-                    "endpoint": {
-                        "path": "repos/dlt-hub/dlt/issues",
-                        "params": {
-                            "state": "all",
-                            "sort": "created",
-                            "direction": "desc",
-                        },
-                    },
-                    "primary_key": "id",
-                },
-            ],
-        }
-    )
-
-
-@run.pipeline("github_pipeline")
-def load_github():
-    """Load the 50 most recent issues from dlt-hub/dlt."""
-
-    pipeline = dlt.pipeline(
-        pipeline_name="github_pipeline",
-        destination="duckdb",
-        dataset_name="github",
-    )
-
-    load_info = pipeline.run(github().add_limit(50, count_rows=True), write_disposition="replace")
-    print(load_info)
-
-
-if __name__ == "__main__":
-    load_github()
-```
-
-## Step 2 — Verify workspace connection
+## Step 1 — Verify workspace connection
 
 ```bash
 dlthub workspace list
@@ -77,7 +20,7 @@ If no workspace is connected, connect the playground workspace:
 dlthub workspace connect playground
 ```
 
-## Step 3 — Set up a cloud destination
+## Step 2 — Set up a cloud destination
 
 The pipeline loads into `duckdb` locally. A cloud destination is required for data to persist on the platform.
 
@@ -120,7 +63,7 @@ uv add "dlt[<extra>]"
 uv sync
 ```
 
-## Step 4 — Update destination in pipeline file
+## Step 3 — Update destination in pipeline file
 
 Change `destination="duckdb"` to the named destination in `github_pipeline.py`:
 
@@ -132,7 +75,7 @@ pipeline = dlt.pipeline(
 )
 ```
 
-## Step 5 — Register in `__deployment__.py`
+## Step 4 — Register in `__deployment__.py`
 
 Add the pipeline to the existing `__deployment__.py`:
 
@@ -150,7 +93,7 @@ dlthub deploy --dry-run
 
 Show the user which jobs will be created or updated. **Stop and wait for approval** before proceeding.
 
-## Step 6 — Deploy
+## Step 5 — Deploy
 
 ```bash
 dlthub deploy
@@ -158,7 +101,7 @@ dlthub deploy
 
 Summarize which jobs were created or updated.
 
-## Step 7 — Run on the cloud
+## Step 6 — Run on the cloud
 
 ```bash
 dlthub run load_github -f
