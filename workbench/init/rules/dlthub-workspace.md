@@ -46,15 +46,15 @@
 This index is authoritative for shipped toolkits. Match the user's intent, run the install command, then hand over to the entry skill. No MCP call needed for these.
 ```
 intent                                              → toolkit                | install                                           | entry skill
-REST / HTTP APIs                                    → rest-api-pipeline      | dlthub ai toolkit rest-api-pipeline install       | find-source
-SQL databases (SQLAlchemy)                          → sql-database-pipeline  | dlthub ai toolkit sql-database-pipeline install   | find-source
-files CSV/Parquet/JSONL (disk/S3/GCS/Azure/SFTP)    → filesystem-pipeline    | dlthub ai toolkit filesystem-pipeline install     | create-filesystem-pipeline
-profile data, charts, marimo dashboards             → data-exploration       | dlthub ai toolkit data-exploration install        | explore-data
-model raw data into a CDM (Kimball)                 → transformations        | dlthub ai toolkit transformations install         | annotate-sources
-column checks + load metrics                        → data-quality           | dlthub ai toolkit data-quality install            | setup-data-quality
-deploy / schedule on the dltHub platform            → dlthub-platform        | dlthub ai toolkit dlthub-platform install         | setup-runtime
-guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub ai toolkit quick-start install             | quick-start
-minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub ai toolkit one-shot-pipeline install       | one-shot-pipeline
+REST / HTTP APIs                                    → rest-api-pipeline      | dlthub ai toolkit install rest-api-pipeline       | find-source
+SQL databases (SQLAlchemy)                          → sql-database-pipeline  | dlthub ai toolkit install sql-database-pipeline   | find-source
+files CSV/Parquet/JSONL (disk/S3/GCS/Azure/SFTP)    → filesystem-pipeline    | dlthub ai toolkit install filesystem-pipeline     | create-filesystem-pipeline
+profile data, charts, marimo dashboards             → data-exploration       | dlthub ai toolkit install data-exploration        | explore-data
+model raw data into a CDM (Kimball)                 → transformations        | dlthub ai toolkit install transformations         | annotate-sources
+column checks + load metrics                        → data-quality           | dlthub ai toolkit install data-quality            | setup-data-quality
+deploy / schedule on the dltHub platform            → dlthub-platform        | dlthub ai toolkit install dlthub-platform         | setup-runtime
+guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub ai toolkit install quick-start             | quick-start
+minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub ai toolkit install one-shot-pipeline       | one-shot-pipeline
 ```
 * Always run installs with `--non-interactive` (see workspace rule above), then `uv run dlthub ai status` to confirm and ask the user to restart.
 * The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).

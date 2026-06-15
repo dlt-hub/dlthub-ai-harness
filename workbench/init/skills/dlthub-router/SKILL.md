@@ -11,7 +11,7 @@ Route the user to the right toolkit and skill, then install it. **Fast path firs
 
 The `# toolkits` index is already in your context. Match the user's intent to a row, then:
 
-1. **Install** it: `dlthub --non-interactive ai toolkit <name> install`
+1. **Install** it: `dlthub --non-interactive ai toolkit install <name>`
 2. **Confirm** (Step 3) and **hand over** to that toolkit's entry skill (Step 4).
 
 This needs **no MCP call** — the index is authoritative for the shipped toolkits and is the fast path. Use it whenever the intent matches a row.
