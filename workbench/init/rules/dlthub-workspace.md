@@ -56,6 +56,6 @@ deploy / schedule on the dltHub platform            → dlthub-platform        |
 guided end-to-end demo (ingest→deploy)              → quick-start            | dlthub --non-interactive ai toolkit install quick-start             | quick-start
 minimal REST pipeline → local DuckDB → deploy       → one-shot-pipeline      | dlthub --non-interactive ai toolkit install one-shot-pipeline       | one-shot-pipeline
 ```
-* After installing, run `uv run dlthub ai status` to confirm, then ask the user to restart.
+* After installing, run `uv run dlthub ai status` to confirm, then continue **in the same session** — load the new toolkit's entry skill + workflow rule via `toolkit_info` (or read the installed files) and proceed. No restart needed (toolkits reuse the already-running `dlt-workspace-mcp`); don't lose the user's context.
 * The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).
 * DO NOT start data engineering work if no workflow toolkit is installed.

@@ -33,7 +33,12 @@ uv run dlthub ai status
 1. You should see the new toolkit and its entry skill.
 2. If you see any **WARNING** about the MCP server (e.g. cannot be started), **fix it** using the error message.
 
-## Step 4: Handover
+## Step 4: Handover (no restart needed)
 
-1. If a new toolkit got installed, ask the user to **restart the session** so its skills load.
-2. Do **not** start any workflows or skills on your own — the toolkit's workflow rule and entry skill take over after restart.
+The `dlt-workspace-mcp` server is already running (installed with `init`) and toolkits reuse it — installing one adds **no new MCP server**, so continue in this session. Do **not** ask the user to restart; that would lose the conversation context.
+
+1. **Load the new toolkit inline** — call `toolkit_info <name>` (MCP) to get its entry skill and workflow rule, or read the installed files directly: `.claude/skills/<entry-skill>/SKILL.md` and `.claude/rules/<toolkit>-workflow.md`.
+2. **Follow that workflow rule and start at the entry skill**, continuing the user's task with the context you already have. Do not start unrelated workflows on your own.
+3. The new skills become natively registered (`/`-invocable, always-loaded workflow rule) on the next natural session start — no need to restart now.
+
+> Exception: if a future toolkit ever ships its **own** MCP server (none do today), that server only starts on restart — suggest a restart **only** in that case, and use CLI fallbacks until then.
