@@ -61,19 +61,7 @@ uv add "dlt[<extra>]"
 uv sync
 ```
 
-## Step 3 — Update destination in pipeline file
-
-Change `destination="duckdb"` to the named destination in `github_pipeline.py`:
-
-```python
-pipeline = dlt.pipeline(
-    pipeline_name="github_pipeline",
-    destination="warehouse",
-    dataset_name="github",
-)
-```
-
-## Step 4 — Register in `__deployment__.py`
+## Step 3 — Register in `__deployment__.py`
 
 Add the pipeline to the existing `__deployment__.py`:
 
@@ -83,7 +71,7 @@ from github_pipeline import load_github
 __all__ = [..., "load_github"]
 ```
 
-## Step 5 — Deploy
+## Step 4 — Deploy
 
 ```bash
 uv run dlthub deploy
@@ -91,7 +79,7 @@ uv run dlthub deploy
 
 Summarize which jobs were created or updated.
 
-## Step 6 — Run on the cloud
+## Step 5 — Run on the cloud
 
 ```bash
 uv run dlthub run load_github -f
