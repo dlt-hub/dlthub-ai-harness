@@ -79,21 +79,25 @@ Report the tables created and row counts from the output.
 
 Tell the user:
 
-> Opening the dltHub UI in your browser now — you'll see a new tab appear in a moment.
+> Opening the dltHub UI in your browser now.
 
-Then run:
+Then start the server as a fire-and-forget process — do not wait for it to exit or produce output, continue immediately to the next step.
 
+**macOS / Linux:**
 ```bash
-uv run dlthub local show
+nohup uv run dlthub local show > /dev/null 2>&1 &
 ```
 
-This opens the browser tab automatically and runs as a persistent server — do not wait for it to exit.
+**Windows (PowerShell):**
+```powershell
+Start-Process -FilePath "uv" -ArgumentList "run","dlthub","local","show"
+```
 
 ---
 
 End with this message:
 
-> Your data is loaded and the dltHub UI is open in your browser. Explore the tables — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
+> Your data is loaded. Explore the tables in the UI — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
 
 Then wait for the user to signal they are ready before proceeding.
 
