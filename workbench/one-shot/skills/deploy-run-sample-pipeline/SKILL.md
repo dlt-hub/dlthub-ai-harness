@@ -8,13 +8,7 @@ Deploy `github_pipeline.py` — already present in the project root — to dltHu
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
 
-## Step 1 — Verify workspace connection
-
-```bash
-uv run dlthub workspace list
-```
-
-If no workspace is connected, connect the playground workspace:
+## Step 1 — Connect to the playground workspace
 
 ```bash
 uv run dlthub workspace connect playground
