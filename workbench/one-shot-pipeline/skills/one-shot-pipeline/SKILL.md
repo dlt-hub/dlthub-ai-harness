@@ -1,10 +1,12 @@
 ---
 name: one-shot-pipeline
-description: Build and run a minimal REST API pipeline locally against DuckDB. Use when the user names a REST API source they want to connect to and load data from.
+description: "Throwaway path for trying dlthub, onboarding, or a quick demo — build and run a minimal single-endpoint REST API pipeline locally against DuckDB with a row limit, to see data flow fast. Use when the user names a REST API source and just wants to try it / kick the tires / see a demo. Do NOT use for a real or production pipeline (auth, incremental, multiple endpoints, deploy) — that is the `rest-api-pipeline` toolkit (`find-source`)."
 argument-hint: "[api-name] [endpoint-hint]"
 ---
 
 Build a minimal single-endpoint pipeline for the user's API and run it locally against DuckDB with a row limit. Goal is a working first run with viewable data, not a production pipeline.
+
+**Scope:** this is a throwaway path for **trying dlthub / onboarding / demos**. The moment the user wants a real pipeline — authentication beyond a single key, incremental loading, more than one endpoint, a non-DuckDB destination, or deployment — hand over to the **rest-api-pipeline** toolkit (`find-source`); don't try to harden the one-shot script in place.
 
 **This skill is for REST API / HTTP API sources only.** If the user is asking about:
 - A SQL database (Postgres, MySQL, BigQuery, etc.) → install the `sql-database-pipeline` toolkit
