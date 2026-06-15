@@ -4,13 +4,13 @@
 **ALWAYS** start with `run-sample-pipeline`
 
 ## Core workflow
-1. **Run sample pipeline** (`run-sample-pipeline`) — run the pre-made GitHub pipeline against DuckDB and open `dlthub local show` so the user can see their data.
+1. **Run sample pipeline** (`run-sample-pipeline`) — run the pre-made GitHub pipeline against DuckDB and start `dlthub local show` so the user can see their data in the browser.
 2. **Test deployment** (`test-deployment`) — set up a cloud destination, deploy the pipeline to dltHub Platform, and verify it runs on the cloud.
 
 ## Handover between skills
 When `run-sample-pipeline` completes, end with this message to the user:
 
-> Your data is loaded and the dltHub UI is open in your browser. Explore the tables — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
+> Your data is loaded. Explore the tables in the UI — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
 
 Then wait. Do not proceed to `test-deployment` until the user explicitly says they are ready.
 
