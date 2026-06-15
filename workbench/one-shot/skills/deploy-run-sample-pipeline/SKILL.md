@@ -35,15 +35,16 @@ Ask the user which destination they want to use:
 
 Set up a named destination called `warehouse`. Check `config.toml` first — if a `[destination.warehouse]` block already exists there, move it to `dev.config.toml` so it only applies locally.
 
-Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
+Look up the required credential fields for the chosen destination in the dlt docs: `https://dlthub.com/docs/dlt-ecosystem/destinations/<destination-name>`
+
+Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using the correct fields for that destination:
 
 ```toml
 [destination.warehouse]
 destination_type = "<chosen-destination>"
 
 [destination.warehouse.credentials]
-database = ""
-token = ""
+# fields from dlt docs for <chosen-destination>
 ```
 
 Then tell the user:
