@@ -77,13 +77,17 @@ Report the tables created and row counts from the output.
 
 ## Step 3 — Open the local UI
 
-Run this in the background (it starts a server and never exits):
+Tell the user:
+
+> Opening the dltHub UI in your browser now — you'll see a new tab appear in a moment.
+
+Then run:
 
 ```bash
 uv run dlthub local show
 ```
 
-This opens the dltHub UI in the browser automatically.
+This opens the browser tab automatically and runs as a persistent server — do not wait for it to exit.
 
 ---
 
