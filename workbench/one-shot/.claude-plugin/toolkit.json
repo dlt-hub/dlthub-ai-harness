@@ -1,5 +1,5 @@
 {
   "dependencies": ["init"],
-  "workflow_entry_skill": "create-minimal-pipeline",
+  "workflow_entry_skill": "run-sample-pipeline",
   "listed": true
 }
