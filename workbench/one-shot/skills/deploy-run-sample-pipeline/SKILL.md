@@ -8,11 +8,15 @@ Deploy `github_pipeline.py` — already present in the project root — to dltHu
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
 
-## Step 1 — Connect to the playground workspace
+## Step 1 — Connect to the workspace
+
+Connect to the `playground` workspace — `playground` is the workspace name, use it exactly as shown:
 
 ```bash
 uv run dlthub workspace connect playground
 ```
+
+Note the workspace ID from the output — you will need it in the final step.
 
 ## Step 2 — Set up a cloud destination
 
@@ -113,8 +117,8 @@ uv run dlthub job logs load_github
 |---|---|---|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
 
-Once successful, open the dltHub web UI:
+Once successful, open the dltHub dashboard directly in the user's browser. Substitute `<workspace_id>` with the workspace ID captured in Step 1:
 
 ```bash
-uv run dlthub show
+uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
 ```
