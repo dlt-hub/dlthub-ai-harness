@@ -1,19 +1,25 @@
 ---
 name: run-sample-pipeline
-description: Run the pre-made GitHub pipeline against DuckDB and open the dltHub local UI. Use when the user wants to get started with dlthub or run the sample pipeline.
+description: Build and run a GitHub issues pipeline against DuckDB and open the dltHub local UI. Use when the user wants to load GitHub issues from a repository into DuckDB.
 argument-hint: ""
 ---
 
-Run a pre-made pipeline that loads issues and pull requests from the `dlt-hub/dlt` GitHub repository into DuckDB. No credentials required.
+Load the most recent GitHub issues from the repository in the user's prompt into DuckDB. No credentials required.
 
-## Step 1 — Write the pipeline file
+## Step 1 — Extract the repository details
 
-Create `github_pipeline.py` in the project root:
+Parse the GitHub URL from the user's prompt to extract `{owner}` and `{repo}`.
+
+For example: `https://github.com/dlt-hub/dlt` → `owner = dlt-hub`, `repo = dlt`
+
+## Step 2 — Write the pipeline file
+
+Create `github_pipeline.py` in the project root, substituting `{owner}` and `{repo}`:
 
 ```python
 """GitHub dlt pipeline.
 
-Loads issues and pull requests from the dlt-hub/dlt repository into DuckDB.
+Loads the most recent issues from {owner}/{repo} into DuckDB.
 """
 
 import dlt
@@ -31,16 +37,12 @@ def github():
                 {
                     "name": "issues",
                     "endpoint": {
-                        "path": "repos/dlt-hub/dlt/issues",
-                        "params": {"state": "all"},
-                    },
-                    "primary_key": "id",
-                },
-                {
-                    "name": "pull_requests",
-                    "endpoint": {
-                        "path": "repos/dlt-hub/dlt/pulls",
-                        "params": {"state": "all"},
+                        "path": "repos/{owner}/{repo}/issues",
+                        "params": {
+                            "state": "all",
+                            "sort": "created",
+                            "direction": "desc",
+                        },
                     },
                     "primary_key": "id",
                 },
@@ -51,7 +53,7 @@ def github():
 
 @run.pipeline("github_pipeline")
 def load_github():
-    """Load issues and pull requests from dlt-hub/dlt."""
+    """Load the most recent issues from {owner}/{repo}."""
 
     pipeline = dlt.pipeline(
         pipeline_name="github_pipeline",
@@ -67,15 +69,15 @@ if __name__ == "__main__":
     load_github()
 ```
 
-## Step 2 — Run the pipeline
+## Step 3 — Run the pipeline
 
 ```bash
 uv run python github_pipeline.py
 ```
 
-Report the tables created and row counts from the output.
+Report the table created and row count from the output.
 
-## Step 3 — Open the local UI
+## Step 4 — Open the local UI
 
 Run the following command in a parallel task — do not wait for it to complete:
 
@@ -89,7 +91,7 @@ Continue to the next step immediately.
 
 End with this message:
 
-> Your data is loaded. Explore the tables in the UI — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
+> Your data is loaded. Explore the issues table in the UI — run a query, check the schema, get a feel for what's there. When you're ready to deploy this to the cloud, just say so.
 
 Then wait for the user to signal they are ready before proceeding.
 
