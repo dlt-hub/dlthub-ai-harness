@@ -21,7 +21,7 @@
 * **ALWAYS** run all commands with **cwd** in the project root. `dlthub` uses **cwd** to find `.dlt` location ie. `uv run python pipelines/my_pipeline.py`.
 * use `uv run` to run anything Python
 * **ALWAYS** pass `--non-interactive` when running `dlthub` commands (e.g. `uv run dlthub --non-interactive pipeline init ...`). This prevents prompts that block execution.
-* **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging.
+* **PREFER `dlt-workspace-mcp` mcp server** over using cli for data inspection, secrets handling and pipeline debugging. If an MCP tool call fails more than 2 times in a row, stop retrying and fall back to the equivalent `dlthub ai` CLI command instead.
 * **ALWAYS VERIFY** workspace with `uv run dlthub ai status` when session starts
 
 # command line interface
@@ -40,6 +40,7 @@
 * toolkits are data engineering workflows automated via skills, commands and rules.
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
 * workflows end with handover to other workflows, also the `dlthub-router` skill may be helpful
+* **NEVER assume a handover target toolkit is installed** — before following any handover, always run `uv run dlthub --non-interactive ai toolkit install <toolkit-name>` first, then invoke the entry skill. Do NOT run web research, manual code edits but use the entry skill.
 * **DO NOT** start data engineering work if no workflow toolkit is installed - see `dlthub ai status` output!
 
 ## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
@@ -56,9 +57,9 @@ transform & model loaded data (dimensional / Kimball)   → transformations     
 add data quality checks (column expectations, validation rules) → data-quality   | dlthub --non-interactive ai toolkit install data-quality           | setup-data-quality
 deploy / schedule pipelines on the dltHub platform      → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | setup-runtime
 guided end-to-end tour, ingest to dashboard (uses the real toolkits) → quick-start | dlthub --non-interactive ai toolkit install quick-start          | quick-start
-try dlthub / quick REST demo — single endpoint, local DuckDB, throwaway (NOT production) → one-shot-pipeline | dlthub --non-interactive ai toolkit install one-shot-pipeline | one-shot-pipeline
+test/try dlthub end-to-end — minimal pipeline + educational test deploy, NOT production → one-shot       | dlthub --non-interactive ai toolkit install one-shot               | create-minimal-pipeline
 ```
-* `one-shot-pipeline` vs `rest-api-pipeline`: one-shot is a throwaway path for **trying dlthub / onboarding / a quick demo** — single endpoint, row-limited, local DuckDB, not for keeps. For a **real or production** REST pipeline (auth, incremental, multiple endpoints, deploy), use `rest-api-pipeline`. `quick-start` is the guided tour that walks the real toolkits end-to-end.
+* `one-shot` vs `rest-api-pipeline`: one-shot is for **testing / trying dlthub / onboarding / a quick demo** — a minimal single-endpoint, row-limited pipeline on local DuckDB plus an educational test deploy. Educational examples only, NOT production-grade. For a **real or production** REST pipeline (auth, incremental, multiple endpoints, production deploy), use `rest-api-pipeline`. `quick-start` is the guided tour that walks the real toolkits end-to-end.
 * After installing, run `uv run dlthub ai status` to confirm, then continue **in the same session** — load the new toolkit's entry skill + workflow rule via `toolkit_info` (or read the installed files) and proceed. No restart needed (toolkits reuse the already-running `dlt-workspace-mcp`); don't lose the user's context.
 * The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).
 * DO NOT start data engineering work if no workflow toolkit is installed.

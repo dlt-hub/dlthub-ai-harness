@@ -18,8 +18,8 @@ transform & model loaded data (dimensional / Kimball)   → transformations     
 add data quality checks (column expectations, validation rules) → data-quality   | dlthub --non-interactive ai toolkit install data-quality           | setup-data-quality
 deploy / schedule pipelines on the dltHub platform      → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | setup-runtime
 guided end-to-end tour, ingest to dashboard (uses the real toolkits) → quick-start | dlthub --non-interactive ai toolkit install quick-start          | quick-start
-try dlthub / quick REST demo — single endpoint, local DuckDB, throwaway (NOT production) → one-shot-pipeline | dlthub --non-interactive ai toolkit install one-shot-pipeline | one-shot-pipeline
+test/try dlthub end-to-end — minimal pipeline + educational test deploy, NOT production → one-shot       | dlthub --non-interactive ai toolkit install one-shot               | create-minimal-pipeline
 ```
-* `one-shot-pipeline` vs `rest-api-pipeline`: one-shot is a throwaway path for **trying dlthub / onboarding / a quick demo** — single endpoint, row-limited, local DuckDB, not for keeps. For a **real or production** REST pipeline (auth, incremental, multiple endpoints, deploy), use `rest-api-pipeline`. `quick-start` is the guided tour that walks the real toolkits end-to-end.
+* `one-shot` vs `rest-api-pipeline`: one-shot is for **testing / trying dlthub / onboarding / a quick demo** — a minimal single-endpoint, row-limited pipeline on local DuckDB plus an educational test deploy. Educational examples only, NOT production-grade. For a **real or production** REST pipeline (auth, incremental, multiple endpoints, production deploy), use `rest-api-pipeline`. `quick-start` is the guided tour that walks the real toolkits end-to-end.
 * Use the `dlthub-router` skill for needs not covered above — it uses live `list_toolkits` to discover newer toolkits.
 * DO NOT start data engineering work if no workflow toolkit is installed.
