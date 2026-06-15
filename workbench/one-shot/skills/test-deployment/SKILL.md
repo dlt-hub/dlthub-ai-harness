@@ -11,13 +11,13 @@ Deploy `github_pipeline.py` to dltHub Platform. This is a test deployment — th
 ## Step 0 — Verify workspace connection
 
 ```bash
-dlthub workspace list
+uv run dlthub workspace list
 ```
 
 If no workspace is connected, connect the playground workspace:
 
 ```bash
-dlthub workspace connect playground
+uv run dlthub workspace connect playground
 ```
 
 Once connected, continue to Step 1.
@@ -92,7 +92,7 @@ __all__ = [..., "load_github"]
 Preview what will change:
 
 ```bash
-dlthub deploy --dry-run
+uv run dlthub deploy --dry-run
 ```
 
 Show the user which jobs will be created or updated. **Stop and wait for approval** before proceeding.
@@ -100,7 +100,7 @@ Show the user which jobs will be created or updated. **Stop and wait for approva
 ## Step 4 — Deploy
 
 ```bash
-dlthub deploy
+uv run dlthub deploy
 ```
 
 Summarize which jobs were created or updated.
@@ -108,7 +108,7 @@ Summarize which jobs were created or updated.
 ## Step 5 — Run on the cloud
 
 ```bash
-dlthub run load_github -f
+uv run dlthub run load_github -f
 ```
 
 The `-f` flag streams logs in real time. Wait for the job to complete.
@@ -116,7 +116,7 @@ The `-f` flag streams logs in real time. Wait for the job to complete.
 If it fails:
 
 ```bash
-dlthub job logs load_github
+uv run dlthub job logs load_github
 ```
 
 | Error | Cause | Fix |
@@ -126,5 +126,5 @@ dlthub job logs load_github
 Once successful, open the dltHub web UI:
 
 ```bash
-dlthub show
+uv run dlthub show
 ```

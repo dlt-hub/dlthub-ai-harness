@@ -16,8 +16,8 @@ Then wait. Do not proceed to `test-deployment` until the user explicitly says th
 
 When they do, invoke `test-deployment` immediately. This workflow has exactly two steps — there is nothing between them and nothing alongside them.
 
-## Outgoing handovers
-Only surface these after **both** `run-sample-pipeline` and `test-deployment` have completed successfully, and only if the user asks what to do next.
+## Handover To Other Toolkits
+Only surface these after both `run-sample-pipeline` and `test-deployment` have completed successfully, and only if the user asks what to do next.
 
 - **data-exploration** — "your data is live — want to explore it with charts and a notebook?". Run `uv run dlthub --non-interactive ai toolkit install data-exploration`, then invoke `explore-data`.
 - **rest-api-pipeline** — for pagination, incremental loading, or adding more endpoints, or starting with another source entirely. Run `uv run dlthub --non-interactive ai toolkit install rest-api-pipeline` first, then invoke `adjust-endpoint` or `new-endpoint`.
