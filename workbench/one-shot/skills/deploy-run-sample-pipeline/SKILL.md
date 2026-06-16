@@ -54,7 +54,7 @@ uv run dlthub job logs load_github
 |---|---|---|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
 
-Once successful, open the dltHub dashboard directly in the user's browser. Substitute `<workspace_id>` with the workspace ID captured in Step 1:
+Once successful, open the dltHub dashboard directly in the user's browser and invite them to explore the data using the query editor. Substitute `<workspace_id>` with the workspace ID captured in Step 1:
 
 ```bash
 uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
