@@ -19,13 +19,19 @@ Parse `$ARGUMENTS`:
 Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
-- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then point them to the authoritative bootstrap command:
+- If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**.
+  - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, so an agent can run it directly — **this is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory). It scaffolds a dlthub workspace with AI support, collision-safe, in one step.
+  - **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from "dlt[hub]" dlthub init` (equivalent to `uv init` + `uv add "dlt[hub]"` + `uv run dlthub init`), then `uv run dlthub ai init` to set up AI support.
+
+  Wait for completion, then re-check status before continuing to Step 2.
+
+  **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me", "I want to learn dltHub"): ask the user to run `uvx dlthub-start@latest`. This scaffolds a fresh **playground** workspace — an onboarding experience, **not** where production workflows should live, and not for setting up an existing project. **NEVER run it yourself** — it is interactive and does not work when an agent runs it:
 
   ```
-  uvx dlthub-start@latest my-workspace
+  uvx dlthub-start@latest
   ```
 
-  This is the canonical way to get started with the dltHub AI workbench — it sets up the workspace and installs the toolkits needed downstream. Do not auto-run it — wait for the user to run it themselves, then re-check status before continuing to Step 2.
+  It must be run by a human because it requires interaction for authentication; it only works in a real terminal — **do NOT use `!` mode for it**. Tell the user to run it in their own terminal. (For agent-driven setup of a clean new project, use `uvx dlthub-init@latest` above instead.)
 
 ## Step 2 — Present capability index and ask one question
 
