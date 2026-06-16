@@ -94,7 +94,11 @@ Run:
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill>
 ```
 
-This creates all workspaces defined in config.json.
+This creates all workspaces defined in config.json (default agent: claude). To also test Codex/Cursor, build for those agents too (they get a `--<agent>` workspace suffix so all three coexist):
+```bash
+uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent codex
+uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent cursor
+```
 
 ## Step 7: Continue to run-eval
 

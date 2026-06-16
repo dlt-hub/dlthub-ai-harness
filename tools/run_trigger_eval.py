@@ -495,6 +495,35 @@ def run_eval_on_workspace(
     }
 
 
+VALID_AGENTS = ["claude", "cursor", "codex"]
+
+
+def parse_agents(spec: str) -> list[str]:
+    """Parse a --agent spec ('all', 'codex', or 'codex,cursor') into a list.
+
+    Raises ValueError on an unknown agent name.
+    """
+    agents = VALID_AGENTS[:] if spec == "all" else [a.strip() for a in spec.split(",") if a.strip()]
+    bad = [a for a in agents if a not in VALID_AGENTS]
+    if bad:
+        raise ValueError(
+            f"unknown agent(s): {', '.join(bad)} (valid: {', '.join(VALID_AGENTS)} or 'all')"
+        )
+    return agents
+
+
+def per_agent_rollup(all_results: list[dict]) -> list[dict]:
+    """Aggregate a flat list of per-(agent,workspace) results into per-agent totals."""
+    rollup: dict[str, dict] = {}
+    for r in all_results:
+        a = r["agent"]
+        agg = rollup.setdefault(a, {"agent": a, "total": 0, "passed": 0, "clashes": 0})
+        agg["total"] += r["summary"]["total"]
+        agg["passed"] += r["summary"]["passed"]
+        agg["clashes"] += r["summary"]["clashes"]
+    return list(rollup.values())
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run trigger evaluation for a skill")
     parser.add_argument("eval_dir", help="Path to eval directory (e.g. evals/init/dlthub-router)")
@@ -524,8 +553,11 @@ def main():
     parser.add_argument(
         "--agent",
         default="claude",
-        choices=["claude", "cursor", "codex"],
-        help="Agent to drive headlessly (default: claude)",
+        help=(
+            "Agent(s) to drive headlessly: claude|cursor|codex, 'all', or a "
+            "comma-separated list (e.g. codex,cursor). One run reports per-agent "
+            "results. Default: claude."
+        ),
     )
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
@@ -560,60 +592,81 @@ def main():
             reason = e.get("reason", "no reason")
             print(f"  - {e['query'][:60]}... ({reason})", file=sys.stderr)
 
-    skills_root = {"claude": ".claude", "cursor": ".cursor", "codex": ".agents"}[args.agent]
+    try:
+        agents = parse_agents(args.agent)
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    roots = {"claude": ".claude", "cursor": ".cursor", "codex": ".agents"}
 
     all_results = []
-    for ws_id in ws_configs:
-        workspace = find_workspace(eval_dir, ws_id, args.agent)
+    for agent in agents:
+        skills_root = roots[agent]
+        for ws_id in ws_configs:
+            workspace = find_workspace(eval_dir, ws_id, agent)
 
-        # Verify skill exists in the agent's install layout
-        skill_dir = workspace / skills_root / "skills" / skill_name
-        if not skill_dir.is_dir():
-            print(
-                f"ERROR: Skill '{skill_name}' not in workspace '{ws_id}' "
-                f"(agent={args.agent}, looked in {skills_root}/skills)",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-        if args.verbose:
-            print(f"\n=== Workspace: {ws_id} ({workspace}) [agent={args.agent}] ===", file=sys.stderr)
-            print(f"Skill: {skill_name}", file=sys.stderr)
-            print(f"Queries: {len(eval_set)} ({args.runs_per_query} runs each)", file=sys.stderr)
-
-        output = run_eval_on_workspace(
-            eval_set=eval_set,
-            skill_name=skill_name,
-            workspace=workspace,
-            ws_id=ws_id,
-            num_workers=args.num_workers,
-            timeout=args.timeout,
-            runs_per_query=args.runs_per_query,
-            trigger_threshold=args.trigger_threshold,
-            agent=args.agent,
-            model=args.model,
-            verbose=args.verbose,
-        )
-
-        if args.verbose:
-            s = output["summary"]
-            print(
-                f"Results: {s['passed']}/{s['total']} passed  "
-                f"precision={s['precision']}  recall={s['recall']}  "
-                f"clashes={s['clashes']}",
-                file=sys.stderr,
-            )
-            for r in output["results"]:
-                status = "PASS" if r["pass"] else "FAIL"
-                rate_str = f"{r['triggers']}/{r['runs']}"
-                clash_str = f" CLASH→{r['clashes']}" if r.get("clashes") else ""
+            # Verify skill exists in the agent's install layout
+            skill_dir = workspace / skills_root / "skills" / skill_name
+            if not skill_dir.is_dir():
                 print(
-                    f"  [{status}] rate={rate_str} expected={r['should_trigger']}{clash_str}: "
-                    f"{r['query'][:80]}",
+                    f"ERROR: Skill '{skill_name}' not in workspace '{ws_id}' "
+                    f"(agent={agent}, looked in {skills_root}/skills)",
                     file=sys.stderr,
                 )
+                sys.exit(1)
 
-        all_results.append(output)
+            if args.verbose:
+                print(
+                    f"\n=== Workspace: {ws_id} ({workspace}) [agent={agent}] ===",
+                    file=sys.stderr,
+                )
+                print(f"Skill: {skill_name}", file=sys.stderr)
+                print(f"Queries: {len(eval_set)} ({args.runs_per_query} runs each)", file=sys.stderr)
+
+            output = run_eval_on_workspace(
+                eval_set=eval_set,
+                skill_name=skill_name,
+                workspace=workspace,
+                ws_id=ws_id,
+                num_workers=args.num_workers,
+                timeout=args.timeout,
+                runs_per_query=args.runs_per_query,
+                trigger_threshold=args.trigger_threshold,
+                agent=agent,
+                model=args.model,
+                verbose=args.verbose,
+            )
+
+            if args.verbose:
+                s = output["summary"]
+                print(
+                    f"Results: {s['passed']}/{s['total']} passed  "
+                    f"precision={s['precision']}  recall={s['recall']}  "
+                    f"clashes={s['clashes']}",
+                    file=sys.stderr,
+                )
+                for r in output["results"]:
+                    status = "PASS" if r["pass"] else "FAIL"
+                    rate_str = f"{r['triggers']}/{r['runs']}"
+                    clash_str = f" CLASH→{r['clashes']}" if r.get("clashes") else ""
+                    print(
+                        f"  [{status}] rate={rate_str} expected={r['should_trigger']}{clash_str}: "
+                        f"{r['query'][:80]}",
+                        file=sys.stderr,
+                    )
+
+            all_results.append(output)
+
+    # Per-agent rollup when more than one agent ran in this invocation.
+    if args.verbose and len(agents) > 1:
+        print("\n=== Per-agent summary ===", file=sys.stderr)
+        for agg in per_agent_rollup(all_results):
+            print(
+                f"  {agg['agent']:7} {agg['passed']}/{agg['total']} passed  "
+                f"clashes={agg['clashes']}",
+                file=sys.stderr,
+            )
 
     print(json.dumps(all_results if len(all_results) > 1 else all_results[0], indent=2))
 

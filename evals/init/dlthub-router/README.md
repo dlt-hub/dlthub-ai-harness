@@ -6,9 +6,9 @@ The `dlthub-router` skill must trigger and route correctly on **all three agents
 
 **What is validated automatically vs. manually today:**
 
-- **Automated trigger eval (Claude only):** the harness below drives the agent headlessly via `claude -p`. There is no equivalent headless driver wired for Cursor or Codex yet, so automated trigger-rate measurement currently runs on Claude only.
+- **Automated trigger eval (all three agents):** the harness below drives each agent headlessly — `claude -p`, `codex exec --json`, `cursor-agent -p` — via `tools/run_trigger_eval.py --agent {claude,cursor,codex}` (or `--agent all`). Claude triggers are detected via the `Skill` tool; Codex/Cursor via a read of the skill's `SKILL.md`. See [EVALS.md](../../../EVALS.md).
 - **Cross-agent install + always-loaded surface (all three):** verified via `dlthub ai toolkit install … --strict` for `--agent claude|cursor|codex` and by inspecting the generated rule / `.mdc` / `AGENTS.md` (the index reaches the always-loaded surface on each).
-- **Cursor/Codex trigger automation is a follow-up** — needs headless runners for those agents. Until then, trigger behavior on Cursor/Codex is checked manually.
+- **`dlthub-router` is N/A for automated trigger measurement on Codex:** it's an always-loaded router, and on Codex the routing index lives in `AGENTS.md` (not a skill activation), so there's no discrete trigger event. (It also currently exceeds Codex's 1024-char skill-description cap and is dropped as a skill — tracked in [#75](https://github.com/dlt-hub/dlthub-ai-workbench-internal/issues/75).) Measure it on Claude/Cursor; on Codex, confirm routing in the final answer manually.
 
 ## Status: eval framework bug — skill triggers correctly
 
@@ -37,13 +37,16 @@ CLAUDECODE= claude -p "how can I build my first pipeline?" --output-format strea
 
 Check the stream for `{"name":"Skill","input":{"skill":"dlthub-router"}}`.
 
-### How to check (Cursor / Codex, manual until runners exist)
+### How to check (Cursor / Codex, automated)
 
-Create the workspace for the target agent and open it in that agent, then issue the same prompts and confirm the skill triggers and routes:
+Build the workspace for the target agent and run the eval against it:
 
 ```bash
-# (agent param support tracked as follow-up; today the workspace installs for --agent claude)
+uv run python tools/create_eval_workspace.py evals/init/dlthub-router --agent cursor
+uv run python tools/run_trigger_eval.py evals/init/dlthub-router --agent cursor --verbose
 ```
+
+On **Cursor**, `dlthub-router` installs as a skill and triggers via a `readToolCall` on `.cursor/skills/dlthub-router/SKILL.md`. On **Codex** the router is N/A for automated measurement (see above) — routing is served by the always-loaded `AGENTS.md`; confirm it manually by checking the final answer names the right toolkit.
 
 ### Negative cases (100% precision in automated eval)
 
