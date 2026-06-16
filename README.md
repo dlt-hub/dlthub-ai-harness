@@ -76,35 +76,20 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 ## Getting started
 
-### First-time onboarding (want to try or learn dltHub)
+### New project (recommended)
 
-> **`uvx dlthub-start@latest` is ONLY for first-time dlthub users who want to onboard or learn dltHub.** It is an onboarding / playground experience that scaffolds a fresh playground workspace to explore the workbench — it is **not** for production workflows and **not** for setting up an existing project. If you already have a project, or you just want to set up a clean new dlthub project, skip this entirely and use [Set up a project](#set-up-a-project) below. (Coding assistants only suggest this when *you* ask to be onboarded — they never run it for you, because it requires interaction for authentication.)
-
-If you're new to dltHub and want to try or learn it, [`dlthub-start`](https://pypi.org/project/dlthub-start/) is the fastest way in — no prior setup needed. Run it **without a workspace name** and follow the interactive prompts:
+To set up a clean new dlthub project with AI support, run [`dlthub-init`](https://pypi.org/project/dlthub-init/). It is non-interactive and AI-aware, so **your coding assistant can run it for you** — this is the command an agent should use to set up a clean new dlthub project. It pins `dlt[hub]` via a bundled lock and runs `uv sync`:
 
 ```bash
-uvx dlthub-start@latest
+uvx dlthub-init@latest <dir>    # scaffold a clean new project into <dir>
 ```
 
-> **Run this yourself in your terminal — don't ask your coding assistant to run it.** `uvx dlthub-start` must be run by a human because it requires interaction for authentication (and prompts you for a workspace name, scaffold, and assistants); it only works in a real terminal. It does **not** work in your assistant's `!` shell mode — run it directly in your own terminal. If you want an agent to set up a clean new project for you, use [`dlthub-init`](#set-up-a-project) instead.
+### Existing project
 
-This interactive prompt scaffolds a ready-to-run workspace: asks for a workspace name, picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done, `cd` into the workspace it created:
-
-```bash
-cd <your-workspace-name>
-uv run dlthub run load_breweries   # run the example pipeline on dltHub
-uv run dlthub show                 # open the dltHub dashboard
-```
-
-### Set up a project
-
-To set up a clean new dlthub project, or to add the AI workbench to an existing one.
-
-**Recommended — one command:** [`dlthub-init`](https://pypi.org/project/dlthub-init/) scaffolds AI support, either **in place** or into a **clean new directory**. Unlike `dlthub-start`, it is non-interactive and AI-aware, so your coding assistant can run it for you — this is the command an agent should use to set up a clean new dlthub project. It uses per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]` via a bundled lock, and runs `uv sync`:
+To add the AI workbench to an existing project, run the same [`dlthub-init`](https://pypi.org/project/dlthub-init/) **in place**. It uses per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — and, being non-interactive, your coding assistant can run it for you:
 
 ```bash
 uvx dlthub-init@latest          # set up AI support in the current directory
-uvx dlthub-init@latest <dir>    # or scaffold a clean new project into a new directory
 ```
 
 **Manual steps (fallback):** if you'd rather do it step by step, or `dlthub-init` isn't available:
@@ -151,9 +136,19 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 > CRITICAL: never ask for credentials in chat. Always let the user edit secrets directly and do not attempt to read them.
 > ```
 
+### First-time onboarding (want to try or learn dltHub)
+
+New to dltHub and just want to try or learn it? Run [`dlthub-start`](https://pypi.org/project/dlthub-start/) **yourself** — it scaffolds a fresh **playground** workspace (not for production, not for setting up a real project):
+
+```bash
+uvx dlthub-start@latest
+```
+
+> **Run this yourself — don't ask your coding assistant.** `uvx dlthub-start` must be run by a human because it requires interaction for authentication; it only works in a real terminal (not `!` mode). For agent-driven setup, use [`dlthub-init`](#new-project-recommended) above.
+
 ### Browse and install toolkits
 
-> **Don't have dlthub set up yet?** Follow [Set up a project](#set-up-a-project) above first (or the `bootstrap` toolkit's `/init-workspace`, which the assistant can drive). The toolkit commands below assume `dlthub` is installed in your environment.
+> **Don't have dlthub set up yet?** Follow [New project](#new-project-recommended) or [Existing project](#existing-project) above first (or the `bootstrap` toolkit's `/init-workspace`, which the assistant can drive). The toolkit commands below assume `dlthub` is installed in your environment.
 
 
 ```bash
