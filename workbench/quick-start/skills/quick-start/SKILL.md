@@ -20,8 +20,8 @@ Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
 - If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**.
-  - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, so an agent can run it directly — **this is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory). It scaffolds an AI-supported project with per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — `dlthub init` + `dlthub ai init` in one safe step.
-  - **Fallback (if `dlthub-init` is unavailable or errors)** — drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`.
+  - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, so an agent can run it directly — **this is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory). It scaffolds a dlthub workspace with AI support, collision-safe, in one step.
+  - **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from "dlt[hub]" dlthub init` (equivalent to `uv init` + `uv add "dlt[hub]"` + `uv run dlthub init`), then `uv run dlthub ai init` to set up AI support.
 
   Wait for completion, then re-check status before continuing to Step 2.
 
