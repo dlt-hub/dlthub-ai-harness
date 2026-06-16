@@ -63,6 +63,15 @@ After install, `dlthub ai status` and `dlthub ai toolkit install <name>` display
 3. **Extend and harden** (optional) — additional steps for production readiness, iteration, or advanced use cases
 4. **Handover to other toolkits** — when to leave this toolkit. Each entry names the target toolkit, the trigger condition, and which local skill the user was in when the handover applies
 
+#### Router vs handovers
+
+Two mechanisms route the user between toolkits — they are complementary, not redundant:
+
+- **Router/index** (`dlthub-router` skill + the always-loaded intent index in `init`) handles **cold start**: no relevant toolkit installed yet → match intent, install the toolkit, enter at its entry skill.
+- **Handovers** (a toolkit's `workflow.md`) handle **in-flight transitions**: they carry context forward (pipeline name, dataset, destination → "skip discovery") and route to a *specific* skill under a *specific* condition (e.g. Early vs Later deploy, Profile A vs B) — precision the index can't express.
+
+When a handover names a toolkit that is **not installed**, use the index/router to install it, then follow the handover's entry point + context. The router does not fire mid-workflow once the relevant toolkit is installed (its description gates that out).
+
 #### Linking conventions
 
 - **Internal skills/commands** — reference with backtick-parens: `(`skill-name`)`. The validator checks these resolve to real skill directories.
