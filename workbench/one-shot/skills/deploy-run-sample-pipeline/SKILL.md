@@ -6,8 +6,6 @@ argument-hint: ""
 
 Deploy `github_pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads the 50 most recent issues from `dlt-hub/dlt`.
 
-**Reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments
-
 ## Step 1 — Connect to the personal playground workspace
 
 ```bash
@@ -18,16 +16,30 @@ If multiple workspaces named `playground` exist, run `uv run dlthub workspace li
 
 Note the workspace ID from the output — you will need it in the final step.
 
-## Step 2 — Set up a cloud destination
+## Step 2 — Choose a destination
 
-The pipeline loads into `duckdb` locally. A cloud destination is required for data to persist on the platform.
+Ask the user which destination they want to use:
 
-Ask the user which destination they want to use. Available destinations:
+> Which destination would you like to deploy to?
+> 1. MotherDuck
+> 2. BigQuery
+> 3. Snowflake
+> 4. Other
+
+Wait for the user to respond before continuing.
+
+If they choose "Other", ask them to type the name in and retain their chosen destination in memory.
+
+## Step 3 — Configure Destination
+
+Fetch the docs URL for the chosen destination. Read it to find the install command and the required credential fields — you will need both in the next two steps.
 
 | Destination | Docs |
 |---|---|
-| Athena | https://dlthub.com/docs/dlt-ecosystem/destinations/athena |
+| MotherDuck | https://dlthub.com/docs/dlt-ecosystem/destinations/motherduck |
 | BigQuery | https://dlthub.com/docs/dlt-ecosystem/destinations/bigquery |
+| Snowflake | https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake |
+| Athena | https://dlthub.com/docs/dlt-ecosystem/destinations/athena |
 | Clickhouse | https://dlthub.com/docs/dlt-ecosystem/destinations/clickhouse |
 | Databricks | https://dlthub.com/docs/dlt-ecosystem/destinations/databricks |
 | Delta / Iceberg | https://dlthub.com/docs/dlt-ecosystem/destinations/delta-iceberg |
@@ -40,21 +52,24 @@ Ask the user which destination they want to use. Available destinations:
 | Iceberg | https://dlthub.com/docs/dlt-ecosystem/destinations/iceberg |
 | Lance | https://dlthub.com/docs/dlt-ecosystem/destinations/lance |
 | LanceDB | https://dlthub.com/docs/dlt-ecosystem/destinations/lancedb |
-| MotherDuck | https://dlthub.com/docs/dlt-ecosystem/destinations/motherduck |
 | MSSQL | https://dlthub.com/docs/dlt-ecosystem/destinations/mssql |
 | Postgres | https://dlthub.com/docs/dlt-ecosystem/destinations/postgres |
 | Qdrant | https://dlthub.com/docs/dlt-ecosystem/destinations/qdrant |
 | Redshift | https://dlthub.com/docs/dlt-ecosystem/destinations/redshift |
-| Snowflake | https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake |
 | SQLAlchemy | https://dlthub.com/docs/dlt-ecosystem/destinations/sqlalchemy |
 | Synapse | https://dlthub.com/docs/dlt-ecosystem/destinations/synapse |
 | Weaviate | https://dlthub.com/docs/dlt-ecosystem/destinations/weaviate |
 
-Once the user picks a destination, fetch its docs URL from the table above to find the exact credential fields required. Do this before writing any config.
+Install the package and sync:
 
-Set up a named destination called `warehouse`. Check `config.toml` first — if a `[destination.warehouse]` block already exists there, move it to `dev.config.toml` so it only applies locally.
+```bash
+uv add "dlt[<extra>]"
+uv sync
+```
 
-Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using only the fields from the destination docs:
+## Step 3.1 — Configure credentials
+
+Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using only the credential fields from the docs page you just read:
 
 ```toml
 [destination.warehouse]
@@ -72,14 +87,7 @@ Then tell the user:
 
 Use `secrets_view_redacted` to verify — confirm credentials appear as `***`. If any field is still empty, ask the user to fill it in before proceeding.
 
-Install the destination package (found in the docs page you just read) and sync:
-
-```bash
-uv add "dlt[<extra>]"
-uv sync
-```
-
-## Step 3 — Register in `__deployment__.py`
+## Step 4 — Register in `__deployment__.py`
 
 Add the pipeline to the existing `__deployment__.py`:
 
@@ -89,7 +97,7 @@ from github_pipeline import load_github
 __all__ = [..., "load_github"]
 ```
 
-## Step 4 — Deploy
+## Step 5 — Deploy
 
 ```bash
 uv run dlthub deploy
@@ -97,7 +105,7 @@ uv run dlthub deploy
 
 Summarize which jobs were created or updated.
 
-## Step 5 — Run on the cloud
+## Step 6 — Run on the cloud
 
 ```bash
 uv run dlthub run load_github -f
