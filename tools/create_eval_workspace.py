@@ -191,12 +191,8 @@ def create_workspaces(eval_dir: Path, agent: str = "claude") -> list[Path]:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Create eval workspaces for trigger testing."
-    )
-    parser.add_argument(
-        "eval_dir", help="Eval directory, e.g. evals/init/dlthub-router"
-    )
+    parser = argparse.ArgumentParser(description="Create eval workspaces for trigger testing.")
+    parser.add_argument("eval_dir", help="Eval directory, e.g. evals/init/dlthub-router")
     parser.add_argument(
         "--agent",
         default="claude",

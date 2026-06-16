@@ -622,7 +622,10 @@ def main():
                     file=sys.stderr,
                 )
                 print(f"Skill: {skill_name}", file=sys.stderr)
-                print(f"Queries: {len(eval_set)} ({args.runs_per_query} runs each)", file=sys.stderr)
+                print(
+                    f"Queries: {len(eval_set)} ({args.runs_per_query} runs each)",
+                    file=sys.stderr,
+                )
 
             output = run_eval_on_workspace(
                 eval_set=eval_set,
