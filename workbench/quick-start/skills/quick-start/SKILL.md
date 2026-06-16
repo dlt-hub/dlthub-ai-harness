@@ -20,7 +20,7 @@ Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
 - If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**.
-  - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, scaffolds an AI-supported project in place with per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — `dlthub init` + `dlthub ai init` in one safe step.
+  - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, so an agent can run it directly — **this is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory). It scaffolds an AI-supported project with per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — `dlthub init` + `dlthub ai init` in one safe step.
   - **Fallback (if `dlthub-init` is unavailable or errors)** — drive the `bootstrap` / `/bootstrap:init-workspace` flow yourself: ensure `uv` + venv, then `uv add "dlt[hub]"` (installs `dlt[hub]`, not plain `dlt`), `uv run dlthub init`, `uv run dlthub ai init`.
 
   Wait for completion, then re-check status before continuing to Step 2.
@@ -31,7 +31,7 @@ Run `uv run dlthub ai status`.
   uvx dlthub-start@latest
   ```
 
-  It is interactive and only works in a real terminal — **do NOT use `!` mode for it**. Tell the user to run it in their own terminal.
+  It must be run by a human because it requires interaction for authentication; it only works in a real terminal — **do NOT use `!` mode for it**. Tell the user to run it in their own terminal. (For agent-driven setup of a clean new project, use `uvx dlthub-init@latest` above instead.)
 
 ## Step 2 — Present capability index and ask one question
 
