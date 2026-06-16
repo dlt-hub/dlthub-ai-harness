@@ -22,29 +22,46 @@ Note the workspace ID from the output — you will need it in the final step.
 
 The pipeline loads into `duckdb` locally. A cloud destination is required for data to persist on the platform.
 
-**Reference**: https://dlthub.com/docs/general-usage/destination
+Ask the user which destination they want to use. Available destinations:
 
-Ask the user which destination they want to use:
-
-| Destination | Package |
+| Destination | Docs |
 |---|---|
-| MotherDuck | `uv add "dlt[motherduck]"` |
-| BigQuery | `uv add "dlt[bigquery]"` |
-| Snowflake | `uv add "dlt[snowflake]"` |
-| Redshift | `uv add "dlt[redshift]"` |
+| Athena | https://dlthub.com/docs/dlt-ecosystem/destinations/athena |
+| BigQuery | https://dlthub.com/docs/dlt-ecosystem/destinations/bigquery |
+| Clickhouse | https://dlthub.com/docs/dlt-ecosystem/destinations/clickhouse |
+| Databricks | https://dlthub.com/docs/dlt-ecosystem/destinations/databricks |
+| Delta / Iceberg | https://dlthub.com/docs/dlt-ecosystem/destinations/delta-iceberg |
+| Dremio | https://dlthub.com/docs/dlt-ecosystem/destinations/dremio |
+| DuckDB | https://dlthub.com/docs/dlt-ecosystem/destinations/duckdb |
+| DuckLake | https://dlthub.com/docs/dlt-ecosystem/destinations/ducklake |
+| Fabric | https://dlthub.com/docs/dlt-ecosystem/destinations/fabric |
+| Filesystem | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| HuggingFace | https://dlthub.com/docs/dlt-ecosystem/destinations/huggingface |
+| Iceberg | https://dlthub.com/docs/dlt-ecosystem/destinations/iceberg |
+| Lance | https://dlthub.com/docs/dlt-ecosystem/destinations/lance |
+| LanceDB | https://dlthub.com/docs/dlt-ecosystem/destinations/lancedb |
+| MotherDuck | https://dlthub.com/docs/dlt-ecosystem/destinations/motherduck |
+| MSSQL | https://dlthub.com/docs/dlt-ecosystem/destinations/mssql |
+| Postgres | https://dlthub.com/docs/dlt-ecosystem/destinations/postgres |
+| Qdrant | https://dlthub.com/docs/dlt-ecosystem/destinations/qdrant |
+| Redshift | https://dlthub.com/docs/dlt-ecosystem/destinations/redshift |
+| Snowflake | https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake |
+| SQLAlchemy | https://dlthub.com/docs/dlt-ecosystem/destinations/sqlalchemy |
+| Synapse | https://dlthub.com/docs/dlt-ecosystem/destinations/synapse |
+| Weaviate | https://dlthub.com/docs/dlt-ecosystem/destinations/weaviate |
+
+Once the user picks a destination, fetch its docs URL from the table above to find the exact credential fields required. Do this before writing any config.
 
 Set up a named destination called `warehouse`. Check `config.toml` first — if a `[destination.warehouse]` block already exists there, move it to `dev.config.toml` so it only applies locally.
 
-Look up the required credential fields for the chosen destination in the dlt docs: `https://dlthub.com/docs/dlt-ecosystem/destinations/<destination-name>`
-
-Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using the correct fields for that destination:
+Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using only the fields from the destination docs:
 
 ```toml
 [destination.warehouse]
 destination_type = "<chosen-destination>"
 
 [destination.warehouse.credentials]
-# fields from dlt docs for <chosen-destination>
+# fields as documented for <chosen-destination> — do not guess
 ```
 
 Then tell the user:
@@ -55,7 +72,7 @@ Then tell the user:
 
 Use `secrets_view_redacted` to verify — confirm credentials appear as `***`. If any field is still empty, ask the user to fill it in before proceeding.
 
-Install the destination package and sync:
+Install the destination package (found in the docs page you just read) and sync:
 
 ```bash
 uv add "dlt[<extra>]"
