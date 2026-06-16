@@ -255,27 +255,14 @@ def _codex_line_skill(line: str, baseline: set[str]) -> str | None:
     return None
 
 
-def _run_codex(
-    query: str,
-    workspace: str,
-    timeout: int,
-    model: str | None = None,
-) -> str | None:
-    """Run a query via `codex exec --json`. Return the skill that triggered, or None.
+def _stream_scan_for_skill(cmd, workspace, timeout, line_skill):
+    """Run cmd in the workspace, stream stdout JSONL, and return the first
+    non-None result of line_skill(line) — i.e. the first detected skill.
 
-    Codex has no native Skill tool: it "activates" a skill by running a shell
-    command that reads `.agents/skills/<name>/SKILL.md`. Always-on skills (the
-    AGENTS.md "ALWAYS ACTIVATE" bullets) are read every turn, so we exclude them
-    and return the first *opt-in* skill whose SKILL.md the query caused to be
-    read. stdin must be closed (DEVNULL) or codex blocks waiting on it; we run
-    read-only so the probe cannot mutate the workspace.
+    Shared by the codex and cursor runners (both have no native Skill tool and
+    signal a trigger by reading a SKILL.md). stdin is closed (codex blocks
+    otherwise); stderr is discarded.
     """
-    baseline = _codex_baseline_skills(workspace)
-
-    cmd = ["codex", "exec", query, "--json", "-s", "read-only"]
-    if model:
-        cmd.extend(["-m", model])
-
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.DEVNULL,
@@ -302,7 +289,7 @@ def _run_codex(
             buffer += chunk.decode("utf-8", errors="replace")
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
-                skill = _codex_line_skill(line, baseline)
+                skill = line_skill(line)
                 if skill:
                     return skill
     finally:
@@ -312,10 +299,55 @@ def _run_codex(
 
     # Drain any remaining buffered lines after process exit.
     for line in buffer.split("\n"):
-        skill = _codex_line_skill(line, baseline)
+        skill = line_skill(line)
         if skill:
             return skill
     return None
+
+
+def _run_codex(
+    query: str,
+    workspace: str,
+    timeout: int,
+    model: str | None = None,
+) -> str | None:
+    """Run a query via `codex exec --json`. Return the skill that triggered, or None.
+
+    Codex has no native Skill tool: it "activates" a skill by running a shell
+    command that reads `.agents/skills/<name>/SKILL.md`. Always-on skills (the
+    AGENTS.md "ALWAYS ACTIVATE" bullets) are read every turn, so we exclude them
+    and return the first *opt-in* skill whose SKILL.md the query caused to be
+    read. Runs read-only so the probe cannot mutate the workspace.
+    """
+    baseline = _codex_baseline_skills(workspace)
+    cmd = ["codex", "exec", query, "--json", "-s", "read-only"]
+    if model:
+        cmd.extend(["-m", model])
+    return _stream_scan_for_skill(
+        cmd, workspace, timeout, lambda line: _codex_line_skill(line, baseline)
+    )
+
+
+_CURSOR_SKILL_READ_RE = re.compile(r"\.cursor/skills/([a-z0-9][a-z0-9-]*)/SKILL\.md")
+
+
+def _cursor_line_skill(line: str) -> str | None:
+    """If a JSONL line is a readToolCall on an in-workspace SKILL.md, return that skill."""
+    line = line.strip()
+    if not line:
+        return None
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if event.get("type") != "tool_call":
+        return None
+    read_call = event.get("tool_call", {}).get("readToolCall")
+    if not read_call:
+        return None
+    path = read_call.get("args", {}).get("path", "")
+    m = _CURSOR_SKILL_READ_RE.search(path)
+    return m.group(1) if m else None
 
 
 def _run_cursor(
@@ -324,8 +356,21 @@ def _run_cursor(
     timeout: int,
     model: str | None = None,
 ) -> str | None:
-    """Cursor runner — implemented in T6 (Stage 2)."""
-    raise NotImplementedError("Cursor runner lands in T6")
+    """Run a query via `cursor-agent -p --output-format stream-json`. Return the
+    skill that triggered, or None.
+
+    Cursor has no native Skill tool: it activates a skill by reading the file via
+    a `readToolCall` on `.cursor/skills/<name>/SKILL.md`. Return the first such
+    in-workspace read. No baseline exclusion: cursor keeps always-on content as
+    auto-applied `.mdc` rules, not skill reads; the `.cursor/skills/` path
+    requirement excludes stray SKILL.md reads elsewhere in the repo. `--trust`
+    runs headlessly (auth via `cursor-agent login` or CURSOR_API_KEY) and lets
+    file reads through while rejecting shell/web — enough to detect the trigger.
+    """
+    cmd = ["cursor-agent", "-p", query, "--output-format", "stream-json", "--trust"]
+    if model:
+        cmd.extend(["--model", model])
+    return _stream_scan_for_skill(cmd, workspace, timeout, _cursor_line_skill)
 
 
 def run_eval_on_workspace(
