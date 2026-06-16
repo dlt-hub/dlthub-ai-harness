@@ -1,6 +1,6 @@
 {
   "name": "one-shot",
-  "description": "Build and run a minimal REST API pipeline locally against DuckDB, then deploy it to dltHub Platform in one shot",
+  "description": "Deploy a GitHub issues pipeline to dltHub Platform in one shot",
   "version": "0.1.0",
   "author": {
     "name": "ScaleVector GmbH"

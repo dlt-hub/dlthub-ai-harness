@@ -93,7 +93,7 @@
     {
       "name": "one-shot",
       "source": "./workbench/one-shot",
-      "description": "Build and run a minimal REST API pipeline locally against DuckDB, then deploy it to dltHub Platform. Name an API, get a working pipeline with viewable data in minutes.",
+      "description": "Build and run a minimal REST API pipeline for GitHub, then deploy it to dltHub Platform.",
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlthub", "pipeline", "one-shot", "data-pipeline", "python"]
