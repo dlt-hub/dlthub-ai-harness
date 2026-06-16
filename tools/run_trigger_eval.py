@@ -19,6 +19,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import select
 import subprocess
 import sys
@@ -44,15 +45,22 @@ def load_config(eval_dir: Path) -> dict[str, dict]:
     return workspaces
 
 
-def find_workspace(eval_dir: Path, ws_id: str) -> Path:
-    """Find workspace path for a given workspace ID."""
+def find_workspace(eval_dir: Path, ws_id: str, agent: str = "claude") -> Path:
+    """Find workspace path for a given workspace ID and agent.
+
+    Mirrors create_eval_workspace.ws_name_for: claude paths are unsuffixed;
+    cursor/codex get a `--<agent>` suffix so all three coexist.
+    """
     rel = eval_dir.relative_to(ROOT / "evals")
     name = str(rel).replace("/", "--").replace("\\", "--") + "--" + ws_id
+    if agent != "claude":
+        name += "--" + agent
     ws = EVALS_DIR / name
     if not ws.is_dir():
         print(f"ERROR: Workspace not found: {ws}", file=sys.stderr)
         print(
-            f"Run: uv run python tools/create_eval_workspace.py {eval_dir.relative_to(ROOT)}",
+            f"Run: uv run python tools/create_eval_workspace.py "
+            f"{eval_dir.relative_to(ROOT)} --agent {agent}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -63,9 +71,35 @@ def run_single_query(
     query: str,
     workspace: str,
     timeout: int,
+    agent: str = "claude",
     model: str | None = None,
 ) -> str | None:
-    """Run a query via claude -p. Return the skill name that triggered, or None."""
+    """Run one query and return the skill name that triggered, or None.
+
+    Dispatches to a per-agent runner. Each agent signals a skill trigger
+    differently (see the per-agent functions), but they share the return
+    contract: the name of the skill that triggered for this query, or None.
+    """
+    if agent == "claude":
+        return _run_claude(query, workspace, timeout, model)
+    if agent == "codex":
+        return _run_codex(query, workspace, timeout, model)
+    if agent == "cursor":
+        return _run_cursor(query, workspace, timeout, model)
+    raise ValueError(f"Unknown agent: {agent}")
+
+
+def _run_claude(
+    query: str,
+    workspace: str,
+    timeout: int,
+    model: str | None = None,
+) -> str | None:
+    """Run a query via claude -p. Return the skill name that triggered, or None.
+
+    Claude exposes skills as a native `Skill` tool, so a trigger is the first
+    tool_use in the stream being `Skill` (its `input.skill` is the name).
+    """
     cmd = [
         "claude",
         "-p",
@@ -176,10 +210,122 @@ def _extract_skill_name(json_fragment: str) -> str | None:
         return data.get("skill")
     except json.JSONDecodeError:
         # Partial JSON — look for "skill":"<name>" pattern
-        import re
-
         m = re.search(r'"skill"\s*:\s*"([^"]+)"', json_fragment)
         return m.group(1) if m else None
+
+
+_SKILL_READ_RE = re.compile(r"\.agents/skills/([a-z0-9][a-z0-9-]*)/SKILL\.md")
+
+
+def _codex_baseline_skills(workspace: str) -> set[str]:
+    """Always-on skills registered in the workspace AGENTS.md.
+
+    On Codex these are read on every turn regardless of the query (the
+    "ALWAYS ACTIVATE" bullets, written as `- ``<name>```), so they must be
+    excluded when detecting which skill a query actually triggered.
+    """
+    agents_md = Path(workspace) / "AGENTS.md"
+    if not agents_md.is_file():
+        return set()
+    names = set()
+    for line in agents_md.read_text().splitlines():
+        m = re.match(r"\s*-\s*`([a-z0-9][a-z0-9-]*)`", line)
+        if m:
+            names.add(m.group(1))
+    return names
+
+
+def _codex_line_skill(line: str, baseline: set[str]) -> str | None:
+    """If a JSONL line is a command reading a non-baseline SKILL.md, return that skill."""
+    line = line.strip()
+    if not line:
+        return None
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if event.get("type") not in ("item.started", "item.completed"):
+        return None
+    item = event.get("item", {})
+    if item.get("type") != "command_execution":
+        return None
+    for name in _SKILL_READ_RE.findall(item.get("command", "")):
+        if name not in baseline:
+            return name
+    return None
+
+
+def _run_codex(
+    query: str,
+    workspace: str,
+    timeout: int,
+    model: str | None = None,
+) -> str | None:
+    """Run a query via `codex exec --json`. Return the skill that triggered, or None.
+
+    Codex has no native Skill tool: it "activates" a skill by running a shell
+    command that reads `.agents/skills/<name>/SKILL.md`. Always-on skills (the
+    AGENTS.md "ALWAYS ACTIVATE" bullets) are read every turn, so we exclude them
+    and return the first *opt-in* skill whose SKILL.md the query caused to be
+    read. stdin must be closed (DEVNULL) or codex blocks waiting on it; we run
+    read-only so the probe cannot mutate the workspace.
+    """
+    baseline = _codex_baseline_skills(workspace)
+
+    cmd = ["codex", "exec", query, "--json", "-s", "read-only"]
+    if model:
+        cmd.extend(["-m", model])
+
+    process = subprocess.Popen(
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        cwd=workspace,
+    )
+
+    start_time = time.time()
+    buffer = ""
+    try:
+        while time.time() - start_time < timeout:
+            if process.poll() is not None:
+                remaining = process.stdout.read()
+                if remaining:
+                    buffer += remaining.decode("utf-8", errors="replace")
+                break
+            ready, _, _ = select.select([process.stdout], [], [], 1.0)
+            if not ready:
+                continue
+            chunk = os.read(process.stdout.fileno(), 8192)
+            if not chunk:
+                break
+            buffer += chunk.decode("utf-8", errors="replace")
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                skill = _codex_line_skill(line, baseline)
+                if skill:
+                    return skill
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+
+    # Drain any remaining buffered lines after process exit.
+    for line in buffer.split("\n"):
+        skill = _codex_line_skill(line, baseline)
+        if skill:
+            return skill
+    return None
+
+
+def _run_cursor(
+    query: str,
+    workspace: str,
+    timeout: int,
+    model: str | None = None,
+) -> str | None:
+    """Cursor runner — implemented in T6 (Stage 2)."""
+    raise NotImplementedError("Cursor runner lands in T6")
 
 
 def run_eval_on_workspace(
@@ -191,6 +337,7 @@ def run_eval_on_workspace(
     timeout: int,
     runs_per_query: int,
     trigger_threshold: float,
+    agent: str,
     model: str | None,
     verbose: bool,
 ) -> dict:
@@ -205,6 +352,7 @@ def run_eval_on_workspace(
                     item["query"],
                     str(workspace),
                     timeout,
+                    agent,
                     model,
                 )
                 future_to_info[future] = (item, run_idx)
@@ -288,6 +436,7 @@ def run_eval_on_workspace(
     return {
         "workspace": ws_id,
         "workspace_path": str(workspace),
+        "agent": agent,
         "skill_name": skill_name,
         "results": results,
         "summary": {
@@ -327,6 +476,12 @@ def main():
         help="Trigger rate threshold (default: 0.5)",
     )
     parser.add_argument("--model", default=None, help="Model override")
+    parser.add_argument(
+        "--agent",
+        default="claude",
+        choices=["claude", "cursor", "codex"],
+        help="Agent to drive headlessly (default: claude)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
 
@@ -360,18 +515,24 @@ def main():
             reason = e.get("reason", "no reason")
             print(f"  - {e['query'][:60]}... ({reason})", file=sys.stderr)
 
+    skills_root = {"claude": ".claude", "cursor": ".cursor", "codex": ".agents"}[args.agent]
+
     all_results = []
     for ws_id in ws_configs:
-        workspace = find_workspace(eval_dir, ws_id)
+        workspace = find_workspace(eval_dir, ws_id, args.agent)
 
-        # Verify skill exists
-        skill_dir = workspace / ".claude" / "skills" / skill_name
+        # Verify skill exists in the agent's install layout
+        skill_dir = workspace / skills_root / "skills" / skill_name
         if not skill_dir.is_dir():
-            print(f"ERROR: Skill '{skill_name}' not in workspace '{ws_id}'", file=sys.stderr)
+            print(
+                f"ERROR: Skill '{skill_name}' not in workspace '{ws_id}' "
+                f"(agent={args.agent}, looked in {skills_root}/skills)",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         if args.verbose:
-            print(f"\n=== Workspace: {ws_id} ({workspace}) ===", file=sys.stderr)
+            print(f"\n=== Workspace: {ws_id} ({workspace}) [agent={args.agent}] ===", file=sys.stderr)
             print(f"Skill: {skill_name}", file=sys.stderr)
             print(f"Queries: {len(eval_set)} ({args.runs_per_query} runs each)", file=sys.stderr)
 
@@ -384,6 +545,7 @@ def main():
             timeout=args.timeout,
             runs_per_query=args.runs_per_query,
             trigger_threshold=args.trigger_threshold,
+            agent=args.agent,
             model=args.model,
             verbose=args.verbose,
         )
