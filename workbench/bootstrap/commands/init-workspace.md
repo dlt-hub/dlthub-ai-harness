@@ -7,6 +7,10 @@ description: Sets up dlthub workspace. Ensures `uv`, Python env and dlthub are p
 
 Makes sure that `uv`, Python `venv` and `dlthub` is installed, then sets up AI support.
 
+> **Fallback — prefer `uvx dlthub-init@latest`.** For setting up a clean new dlthub project, or adding AI support to an existing one, prefer `uvx dlthub-init@latest` — it is non-interactive and AI-aware, so the agent can run it directly (`uvx dlthub-init@latest <dir>` scaffolds into a new directory; bare sets up in place). Use the flow below only when `dlthub-init` is unavailable or errors.
+>
+> In case the user asks to be onboarded to dltHub (or similar, like "I want to learn how to use dltHub"), recommend them to run `uvx dlthub-start@latest` in their terminal, which scaffolds a separate **playground** workspace (not for production workflows). `uvx dlthub-start` must be run by a human because it requires interaction for authentication and only works in a real terminal (it does NOT work in `!` mode), so **never run it yourself** — ask the user to run it in their own terminal.
+
 ## Step 1: Gather evidence
 
 Run all checks **silently** — do NOT install or change anything yet. Execute in order! If previous check does not work - others
