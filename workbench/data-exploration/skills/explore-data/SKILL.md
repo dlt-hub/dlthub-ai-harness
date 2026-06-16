@@ -6,7 +6,14 @@ description: This skill should be used when the user asks to "explore my data", 
 
 # Explore data and plan charts
 
-Connect to a dlt pipeline, understand the data, and plan one chart at a time. Outputs a `<date>_<pipeline_name>_analysis_plan.md` artifact that `build-notebook` consumes. Use today's date in `YYYY-MM-DD` format (e.g., `2026-03-10`).
+Connect to a dlt pipeline, understand the data, and plan charts. Outputs a `<date>_<pipeline_name>_analysis_plan.md` artifact that `build-notebook` consumes. Use today's date in `YYYY-MM-DD` format (e.g., `2026-03-10`).
+
+## Batch vs interactive — pick ONE mode up front
+
+This is the biggest driver of how fast the session runs. Each round-trip to the user or a re-invocation costs real time, so default to batch unless the user is clearly exploring live.
+
+- **Batch mode (DEFAULT)** — the user named a count or set of questions ("3 charts", "revenue and signups over time", "all of them"), or this is a non-interactive run. Plan **all** charts in a single pass, write the whole `analysis_plan.md` in **one** Write, and hand off to `build-notebook` **once**. Do not loop one chart at a time.
+- **Interactive mode** — the user is exploring open-endedly and wants to react to each chart before the next. Only then plan one chart, propose the notebook, and iterate. This is the slow path; use it only when the user asked for it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
@@ -22,69 +29,36 @@ Before discovery, check what's already available:
 
 ## Detect intent
 
-See `workflow.md` for high-intent vs low-intent definitions. **One chart per invocation** — if the user asks multiple questions, pick the first one and save the rest as `[ ]` pending questions.
+See `workflow.md` for high-intent vs low-intent definitions. High-intent = the user has specific question(s); low-intent = open-ended exploration. Either can be run in **batch** or **interactive** mode (see above) — batch is the default.
 
 ## Iteration: existing analysis_plan.md
 
-If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix; pick most recent): read it, skip Steps 1–2 entirely, and ask for the next question (or present remaining `[ ]` questions). Plan one chart, append as `## Chart N`, hand off to `build-notebook`. See the full iteration loop in `workflow.md`.
+If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix; pick most recent): read it, **skip Steps 1–2 entirely**, and plan the next chart(s). In interactive mode, ask for the next question or present remaining `[ ]` questions, plan one, append as `## Chart N`, hand off to `build-notebook`. See the full iteration loop in `workflow.md`.
 
-## Step 1: Connect to pipeline
+## Step 1–2: Connect and understand the data (first run only)
 
-Use the dlthub MCP tools as the primary discovery path:
+On the **returning path** (an `analysis_plan.md` already exists) skip this entirely — go to Step 3.
 
-1. **`list_pipelines`** — discover available pipelines. If multiple exist and target is ambiguous, ask the user and stop.
-2. Schema discovery depends on intent (see Step 2):
-   - **High-intent** — **`export_schema`** (`output_format="yaml"`): all tables, columns, and types in **one call**. Do not enumerate with `list_tables` + per-table `get_table_schema` — that costs N+1 calls for the same information.
-   - **Low-intent** — make **no** schema call here; `profile_tables` in Step 2 already returns every table's schema.
+Otherwise:
 
-If MCP tools are unavailable, fall back to Python:
-```python
-import dlt
+1. **`list_pipelines`** — only if the pipeline is not already known from `$ARGUMENTS` or session context. If multiple exist and the target is ambiguous, ask the user and stop.
+2. Understand the schema with **one** call:
+   - **High-intent** — **`export_schema`** (`output_format="yaml"`): all tables, columns, and types. Enough to plan a chart for a specific question; no stats needed.
+   - **Low-intent** — **`profile_tables`** from `dlt-profiling-mcp`: schema + row counts + per-column stats + samples for every table in one call. Use this for question generation in Step 3.
 
-pipeline = dlt.attach("<pipeline_name>")
-dataset = pipeline.dataset()
-dataset.row_counts().df()
-```
-
-Follow data access patterns in `references/dlt-relation-api.md`.
-
-## Step 2: Schema scan (high-intent) or Broad profiling (low-intent)
-
-### High-intent: Schema scan only
-
-Collect table names, column names, and column types. This is enough to plan a chart for a specific question. No row counts, no stats, no anomaly detection.
-
-The single `export_schema` call from Step 1 already has all of this — do not make further schema calls.
-
-### Low-intent: Broad profiling
-
-Profile all tables relevant to the user's domain.
-
-**Primary path — one call**: use the **`profile_tables`** tool from `dlt-profiling-mcp` (pass `pipeline_name`, optionally `table_names`). It returns, for every table at once: schema, row count, per-column stats (null count, distinct count, min/max), and sample rows. One MCP call replaces the entire profiling sweep — never follow it with `get_table_schema`, `get_row_counts`, or per-column `execute_sql_query` calls. The call is capped at 20 tables (the rest come back in `skipped_tables`) — on large pipelines pass `table_names` with the tables relevant to the user's domain instead of profiling everything.
-
-**Fallback** (if `dlt-profiling-mcp` is not connected), still batch aggressively:
-
-1. **Row counts** — one `get_row_counts` call (all tables).
-2. **Schemas** — one `export_schema` call (all tables), if not already made in Step 1.
-3. **Per-column stats** — **one `execute_sql_query` per table** computing null counts, distinct counts, and min/max for **all columns in a single SELECT** (e.g. `SELECT COUNT(*), COUNT(*) - COUNT(col_a), COUNT(DISTINCT col_a), MIN(col_b), MAX(col_b), ... FROM t`). Never one query per metric or per column.
-4. **Samples** — `preview_table` for each table, all calls issued in a single message so they run in parallel.
-
-From the returned stats and samples (no extra calls):
-
-- **Anomalies** — flag columns with >50% nulls, single-value columns, suspicious distributions.
-- **PII detection** — flag columns whose names or sample values suggest personally identifiable information (email, phone, ssn, address, ip_address, full names).
+For the exact tool arguments, the MCP-unavailable fallback (batched, no chatty per-table loops), and PII/anomaly flagging rules, read **`references/first-run-profiling.md`** — only on the first run, and only if you need the detail. The always-loaded MCP-efficiency rule (`dlthub-workspace.md`) already covers the batching principle.
 
 ## Step 3: Generate questions (low-intent only)
 
-From the profiling evidence, infer 5-10 plain-language business questions the data can answer. Present as multi-select with table/column hints for each option. Always include an "Other" option for custom questions.
+If the user already named the question(s), skip generation and go to Step 4. Otherwise, from the profiling evidence infer 5-10 plain-language business questions the data can answer. Present as multi-select with table/column hints for each option; always include an "Other" option. In batch mode the user can pick several at once.
 
 Avoid PII-flagged columns as chart dimensions or metrics.
 
-## Step 4: Plan chart (one only)
+## Step 4: Plan the chart(s)
 
-Plan exactly **one** chart per invocation. Do not batch multiple charts — the iteration loop handles additional charts.
+In **batch mode**, plan **all** confirmed questions in this one pass (Steps 4–6 once for the whole set). In **interactive mode**, plan exactly one chart and let the iteration loop handle the rest.
 
-For the user's question (from argument or selection), decide:
+For each question (from argument or selection), decide:
 - **Source table(s)** and which columns to use
 - **Chart type** based on question structure:
   - Trend over time → **line chart**
@@ -105,7 +79,7 @@ If the columns needed for the question don't exist in any table:
 
 ### Confirm the spec
 
-Show the chart spec and ask for confirmation or adjustment. Use this format:
+Show the chart spec(s) and ask for confirmation or adjustment. In batch mode show **all** specs at once in a single message and get one confirmation for the set — do not confirm one at a time. Use this format per chart:
 
 ```
 Chart: <title>
@@ -142,7 +116,7 @@ After the spec is confirmed, generate the SQL query and altair chart code.
 
 ## Step 6: Output analysis_plan.md
 
-Write or append to `<date>_<pipeline_name>_analysis_plan.md` (use today's date in `YYYY-MM-DD` format). See `references/analysis-plan-format.md` for the full template.
+Write `<date>_<pipeline_name>_analysis_plan.md` (use today's date in `YYYY-MM-DD` format). In **batch mode** write the whole file — Connection, Profile Summary, all `## Chart N` blocks — in a **single Write call**; do not append one chart at a time. In interactive/returning mode, append the new `## Chart N`. See `references/analysis-plan-format.md` for the full template.
 
 The file has these sections:
 - **Connection** — pipeline name, dataset, destination type
@@ -159,7 +133,7 @@ Mark the charted question with `[x]` in the Questions list. Remaining `[ ]` ques
 
 ## Handoff — MUST propose notebook
 
-After writing or appending to analysis_plan.md, you **MUST** propose building the notebook. Never end a session that produced a chart without this step.
+After writing analysis_plan.md, you **MUST** propose building the notebook. Never end a session that produced a chart without this step. In batch mode propose **once**, after all charts are written — not per chart.
 
 Tell the user the plan was updated, then ask: "Ready to build the notebook — shall I invoke `build-notebook`?" If they agree, invoke it. If they decline, remind them they can run `build-notebook` later.
 

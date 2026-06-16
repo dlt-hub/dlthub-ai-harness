@@ -22,24 +22,19 @@ If the analysis plan file is missing or has no charts, tell the user to run `exp
 
 ## Step 2: Assemble notebook
 
-Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` for the complete notebook structure, cell templates, and naming conventions before generating. Every chart cell must end with `_chart` on a bare line, then `return` — without the bare expression line, nothing renders.
+Generate the **entire** `<pipeline_name>_dashboard.py` — all charts from analysis_plan.md — in **one Write call**. Read `references/notebook-patterns.md` for the complete notebook structure, cell templates, and naming conventions before generating; it has everything needed for a dlt dashboard. Every chart cell must end with `_chart` on a bare line, then `return` — without the bare expression line, nothing renders.
 
-## Marimo patterns
-
-For general marimo cell structure, reactivity, and best practices, fetch https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/SKILL.md. For SQL-specific patterns in marimo, fetch https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/references/SQL.md. For dlt-dashboard-specific templates, see `references/notebook-patterns.md`.
+Do not fetch external marimo docs for a normal dashboard — `references/notebook-patterns.md` is sufficient. Only if a chart needs reactive UI elements not covered there, consult the marimo skill (https://github.com/marimo-team/skills/blob/main/skills/marimo-notebook/SKILL.md).
 
 ## Step 3: Validate
 
-Run marimo's linter to catch common mistakes:
+`marimo check` is a **static** linter (AST only — it does not launch a kernel or run cells). Run it once, batched with the dependency check, against the project venv:
 
 ```bash
-uvx marimo check <pipeline_name>_dashboard.py
+uv run marimo check <pipeline_name>_dashboard.py
 ```
 
-If validation fails:
-1. Read the error output — marimo check reports specific issues (missing returns, variable conflicts, import errors).
-2. Fix the reported issues in the notebook file.
-3. Re-run `uvx marimo check` until it passes.
+If validation fails: read **all** reported issues (missing returns, variable conflicts, import errors), fix them in a **single** edit pass, then re-run `marimo check` **once** to confirm. Do not loop check→fix→check one issue at a time — the generated file is fully known, so one corrective pass should clear it.
 
 ## Step 4: Ensure dependencies
 
@@ -52,22 +47,33 @@ Before launching, check if they are available. If any are missing, **ask the use
 
 Also add `marimo` if not already installed, and `ibis-framework[duckdb]` if any chart uses ibis.
 
+When you do run `uv sync`, chain the validation onto it in one call — `uv sync && uv run marimo check <pipeline_name>_dashboard.py` — to save a round-trip.
+
 **Do NOT install packages without user confirmation.**
 
-## Step 5: Launch
+## Step 5: Run the whole notebook end-to-end
 
-After validation passes, offer to launch in browser or skip.
+`marimo check` (Step 3) is static — it never executes the SQL or builds the charts. A marimo notebook is a runnable Python script (`app.run()` under `if __name__ == "__main__"`), so just run the file to execute every cell and catch runtime errors (bad column names, empty results, type mismatches) that static analysis misses:
 
-If yes:
 ```bash
-uv run marimo edit <pipeline_name>_dashboard.py --no-token
+uv run python <pipeline_name>_dashboard.py
 ```
 
-Tell the user the notebook is running (default: localhost:2718).
+A non-zero exit or traceback means a cell failed. If it fails, read all errors, fix in one edit pass, and re-run **once**. This step is the real proof the dashboard works — do it in headless runs too.
+
+## Step 6: Launch as an app
+
+Serve the notebook as a read-only app (runs all cells, hides the code):
+
+```bash
+uv run marimo run <pipeline_name>_dashboard.py --no-token
+```
+
+`marimo run` is a long-running server — start it in the **background** and report the URL (default: localhost:2718) immediately. **Do not** `sleep`/`cat`/poll its output waiting for "ready"; that just burns time. For an editable session instead of the read-only app, use `uv run marimo edit <pipeline_name>_dashboard.py --no-token`.
 
 ## Regeneration
 
-When re-invoked after iteration (see `workflow.md`): re-read the full analysis_plan.md and regenerate the entire notebook file, then validate and relaunch.
+When re-invoked after iteration (see `workflow.md`): re-read the full analysis_plan.md and regenerate the entire notebook file in one Write, then validate once. Relaunch only if the user is running it interactively.
 
 ## Troubleshooting
 
@@ -92,5 +98,5 @@ Pipeline name is wrong or pipeline hasn't been run. Run `dlthub local pipeline i
 
 **Output:** `orders_pipeline_dashboard.py` with 2 data cells + 2 chart cells, structured per `references/notebook-patterns.md`.
 
-**Validation:** `uvx marimo check orders_pipeline_dashboard.py` → passes
-**Launch:** `uv run marimo edit orders_pipeline_dashboard.py --no-token`
+**Validation:** `uv run marimo check orders_pipeline_dashboard.py` → passes
+**Launch (interactive only):** `uv run marimo edit orders_pipeline_dashboard.py --no-token`
