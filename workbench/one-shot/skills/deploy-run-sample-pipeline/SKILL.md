@@ -1,10 +1,12 @@
 ---
 name: deploy-run-sample-pipeline
-description: Write, deploy and run a GitHub issues pipeline on dltHub Platform. Use when the user wants to load GitHub issues from dlt-hub/dlt and deploy the pipeline to the cloud.
+description: Deploy and run the existing GitHub issues pipeline to dltHub Platform.
 argument-hint: ""
 ---
 
 Deploy `github_pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads the 50 most recent issues from `dlt-hub/dlt`.
+
+Do not use when the user wants to deploy a pipeline other than github_pipeline.py, or when github_pipeline.py does not already exist in the project root.
 
 ## Step 1 — Connect to the personal playground workspace
 
@@ -26,13 +28,84 @@ Ask the user which destination they want to use:
 > 3. Snowflake
 > 4. Other
 
-Wait for the user to respond before continuing.
+Wait for the user to respond before continuing. If they choose "Other", ask them to type the name in.
 
-If they choose "Other", ask them to type the name in and retain their chosen destination in memory.
+## Step 3 — Install destination
 
-## Step 3 — Configure Destination
+Fetch the docs URL for the chosen destination from the [reference table](#destination-docs) at the bottom of this skill. Read it to find the install extra and required credential fields — you will need both in the next step.
 
-Fetch the docs URL for the chosen destination. Read it to find the install command and the required credential fields — you will need both in the next two steps.
+Install the package and sync:
+
+```bash
+uv add "dlt[<extra>]"
+uv sync
+```
+
+## Step 4 — Configure credentials
+
+Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using only the credential fields from the docs you just read — do not guess:
+
+```toml
+[destination.warehouse]
+destination_type = "<chosen-destination>"
+
+[destination.warehouse.credentials]
+# fields as documented — do not guess
+```
+
+Then tell the user:
+
+> I've created the credential structure in `.dlt/prod.secrets.toml`. Please open that file and fill in your values, then let me know when done.
+
+**Stop and wait** for the user to confirm before continuing.
+
+Use `secrets_view_redacted` to verify — confirm credentials appear as `***`. If any field is still empty, ask the user to fill it in before proceeding.
+
+## Step 5 — Register in `__deployment__.py`
+
+Add the pipeline to the existing `__deployment__.py`:
+
+```python
+from github_pipeline import load_github
+
+__all__ = ["load_github"]
+```
+
+## Step 6 — Deploy
+
+```bash
+uv run dlthub deploy
+```
+
+Summarize which jobs were created or updated.
+
+## Step 7 — Run on the cloud
+
+```bash
+uv run dlthub run load_github -f
+```
+
+The `-f` flag streams logs in real time. Wait for the job to complete.
+
+If it fails:
+
+```bash
+uv run dlthub job logs load_github
+```
+
+| Error | Cause | Fix |
+|---|---|---|
+| `Trial period has ended` | Plan expired | Contact your workspace admin |
+
+Once successful, open the dltHub dashboard directly in the user's browser. Substitute `<workspace_id>` with the workspace ID captured in Step 1:
+
+```bash
+uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
+```
+
+---
+
+## Destination docs
 
 | Destination | Docs |
 |---|---|
@@ -59,72 +132,3 @@ Fetch the docs URL for the chosen destination. Read it to find the install comma
 | SQLAlchemy | https://dlthub.com/docs/dlt-ecosystem/destinations/sqlalchemy |
 | Synapse | https://dlthub.com/docs/dlt-ecosystem/destinations/synapse |
 | Weaviate | https://dlthub.com/docs/dlt-ecosystem/destinations/weaviate |
-
-Install the package and sync:
-
-```bash
-uv add "dlt[<extra>]"
-uv sync
-```
-
-## Step 3.1 — Configure credentials
-
-Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`, using only the credential fields from the docs page you just read:
-
-```toml
-[destination.warehouse]
-destination_type = "<chosen-destination>"
-
-[destination.warehouse.credentials]
-# fields as documented for <chosen-destination> — do not guess
-```
-
-Then tell the user:
-
-> I've created the credential structure in `.dlt/prod.secrets.toml`. Please open that file and fill in your values, then let me know when done.
-
-**Stop and wait** for the user to confirm before continuing.
-
-Use `secrets_view_redacted` to verify — confirm credentials appear as `***`. If any field is still empty, ask the user to fill it in before proceeding.
-
-## Step 4 — Register in `__deployment__.py`
-
-Add the pipeline to the existing `__deployment__.py`:
-
-```python
-from github_pipeline import load_github
-
-__all__ = [..., "load_github"]
-```
-
-## Step 5 — Deploy
-
-```bash
-uv run dlthub deploy
-```
-
-Summarize which jobs were created or updated.
-
-## Step 6 — Run on the cloud
-
-```bash
-uv run dlthub run load_github -f
-```
-
-The `-f` flag streams logs in real time. Wait for the job to complete.
-
-If it fails:
-
-```bash
-uv run dlthub job logs load_github
-```
-
-| Error | Cause | Fix |
-|---|---|---|
-| `Trial period has ended` | Plan expired | Contact your workspace admin |
-
-Once successful, open the dltHub dashboard directly in the user's browser. Substitute `<workspace_id>` with the workspace ID captured in Step 1:
-
-```bash
-uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
-```
