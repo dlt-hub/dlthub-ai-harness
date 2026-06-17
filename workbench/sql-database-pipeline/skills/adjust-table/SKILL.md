@@ -14,7 +14,7 @@ Parse `$ARGUMENTS`:
 
 `.add_limit(1)` during development loads one chunk only — a broken setup (wrong column types, large blobs) won't surface until you load the full table. Before removing it:
 
-1. Run `validate-data` to confirm the schema and sample data look correct.
+1. Run `validate-sql-database-data` to confirm the schema and sample data look correct.
 2. Check the table's row count so you know what to expect.
 3. For large tables (>1M rows), consider adding incremental loading first.
 
@@ -77,10 +77,10 @@ Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 uv run python <name>_pipeline.py
 ```
 
-Use `debug-pipeline` to inspect the first full run — large tables can surface new issues (timeouts, type errors on edge-case values, memory pressure).
+Use `debug-sql-database-pipeline` to inspect the first full run — large tables can surface new issues (timeouts, type errors on edge-case values, memory pressure).
 
 ## Next steps
 
 - **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-platform** to deploy
-- **Errors on full load** → use `debug-pipeline`; consider reducing `chunk_size` or switching backend
+- **Errors on full load** → use `debug-sql-database-pipeline`; consider reducing `chunk_size` or switching backend
 - **Need more tables** → use `add-table`

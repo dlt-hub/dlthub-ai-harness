@@ -204,7 +204,7 @@ sql-database-pipeline:
   agent: claude
   description: "Build SQL database pipelines with dlt"
   tags: [dlthub, sql, database, data-pipeline, python]
-  workflow_entry_skill: find-source
+  workflow_entry_skill: find-sql-database-source
   files:
     .claude/rules/sql-database-pipeline-workflow.md:
       sha3_256: "abc123..."
