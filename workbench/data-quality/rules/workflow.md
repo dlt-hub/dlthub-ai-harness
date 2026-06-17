@@ -26,6 +26,6 @@
 ### Incoming (to data-quality)
 
 - From **rest-api-pipeline** (after `validate-data`) — pipeline name and dataset already known; skip discovery in (`setup-data-quality`)
-- From **sql-database-pipeline** (after `validate-data`) — pipeline name and dataset already known; skip discovery in (`setup-data-quality`)
+- From **sql-database-pipeline** (after `validate-sql-database-data`) — pipeline name and dataset already known; skip discovery in (`setup-data-quality`)
 - From **filesystem-pipeline** (after `create-filesystem-pipeline`) — pipeline name and dataset already known; skip discovery in (`setup-data-quality`)
 - From **transformations** (after `create-transformation`) — transformed tables already known; go straight to (`define-data-quality-checks`)
