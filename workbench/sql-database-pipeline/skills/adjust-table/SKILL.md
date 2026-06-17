@@ -1,6 +1,6 @@
 ---
 name: adjust-table
-description: Adjust a working dlt SQL database pipeline for production — remove dev limits, add incremental loading, configure merge keys. Use when the user wants to remove .add_limit(), load the full table, or set up incremental loading on a cursor column. For speed/memory tuning (backend, chunk size, parallelism) use optimize-sql-performance instead. For inspecting loaded data or fixing column types/schema after a load, use validate-data instead.
+description: Adjust a working dlt SQL database pipeline for production — remove dev limits, add incremental loading, configure merge keys. Use when the user wants to remove .add_limit(), load the full table, or set up incremental loading on a cursor column. For speed/memory tuning (backend, chunk size, parallelism) use optimize-sql-performance instead. For inspecting loaded data or fixing column types/schema after a load, use validate-sql-database-data instead.
 argument-hint: "[pipeline-name] [adjustments]"
 ---
 
@@ -14,7 +14,7 @@ Parse `$ARGUMENTS`:
 
 `.add_limit(1)` during development loads one chunk only — a broken setup (wrong column types, large blobs) won't surface until you load the full table. Before removing it:
 
-1. Run `validate-data` to confirm the schema and sample data look correct.
+1. Run `validate-sql-database-data` to confirm the schema and sample data look correct.
 2. Check the table's row count so you know what to expect.
 3. For large tables (>1M rows), consider adding incremental loading first.
 
@@ -76,11 +76,11 @@ Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 uv run python <name>_pipeline.py
 ```
 
-Use `debug-pipeline` to inspect the first full run — large tables can surface new issues (timeouts, type errors on edge-case values, memory pressure).
+Use `debug-sql-database-pipeline` to inspect the first full run — large tables can surface new issues (timeouts, type errors on edge-case values, memory pressure).
 
 ## Next steps
 
 - **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-platform** to deploy
 - **Slow or memory-heavy load** → use `optimize-sql-performance` (backend, chunk size, parallel tables, push-down)
-- **Errors on full load** → use `debug-pipeline`
+- **Errors on full load** → use `debug-sql-database-pipeline`
 - **Need more tables** → use `add-table`

@@ -1,5 +1,5 @@
 ---
-name: find-source
+name: find-sql-database-source
 description: Find and explore a SQL database source for a dlt pipeline. Use when the user wants to load data from a relational database (postgres, mysql, mssql, oracle, sqlite, or any SQLAlchemy-supported database), mentions a database connection, wants to discover available tables, or asks to build a pipeline from a SQL source.
 argument-hint: "[database-url-or-description] [destination]"
 ---
@@ -17,8 +17,8 @@ Parse `$ARGUMENTS`:
 **Before running any steps**, check whether the pipeline already exists in this session:
 
 - **Arriving from `dlthub-platform`** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
-  - Pipeline errors or connection issues → `debug-pipeline`
-  - Column type / schema fixes → `validate-data`; removing limits or adding incremental loading → `adjust-table`
+  - Pipeline errors or connection issues → `debug-sql-database-pipeline`
+  - Column type / schema fixes → `validate-sql-database-data`; removing limits or adding incremental loading → `adjust-table`
   - Adding more tables → `add-table`
 
 - **Arriving mid-session** with a pipeline already scaffolded — if a `*_pipeline.py` file exists and the user just wants to extend or fix it, skip steps 1–4 and go straight to step 5 to confirm tables and destination.
