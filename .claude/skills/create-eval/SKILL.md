@@ -22,7 +22,7 @@ Create `evals/<toolkit>/<skill>/` if it doesn't exist.
 Ask the user which workspace configurations to test. Each workspace represents a different set of installed toolkits — this tests how the skill behaves when competing with other skills.
 
 Common patterns:
-- **init-only** — just `dlthub ai init` (minimum skills: `setup-secrets`, `dlthub-router`). Tests cold-start triggering.
+- **init-only** — just `dlthub ai init` (minimum skills: `setup-secrets`, `toolkit-dispatch`). Tests cold-start triggering.
 - **with-\<toolkit\>** — init + the skill's own toolkit installed. Tests triggering with competing sibling skills.
 
 Write `config.json`:
@@ -94,11 +94,7 @@ Run:
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill>
 ```
 
-This creates all workspaces defined in config.json (default agent: claude). To also test Codex/Cursor, build for those agents too (they get a `--<agent>` workspace suffix so all three coexist):
-```bash
-uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent codex
-uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent cursor
-```
+This creates all workspaces defined in config.json.
 
 ## Step 7: Continue to run-eval
 

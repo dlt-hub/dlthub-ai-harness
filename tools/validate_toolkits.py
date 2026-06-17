@@ -28,21 +28,6 @@ from pathlib import Path
 
 AI_DIR = "workbench"
 
-# The always-loaded compact intent->toolkit index is duplicated across two
-# always-loaded surfaces: the rule (native on Claude/Cursor) and AGENTS.md
-# (the only always-loaded surface on Codex, where rules become opt-in skills).
-# Both must list the same workflow toolkits.
-_INDEX_FILES = (
-    "workbench/init/rules/dlthub-workspace.md",
-    "workbench/init/AGENTS.md",
-)
-# Toolkits that are NOT workflow toolkits, so they don't belong in the intent index:
-# `init` is the lean base itself; `bootstrap` only scaffolds the environment.
-_NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
-# An index row: "<intent text> → <toolkit> | <install> | <entry skill>".
-# Capture the toolkit name (the token right after the arrow, before the pipe).
-_INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
-
 # Expected plugin.json author and license values
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
 _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
@@ -258,47 +243,6 @@ def validate_toolkit_content(
     return skill_names
 
 
-def validate_index_drift(
-    root: Path,
-    marketplace_names: set[str],
-    errors: list[str],
-) -> None:
-    """Check every always-loaded intent->toolkit index lists exactly the workflow toolkits.
-
-    The compact index is loaded every session, so it can silently go stale when
-    toolkits are added or removed. It is duplicated across the rule and AGENTS.md
-    (two always-loaded surfaces, see _INDEX_FILES); enforce that each lists exactly
-    the marketplace toolkits minus the non-workflow ones (init, bootstrap).
-
-    NOTE: build-time guard only. It keeps the *shipped* index in sync with
-    marketplace.json; it does NOT keep a user's *installed* index fresh against the
-    live catalog at runtime. That runtime-freshness gap is tracked in
-    dlt-hub/dlthub-ai-workbench-internal#71.
-    """
-    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS
-
-    for rel in _INDEX_FILES:
-        path = root / rel
-        if not path.exists():
-            errors.append(f"index file not found: {rel}")
-            continue
-
-        indexed = {
-            m.group(1)
-            for line in path.read_text().splitlines()
-            # data rows carry an install command; this skips the column header
-            if "ai toolkit" in line and (m := _INDEX_ENTRY.search(line))
-        }
-        fname = Path(rel).name
-        for name in sorted(expected - indexed):
-            errors.append(f"[init] {fname} intent index is missing workflow toolkit '{name}'")
-        for name in sorted(indexed - expected):
-            errors.append(
-                f"[init] {fname} intent index lists '{name}' "
-                f"which is not a workflow toolkit in marketplace.json"
-            )
-
-
 def validate(
     root: Path, only: str | None = None
 ) -> tuple[list[str], list[str], dict[str, set[str]]]:
@@ -391,8 +335,6 @@ def validate(
                         f"[{d.name}] directory exists in {AI_DIR}/ "
                         f"but is not listed in marketplace.json"
                     )
-
-        validate_index_drift(root, marketplace_names, errors)
 
     return errors, warnings, all_skills
 
