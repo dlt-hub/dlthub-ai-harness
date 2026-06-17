@@ -1,12 +1,14 @@
 ---
 name: deploy-run-sample-pipeline
-description: Deploy and run the existing GitHub issues pipeline to dltHub Platform using the managed destination.
+description: "Test-deploy and run the pre-shipped GitHub issues sample pipeline on dltHub Platform — an educational end-to-end run to try dlthub and see a job on the cloud, NOT a production-grade pipeline. Use when the user wants to try/demo the deploy-and-run flow with the bundled github_pipeline.py. For a real pipeline (your own source, auth, incremental, custom destination, production deploy), use the rest-api-pipeline toolkit (find-source)."
 argument-hint: ""
 ---
 
 Deploy `github_pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads the 50 most recent issues from `dlt-hub/dlt`. Uses the built-in managed destination; no credential setup required.
 
 Do not use when the user wants to deploy a pipeline other than `github_pipeline.py`, or when `github_pipeline.py` does not already exist in the project root.
+
+**Scope:** this is a throwaway, educational path for trying dlthub end-to-end. The moment the user wants a real pipeline — their own source, auth beyond a single key, incremental loading, multiple endpoints — hand over to the **rest-api-pipeline** toolkit (`find-source`); don't harden this sample in place.
 
 ## Step 1 — Connect to the personal playground workspace
 
