@@ -18,9 +18,9 @@ stat -c %Y workbench/<toolkit>/skills/<skill>/SKILL.md
 stat -c %Y evals/.evals/<workspace>/.claude/skills/<skill>/SKILL.md
 ```
 
-If the source is newer (or workspace doesn't exist), rebuild:
+If the source is newer (or workspace doesn't exist), rebuild (add `--agent <agent>` to match the agent you'll eval; non-claude workspaces live at `…--<agent>/` with skills under `.cursor/skills` or `.agents/skills`):
 ```bash
-uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill>
+uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> [--agent <agent>]
 ```
 
 ## Step 1: Run the eval
@@ -35,6 +35,8 @@ uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --verbose [--mod
 # Single workspace
 uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --workspace <ws-id> --verbose [--model <model>]
 ```
+
+By default the eval runs on Claude. To run on another agent (or all), pass `--agent` — `claude` (default), `cursor`, `codex`, or `all` / a comma-list like `codex,cursor`. Non-Claude agents need their CLI installed + authenticated (`codex`; `cursor-agent login` or `CURSOR_API_KEY`) and the workspace built for that agent (Step 0, same `--agent`). `--agent all` reports per-agent results in one run. Note: always-loaded router skills (e.g. `dlthub-router`) are N/A on Codex — measure routers on Claude/Cursor; see EVALS.md.
 
 ## Step 2: Read the results
 
