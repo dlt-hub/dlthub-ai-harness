@@ -1,8 +1,10 @@
 # setup
-* On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`?
-* If anything is missing, the canonical bootstrap is `uvx dlthub-start@latest my-workspace` — it installs `uv` (if needed), scaffolds the workspace, syncs `dlt[hub]`, and vendors the core toolkits in one command. Surface it to the user; do not auto-run.
-* The `bootstrap` toolkit / `/bootstrap:init-workspace` flow does the same from inside Claude Code via the marketplace.
-* On failed check inside an existing project: `dlthub ai toolkit install bootstrap` (**if dlthub present**)
+* On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`? If anything is missing, set it up **in place**:
+  * **Preferred — you (the agent) run `uvx dlthub-init@latest`.** It is non-interactive and AI-aware, so an agent can run it directly. **This is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory; bare `uvx dlthub-init@latest` sets up in place). It scaffolds a dlthub workspace with AI support, collision-safe, in one step. Re-check `uv run dlthub ai status` when done.
+  * **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from "dlt[hub]" dlthub init` (equivalent to `uv init` + `uv add "dlt[hub]"` + `uv run dlthub init`), then `uv run dlthub ai init`. Re-check `uv run dlthub ai status` when done.
+
+* **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me to dltHub", "I want to learn how to use dltHub"): point them to `uvx dlthub-start@latest`. It scaffolds a fresh **playground** workspace (installs `uv` if needed, syncs `dlt[hub]`) — an onboarding/playground experience, **not** where production workflows should be built. Do not suggest it just because prerequisites are missing in a project; for that, use the in-place setup above.
+  * **NEVER run `uvx dlthub-start` yourself, and do NOT use `!` mode for it.** It must be run by a human because it requires interaction for authentication; it only works in a real terminal — `!` mode does not work for it. **Ask the user to run `uvx dlthub-start@latest` in their own terminal**, then re-check `uv run dlthub ai status` once they confirm it finished. (For agent-driven setup of a clean new project, use `uvx dlthub-init@latest` above instead.)
 
 # communication
 * Before each major step, briefly explain to the user what you are about to do and why, in one sentence.
@@ -39,6 +41,27 @@
 # toolkits
 * toolkits are data engineering workflows automated via skills, commands and rules.
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
-* workflows end with handover to other workflows, also `toolkit-dispatch` skill may be helpful
-* **DO NOT** start data engineering work when no toolkits are installed - see `dlthub ai status` output!
+* workflows end with handover to other workflows, also the `dlthub-router` skill may be helpful
 * **NEVER assume a handover target toolkit is installed** — before following any handover, always run `uv run dlthub --non-interactive ai toolkit install <toolkit-name>` first, then invoke the entry skill. Do NOT run web research, manual code edits but use the entry skill.
+* **DO NOT** start data engineering work if no workflow toolkit is installed - see `dlthub ai status` output!
+
+## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
+This index is authoritative for shipped toolkits. Match the user's intent, run the install command, then hand over to the entry skill. No MCP call needed for these.
+<!-- This shipped index can drift from the live catalog on a user's machine until runtime refresh lands; tracked in dlt-hub/dlthub-ai-workbench-internal#71. The build-time drift guard (validate_index_drift) only keeps this in sync with marketplace.json. -->
+
+```
+intent                                                  → toolkit                | install                                                            | entry skill
+ingest from REST / HTTP APIs — production-grade pipeline → rest-api-pipeline     | dlthub --non-interactive ai toolkit install rest-api-pipeline      | find-source
+ingest from SQL databases (Postgres, MySQL, Snowflake…) → sql-database-pipeline  | dlthub --non-interactive ai toolkit install sql-database-pipeline  | find-source
+load files (CSV/Parquet/JSONL) from disk/S3/GCS/Azure/SFTP → filesystem-pipeline | dlthub --non-interactive ai toolkit install filesystem-pipeline    | create-filesystem-pipeline
+explore & profile loaded data, build charts & dashboards → data-exploration      | dlthub --non-interactive ai toolkit install data-exploration       | explore-data
+transform & model loaded data (dimensional / Kimball)   → transformations        | dlthub --non-interactive ai toolkit install transformations        | annotate-sources
+add data quality checks (column expectations, validation rules) → data-quality   | dlthub --non-interactive ai toolkit install data-quality           | setup-data-quality
+deploy / schedule pipelines on the dltHub platform      → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | setup-runtime
+guided end-to-end tour, ingest to dashboard (uses the real toolkits) → quick-start | dlthub --non-interactive ai toolkit install quick-start          | quick-start
+test/try dlthub end-to-end — minimal pipeline + educational test deploy, NOT production → one-shot       | dlthub --non-interactive ai toolkit install one-shot               | deploy-run-sample-pipeline
+```
+* `one-shot` vs `rest-api-pipeline`: one-shot is for **testing / trying dlthub / onboarding / a quick demo** — a minimal single-endpoint, row-limited pipeline on local DuckDB plus an educational test deploy. Educational examples only, NOT production-grade. For a **real or production** REST pipeline (auth, incremental, multiple endpoints, production deploy), use `rest-api-pipeline`. `quick-start` is the guided tour that walks the real toolkits end-to-end.
+* After installing, run `uv run dlthub ai status` to confirm, then continue **in the same session** — load the new toolkit's entry skill + workflow rule via `toolkit_info` (or read the installed files) and proceed. No restart needed (toolkits reuse the already-running `dlt-workspace-mcp`); don't lose the user's context.
+* The `dlthub-router` skill wraps this flow and is the fallback for needs not covered above (it uses live `list_toolkits` to discover newer toolkits).
+* DO NOT start data engineering work if no workflow toolkit is installed.

@@ -5,7 +5,10 @@
   },
   {
     "query": "how do I build a data pipeline with dlt? I want to pull data from an API",
-    "should_trigger": true
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "find-source" }
+    }
   },
   {
     "query": "I need to create reports and dashboards from my loaded data, how does that work?",
@@ -37,7 +40,10 @@
   },
   {
     "query": "can dlt help me with ETL from Salesforce to BigQuery? what would that look like?",
-    "should_trigger": true
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "find-source" }
+    }
   },
   {
     "query": "the pipeline loaded 500 rows into the customers table but some email columns are null, can you check the schema?",
