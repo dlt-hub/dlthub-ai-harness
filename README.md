@@ -78,21 +78,25 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 
 ### New project (recommended)
 
-To set up a clean new dlthub project with AI support, run [`dlthub-init`](https://pypi.org/project/dlthub-init/). It is non-interactive and AI-aware, so **your coding assistant can run it for you** — this is the command an agent should use to set up a clean new dlthub project. It pins `dlt[hub]` via a bundled lock and runs `uv sync`:
+The fastest way to get started is [`dlthub-start`](https://pypi.org/project/dlthub-start/) — no prior setup needed:
+
+The fastest way to start a new dltHub project:
 
 ```bash
-uvx dlthub-init@latest <dir>    # scaffold a clean new project into <dir>
+uvx dlthub-start@latest my-workspace
+```
+
+This interactive prompt scaffolds a ready-to-run workspace: picks a scaffold (Starter or Minimal), installs AI workbench files for your coding assistant(s), and runs `uv sync` to install all dependencies. Once done:
+
+```bash
+cd my-workspace
+uv run dlthub run load_breweries   # run the example pipeline on dltHub
+uv run dlthub show                 # open the dltHub dashboard
 ```
 
 ### Existing project
 
-To add the AI workbench to an existing project, run the same [`dlthub-init`](https://pypi.org/project/dlthub-init/) **in place**. It uses per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — and, being non-interactive, your coding assistant can run it for you:
-
-```bash
-uvx dlthub-init@latest          # set up AI support in the current directory
-```
-
-**Manual steps (fallback):** if you'd rather do it step by step, or `dlthub-init` isn't available:
+To add the AI workbench to an existing project:
 
 > **Note:** All `dlthub ai` commands below use `uv run dlthub ...` syntax. If you have `dlthub` installed globally or in an active virtual environment, you can omit `uv run` and call `dlthub` directly. We recommend using uv.
 
@@ -136,19 +140,9 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
 > CRITICAL: never ask for credentials in chat. Always let the user edit secrets directly and do not attempt to read them.
 > ```
 
-### First-time onboarding (want to try or learn dltHub)
-
-New to dltHub and just want to try or learn it? Run [`dlthub-start`](https://pypi.org/project/dlthub-start/) **yourself** — it scaffolds a fresh **playground** workspace (not for production, not for setting up a real project):
-
-```bash
-uvx dlthub-start@latest
-```
-
-> **Run this yourself — don't ask your coding assistant.** `uvx dlthub-start` must be run by a human because it requires interaction for authentication; it only works in a real terminal (not `!` mode). For agent-driven setup, use [`dlthub-init`](#new-project-recommended) above.
-
 ### Browse and install toolkits
 
-> **Don't have dlthub set up yet?** Follow [New project](#new-project-recommended) or [Existing project](#existing-project) above first (or the `bootstrap` toolkit's `/init-workspace`, which the assistant can drive). The toolkit commands below assume `dlthub` is installed in your environment.
+> **No Python environment yet?** `uvx dlthub-start@latest my-workspace` (see [Installation](#installation)) handles this in one command. If you're going through the Claude Code marketplace instead, the `bootstrap` toolkit's `/init-workspace` does the same from inside Claude Code.
 
 
 ```bash
@@ -181,7 +175,7 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. If you're new to dltHub and want to try or learn it, see [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub) — you run `uvx dlthub-start@latest` yourself. The marketplace path below is useful when you want to bootstrap an existing/empty project from inside Claude Code via the `bootstrap` toolkit (which prefers `uvx dlthub-init@latest` — the agent-runnable command for setting up a clean new or existing dlthub project — and falls back to the in-place install steps).
+> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. For new projects we recommend `uvx dlthub-start@latest` (see [Installation](#installation)). The marketplace path below is useful when you don't have `uv`/Python and want to bootstrap from inside Claude Code via the `bootstrap` toolkit.
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 

@@ -23,21 +23,7 @@ Each eval can define **multiple workspaces** with different toolkit combinations
 
 ### Isolation
 
-Eval workspaces are self-contained — the agent runner (`claude -p`, `codex exec`, or `cursor-agent -p`) runs from the workspace directory and only sees the skills installed there. This prevents pollution from the dev project's plugins, skills, and commands.
-
-### Agents (Claude, Codex, Cursor)
-
-Evals run on all three agents via `--agent {claude,cursor,codex}` (or `--agent all`). Each agent signals a skill trigger differently, so the runner detects it differently:
-
-| Agent | Headless driver | Trigger signal |
-|---|---|---|
-| Claude | `claude -p --output-format stream-json` | first `Skill` tool_use in the stream |
-| Codex | `codex exec --json -s read-only` | a shell command reading `.agents/skills/<name>/SKILL.md`, excluding always-on `AGENTS.md` skills |
-| Cursor | `cursor-agent -p --output-format stream-json --trust` | a `readToolCall` on `.cursor/skills/<name>/SKILL.md` |
-
-Codex and Cursor have no native `Skill` tool — they "activate" a skill by **reading its `SKILL.md`**. **Always-loaded router skills (e.g. `dlthub-router`) are N/A on Codex**: there the routing index lives in the always-loaded `AGENTS.md`, not a skill activation, so there is no discrete trigger event to measure. Opt-in skills (e.g. `find-source`) are measured normally on all three.
-
-Codex and Cursor require their CLIs installed and authenticated (`codex`; and `cursor-agent login` or `CURSOR_API_KEY`).
+Eval workspaces are self-contained — `claude -p` runs from the workspace directory and only sees the skills installed there. This prevents pollution from the dev project's plugins, skills, and commands.
 
 ### Clashes
 
@@ -67,10 +53,10 @@ evals/
       trigger-eval.json    # Queries with expected outcomes
       README.md            # Notes, findings, known issues (optional)
   .evals/                  # Generated workspaces (gitignored)
-    <toolkit>--<skill>--<workspace-id>[--<agent>]/   # --<agent> suffix for cursor/codex; claude unsuffixed
+    <toolkit>--<skill>--<workspace-id>/
       .venv/
-      .claude/skills/...   # claude; cursor -> .cursor/skills, codex -> .agents/skills
-      .claude/rules/...    # claude; cursor -> .cursor/rules/*.mdc, codex -> folded into AGENTS.md
+      .claude/skills/...
+      .claude/rules/...
 ```
 
 ### config.json
@@ -110,11 +96,8 @@ Array of queries with expected trigger behavior:
 ### Create workspaces
 
 ```bash
-# Builds all workspaces defined in config.json (default agent: claude)
+# Builds all workspaces defined in config.json
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill>
-
-# Build for a specific agent (cursor/codex get a --<agent> workspace suffix)
-uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent codex
 ```
 
 ### Run eval
@@ -131,12 +114,6 @@ uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --model claude-s
 
 # Multiple runs for reliability
 uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --runs-per-query 3 --verbose
-
-# A specific non-Claude agent (CLI must be installed + authenticated)
-uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --agent codex --verbose
-
-# All agents in one run — reports per-agent results (requires each agent's workspace built)
-uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --agent all --verbose
 ```
 
 ### Run eval with analysis
