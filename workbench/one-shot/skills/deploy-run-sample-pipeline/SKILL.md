@@ -4,7 +4,7 @@ description: "Test-deploy and run the pre-shipped GitHub issues sample pipeline 
 argument-hint: ""
 ---
 
-Deploy `github_pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads the 50 most recent issues from `dlt-hub/dlt`. Uses the built-in managed destination; no credential setup required.
+Deploy `github_pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads the 50 most recent issues from `dlt-hub/dlt`. Uses the built-in managed destination (cloud storage handled by dltHub — no credentials needed).
 
 Do not use when the user wants to deploy a pipeline other than `github_pipeline.py`, or when `github_pipeline.py` does not already exist in the project root.
 
@@ -24,7 +24,7 @@ Then ask the user: "Shall I start with Step 1?"
 
 Wait for confirmation before proceeding. If the user says no or wants to do something else, stop and ask what they'd like to do instead.
 
-## Step 1 — Connect to the personal playground workspace
+## Step 1 — Connect to the personal playground workspace (a pre-configured sandbox for testing)
 
 Print to the user: `- [ ] Step 1/5 — Connect to playground workspace`
 
@@ -100,4 +100,4 @@ After the browser opens, print to the user: `5/5 ✓`
 
 **Onboarding complete!** Your pipeline ran on dltHub Platform. Explore the loaded data in the dashboard — the query editor lets you run SQL directly against the results.
 
-Ready to build a real pipeline — your own source, authentication, incremental loading? Hand over to the **rest-api-pipeline** toolkit (`find-source`).
+Ready to build a real pipeline? Just describe what you want here in the chat, e.g. "I want to load my Stripe payment data into a database — invoices and subscriptions."
