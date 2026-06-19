@@ -26,7 +26,7 @@ Wait for confirmation before proceeding. If the user says no or wants to do some
 
 ## Step 1 — Connect to the personal playground workspace
 
-Print to the user: `[ ] Step 1/5 — Connect to playground workspace`
+Print to the user: `- [ ] Step 1/5 — Connect to playground workspace`
 
 ```bash
 uv run dlthub workspace connect playground
@@ -36,11 +36,11 @@ If multiple workspaces named `playground` exist, run `uv run dlthub workspace li
 
 Note the workspace ID from the output — you will need it in the final step.
 
-Print to the user: "[x] Step 1/5"
+Print to the user: "- [x] Step 1/5"
 
 ## Step 2 — Register in `__deployment__.py`
 
-Print to the user: `[ ] Step 2/5 — Register the pipeline`
+Print to the user: `- [ ] Step 2/5 — Register the pipeline`
 
 Add the pipeline to the existing `__deployment__.py`:
 
@@ -50,11 +50,11 @@ from github_pipeline import load_github
 __all__ = ["load_github"]
 ```
 
-Print to the user: "[x] Step 2/5"
+Print to the user: "- [x] Step 2/5"
 
 ## Step 3 — Deploy
 
-Print to the user: `[ ] Step 3/5 — Deploy to the cloud`
+Print to the user: `- [ ] Step 3/5 — Deploy to the cloud`
 
 ```bash
 uv run dlthub deploy
@@ -62,11 +62,11 @@ uv run dlthub deploy
 
 Summarize which jobs were created or updated.
 
-Print to the user: "[x] Step 3/5"
+Print to the user: "- [x] Step 3/5"
 
 ## Step 4 — Run on the cloud
 
-Print to the user: `[ ] Step 4/5 — Run the pipeline`
+Print to the user: `- [ ] Step 4/5 — Run the pipeline`
 
 ```bash
 uv run dlthub run load_github -f
@@ -84,11 +84,11 @@ uv run dlthub job logs load_github
 |---|---|---|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
 
-Print to the user: "[x] Step 4/5"
+Print to the user: "- [x] Step 4/5"
 
 ## Step 5 — Open the results dashboard
 
-Print to the user: `[ ] Step 5/5 — Open the results dashboard`
+Print to the user: `- [ ] Step 5/5 — Open the results dashboard`
 
 Open the dltHub dashboard directly in the user's browser and invite them to explore the data using the query editor. Substitute `<workspace_id>` with the workspace ID captured in Step 1:
 
