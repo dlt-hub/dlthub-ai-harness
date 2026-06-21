@@ -18,13 +18,13 @@ Print this to the user before doing anything else:
 - [ ] **Deploy and run the sample pipeline**
 - [ ] **Build your own production pipeline or keep exploring**
 
-Then ask the user: "Shall I start with Step 3?"
+Then ask the user: "Shall I start with Step 2?"
 
 Wait for confirmation before proceeding. If the user says no or wants to do something else, stop and ask what they'd like to do instead.
 
-## Step 3 — Log in
+## Step 2 — Log in
 
-Print to the user: `- [ ] Step 3/6 — Log in to dltHub`
+Print to the user: `- [ ] Step 2/5 — Log in to dltHub`
 
 ```bash
 uv run dlthub login
@@ -32,11 +32,11 @@ uv run dlthub login
 
 This opens a browser link for authentication. Stream the output so the user sees the link and can click it. Wait for login to complete before proceeding.
 
-Print to the user: `- [x] Step 3/6`
+Print to the user: `- [x] Step 2/5`
 
-## Step 4 — Connect workspace
+## Step 3 — Connect workspace
 
-Print to the user: `- [ ] Step 4/6 — Connect to the playground workspace`
+Print to the user: `- [ ] Step 3/5 — Connect to the playground workspace`
 
 Check that a workspace is active:
 
@@ -44,7 +44,7 @@ Check that a workspace is active:
 uv run dlthub workspace info
 ```
 
-Note the workspace ID from the output — you will need it in Step 6.
+Note the workspace ID from the output — you will need it in Step 5.
 
 If the command errors or shows no active workspace, connect to the playground workspace:
 
@@ -54,11 +54,11 @@ uv run dlthub workspace connect playground
 
 If multiple workspaces named `playground` exist, run `uv run dlthub workspace list` first, pick the personal one (not org-level), then connect to it by name. Note the workspace ID once connected.
 
-Print to the user: `- [x] Step 4/6`
+Print to the user: `- [x] Step 3/5`
 
-## Step 5 — Deploy and run
+## Step 4 — Deploy and run
 
-Print to the user: `- [ ] Step 5/6 — Deploy and run the sample pipeline`
+Print to the user: `- [ ] Step 4/5 — Deploy and run the sample pipeline`
 
 **Deploy:**
 
@@ -86,13 +86,13 @@ uv run dlthub job logs load_sample_shop
 |-------|-------|-----|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
 
-Print to the user: `- [x] Step 5/6`
+Print to the user: `- [x] Step 4/5`
 
-## Step 6 — Next steps
+## Step 5 — Next steps
 
-Print to the user: `- [ ] Step 6/6 — Build your own production pipeline or keep exploring`
+Print to the user: `- [ ] Step 5/5 — Build your own production pipeline or keep exploring`
 
-**Onboarding complete!** Your pipeline ran on dltHub Platform. Open the dltHub dashboard directly in the user's browser — substitute `<workspace_id>` with the workspace ID captured in Step 4:
+**Onboarding complete!** Your pipeline ran on dltHub Platform. Open the dltHub dashboard directly in the user's browser — substitute `<workspace_id>` with the workspace ID captured in Step 3:
 
 ```bash
 uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
