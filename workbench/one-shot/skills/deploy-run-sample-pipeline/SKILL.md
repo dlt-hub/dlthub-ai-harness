@@ -13,18 +13,54 @@ Do not use when `pipeline.py` does not exist in the project root, or when the us
 Print this to the user before doing anything else:
 
 - [x] **Scaffolded the example dltHub project and created a virtual environment**
-- [x] **Created a dltHub free trial account for you on app.dlthub.com**
-- [ ] **Deploy an example pipeline to load data from the Jaffle Shop API to the dltHub playground cloud data warehouse**
-- [ ] **Run your pipeline on dltHub (stream the logs)**
+- [ ] **Log in to dltHub (or create a free trial account)**
+- [ ] **Connect to the playground workspace**
+- [ ] **Deploy and run the sample pipeline**
 - [ ] **Build your own production pipeline or keep exploring**
 
 Then ask the user: "Shall I start with Step 3?"
 
 Wait for confirmation before proceeding. If the user says no or wants to do something else, stop and ask what they'd like to do instead.
 
-## Step 3 — Deploy
+## Step 3 — Log in
 
-Print to the user: `- [ ] Step 3/5 — Deploy an example pipeline`
+Print to the user: `- [ ] Step 3/6 — Log in to dltHub`
+
+```bash
+uv run dlthub login
+```
+
+This opens a browser link for authentication. Stream the output so the user sees the link and can click it. Wait for login to complete before proceeding.
+
+Print to the user: `- [x] Step 3/6`
+
+## Step 4 — Connect workspace
+
+Print to the user: `- [ ] Step 4/6 — Connect to the playground workspace`
+
+Check that a workspace is active:
+
+```bash
+uv run dlthub workspace info
+```
+
+Note the workspace ID from the output — you will need it in Step 6.
+
+If the command errors or shows no active workspace, connect to the playground workspace:
+
+```bash
+uv run dlthub workspace connect playground
+```
+
+If multiple workspaces named `playground` exist, run `uv run dlthub workspace list` first, pick the personal one (not org-level), then connect to it by name. Note the workspace ID once connected.
+
+Print to the user: `- [x] Step 4/6`
+
+## Step 5 — Deploy and run
+
+Print to the user: `- [ ] Step 5/6 — Deploy and run the sample pipeline`
+
+**Deploy:**
 
 ```bash
 uv run dlthub deploy
@@ -32,11 +68,7 @@ uv run dlthub deploy
 
 Summarize which jobs were created or updated.
 
-Print to the user: "- [x] Step 3/5"
-
-## Step 4 — Run on the cloud
-
-Print to the user: `- [ ] Step 4/5 — Run your pipeline on dltHub`
+**Run:**
 
 ```bash
 uv run dlthub run load_sample_shop -f
@@ -54,12 +86,24 @@ uv run dlthub job logs load_sample_shop
 |-------|-------|-----|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
 
-Print to the user: "- [x] Step 4/5"
+Print to the user: `- [x] Step 5/6`
 
-## Step 5 — Next steps
+## Step 6 — Next steps
 
-Print to the user: `- [ ] Step 5/5 — Build your own production pipeline or keep exploring`
+Print to the user: `- [ ] Step 6/6 — Build your own production pipeline or keep exploring`
 
-**Onboarding complete!** Your pipeline ran on dltHub Platform. Explore the loaded data at [app.dlthub.com](https://app.dlthub.com) — the query editor lets you run SQL directly against the results.
+**Onboarding complete!** Your pipeline ran on dltHub Platform. Open the dltHub dashboard directly in the user's browser — substitute `<workspace_id>` with the workspace ID captured in Step 4:
+
+```bash
+uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
+```
+
+If the workspace ID wasn't captured earlier, retrieve it now:
+
+```bash
+uv run dlthub workspace info
+```
+
+The query editor lets you run SQL directly against the loaded results.
 
 Ready to build a real pipeline? Just describe what you want, e.g. "I want to load my Stripe payment data into a database — invoices and subscriptions."
