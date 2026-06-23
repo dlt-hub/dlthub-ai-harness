@@ -6,7 +6,9 @@ argument-hint: ""
 
 Deploy `pipeline.py` — already present in the project root — to dltHub Platform. This pipeline loads data from the Jaffle Shop API into the dltHub playground cloud data warehouse (cloud storage handled by dltHub — no credentials needed).
 
-Do not use when `pipeline.py` does not exist in the project root, or when the user wants to build their own pipeline rather than run the sample.
+Do not use when `pipeline.py` does not exist in the project root.
+
+If the user wants to build their own pipeline, recommend they complete onboarding first by running the sample pipeline. Once onboarding is done, they will be recommended to build their own pipeline.
 
 **Assumption:** By the time this skill runs, the project has been scaffolded, the user is logged in to dltHub, and the playground workspace is connected. Steps 1–2 are complete.
 
