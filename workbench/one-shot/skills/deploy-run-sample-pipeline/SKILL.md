@@ -43,6 +43,8 @@ uv run dlthub run load_sample_shop -f
 
 The `-f` flag streams logs in real time. Wait for the job to complete.
 
+When the run starts, the CLI prints metadata including `run_url` (a link to this run on dltHub Platform) before the log stream. After the job finishes successfully, print a short note to the user — for example: *You can also view this run on the platform:* followed by the `run_url` from the output. This is optional context only; do not open the link.
+
 If it fails:
 
 ```bash
