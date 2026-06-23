@@ -18,7 +18,6 @@ Print this to the user before doing anything else:
 - [x] **Logged in to dltHub and connected to the playground workspace**
 - [ ] **Deploy and run the sample pipeline**
 - [ ] **Open the dltHub dashboard**
-- [ ] **Build your own production pipeline or keep exploring**
 
 Then ask the user: "Shall I proceed with Step 3 — deploy and run the sample pipeline?"
 
@@ -26,7 +25,7 @@ Wait for confirmation before proceeding. If the user says no or wants to do some
 
 ## Step 3 — Deploy and run
 
-Print to the user: `- [ ] Step 3/5 — Deploy and run the sample pipeline`
+Print to the user: `- [ ] Step 3/4 — Deploy and run the sample pipeline`
 
 **Deploy:**
 
@@ -54,7 +53,7 @@ uv run dlthub job logs load_sample_shop
 |-------|-------|-----|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
 
-Print to the user: `- [x] Step 3/5`
+Print to the user: `- [x] Step 3/4`
 
 ## Step 4 — Open the dltHub dashboard
 
@@ -66,7 +65,7 @@ Wait for their response before doing anything.
 
 **If the user says yes:**
 
-Print to the user: `- [ ] Step 4/5 — Opening dltHub dashboard`
+Print to the user: `- [ ] Step 4/4 — Opening dltHub dashboard`
 
 Retrieve the workspace ID if it is not already known:
 
@@ -82,12 +81,12 @@ uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspac
 
 The query editor lets you run SQL directly against the loaded results.
 
-Print to the user: `- [x] Step 4/5`
+Print to the user: `- [x] Step 4/4`
 
 **If the user says no:** skip the dashboard and move on.
 
-## Step 5 — Next steps
+## Onboarding complete — what's next?
 
-Print to the user: `- [ ] Step 5/5 — Build your own production pipeline or keep exploring`
+After Step 4 completes (dashboard opened or skipped), immediately print to the user:
 
-Ready to build a real pipeline? Just describe what you want, e.g. "I want to load my Stripe payment data into a database — invoices and subscriptions."
+> "Onboarding complete! When you're done exploring your data on the notebook, the next step is to build your own pipeline. Run `uvx dlthub-init` in a **new, separate directory** to scaffold a fresh dltHub project — it sets up `pyproject.toml`, the `uv.lock` lockfile, and the `.dlt/` config folder. Would you like me to walk you through it?"
