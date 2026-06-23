@@ -52,6 +52,7 @@ uv run dlthub job logs load_sample_shop
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `Trial period has ended` | Plan expired | Contact your workspace admin |
+| Workspace connection error | Not connected, or connected to the wrong workspace | Run `uv run dlthub workspace connect` and select the **personal** playground workspace — there may be more than one listed |
 
 Print to the user: `- [x] Step 3/4`
 
