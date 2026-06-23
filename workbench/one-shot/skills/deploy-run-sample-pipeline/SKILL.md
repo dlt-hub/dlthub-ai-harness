@@ -58,7 +58,7 @@ Print to the user: `- [x] Step 3/4`
 
 Once Step 3 is fully complete, print to the user: `- [ ] Step 4/4 — Opening dltHub dataset browser`
 
-Retrieve the workspace ID if it is not already known:
+Retrieve the workspace ID **if it is not already known**:
 
 ```bash
 uv run dlthub workspace info
@@ -76,6 +76,6 @@ Print to the user: `- [x] Step 4/4`
 
 ## Onboarding complete — what's next?
 
-After Step 4 completes (dashboard opened or skipped), immediately print to the user:
+After Step 4 completes (dashboard opened), immediately print to the user:
 
 > "Onboarding complete! When you're done exploring your data on the notebook, the next step is to build your own pipeline. Run `uvx dlthub-init` in a **new, separate directory** to scaffold a fresh dltHub project — it sets up `pyproject.toml`, the `uv.lock` lockfile, and the `.dlt/` config folder. Would you like me to walk you through it?"
