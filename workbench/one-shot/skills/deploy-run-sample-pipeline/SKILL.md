@@ -23,6 +23,8 @@ Print this to the user before doing anything else:
 
 ## Step 3 — Deploy and run
 
+Print to the user: `Let's continue your onboarding journey.`
+
 Print to the user: `- [ ] Step 3/4 — Deploy and run the sample pipeline`
 
 **Deploy:**
