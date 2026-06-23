@@ -15,13 +15,9 @@ Do not use when `pipeline.py` does not exist in the project root, or when the us
 Print this to the user before doing anything else:
 
 - [x] **Scaffolded the example dltHub project and created a virtual environment**
-- [x] **Logged in to dltHub and connected to the playground workspace**
+- [x] **Signed up / logged in to dltHub and connected to the playground workspace**
 - [ ] **Deploy and run the sample pipeline**
-- [ ] **Open the dltHub dashboard**
-
-Then ask the user: "Shall I proceed with Step 3 — deploy and run the sample pipeline?"
-
-Wait for confirmation before proceeding. If the user says no or wants to do something else, stop and ask what they'd like to do instead.
+- [ ] **Open the dltHub dataset browser**
 
 ## Step 3 — Deploy and run
 
@@ -51,22 +47,14 @@ uv run dlthub job logs load_sample_shop
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `Trial period has ended` | Plan expired | Contact your workspace admin |
+| `Trial period has ended` | Plan expired | Contact support@dlthub.com |
 | Workspace connection error | Not connected, or connected to the wrong workspace | Run `uv run dlthub workspace connect` and select the **personal** playground workspace — there may be more than one listed |
 
 Print to the user: `- [x] Step 3/4`
 
-## Step 4 — Open the dltHub dashboard
+## Step 4 — Open the dltHub dataset browser
 
-Once Step 3 is fully complete, ask the user:
-
-> "Your pipeline ran successfully! Would you like me to open the dltHub dashboard in your browser so you can explore the results?"
-
-Wait for their response before doing anything.
-
-**If the user says yes:**
-
-Print to the user: `- [ ] Step 4/4 — Opening dltHub dashboard`
+Once Step 3 is fully complete, print to the user: `- [ ] Step 4/4 — Opening dltHub dataset browser`
 
 Retrieve the workspace ID if it is not already known:
 
@@ -74,7 +62,7 @@ Retrieve the workspace ID if it is not already known:
 uv run dlthub workspace info
 ```
 
-Then launch the dashboard — substitute `<workspace_id>` with the workspace ID:
+Then launch the dataset browser — substitute `<workspace_id>` with the workspace ID:
 
 ```bash
 uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
@@ -83,8 +71,6 @@ uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspac
 The query editor lets you run SQL directly against the loaded results.
 
 Print to the user: `- [x] Step 4/4`
-
-**If the user says no:** skip the dashboard and move on.
 
 ## Onboarding complete — what's next?
 
