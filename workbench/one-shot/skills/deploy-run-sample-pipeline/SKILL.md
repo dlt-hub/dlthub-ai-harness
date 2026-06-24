@@ -25,7 +25,7 @@ Print this to the user before doing anything else:
 
 Print to the user: `Let's continue your onboarding journey.`
 
-Print to the user: `- [ ] Step 3/4 — Deploy and run the sample pipeline`
+Print to the user: `- [ ] Deploy and run the sample pipeline`
 
 **Deploy:**
 
@@ -61,11 +61,11 @@ uv run dlthub job logs load_sample_shop
 | `Trial period has ended` | Plan expired | Contact support@dlthub.com |
 | Workspace connection error | Not connected, or connected to the wrong workspace | Run `uv run dlthub workspace list` to see each workspace's name and ID. If multiple workspaces are listed, pick the **personal** playground workspace from `dlthub-start` (not a shared org workspace), then connect explicitly: `uv run dlthub workspace connect <workspace_id>` |
 
-Print to the user: `- [x] Step 3/4`
+Print to the user: `- [x] Deploy and run the sample pipeline`
 
 ## Step 4 — Open the dltHub dataset browser
 
-Once Step 3 is fully complete, print to the user: `- [ ] Step 4/4 — Opening dltHub dataset browser`
+Once Step 3 is fully complete, print to the user: `- [ ] Opening dltHub dataset browser`
 
 Retrieve the workspace ID **if it is not already known**:
 
@@ -81,7 +81,7 @@ uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspac
 
 The query editor lets you run SQL directly against the loaded results.
 
-Print to the user: `- [x] Step 4/4`
+Print to the user: `- [x] Opening dltHub dataset browser`
 
 ## Onboarding complete — what's next?
 
