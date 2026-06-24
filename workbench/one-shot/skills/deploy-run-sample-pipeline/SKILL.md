@@ -23,7 +23,9 @@ Print this to the user before doing anything else:
 
 ## Step 3 — Deploy and run
 
-Print to the user: `- [ ] Step 3/4 — Deploy and run the sample pipeline`
+Print to the user: `Let's continue your onboarding journey.`
+
+Print to the user: `- [ ] Deploy and run the sample pipeline`
 
 **Deploy:**
 
@@ -41,6 +43,13 @@ uv run dlthub run load_sample_shop -f
 
 The `-f` flag streams logs in real time. Wait for the job to complete.
 
+When the run starts, the CLI prints metadata including a `run_url` (a link to this run on dltHub Platform) before the log stream. After the job finishes successfully, print to the user:
+
+You can also view this run on the platform:
+<run_url>
+
+Print the URL on its own line as plain text — not in backticks, not as a markdown link — so it renders as a clickable link.
+
 If it fails:
 
 ```bash
@@ -50,13 +59,13 @@ uv run dlthub job logs load_sample_shop
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `Trial period has ended` | Plan expired | Contact support@dlthub.com |
-| Workspace connection error | Not connected, or connected to the wrong workspace | Run `uv run dlthub workspace connect` and select the **personal** playground workspace — there may be more than one listed |
+| Workspace connection error | Not connected, or connected to the wrong workspace | Run `uv run dlthub workspace list` to see each workspace's name and ID. If multiple workspaces are listed, pick the **personal** playground workspace from `dlthub-start` (not a shared org workspace), then connect explicitly: `uv run dlthub workspace connect <workspace_id>` |
 
-Print to the user: `- [x] Step 3/4`
+Print to the user: `- [x] Deploy and run the sample pipeline`
 
 ## Step 4 — Open the dltHub dataset browser
 
-Once Step 3 is fully complete, print to the user: `- [ ] Step 4/4 — Opening dltHub dataset browser`
+Once Step 3 is fully complete, print to the user: `- [ ] Opening dltHub dataset browser`
 
 Retrieve the workspace ID **if it is not already known**:
 
@@ -72,10 +81,10 @@ uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspac
 
 The query editor lets you run SQL directly against the loaded results.
 
-Print to the user: `- [x] Step 4/4`
+Print to the user: `- [x] Opening dltHub dataset browser`
 
 ## Onboarding complete — what's next?
 
-After Step 4 completes (dashboard opened), immediately print to the user:
+After Step 4 completes, immediately print to the user:
 
-> "Onboarding complete! When you're done exploring your data on the notebook, the next step is to build your own pipeline. Run `uvx dlthub-init` in a **new, separate directory** to scaffold a fresh dltHub project — it sets up `pyproject.toml`, the `uv.lock` lockfile, and the `.dlt/` config folder. Would you like me to walk you through it?"
+> "Onboarding complete! When you're ready to continue, ask me: `Give me a guided tour through dltHub`"
