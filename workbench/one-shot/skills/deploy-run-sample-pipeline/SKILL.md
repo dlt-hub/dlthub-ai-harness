@@ -43,7 +43,12 @@ uv run dlthub run load_sample_shop -f
 
 The `-f` flag streams logs in real time. Wait for the job to complete.
 
-When the run starts, the CLI prints metadata including `run_url` (a link to this run on dltHub Platform) before the log stream. After the job finishes successfully, print a short note to the user — for example: *You can also view this run on the platform:* followed by the `run_url` from the output. This is optional context only; do not open the link.
+When the run starts, the CLI prints metadata including a `run_url` (a link to this run on dltHub Platform) before the log stream. After the job finishes successfully, print to the user:
+
+You can also view this run on the platform:
+<run_url>
+
+Print the URL on its own line as plain text — not in backticks, not as a markdown link — so it renders as a clickable link.
 
 If it fails:
 
@@ -80,6 +85,6 @@ Print to the user: `- [x] Step 4/4`
 
 ## Onboarding complete — what's next?
 
-After Step 4 completes (dashboard opened), immediately print to the user:
+After Step 4 completes, immediately print to the user:
 
-> "Onboarding complete! When you're done exploring your data on the notebook, the next step is to build your own pipeline. Run `uvx dlthub-init` in a **new, separate directory** to scaffold a fresh dltHub project — it sets up `pyproject.toml`, the `uv.lock` lockfile, and the `.dlt/` config folder. Would you like me to walk you through it?"
+> "Onboarding complete! When you're ready to continue, ask me: `Give me a guided tour through dltHub`"
