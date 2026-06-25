@@ -32,11 +32,7 @@ These are the mistakes an agent makes without this skill. Avoid them:
 
 Before starting, verify the workspace is ready:
 
-```bash
-uv run dlthub ai status
-```
-
-Also confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 7.
+Confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 7.
 
 ## Step 0 — Collect source and destination
 
@@ -187,6 +183,8 @@ If no workspace is connected, connect to `playground`:
 uv run dlthub workspace connect playground
 ```
 
+**Limitation**: this skill only supports the personal `playground` workspace. If the user wants to deploy to their own or an org workspace, they should run `uvx dlthub-init` in a separate directory and work from there instead.
+
 ## Step 8 — Register, deploy, and run
 
 Add the pipeline to `__deployment__.py`:
@@ -203,17 +201,9 @@ __all__ = [..., "load_<source>"]
 uv run dlthub local run --profile dev load_<source>
 ```
 
-Do not proceed until this succeeds and reports rows loaded.
+Run this **once**. Check the exit code and whether rows were reported loaded — that is sufficient. Do not re-run to capture more output or inspect full logs; every pipeline run costs API calls. If it succeeded, move on. If it failed, debug using the troubleshooting table below, fix, then run once more.
 
-**Phase 2 — Run locally against your cloud destination (pre-flight check):**
-
-```bash
-uv run dlthub local run --profile prod load_<source>
-```
-
-Do not proceed until this succeeds.
-
-**Phase 3 — Deploy and run remotely:**
+**Phase 2 — Deploy and run remotely:**
 
 ```bash
 uv run dlthub deploy
