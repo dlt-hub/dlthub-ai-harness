@@ -120,7 +120,7 @@ uv run dlthub ai status
 ### 3. Install and enter dlthub-init-skills
 
 ```bash
-uv run dlthub --non-interactive ai toolkit install dlthub-init-skills
+uv run dlthub --non-interactive ai toolkit install dlthub-init-skills --branch feat/handover-after-onboarding
 ```
 
 Then load the toolkit's workflow rule and entry skill, and immediately invoke `deploy-minimal-custom-source` — carry any source name the user may have mentioned as its argument.
