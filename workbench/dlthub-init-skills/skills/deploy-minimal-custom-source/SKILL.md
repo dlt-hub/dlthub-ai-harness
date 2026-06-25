@@ -1,6 +1,6 @@
 ---
 name: deploy-minimal-custom-source
-description: Build a minimal REST API pipeline and deploy it to dltHub Platform. Use when the user has just run uvx dlthub-init and wants to get a working pipeline running in the cloud. Covers source research, pipeline code, credentials, local validation, and cloud deployment end-to-end.
+description: Build and deploy a pipeline to dltHub Platform. Use when the user has just set up their dlthub workspace and wants to get a working pipeline running in the cloud for the first time.
 argument-hint: "[source-name]"
 ---
 
@@ -13,10 +13,46 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 **References**:
 - https://dlthub.com/docs/general-usage/http/rest-client
 - https://dlthub.com/docs/hub/pipeline-operations/deployments
+- https://dlthub.com/docs/hub/pipeline-operations/profiles
 
-## Step 0 — Identify the source
+## DO NOT USE WHEN
+- The data source is a SQL database or files — use `sql-database-pipeline` or `filesystem-pipeline` instead
+- The user already has a working pipeline and wants to extend or harden it — use `rest-api-pipeline` instead
+- The user wants a production-grade pipeline (auth, incremental, multiple endpoints) — use `rest-api-pipeline` instead
 
-Parse `$ARGUMENTS` for a source name. If none was given, suggest three popular options (`github`, `hubspot`, `stripe_analytics`) or let the user name any REST API. Wait for their choice before proceeding.
+## Anti-patterns
+
+These are the mistakes an agent makes without this skill. Avoid them:
+
+- ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
+- ❌ **`destination_type` in `config.toml`** — `dlthub deploy` won't sync it to the cloud runtime. Always write `destination_type` to the profile-specific secrets file (`.dlt/dev.secrets.toml` or `.dlt/prod.secrets.toml`).
+- ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
+
+## Preconditions
+
+Before starting, verify the workspace is ready:
+
+```bash
+uv run dlthub ai status
+```
+
+Also confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 7.
+
+## Step 0 — Collect source and destination
+
+Ask the user two things upfront:
+
+1. **Source**: which API do they want to load from? If not given, suggest `github`, `hubspot`, or `stripe_analytics`.
+2. **Destination**: which cloud destination do they want for the prod profile? If unsure, recommend **MotherDuck** — DuckDB-compatible, simplest path.
+
+| Destination | Package |
+|---|---|
+| MotherDuck | `dlt[motherduck]` |
+| BigQuery | `dlt[bigquery]` |
+| Snowflake | `dlt[snowflake]` |
+| Redshift | `dlt[redshift]` |
+
+Wait for both answers before proceeding.
 
 ## Step 1 — Research the API
 
@@ -28,14 +64,20 @@ Run 1–2 targeted web searches for the API's documentation. Extract only what i
 
 ## Step 2 — Write the pipeline file
 
-Create `<source>_pipeline.py` in the project root:
+Create `<source>_pipeline.py` in the project root. Use `@run.pipeline` so the function is recognized as a job on dltHub Platform. Use `destination="warehouse"` — a named destination that maps to duckdb in dev and the cloud destination in prod.
 
 ```python
 import dlt
 from dlt.sources.rest_api import rest_api_source
+from dlt.hub import run
+from dlt.hub.run import trigger
 
-@dlt.resource(name="<resource_name>", primary_key="id")
-def load_<resource_name>():
+@run.pipeline(
+    "<source>_pipeline",
+    trigger=trigger.every("1d"),
+    expose={"tags": ["ingest"], "display_name": "<Source> ingest"},
+)
+def load_<source>():
     source = rest_api_source(
         {
             "client": {
@@ -56,35 +98,27 @@ def load_<resource_name>():
             ],
         }
     )
-    yield from source
-
-def load_<source>():
     pipeline = dlt.pipeline(
         pipeline_name="<source>_pipeline",
-        destination="duckdb",
+        destination="warehouse",
         dataset_name="<source>",
     )
-    load_info = pipeline.run(
-        load_<resource_name>().add_limit(50, count_rows=True)
-    )
-    print(load_info)
-
-if __name__ == "__main__":
-    load_<source>()
+    pipeline.run(source.add_limit(50, count_rows=True))
 ```
 
 Rules:
-- Always use `destination="duckdb"` at this stage
-- Always keep `.add_limit(50, count_rows=True)`
+- Always keep `.add_limit(50, count_rows=True)` for the first validation run
 - Omit `data_selector` if the response is a root JSON array
 - Omit pagination config
 - Adjust `primary_key` only if the API has an obvious unique field
 
-## Step 3 — Handle credentials
+## Step 3 — Handle source credentials
 
 Skip if the API is public.
 
-Use `secrets_update_fragment` to write the skeleton into `.dlt/secrets.toml`:
+Check first — use `secrets_view_redacted` to see if `[sources.<source>]` already exists in `.dlt/secrets.toml`. If it does and the value is `***`, skip this step.
+
+Otherwise use `secrets_update_fragment` to write the skeleton:
 
 ```toml
 [sources.<source>]
@@ -96,44 +130,22 @@ Tell the user:
 
 **Stop and wait** for confirmation.
 
-## Step 4 — Run locally
+## Step 4 — Configure dev profile
 
-```bash
-uv run python <source>_pipeline.py
+Write the dev destination (duckdb) to `.dlt/dev.secrets.toml`. Check first with `secrets_view_redacted` — if `[destination.warehouse]` already exists there, skip.
+
+Use `secrets_update_fragment` with `path=".dlt/dev.secrets.toml"`:
+
+```toml
+[destination.warehouse]
+destination_type = "duckdb"
 ```
 
-Do not proceed until the run succeeds and reports rows loaded.
+## Step 5 — Configure prod profile
 
-**Troubleshooting**:
+Write the full prod destination block to `.dlt/prod.secrets.toml`. Check first — open the file or use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` if supported; if `[destination.warehouse]` already exists with values, skip.
 
-| Issue | Fix |
-|---|---|
-| 0 rows | Check raw response; update `data_selector` or omit it |
-| 401/403 | Verify `secrets.toml` path matches `dlt.secrets["..."]` key |
-| Infinite run | Add `"paginator": "single_page"` to endpoint config |
-| Import error | Run `uv add "dlt[hub]"` |
-
-## Step 5 — Connect workspace
-
-```bash
-uv run dlthub workspace list
-```
-
-If no workspace is connected, connect to personal `playground`:
-
-```bash
-uv run dlthub workspace connect playground
-```
-
-## Step 6 — Set up production destination
-
-The cloud runtime's storage is ephemeral — a cloud destination is required for data to persist.
-
-**Reference**: https://dlthub.com/docs/general-usage/destination
-
-Ask the user which cloud destination they want. If unsure, recommend **MotherDuck** — DuckDB-compatible, simplest path.
-
-Write the credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
+Use `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
 
 ```toml
 [destination.warehouse]
@@ -149,18 +161,27 @@ Tell the user:
 
 **Stop and wait** for confirmation.
 
-Install the destination package:
+> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list` — verify the file directly on disk before continuing.
 
-| Destination | Command |
-|---|---|
-| MotherDuck | `uv add "dlt[motherduck]"` |
-| BigQuery | `uv add "dlt[bigquery]"` |
-| Snowflake | `uv add "dlt[snowflake]"` |
-| Redshift | `uv add "dlt[redshift]"` |
+## Step 6 — Install destination package
 
-## Step 7 — Update destination in pipeline file
+```bash
+uv add "dlt[<extra>]"
+```
 
-Change `destination="duckdb"` to `"warehouse"` in `<source>_pipeline.py`. Keep `.add_limit(50, count_rows=True)`.
+Use the package from the table in Step 0.
+
+## Step 7 — Connect workspace
+
+```bash
+uv run dlthub workspace list
+```
+
+If no workspace is connected, connect to `playground`:
+
+```bash
+uv run dlthub workspace connect playground
+```
 
 ## Step 8 — Register, deploy, and run
 
@@ -172,18 +193,30 @@ from <source>_pipeline import load_<source>
 __all__ = [..., "load_<source>"]
 ```
 
-Deploy and run:
+Deploy, then run with the dev profile first (validates against duckdb on the cloud):
 
 ```bash
 uv run dlthub deploy
-uv run dlthub run load_<source> -f
+uv run dlthub run load_<source> --profile dev -f
 ```
 
-If it fails:
+Once the dev run succeeds, run with the prod profile:
+
+```bash
+uv run dlthub run load_<source> --profile prod -f
+```
+
+If either run fails:
 
 ```bash
 uv run dlthub job logs load_<source>
 ```
+
+| Error | Fix |
+|---|---|
+| Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is in `__all__` |
+| `Unknown DestinationModule` | Check `destination_type` is in the profile secrets file, not `config.toml` |
+| Auth / credential error | Verify `.dlt/prod.secrets.toml` values are filled in on disk |
 
 Once successful:
 
