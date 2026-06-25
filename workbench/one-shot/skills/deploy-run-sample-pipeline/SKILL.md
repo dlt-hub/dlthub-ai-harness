@@ -87,4 +87,40 @@ Print to the user: `- [x] Opening dltHub dataset browser`
 
 After Step 4 completes, immediately print to the user:
 
-> "Onboarding complete! When you're ready to continue, ask me: `Give me a guided tour through dltHub`"
+> "Onboarding complete! When you're ready to continue, ask me: `Help me get started building and running a data pipeline on dltHub`"
+
+## When the user says "Help me get started building and running a data pipeline on dltHub"
+
+Scaffold a fresh minimal workspace in a new directory, then hand over to the `dlthub-init-skills` toolkit.
+
+### 1. Pick a directory
+
+Ask the user where to create the new project, or suggest a name like `my-pipeline`. Wait for confirmation.
+
+### 2. Scaffold the workspace
+
+Run `uvx dlthub-init@latest` non-interactively — it is AI-aware and requires no interaction:
+
+```bash
+uvx dlthub-init@latest <dir>
+```
+
+Change into that directory for all subsequent commands:
+
+```bash
+cd <dir>
+```
+
+Verify the workspace is ready:
+
+```bash
+uv run dlthub ai status
+```
+
+### 3. Install and enter dlthub-init-skills
+
+```bash
+uv run dlthub --non-interactive ai toolkit install dlthub-init-skills
+```
+
+Then load the toolkit's workflow rule and entry skill, and immediately invoke `deploy-minimal-custom-source` — carry any source name the user may have mentioned as its argument.
