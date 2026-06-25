@@ -27,6 +27,7 @@ These are the mistakes an agent makes without this skill. Avoid them:
 - ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
 - ❌ **`destination_type` written via `secrets_update_fragment`** — the MCP secrets tool normalizes `destination_type` to `type`, which the cloud runtime does not recognize. Always write `destination_type` directly to the profile config file (`.dlt/dev.config.toml` or `.dlt/prod.config.toml`) using the Edit tool.
 - ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
+- ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
 
 ## Preconditions
 
@@ -50,7 +51,7 @@ Confirm `__deployment__.py` exists in the project root — it is created by `uvx
 >
 > Which would you like to do?
 
-**Stop and wait** for the user's answer. If they choose B, tell them to run `uvx dlthub-init <dir>` in a new directory and that this skill will be available there to help them. Do not proceed.
+**Stop and wait** for the user's answer. If they choose B, tell the user to open a new terminal, navigate to the parent directory, and run `uvx dlthub-init <dir>` themselves. Do **not** run this command — running it from within this session would interfere with the new workspace's AI assistance setup. Do not proceed.
 
 Only continue if the user explicitly chooses A.
 
@@ -252,10 +253,12 @@ uv run dlthub show
 
 Your pipeline is deployed and running. This workspace has served its purpose.
 
-To build a real pipeline you can extend, harden, and take to production, run `uvx dlthub-init` in a new directory:
+To build a real pipeline you can extend, harden, and take to production, open a new terminal and run:
 
 ```bash
 uvx dlthub-init@latest <your-project-name>
 ```
+
+Do **not** run this command here — running it from within this session would interfere with the new workspace's AI assistance setup. The user must run it themselves in a separate terminal.
 
 That will scaffold a proper workspace where you can use the full `rest-api-pipeline` toolkit to add incremental loading, more endpoints, and production-grade configuration.
