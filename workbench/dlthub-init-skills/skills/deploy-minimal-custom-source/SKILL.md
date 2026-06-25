@@ -25,7 +25,7 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 These are the mistakes an agent makes without this skill. Avoid them:
 
 - ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
-- ❌ **`destination_type` in `config.toml`** — `dlthub deploy` won't sync it to the cloud runtime. Always write `destination_type` to the profile-specific secrets file (`.dlt/dev.secrets.toml` or `.dlt/prod.secrets.toml`).
+- ❌ **`destination_type` written via `secrets_update_fragment`** — the MCP secrets tool normalizes `destination_type` to `type`, which the cloud runtime does not recognize. Always write `destination_type` directly to the profile config file (`.dlt/dev.config.toml` or `.dlt/prod.config.toml`) using the Edit tool.
 - ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
 
 ## Preconditions
@@ -132,9 +132,9 @@ Tell the user:
 
 ## Step 4 — Configure dev profile
 
-Write the dev destination (duckdb) to `.dlt/dev.secrets.toml`. Check first with `secrets_view_redacted` — if `[destination.warehouse]` already exists there, skip.
+`destination_type` is config, not a secret — write it directly to `.dlt/dev.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
 
-Use `secrets_update_fragment` with `path=".dlt/dev.secrets.toml"`:
+Add to `.dlt/dev.config.toml`:
 
 ```toml
 [destination.warehouse]
@@ -143,25 +143,29 @@ destination_type = "duckdb"
 
 ## Step 5 — Configure prod profile
 
-Write the full prod destination block to `.dlt/prod.secrets.toml`. Check first — open the file or use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` if supported; if `[destination.warehouse]` already exists with values, skip.
+Write `destination_type` directly to `.dlt/prod.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
 
-Use `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
+Add to `.dlt/prod.config.toml`:
 
 ```toml
 [destination.warehouse]
 destination_type = "motherduck"  # or bigquery, snowflake, redshift
+```
 
+Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
+
+```toml
 [destination.warehouse.credentials]
 database = ""
 token = ""
 ```
 
 Tell the user:
-> I've created the credential structure in `.dlt/prod.secrets.toml`. Please fill in your values, then let me know when done.
+> I've added the credential structure to `.dlt/prod.secrets.toml`. Please fill in your values, then let me know when done.
 
 **Stop and wait** for confirmation.
 
-> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list` — verify the file directly on disk before continuing.
+> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing.
 
 ## Step 6 — Install destination package
 
@@ -193,20 +197,30 @@ from <source>_pipeline import load_<source>
 __all__ = [..., "load_<source>"]
 ```
 
-Deploy, then run with the dev profile first (validates against duckdb on the cloud):
+**Phase 1 — Run locally against DuckDB (quick validation):**
+
+```bash
+uv run dlthub local run --profile dev load_<source>
+```
+
+Do not proceed until this succeeds and reports rows loaded.
+
+**Phase 2 — Run locally against your cloud destination (pre-flight check):**
+
+```bash
+uv run dlthub local run --profile prod load_<source>
+```
+
+Do not proceed until this succeeds.
+
+**Phase 3 — Deploy and run remotely:**
 
 ```bash
 uv run dlthub deploy
-uv run dlthub run load_<source> --profile dev -f
+uv run dlthub job run -f load_<source>
 ```
 
-Once the dev run succeeds, run with the prod profile:
-
-```bash
-uv run dlthub run load_<source> --profile prod -f
-```
-
-If either run fails:
+If any phase fails, inspect logs:
 
 ```bash
 uv run dlthub job logs load_<source>
@@ -214,9 +228,9 @@ uv run dlthub job logs load_<source>
 
 | Error | Fix |
 |---|---|
-| Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is in `__all__` |
-| `Unknown DestinationModule` | Check `destination_type` is in the profile secrets file, not `config.toml` |
-| Auth / credential error | Verify `.dlt/prod.secrets.toml` values are filled in on disk |
+| Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is listed in `__all__` |
+| `Unknown DestinationModule` | Check `destination_type` is in `.dlt/dev.config.toml` or `.dlt/prod.config.toml`, not written via `secrets_update_fragment` |
+| Auth / credential error | Use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` to confirm credentials show as `***` |
 
 Once successful:
 
