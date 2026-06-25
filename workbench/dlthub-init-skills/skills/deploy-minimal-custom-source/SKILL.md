@@ -32,7 +32,27 @@ These are the mistakes an agent makes without this skill. Avoid them:
 
 Before starting, verify the workspace is ready:
 
-Confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 7.
+```bash
+uv run dlthub ai status
+```
+
+Confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 8.
+
+## Choose your path
+
+**Present this choice to the user before doing anything else:**
+
+> This workspace is a minimal test environment. You have two options:
+>
+> **A) Continue here** — build and deploy a minimal pipeline in this workspace. It will work end-to-end, but this environment is not meant to be extended. You won't be able to add endpoints, incremental loading, or use this as a production pipeline later.
+>
+> **B) Start fresh in a new directory** — run `uvx dlthub-init <your-project-name>` in a new directory. You'll get a proper workspace you can build on, extend, and take to production.
+>
+> Which would you like to do?
+
+**Stop and wait** for the user's answer. If they choose B, tell them to run `uvx dlthub-init <dir>` in a new directory and that this skill will be available there to help them. Do not proceed.
+
+Only continue if the user explicitly chooses A.
 
 ## Step 0 — Collect source and destination
 
@@ -227,3 +247,15 @@ Once successful:
 ```bash
 uv run dlthub show
 ```
+
+## What's next?
+
+Your pipeline is deployed and running. This workspace has served its purpose.
+
+To build a real pipeline you can extend, harden, and take to production, run `uvx dlthub-init` in a new directory:
+
+```bash
+uvx dlthub-init@latest <your-project-name>
+```
+
+That will scaffold a proper workspace where you can use the full `rest-api-pipeline` toolkit to add incremental loading, more endpoints, and production-grade configuration.

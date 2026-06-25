@@ -14,5 +14,4 @@
 
 ### Outgoing (from dlthub-init-skills)
 
-- **rest-api-pipeline** — after the minimal pipeline is working and deployed, when the user wants to add more endpoints, pagination, incremental loading, or production-grade hardening. Enter at `find-source` with the source name already known — skip the discovery question.
-- **dlthub-platform** — if the user wants to schedule or manage the deployed pipeline beyond the initial run. Enter at `setup-runtime`.
+This toolkit ends when the pipeline is deployed. It does not hand off to other toolkits — this workspace is a minimal test environment and is not meant to be extended. When the user wants to build a real pipeline, direct them to run `uvx dlthub-init@latest <dir>` in a new directory.
