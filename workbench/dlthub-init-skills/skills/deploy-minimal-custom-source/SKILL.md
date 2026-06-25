@@ -24,6 +24,8 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 
 These are the mistakes an agent makes without this skill. Avoid them:
 
+- ❌ **Reading any `*.secrets.toml` file directly** — this is NEVER allowed. Reading `.dlt/secrets.toml`, `.dlt/dev.secrets.toml`, or `.dlt/prod.secrets.toml` with the Read tool dumps credential values (API keys, tokens, private keys) into the conversation context. Use `secrets_view_redacted` with `path=` instead — it shows `***` for all values.
+- ❌ **Writing any `*.secrets.toml` file directly** — this is NEVER allowed. Never use the Write or Edit tool on any `*.secrets.toml` file. Use `secrets_update_fragment` with `path=` to write credential structure, and leave values empty (`""`) for the user to fill in.
 - ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
 - ❌ **`destination_type` written via `secrets_update_fragment`** — the MCP secrets tool normalizes `destination_type` to `type`, which the cloud runtime does not recognize. Always write `destination_type` directly to the profile config file (`.dlt/dev.config.toml` or `.dlt/prod.config.toml`) using the Edit tool.
 - ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
@@ -131,9 +133,11 @@ Rules:
 
 ## Step 3 — Handle source credentials
 
+**Never read or write `.dlt/secrets.toml` directly with Read/Write/Edit tools.**
+
 Skip if the API is public.
 
-Check first — use `secrets_view_redacted` to see if `[sources.<source>]` already exists in `.dlt/secrets.toml`. If it does and the value is `***`, skip this step.
+Check first — use `secrets_view_redacted` (no `path=` needed for the default secrets file) to see if `[sources.<source>]` already exists. If it does and the value is `***`, skip this step.
 
 Otherwise use `secrets_update_fragment` to write the skeleton:
 
@@ -169,7 +173,7 @@ Add to `.dlt/prod.config.toml`:
 destination_type = "motherduck"  # or bigquery, snowflake, redshift
 ```
 
-Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
+Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`. **Never use Write/Edit/Read on this file directly.**
 
 ```toml
 [destination.warehouse.credentials]
@@ -182,7 +186,7 @@ Tell the user:
 
 **Stop and wait** for confirmation.
 
-> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing.
+> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing. Never read this file on disk.
 
 ## Step 6 — Install destination package
 
@@ -223,6 +227,8 @@ uv run dlthub local run --profile dev load_<source>
 ```
 
 Run this **once**. Check the exit code and whether rows were reported loaded — that is sufficient. Do not re-run to capture more output or inspect full logs; every pipeline run costs API calls. If it succeeded, move on. If it failed, debug using the troubleshooting table below, fix, then run once more.
+
+**Warnings are not failures.** Warnings about untyped columns, missing hints, or inferred schemas are expected on a first run and do not require investigation or a re-run. Only a non-zero exit code or zero rows loaded is a failure.
 
 **Phase 2 — Deploy and run remotely:**
 
