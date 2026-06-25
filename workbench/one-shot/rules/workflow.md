@@ -12,4 +12,4 @@ This workflow has exactly one step.
 
 ### Outgoing (from one-shot)
 
-- **dlthub-init-skills** — after `deploy-run-sample-pipeline` completes and the user says "Help me get started building and running a data pipeline on dltHub". Scaffold a new project with `uvx dlthub-init@latest`, then enter at `deploy-minimal-custom-source`. The playground workspace is already connected — skip workspace setup.
+- **dlthub-init-skills** — after `deploy-run-sample-pipeline` completes and the user says "Help me get started building and running a data pipeline on dltHub". Enter at `deploy-minimal-custom-source` in the same environment. The playground workspace is already connected — skip workspace setup.
