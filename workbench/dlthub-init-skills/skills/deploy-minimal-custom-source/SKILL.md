@@ -6,7 +6,9 @@ argument-hint: "[source-name]"
 
 # Build and deploy a minimal custom source
 
-Build a minimal single-endpoint REST API pipeline locally against DuckDB, then deploy it to dltHub Platform. The 50-row limit stays throughout — this is a first-run cloud validation, not a full production load.
+Build a minimal single-endpoint REST API pipeline and get it running on dltHub Platform as fast as possible. The 50-row limit stays throughout — this is a first-run cloud validation, not a full production load.
+
+**Goal: fastest time to deployment. Every step must serve that goal.**
 
 **References**:
 - https://dlthub.com/docs/general-usage/http/rest-client
@@ -18,13 +20,11 @@ Parse `$ARGUMENTS` for a source name. If none was given, suggest three popular o
 
 ## Step 1 — Research the API
 
-1. Check for verified dlt sources: `uv run dlthub --non-interactive pipeline init --list-sources`
-2. If a verified source exists, tell the user and suggest `dlthub pipeline init <source> <destination>` — a pre-built connector is almost always better. Stop here unless the user explicitly wants to proceed with a custom pipeline.
-3. Run 1–2 targeted web searches for the API's documentation. Extract:
-   - Base URL
-   - Authentication method and header/token format
-   - A clear endpoint path to start with
-   - The response wrapper key (e.g. `"data"`, `"items"`, or none if root array)
+Run 1–2 targeted web searches for the API's documentation. Extract only what is needed to write the pipeline:
+- Base URL
+- Authentication method and header/token format
+- A single clear endpoint path
+- The response wrapper key (e.g. `"data"`, `"items"`, or none if root array)
 
 ## Step 2 — Write the pipeline file
 
@@ -78,26 +78,23 @@ Rules:
 - Always keep `.add_limit(50, count_rows=True)`
 - Omit `data_selector` if the response is a root JSON array
 - Omit pagination config
-- Adjust `primary_key` to the actual unique field
+- Adjust `primary_key` only if the API has an obvious unique field
 
 ## Step 3 — Handle credentials
 
-Skip this step if the API is public (no auth required).
+Skip if the API is public.
 
-1. Use `secrets_view_redacted` to check if credentials already exist
-2. Use `secrets_update_fragment` to write a skeleton into `.dlt/secrets.toml`:
+Use `secrets_update_fragment` to write the skeleton into `.dlt/secrets.toml`:
 
 ```toml
 [sources.<source>]
 api_token = ""
 ```
 
-3. Tell the user:
+Tell the user:
 > I've added the credential structure to `.dlt/secrets.toml`. Please fill in your API token, then let me know when done.
 
-**Stop and wait** for the user to confirm before continuing.
-
-4. Use `secrets_view_redacted` to verify the value shows as `***`.
+**Stop and wait** for confirmation.
 
 ## Step 4 — Run locally
 
@@ -105,51 +102,38 @@ api_token = ""
 uv run python <source>_pipeline.py
 ```
 
-Then open the local UI (run in background):
-
-```bash
-uv run dlthub local show
-```
+Do not proceed until the run succeeds and reports rows loaded.
 
 **Troubleshooting**:
 
-| Issue | Likely cause | Fix |
-|---|---|---|
-| 0 rows | Wrong `data_selector` | Check raw response; update key or omit |
-| 401/403 | Auth misconfigured | Verify `secrets.toml` path and header format |
-| Infinite run | Paginator looping | Add `"paginator": "single_page"` to endpoint config |
-| `ConfigFieldMissingException` | Secret path mismatch | Match `dlt.secrets["..."]` path to `secrets.toml` key |
-| Import error | Missing dependency | Run `uv add "dlt[hub]"` |
-
-Do not proceed to deployment until the local run succeeds and rows appear in the UI.
+| Issue | Fix |
+|---|---|
+| 0 rows | Check raw response; update `data_selector` or omit it |
+| 401/403 | Verify `secrets.toml` path matches `dlt.secrets["..."]` key |
+| Infinite run | Add `"paginator": "single_page"` to endpoint config |
+| Import error | Run `uv add "dlt[hub]"` |
 
 ## Step 5 — Connect workspace
 
 ```bash
-dlthub workspace list
+uv run dlthub workspace list
 ```
 
-If no workspace is connected, connect to `playground` (recommended default for a first deploy):
+If no workspace is connected, connect to personal `playground`:
 
 ```bash
-dlthub workspace connect playground
+uv run dlthub workspace connect playground
 ```
 
 ## Step 6 — Set up production destination
 
-The pipeline loads into `duckdb` locally, but the cloud runtime's storage is ephemeral — a cloud destination is required for data to persist.
+The cloud runtime's storage is ephemeral — a cloud destination is required for data to persist.
 
 **Reference**: https://dlthub.com/docs/general-usage/destination
 
-### 6a. Choose a destination
+Ask the user which cloud destination they want. If unsure, recommend **MotherDuck** — DuckDB-compatible, simplest path.
 
-Ask the user which cloud destination they want. If unsure, recommend **MotherDuck** — it is DuckDB-compatible and the simplest path from a local setup.
-
-### 6b. Create a named destination
-
-Check `config.toml` first. If a `[destination.warehouse]` block with `destination_type` already exists there, move it to `dev.config.toml` — use MCP secrets tools, never edit the files directly.
-
-Write the prod credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
+Write the credential skeleton using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`:
 
 ```toml
 [destination.warehouse]
@@ -163,9 +147,9 @@ token = ""
 Tell the user:
 > I've created the credential structure in `.dlt/prod.secrets.toml`. Please fill in your values, then let me know when done.
 
-**Stop and wait** for confirmation, then verify with `secrets_view_redacted` that credentials show as `***`.
+**Stop and wait** for confirmation.
 
-### 6c. Install the destination package
+Install the destination package:
 
 | Destination | Command |
 |---|---|
@@ -174,27 +158,13 @@ Tell the user:
 | Snowflake | `uv add "dlt[snowflake]"` |
 | Redshift | `uv add "dlt[redshift]"` |
 
-```bash
-uv add "dlt[<extra>]" && uv sync
-```
-
 ## Step 7 — Update destination in pipeline file
 
-Change `destination="duckdb"` to the named destination in `<source>_pipeline.py`:
+Change `destination="duckdb"` to `"warehouse"` in `<source>_pipeline.py`. Keep `.add_limit(50, count_rows=True)`.
 
-```python
-pipeline = dlt.pipeline(
-    pipeline_name="<source>_pipeline",
-    destination="warehouse",  # named destination from Step 6
-    dataset_name="<source>",
-)
-```
+## Step 8 — Register, deploy, and run
 
-Keep `.add_limit(50, count_rows=True)` — this cloud run is still a validation run.
-
-## Step 8 — Register in `__deployment__.py`
-
-Add the pipeline function to the existing `__deployment__.py`:
+Add the pipeline to `__deployment__.py`:
 
 ```python
 from <source>_pipeline import load_<source>
@@ -202,40 +172,21 @@ from <source>_pipeline import load_<source>
 __all__ = [..., "load_<source>"]
 ```
 
-Preview what will be registered:
+Deploy and run:
 
 ```bash
-dlthub deploy --dry-run
+uv run dlthub deploy
+uv run dlthub run load_<source> -f
 ```
 
-Show the user which jobs will be created. **Stop and wait for approval** before running the real deploy.
-
-## Step 9 — Deploy and run
+If it fails:
 
 ```bash
-dlthub deploy
+uv run dlthub job logs load_<source>
 ```
 
-Simulate locally with production credentials before hitting the cloud:
+Once successful:
 
 ```bash
-dlthub local run load_<source> --profile prod
-```
-
-Fix any credential or destination errors here. Then run on the cloud:
-
-```bash
-dlthub run load_<source> -f
-```
-
-`-f` streams logs in real-time. If it fails, inspect logs:
-
-```bash
-dlthub job logs load_<source>
-```
-
-Once successful, confirm the pipeline is live:
-
-```bash
-dlthub show
+uv run dlthub show
 ```
