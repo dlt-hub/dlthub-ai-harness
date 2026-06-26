@@ -11,7 +11,7 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 **Goal: fastest time to deployment. Every step must serve that goal.**
 
 **References**:
-- https://dlthub.com/docs/general-usage/http/rest-client
+- https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
 - https://dlthub.com/docs/hub/pipeline-operations/deployments
 - https://dlthub.com/docs/hub/pipeline-operations/profiles
 
@@ -41,23 +41,25 @@ uv run dlthub ai status
 
 Confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 8.
 
-## Choose your path
+## Step 0 — Connect workspace
 
-**Present this choice to the user before doing anything else:**
+```bash
+uv run dlthub workspace list
+```
 
-> This workspace is a minimal test environment. You have two options:
->
-> **A) Continue here** — build and deploy a minimal pipeline in this workspace. It will work end-to-end, but this environment is not meant to be extended. You won't be able to add endpoints, incremental loading, or use this as a production pipeline later.
->
-> **B) Start fresh in a new directory** — run `uvx dlthub-init <your-project-name>` in a new directory. You'll get a proper workspace you can build on, extend, and take to production.
->
-> Which would you like to do?
+If a workspace is already connected and the user is happy with it, skip to Step 1.
 
-**Stop and wait** for the user's answer. If they choose B, tell the user to open a new terminal, navigate to the parent directory, and run `uvx dlthub-init <dir>` themselves. Do **not** run this command — running it from within this session would interfere with the new workspace's AI assistance setup. Do not proceed.
+Otherwise, connect to an existing workspace or create a new one:
 
-Only continue if the user explicitly chooses A.
+```bash
+uv run dlthub workspace connect                    # interactive — select or create
+uv run dlthub workspace connect <name_or_id>       # connect directly by name or ID
+uv run dlthub workspace connect <name_or_id> --org-id <id>  # specify org
+```
 
-## Step 0 — Collect source and destination
+**Stop and wait** for the user to confirm which workspace to use before continuing.
+
+## Step 1 — Collect source and destination
 
 Ask the user two things upfront:
 
@@ -73,7 +75,7 @@ Ask the user two things upfront:
 
 Wait for both answers before proceeding.
 
-## Step 1 — Research the API
+## Step 2 — Research the API
 
 Run 1–2 targeted web searches for the API's documentation. Extract only what is needed to write the pipeline:
 - Base URL
@@ -81,7 +83,7 @@ Run 1–2 targeted web searches for the API's documentation. Extract only what i
 - A single clear endpoint path
 - The response wrapper key (e.g. `"data"`, `"items"`, or none if root array)
 
-## Step 2 — Write the pipeline file
+## Step 3 — Write the pipeline file
 
 Create `<source>_pipeline.py` in the project root. Use `@run.pipeline` so the function is recognized as a job on dltHub Platform. Use `destination="warehouse"` — a named destination that maps to duckdb in dev and the cloud destination in prod.
 
@@ -131,7 +133,7 @@ Rules:
 - Omit pagination config
 - Adjust `primary_key` only if the API has an obvious unique field
 
-## Step 3 — Handle source credentials
+## Step 4 — Handle source credentials
 
 **Never read or write `.dlt/secrets.toml` directly with Read/Write/Edit tools.**
 
@@ -151,7 +153,7 @@ Tell the user:
 
 **Stop and wait** for confirmation.
 
-## Step 4 — Configure dev profile
+## Step 5 — Configure dev profile
 
 `destination_type` is config, not a secret — write it directly to `.dlt/dev.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
 
@@ -162,7 +164,7 @@ Add to `.dlt/dev.config.toml`:
 destination_type = "duckdb"
 ```
 
-## Step 5 — Configure prod profile
+## Step 6 — Configure prod profile
 
 Write `destination_type` directly to `.dlt/prod.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
 
@@ -188,27 +190,13 @@ Tell the user:
 
 > **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing. Never read this file on disk.
 
-## Step 6 — Install destination package
+## Step 7 — Install destination package
 
 ```bash
 uv add "dlt[<extra>]"
 ```
 
-Use the package from the table in Step 0.
-
-## Step 7 — Connect workspace
-
-```bash
-uv run dlthub workspace list
-```
-
-If no workspace is connected, connect to `playground`:
-
-```bash
-uv run dlthub workspace connect playground
-```
-
-**Limitation**: this skill only supports the personal `playground` workspace. If the user wants to deploy to their own or an org workspace, they should run `uvx dlthub-init` in a separate directory and work from there instead.
+Use the package from the table in Step 1.
 
 ## Step 8 — Register and validate locally
 
