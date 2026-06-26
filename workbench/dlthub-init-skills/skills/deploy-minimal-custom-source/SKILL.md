@@ -1,6 +1,6 @@
 ---
 name: deploy-minimal-custom-source
-description: Build and deploy a pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline" or has just set up their dlthub workspace and wants to get a working pipeline running in the cloud for the first time.
+description: Build and deploy a minimal custom REST API pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline".
 argument-hint: "[source-name]"
 ---
 
