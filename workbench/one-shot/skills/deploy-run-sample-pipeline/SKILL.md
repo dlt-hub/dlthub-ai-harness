@@ -102,8 +102,9 @@ Tell the user: "Amazing, let's get started!"
 
 Then explain the following steps in order:
 
-1. Run `uvx dlthub-init@latest` in whatever directory they'd like their new project to live in. 
+1. Run `uvx dlthub-init@latest` in whatever directory they'd like their new project to live in.
    - **Ask the user for the target directory and stop and wait for their answer before running anything.**
+   - The command may print a prompt about creating a virtual environment after listing the created files — this is part of the normal scaffolding process. If files were listed, scaffolding succeeded; do not re-run. Only re-run if no files were listed at all.
 
 2. Once scaffolding is done, tell the user: **"Please close this Claude Code session now and open a new one from within the new project directory."** Do not continue assisting in this session — it is scoped to the `one-shot` project and does not have the new project's toolkit, MCP servers, or skills loaded. Any further help here will be missing the agentic capabilities the new project needs.
 
