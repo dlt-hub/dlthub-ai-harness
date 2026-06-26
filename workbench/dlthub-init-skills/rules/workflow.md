@@ -14,4 +14,4 @@
 
 ### Outgoing (from dlthub-init-skills)
 
-This toolkit ends when the pipeline is deployed. It does not hand off to other toolkits — this workspace is a minimal test environment and is not meant to be extended. When the user wants to build a real pipeline, direct them to run `uvx dlthub-init@latest <dir>` in a new directory.
+- **rest-api-pipeline** — after `deploy-minimal-custom-source` completes and the user says "Help me extend my pipeline". Enter at `new-endpoint` (to add more endpoints), `adjust-endpoint` (to add incremental loading or pagination), or `find-source` (for a fresh start with the full toolkit). The pipeline file and credentials are already in place — skip source setup.

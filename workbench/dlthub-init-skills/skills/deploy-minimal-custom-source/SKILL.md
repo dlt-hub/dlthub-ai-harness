@@ -1,6 +1,6 @@
 ---
 name: deploy-minimal-custom-source
-description: Build and deploy a pipeline to dltHub Platform. Use when the user has just set up their dlthub workspace and wants to get a working pipeline running in the cloud for the first time.
+description: Build and deploy a pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline" or has just set up their dlthub workspace and wants to get a working pipeline running in the cloud for the first time.
 argument-hint: "[source-name]"
 ---
 
@@ -210,7 +210,7 @@ uv run dlthub workspace connect playground
 
 **Limitation**: this skill only supports the personal `playground` workspace. If the user wants to deploy to their own or an org workspace, they should run `uvx dlthub-init` in a separate directory and work from there instead.
 
-## Step 8 — Register, deploy, and run
+## Step 8 — Register and validate locally
 
 Add the pipeline to `__deployment__.py`:
 
@@ -220,7 +220,7 @@ from <source>_pipeline import load_<source>
 __all__ = [..., "load_<source>"]
 ```
 
-**Phase 1 — Run locally against DuckDB (quick validation):**
+Run locally against DuckDB:
 
 ```bash
 uv run dlthub local run --profile dev load_<source>
@@ -230,24 +230,24 @@ Run this **once**. Check the exit code and whether rows were reported loaded —
 
 **Warnings are not failures.** Warnings about untyped columns, missing hints, or inferred schemas are expected on a first run and do not require investigation or a re-run. Only a non-zero exit code or zero rows loaded is a failure.
 
-**Phase 2 — Deploy and run remotely:**
+| Error | Fix |
+|---|---|
+| Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is listed in `__all__` |
+| `Unknown DestinationModule` | Check `destination_type` is in `.dlt/dev.config.toml` or `.dlt/prod.config.toml`, not written via `secrets_update_fragment` |
+| Auth / credential error | Use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` to confirm credentials show as `***` |
+
+## Step 9 — Deploy and run remotely
 
 ```bash
 uv run dlthub deploy
 uv run dlthub job run -f load_<source>
 ```
 
-If any phase fails, inspect logs:
+If it fails, inspect logs:
 
 ```bash
 uv run dlthub job logs load_<source>
 ```
-
-| Error | Fix |
-|---|---|
-| Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is listed in `__all__` |
-| `Unknown DestinationModule` | Check `destination_type` is in `.dlt/dev.config.toml` or `.dlt/prod.config.toml`, not written via `secrets_update_fragment` |
-| Auth / credential error | Use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` to confirm credentials show as `***` |
 
 Once successful:
 
@@ -257,14 +257,11 @@ uv run dlthub show
 
 ## What's next?
 
-Your pipeline is deployed and running. This workspace has served its purpose.
+Your pipeline is deployed and running on dltHub Platform.
 
-To build a real pipeline you can extend, harden, and take to production, open a new terminal and run:
+You can now extend it using the **rest-api-pipeline** toolkit — for example:
+- Add more endpoints to load additional resources from the same API
+- Add incremental loading so only new or updated records are fetched on each run
+- Add pagination to handle APIs that return large result sets across multiple pages
 
-```bash
-uvx dlthub-init@latest <your-project-name>
-```
-
-Do **not** run this command here — running it from within this session would interfere with the new workspace's AI assistance setup. The user must run it themselves in a separate terminal.
-
-That will scaffold a proper workspace where you can use the full `rest-api-pipeline` toolkit to add incremental loading, more endpoints, and production-grade configuration.
+To continue, tell the agent: `"Help me extend my pipeline"`

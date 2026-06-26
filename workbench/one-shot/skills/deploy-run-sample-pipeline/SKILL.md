@@ -1,6 +1,6 @@
 ---
 name: deploy-run-sample-pipeline
-description: "Deploy and run the pre-shipped Jaffle Shop sample pipeline on dltHub Platform — an educational end-to-end run after uvx dlthub-start, NOT a production-grade pipeline. Use when the user wants to complete the onboarding deploy-and-run flow with the bundled pipeline.py. Assumes scaffolding, login, and playground workspace connection are already done."
+description: "Deploy and run the pre-shipped Jaffle Shop sample pipeline on dltHub Platform — the final onboarding step after uvx dlthub-start. Use when the user says 'deploy the pipeline', 'run the sample pipeline', or is ready to complete onboarding. Assumes scaffolding, login, and playground workspace connection are already done."
 argument-hint: ""
 ---
 
@@ -11,6 +11,13 @@ Do not use when `pipeline.py` does not exist in the project root.
 If the user wants to build their own pipeline, recommend they complete onboarding first by running the sample pipeline. Once onboarding is done, they will be recommended to build their own pipeline.
 
 **Assumption:** By the time this skill runs, the project has been scaffolded, the user is logged in to dltHub, and the playground workspace is connected. Steps 1–2 are complete.
+
+## Anti-patterns
+
+- ❌ **Proceeding to Step 4 before Step 3 is confirmed complete** — wait for `dlthub run` to finish and confirm the run succeeded before opening the browser.
+- ❌ **Treating Step 4 as optional** — opening the dataset browser is the final onboarding checkpoint, not a nice-to-have.
+- ❌ **Running `uvx dlthub-init@latest` without a confirmed directory** — always ask and wait for the user's answer before executing.
+- ❌ **Continuing to assist in this session after `uvx dlthub-init@latest` completes** — this session is scoped to the `one-shot` project and the `playground` workspace and does not have the new project's toolkit, MCP servers, or skills loaded. Do not proceed. Tell the user to close this session and open a new one.
 
 ## Orientation
 
@@ -91,4 +98,13 @@ After Step 4 completes, immediately print to the user:
 
 ## When the user says "Help me get started building and running a data pipeline on dltHub"
 
-Immediately invoke `deploy-minimal-custom-source` — carry any source name the user may have mentioned as its argument.
+Tell the user: "Amazing, let's get started!"
+
+Then explain the following steps in order:
+
+1. Run `uvx dlthub-init@latest` in whatever directory they'd like their new project to live in. 
+   - **Ask the user for the target directory and stop and wait for their answer before running anything.**
+
+2. Once scaffolding is done, tell the user: **"Please close this Claude Code session now and open a new one from within the new project directory."** Do not continue assisting in this session — it is scoped to the `one-shot` project and does not have the new project's toolkit, MCP servers, or skills loaded. Any further help here will be missing the agentic capabilities the new project needs.
+
+3. In the new session, they should tell the agent: `"Help me build and deploy a minimal pipeline"` — that will guide them through creating a custom source and destination in under 5 minutes.
