@@ -31,23 +31,15 @@ These are the mistakes an agent makes without this skill. Avoid them:
 - ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
 - ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
 
-## Preconditions
-
-Before starting, verify the workspace is ready:
-
-```bash
-uv run dlthub ai status
-```
-
-Confirm `__deployment__.py` exists in the project root — it is created by `uvx dlthub-init` and must be present before Step 8.
-
 ## Step 0 — Connect workspace
 
 ```bash
 uv run dlthub workspace list
 ```
 
-Show the output to the user. Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
+Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding and testing only.
+
+Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
 
 **Stop and wait** for the user's answer, then run the appropriate command:
 
@@ -60,7 +52,7 @@ uv run dlthub workspace connect <name> --create    # create and connect to new
 
 Ask the user two things upfront:
 
-1. **Source**: which API do they want to load from? If not given, suggest `github`, `hubspot`, or `stripe_analytics`.
+1. **Source**: which API do they want to load from, and what data specifically? (e.g. "GitHub issues", "Stripe payments", "HubSpot contacts"). If not given, suggest `github` (issues), `hubspot` (contacts), or `stripe_analytics` (payments).
 2. **Destination**: which cloud destination do they want for the prod profile? If unsure, recommend **MotherDuck** — DuckDB-compatible, simplest path.
 
 | Destination | Package |
