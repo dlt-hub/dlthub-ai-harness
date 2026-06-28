@@ -47,17 +47,14 @@ Confirm `__deployment__.py` exists in the project root — it is created by `uvx
 uv run dlthub workspace list
 ```
 
-If a workspace is already connected and the user is happy with it, skip to Step 1.
+Show the output to the user. Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
 
-Otherwise, connect to an existing workspace or create a new one:
+**Stop and wait** for the user's answer, then run the appropriate command:
 
 ```bash
-uv run dlthub workspace connect                    # interactive — select or create
-uv run dlthub workspace connect <name_or_id>       # connect directly by name or ID
-uv run dlthub workspace connect <name_or_id> --org-id <id>  # specify org
+uv run dlthub workspace connect <workspace_uuid>   # connect to existing
+uv run dlthub workspace connect <name> --create    # create and connect to new
 ```
-
-**Stop and wait** for the user to confirm which workspace to use before continuing.
 
 ## Step 1 — Collect source and destination
 
