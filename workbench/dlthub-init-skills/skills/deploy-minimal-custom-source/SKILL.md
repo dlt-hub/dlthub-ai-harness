@@ -30,7 +30,7 @@ These are the mistakes an agent makes without this skill. Avoid them:
 - ❌ **Writing any `*.secrets.toml` file directly** — this is NEVER allowed. Never use the Write or Edit tool on any `*.secrets.toml` file. Use `secrets_update_fragment` with `path=` to write credential structure, and leave values empty (`""`) for the user to fill in.
 - ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
 - ❌ **`destination_type` written via `secrets_update_fragment`** — the MCP secrets tool normalizes `destination_type` to `type`, which the cloud runtime does not recognize. Always write `destination_type` directly to the profile config file (`.dlt/dev.config.toml` or `.dlt/prod.config.toml`) using the Edit tool.
-- ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
+- ❌ **Running `python <source>_pipeline.py` directly** — always use `uv run dlthub local run --profile dev load_<source>` instead. Running the file directly bypasses the dltHub job system and won't behave the same as a platform run.
 - ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
 
 ## Orientation
@@ -38,16 +38,16 @@ These are the mistakes an agent makes without this skill. Avoid them:
 Print this to the user before doing anything else:
 
 ```
-- [ ] Set up
-- [ ] Choose your source and destination
-- [ ] Add your credentials
-- [ ] Test run on DuckDB first
+- [ ] Set up workspace
+- [ ] Set up source
+- [ ] Test source on DuckDB
+- [ ] Set up destination
 - [ ] Deploy to dltHub
 ```
 
 ## Setup — Initialize AI support
 
-Print to the user: `- [ ] Set up`
+Print to the user: `- [ ] Set up workspace`
 
 Determine which agent you are and run the corresponding command — do not ask the user:
 
@@ -60,8 +60,6 @@ uv run dlthub ai init --agent codex    # if you are Codex
 Wait for it to complete before continuing.
 
 ## Step 0 — Connect workspace
-
-Print to the user: `- [ ] Set up`
 
 ```bash
 uv run dlthub workspace list
@@ -78,35 +76,15 @@ uv run dlthub workspace connect <workspace_uuid>   # connect to existing
 uv run dlthub workspace connect <name> --create    # create and connect to new
 ```
 
-Print to the user: `- [x] Set up`
+Print to the user: `- [x] Set up workspace`
 
-## Step 1 — Collect source and destination
+## Step 1 — Collect source
 
-Print to the user: `- [ ] Choose your source and destination`
+Print to the user: `- [ ] Set up source`
 
-Ask the user two things upfront:
+Ask the user: which API do they want to load from, and what data specifically? (e.g. "GitHub issues", "Stripe payments", "HubSpot contacts"). If not given, suggest `github` (issues), `hubspot` (contacts), or `stripe_analytics` (payments).
 
-1. **Source**: which API do they want to load from, and what data specifically? (e.g. "GitHub issues", "Stripe payments", "HubSpot contacts"). If not given, suggest `github` (issues), `hubspot` (contacts), or `stripe_analytics` (payments).
-2. **Destination**: which cloud destination do they want for the prod profile? If unsure, recommend **MotherDuck** — DuckDB-compatible, simplest path.
-
-| Destination | Package |
-|---|---|
-| MotherDuck | `dlt[motherduck]` |
-| BigQuery | `dlt[bigquery]` |
-| Snowflake | `dlt[snowflake]` |
-| Redshift | `dlt[redshift]` |
-
-Wait for both answers before proceeding.
-
-Print to the user: `- [x] Choose your source and destination`
-
-## Step 1a — Install destination package
-
-```bash
-uv add "dlt[<extra>]"
-```
-
-Use the package from the table in Step 1.
+Wait for the answer before proceeding.
 
 ## Step 2 — Research the API
 
@@ -170,8 +148,6 @@ Rules:
 
 ## Step 4 — Handle source credentials
 
-Print to the user: `- [ ] Add your credentials`
-
 **Never read or write `.dlt/secrets.toml` directly with Read/Write/Edit tools.**
 
 Skip if the API is public.
@@ -201,8 +177,6 @@ Tell the user what fields they need to fill in and where to get them (e.g. the A
 
 **Stop and wait** for confirmation.
 
-Print to the user: `- [x] Add your credentials`
-
 ## Step 5 — Configure dev profile
 
 `destination_type` is config, not a secret — write it directly to `.dlt/dev.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
@@ -214,35 +188,11 @@ Add to `.dlt/dev.config.toml`:
 destination_type = "duckdb"
 ```
 
-## Step 6 — Configure prod profile
+Print to the user: `- [x] Set up source`
 
-Write `destination_type` directly to `.dlt/prod.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
+## Step 6 — Register and validate locally
 
-Add to `.dlt/prod.config.toml`:
-
-```toml
-[destination.warehouse]
-destination_type = "motherduck"  # or bigquery, snowflake, redshift
-```
-
-Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`. **Never use Write/Edit/Read on this file directly.**
-
-```toml
-[destination.warehouse.credentials]
-database = ""
-token = ""
-```
-
-Tell the user:
-> I've added the credential structure to `.dlt/prod.secrets.toml`. Please fill in your values, then let me know when done.
-
-**Stop and wait** for confirmation.
-
-> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing. Never read this file on disk.
-
-## Step 8 — Register and validate locally
-
-Print to the user: `- [ ] Test run on DuckDB first`
+Print to the user: `- [ ] Test source on DuckDB`
 
 Add the pipeline to `__deployment__.py`:
 
@@ -265,12 +215,81 @@ Run this **once**. Check the exit code and whether rows were reported loaded —
 | Error | Fix |
 |---|---|
 | Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is listed in `__all__` |
-| `Unknown DestinationModule` | Check `destination_type` is in `.dlt/dev.config.toml` or `.dlt/prod.config.toml`, not written via `secrets_update_fragment` |
-| Auth / credential error | Use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` to confirm credentials show as `***` |
+| `Unknown DestinationModule` | Check `destination_type` is in `.dlt/dev.config.toml`, not written via `secrets_update_fragment` |
+| Auth / credential error | Use `secrets_view_redacted` to confirm source credentials show as `***` in `.dlt/secrets.toml` |
 
-Print to the user: `- [x] Test run on DuckDB first`
+Print to the user: `- [x] Test source on DuckDB`
 
-## Step 9 — Deploy and run remotely
+## Step 7 — Configure prod profile
+
+Print to the user: `- [ ] Set up destination`
+
+Ask the user: which cloud destination do they want? Options: MotherDuck, BigQuery, Snowflake, Redshift.
+
+**Stop and wait** for the answer, then install the destination package:
+
+| Destination | Package |
+|---|---|
+| MotherDuck | `dlt[motherduck]` |
+| BigQuery | `dlt[bigquery]` |
+| Snowflake | `dlt[snowflake]` |
+| Redshift | `dlt[redshift]` |
+
+```bash
+uv add "dlt[<extra>]"
+```
+
+Write `destination_type` directly to `.dlt/prod.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
+
+Add to `.dlt/prod.config.toml`:
+
+```toml
+[destination.warehouse]
+destination_type = "motherduck"  # or bigquery, snowflake, redshift
+```
+
+Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`. **Never use Write/Edit/Read on this file directly.**
+
+Use the credential skeleton for the chosen destination:
+
+```toml
+# MotherDuck
+[destination.warehouse.credentials]
+database = ""
+token = ""
+
+# BigQuery
+[destination.warehouse.credentials]
+project_id = ""
+private_key = ""
+client_email = ""
+
+# Snowflake
+[destination.warehouse.credentials]
+database = ""
+username = ""
+password = ""
+host = ""
+
+# Redshift
+[destination.warehouse.credentials]
+database = ""
+username = ""
+password = ""
+host = ""
+port = ""
+```
+
+Tell the user:
+> I've added the credential structure to `.dlt/prod.secrets.toml`. Please fill in your values, then let me know when done.
+
+**Stop and wait** for confirmation.
+
+> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing. Never read this file on disk.
+
+Print to the user: `- [x] Set up destination`
+
+## Step 8 — Deploy and run remotely
 
 Print to the user: `- [ ] Deploy to dltHub`
 
