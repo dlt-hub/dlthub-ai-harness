@@ -178,15 +178,26 @@ Skip if the API is public.
 
 Check first — use `secrets_view_redacted` (no `path=` needed for the default secrets file) to see if `[sources.<source>]` already exists. If it does and the value is `***`, skip this step.
 
-Otherwise use `secrets_update_fragment` to write the skeleton:
+Otherwise use `secrets_update_fragment` to write the skeleton — use the field names that match the auth structure found in Step 2, not a generic `api_token`. Examples:
 
 ```toml
+# Bearer token / API key
 [sources.<source>]
 api_token = ""
+
+# OAuth client credentials
+[sources.<source>]
+client_id = ""
+client_secret = ""
+
+# Basic auth
+[sources.<source>]
+username = ""
+password = ""
 ```
 
-Tell the user:
-> I've added the credential structure to `.dlt/secrets.toml`. Please fill in your API token, then let me know when done.
+Tell the user what fields they need to fill in and where to get them (e.g. the API's developer portal), then:
+> I've added the credential structure to `.dlt/secrets.toml`. Please fill in your values, then let me know when done.
 
 **Stop and wait** for confirmation.
 
