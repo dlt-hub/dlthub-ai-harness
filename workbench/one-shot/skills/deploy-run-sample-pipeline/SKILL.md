@@ -49,8 +49,8 @@ Print to the user: `Starting dataset browser setup in the background.`
 Run both commands at the same time — start `serve_headless.py` in the background, then run the pipeline in the foreground:
 
 ```bash
-uv run .scripts/serve_headless.py &
-uv run dlthub run load_sample_shop -f
+uv run dlthub run load_sample_shop -f &
+uv run .scripts/serve_headless.py jobs.onboarding_success 
 ```
 
 The `-f` flag streams logs in real time. Wait for the job to complete.
@@ -88,7 +88,7 @@ uv run dlthub workspace info
 Then open the dataset browser:
 
 ```bash
-uv run .scripts/show_notebook.py
+uv run .scripts/show_notebook.py jobs.onboarding_success
 ```
 
 Print to the user: `- [x] Opening dltHub dataset browser`
