@@ -30,7 +30,7 @@ These are the mistakes an agent makes without this skill. Avoid them:
 - ❌ **Writing any `*.secrets.toml` file directly** — this is NEVER allowed. Never use the Write or Edit tool on any `*.secrets.toml` file. Use `secrets_update_fragment` with `path=` to write credential structure, and leave values empty (`""`) for the user to fill in.
 - ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
 - ❌ **`destination_type` written via `secrets_update_fragment`** — the MCP secrets tool normalizes `destination_type` to `type`, which the cloud runtime does not recognize. Always write `destination_type` directly to the profile config file (`.dlt/dev.config.toml` or `.dlt/prod.config.toml`) using the Edit tool.
-- ❌ **Running `python <source>_pipeline.py` directly** — always use `uv run dlthub local run --profile dev load_<source>` instead. Running the file directly bypasses the dltHub job system and won't behave the same as a platform run.
+- ❌ **Running `python <source>_pipeline.py` directly** — always use `uv run dlthub local run --profile dev --non-interactive load_<source>` instead. Running the file directly bypasses the dltHub job system and won't behave the same as a platform run.
 - ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
 
 ## Orientation
@@ -52,9 +52,9 @@ Print to the user: `- [ ] Set up workspace`
 Determine which agent you are and run the corresponding command — do not ask the user:
 
 ```bash
-uv run dlthub ai init --agent claude   # if you are Claude Code
-uv run dlthub ai init --agent cursor   # if you are Cursor
-uv run dlthub ai init --agent codex    # if you are Codex
+uv run dlthub ai init --agent claude --non-interactive   # if you are Claude Code
+uv run dlthub ai init --agent cursor --non-interactive   # if you are Cursor
+uv run dlthub ai init --agent codex --non-interactive    # if you are Codex
 ```
 
 Wait for it to complete before continuing.
@@ -62,7 +62,7 @@ Wait for it to complete before continuing.
 ## Step 0 — Connect workspace
 
 ```bash
-uv run dlthub workspace list
+uv run dlthub workspace list --non-interactive
 ```
 
 Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding and testing only.
@@ -72,8 +72,8 @@ Ask: **"Which workspace do you want to deploy to — an existing one from the li
 **Stop and wait** for the user's answer, then run the appropriate command:
 
 ```bash
-uv run dlthub workspace connect <workspace_uuid>   # connect to existing
-uv run dlthub workspace connect <name> --create    # create and connect to new
+uv run dlthub workspace connect <workspace_uuid> --non-interactive   # connect to existing
+uv run dlthub workspace connect <name> --create --non-interactive    # create and connect to new
 ```
 
 Print to the user: `- [x] Set up workspace`
@@ -205,7 +205,7 @@ __all__ = [..., "load_<source>"]
 Run locally against DuckDB:
 
 ```bash
-uv run dlthub local run --profile dev load_<source>
+uv run dlthub local run --profile dev --non-interactive load_<source>
 ```
 
 Run this **once**. Check the exit code and whether rows were reported loaded — that is sufficient. Do not re-run to capture more output or inspect full logs; every pipeline run costs API calls. If it succeeded, move on. If it failed, debug using the troubleshooting table below, fix, then run once more.
@@ -294,20 +294,20 @@ Print to the user: `- [x] Set up destination`
 Print to the user: `- [ ] Deploy to dltHub`
 
 ```bash
-uv run dlthub deploy
-uv run dlthub job run -f load_<source>
+uv run dlthub deploy --non-interactive
+uv run dlthub job run -f load_<source> --non-interactive
 ```
 
 If it fails, inspect logs:
 
 ```bash
-uv run dlthub job logs load_<source>
+uv run dlthub job logs load_<source> --non-interactive
 ```
 
 Once successful:
 
 ```bash
-uv run dlthub show
+uv run dlthub show --non-interactive
 ```
 
 Print to the user: `- [x] Deploy to dltHub`
