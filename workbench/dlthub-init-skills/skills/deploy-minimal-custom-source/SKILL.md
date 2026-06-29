@@ -312,13 +312,13 @@ uv run dlthub show --non-interactive
 
 Print to the user: `- [x] Deploy to dltHub`
 
-## What's next?
+Print to the user:
 
+```
 Your pipeline is deployed and running on dltHub Platform.
 
-You can now extend it using the **rest-api-pipeline** toolkit — for example:
+You can now extend it using the rest-api-pipeline toolkit:
 - Add more endpoints to load additional resources from the same API
 - Add incremental loading so only new or updated records are fetched on each run
 - Add pagination to handle APIs that return large result sets across multiple pages
-
-To continue, tell the agent: `"Help me extend my pipeline"`
+```
