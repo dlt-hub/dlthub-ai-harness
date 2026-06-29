@@ -289,7 +289,7 @@ Tell the user:
 
 **Stop and wait** for confirmation.
 
-> **Note**: `.dlt/prod.secrets.toml` is not tracked by `secrets_list`. To verify without exposing values, use `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"` — confirm credentials show as `***` before continuing. Never read this file on disk.
+After the user confirms, run `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"`. Check that every field under `destination.warehouse.credentials` shows `***` — not an empty string. If any field is still empty, tell the user which fields are missing and wait again. Do not proceed to Step 8 until all credential fields are filled.
 
 Print to the user: `- [x] Set up destination`
 
