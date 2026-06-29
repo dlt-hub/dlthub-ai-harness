@@ -33,6 +33,10 @@ These are the mistakes an agent makes without this skill. Avoid them:
 - ❌ **Running `python <source>_pipeline.py` directly** — always use `uv run dlthub local run --profile dev --non-interactive load_<source>` instead. Running the file directly bypasses the dltHub job system and won't behave the same as a platform run.
 - ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
 
+## Output contract
+
+**DO NOT OMIT.** This skill must end by printing the completion block defined at the end of Step 8. Print it before any summary or closing remarks.
+
 ## Orientation
 
 Print this to the user before doing anything else:
@@ -309,10 +313,9 @@ Once successful:
 ```bash
 uv run dlthub show --non-interactive
 ```
+[Completion Block] Print to the user:
 
 Print to the user: `- [x] Deploy to dltHub`
-
-Print to the user:
 
 ```
 Your pipeline is deployed and running on dltHub Platform.
