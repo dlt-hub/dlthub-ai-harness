@@ -44,7 +44,12 @@ Summarize which jobs were created or updated.
 
 **Run:**
 
+Print to the user: `Starting dataset browser setup in the background.`
+
+Run both commands at the same time — start `serve_headless.py` in the background, then run the pipeline in the foreground:
+
 ```bash
+uv run .scripts/serve_headless.py &
 uv run dlthub run load_sample_shop -f
 ```
 
@@ -74,19 +79,17 @@ Print to the user: `- [x] Deploy and run the sample pipeline`
 
 Once Step 3 is fully complete, print to the user: `- [ ] Opening dltHub dataset browser`
 
-Retrieve the workspace ID **if it is not already known**:
+Retrieve the workspace ID **if it is not already known** and note it for reference:
 
 ```bash
 uv run dlthub workspace info
 ```
 
-Then launch the dataset browser — substitute `<workspace_id>` with the workspace ID:
+Then open the dataset browser:
 
 ```bash
-uv run python -c "import click; click.launch('https://app.dlthub.com/w/<workspace_id>/notebooks/jobs.workspace.dashboard/show')"
+uv run .scripts/show_notebook.py
 ```
-
-The query editor lets you run SQL directly against the loaded results.
 
 Print to the user: `- [x] Opening dltHub dataset browser`
 
