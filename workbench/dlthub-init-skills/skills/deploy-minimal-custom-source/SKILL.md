@@ -31,6 +31,18 @@ These are the mistakes an agent makes without this skill. Avoid them:
 - ❌ **Running `python <source>_pipeline.py` locally** — skip local runs; validate on the platform with the dev profile instead.
 - ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
 
+## Setup — Initialize AI support
+
+Determine which agent you are and run the corresponding command — do not ask the user:
+
+```bash
+uv run dlthub ai init --agent claude   # if you are Claude Code
+uv run dlthub ai init --agent cursor   # if you are Cursor
+uv run dlthub ai init --agent codex    # if you are Codex
+```
+
+Wait for it to complete before continuing.
+
 ## Step 0 — Connect workspace
 
 ```bash
@@ -66,7 +78,7 @@ Wait for both answers before proceeding.
 
 ## Step 2 — Research the API
 
-Run 1–2 targeted web searches for the API's documentation. Extract only what is needed to write the pipeline:
+Run 1–2 targeted web searches for the API's documentation. Extract only what is needed to write the pipeline (no extra web search queries):
 - Base URL
 - Authentication method and header/token format
 - A single clear endpoint path
