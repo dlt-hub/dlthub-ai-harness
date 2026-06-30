@@ -32,12 +32,13 @@ Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load 
 | Bottleneck | Bound by | Go to |
 |---|---|---|
 | Extract slow | network / source I/O | [Extract](#extract-is-slow-io-bound) + [Source-specific tuning](#source-specific-tuning-separate-toolkits) |
-| Normalize slow or OOM | CPU / memory | [Normalize](#normalize-is-slow-or-oom-cpumemory-bound) |
+| Normalize slow (CPU) | CPU | [Normalize](#normalize-is-slow-cpu-bound) |
+| Out of memory / killed, or disk full | RAM **or** disk | [Out of memory](#out-of-memory-ram-or-disk) |
 | Load slow | destination I/O | [Load](#load-is-slow-destination-io-bound) |
 
-## Step 2: Fix the bottleneck stage
+## Step 2: Fix the bottleneck
 
-Jump to the **one** stage Step 1 flagged.
+Jump to the **one** section Step 1 flagged. Memory isn't a stage — it's a separate failure mode with its own section.
 
 ### Extract is slow (I/O-bound)
 
@@ -58,9 +59,9 @@ By default dlt extracts **one resource at a time, one item at a time** — N end
 
 Group related resources into a `@dlt.source` (`return (r1, r2, r3)`) so dlt schedules them on a shared thread pool. Scopes for the knobs: global, per-source (`[sources.<name>.extract]`), per-resource.
 
-### Normalize is slow or OOM (CPU/memory-bound)
+### Normalize is slow (CPU-bound)
 
-The usual home of OOM. Normalize uses a **process pool** (CPU-bound), and parallelism across files only works if extract produced **many** files — so rotate files first.
+Normalize uses a **process pool**, and parallelism across files only works if extract produced **many** files — so rotate files first.
 
 | Lever | Default | Effect |
 |---|---|---|
@@ -68,10 +69,43 @@ The usual home of OOM. Normalize uses a **process pool** (CPU-bound), and parall
 | `[normalize] start_method = "spawn"` | — | recommended on Linux when resources use threads |
 | `[normalize.data_writer] file_max_items` | none | rotate so one big file → many → parallel normalize/load |
 | `[normalize.data_writer] file_max_bytes` | none | rotate by size |
-| `[data_writer] buffer_max_items` | 5000 | items in RAM before flush; lower to cut memory, raise to cut disk I/O |
 | `[normalize.data_writer] disable_compression = true` | off (gzip) | trade disk for CPU when CPU-bound |
 
-Buffers scope per stage (`[extract.data_writer]`, `[normalize.data_writer]`). Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithreading** — don't.
+(Running *out of memory* during normalize is a different problem with a different fix set → [Out of memory](#out-of-memory-ram-or-disk).)
+
+### Out of memory (RAM or disk)
+
+A pipeline that dies on a constrained machine fails one of two ways — the **failure mode tells you which**, and the fixes diverge. Don't guess; read how it died:
+
+| Signal | RAM exhaustion | Disk exhaustion |
+|---|---|---|
+| How it dies | **killed** — exit **137 / SIGKILL**, pod `OOMKilled`, **no Python traceback** | Python exception with traceback: `OSError: [Errno 28] No space left on device` |
+| Killed by | the OS / k8s OOM-killer (RSS hit the cgroup/container limit) | dlt/Python writing intermediate, load-package, or staging files |
+| Confirm mid-run | `kubectl top pod` / `docker stats` / RSS in `top`; cgroup `memory.current` vs `memory.max` | `df -h` on the working volume and `$DLT_DATA_DIR`; `du -sh ~/.dlt` and the staging path |
+
+With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pulling the source into memory; normalize spiking = buffering items. A traceback that **isn't** `Errno 28` is a different bug → use `debug-pipeline`.
+
+**RAM — bound peak memory:**
+
+| Lever | Default | Effect |
+|---|---|---|
+| `[data_writer] buffer_max_items` | 5000 | items in RAM before flush; **lower to cut memory** (scope per stage: `[extract.data_writer]`, `[normalize.data_writer]`) |
+| yield pages / stream input | — | stream the source (see [Extract](#extract-is-slow-io-bound)) so peak memory stays bounded regardless of input size |
+| `file_max_items` / `file_max_bytes` | none | rotate files (see Normalize) so less is held in flight at once |
+
+Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithreading** — don't. And **don't cut `workers` to fix memory** — peak memory is bounded by the levers above, not worker count; lowering workers usually just slows the run.
+
+**Many-object loops — use a fresh pipeline per object.** Reusing one `pipeline` object across many `run()` calls grows its in-memory state (schema deltas, load packages, cursor values) run-over-run, which can OOM a long job. Create a **fresh pipeline per object** and drop it when done:
+
+```python
+for obj in objects:
+    pipe = dlt.pipeline(pipeline_name=f"load_{obj}", destination=..., dataset_name=...)
+    pipe.run(source_for(obj))
+    del pipe
+```
+Caveat: trades away cross-run convenience, and `pipeline.default_schema.tables` keeps every table ever loaded under a given pipeline name — track the object list explicitly.
+
+**Disk — stop intermediate/staging files filling the volume:** see [Constrained disk / environment](#constrained-disk--environment) — point `DLT_DATA_DIR` at a bigger volume, stage to blob, set `delete_completed_jobs`, and keep compression **on** (don't `disable_compression`).
 
 ### Load is slow (destination I/O-bound)
 
@@ -115,6 +149,7 @@ Every knob can be set in `.dlt/config.toml` under a section, or as an env var by
 
 ### Constrained disk / environment
 - `DLT_DATA_DIR=/path/to/large/or/mounted/volume` — offload load packages off the working disk.
+- **If local disk is the constraint** (staging files filling a small pod/local disk alongside the source data, especially with warehouse destinations like Snowflake/BigQuery/Redshift) — suggest pointing the staging destination at remote object storage instead, e.g. `dlt.pipeline(..., staging=dlt.destinations.filesystem(bucket_url="s3://.../stage"))`. Only worth it when disk space is actually the problem.
 - `delete_completed_jobs` — reclaim disk after each load.
 - `DLT_USE_JSON=simplejson` — only if `orjson` (the fast default) causes issues.
 
