@@ -7,6 +7,10 @@ description: Debug a failed or misbehaving dltHub Platform deployment. Use when 
 
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/monitoring.md (pipeline health, logs, failure diagnosis)
 
+## Before you start
+
+Reach here after (`deploy-workspace`) — a job has been deployed and a run failed, misbehaved, or you want to check its status and logs.
+
 ## Check job status
 
 Commands accept job names or **selectors** (fnmatch patterns):
@@ -112,3 +116,7 @@ If a job failed:
    - **Wrong destination credentials** -- prod profile may point to a different destination than dev
    - **Job timeout** -- default is 120 minutes; override with `execute={"timeout": "6h"}` in the decorator
 4. After fixing, relaunch with `dlthub run <name_or_file>`
+
+## What's next
+
+This is the final step of the workflow. On success, the job runs cleanly — you're done. If a fix changes scripts or config, return to (`deploy-workspace`) to relaunch and confirm the run completes.

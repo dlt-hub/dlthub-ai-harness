@@ -7,6 +7,10 @@ description: Verify dlthub workspace is ready for dltHub Platform. Use when user
 
 Lightweight check that the workspace is ready for runtime work. Run through each check and fix issues as found.
 
+## Before you start
+
+This is the workflow entry — no prerequisite skill. Reach here when the user wants to deploy for the first time, or when another skill reports missing prerequisites (e.g. `.workspace` file or `dlt[hub]` dependency).
+
 **Reference**:
 - Workspace intro (install `dlt[hub]`, create a workspace): https://dlthub.com/docs/hub/getting-started/installation.md
 - Workspace setup (convert a Python project, credentials per profile): https://dlthub.com/docs/hub/pipeline-operations/workspace-setup.md
@@ -88,3 +92,7 @@ List existing config and secrets files. At minimum these should exist:
 Profile-scoped files (`dev.*`, `prod.*`, `access.*`) may or may not exist yet — that's fine, (`prepare-deployment`) handles their creation.
 
 Tell the user what's present and what the next step is: use (`prepare-deployment`) to set up production credentials and destinations.
+
+## What's next
+
+On success, continue with (`prepare-deployment`) to split dev/prod credentials and set up a production destination. If a check could not be fixed (missing `pyproject.toml`, `dlt[hub]` not installed, or login fails), resolve it here before moving on.

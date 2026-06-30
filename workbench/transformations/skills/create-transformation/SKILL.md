@@ -15,6 +15,10 @@ Write `@dlt.hub.transformation` functions that map annotated source tables to CD
 
 If any are missing, run the preceding skills first.
 
+## Before you start
+
+Run `generate-cdm` first. You need its output — `.schema/<cdm-name>/CDM.dbml` — alongside `taxonomy.json` and the annotated source DBML from `annotate-sources`. If any are missing, run the preceding skills first.
+
 The `_name` value from `taxonomy.json` is also the `dataset_name` for the transformation pipeline — do not re-derive it.
 
 Parse `$ARGUMENTS`:
@@ -306,3 +310,13 @@ Transformation validated successfully. What would you like to do next?
 ## Output
 
 - `transformations/<dataset_name>_to_cdm.py` — dlthub transformation script
+
+## What's next
+
+On success — the transformation runs and all validation checks pass — the core workflow is complete. From here, ask the user what they want next:
+- Make it efficient for scheduled or high-volume runs → `incremental-transformation` (switch replace → incremental).
+- Deploy or schedule the transformation → hand over to **dlthub-platform**.
+- Explore or visualise the CDM output interactively → hand over to **data-exploration**.
+- Add ongoing quality checks on the transformed tables → hand over to **data-quality**.
+
+On failure at the Run step (step 8): a SQL dialect or unsupported-function error → `debug-transformation`; a pipeline state or infrastructure error → the `debug-pipeline` skill in the **rest-api-pipeline** toolkit.

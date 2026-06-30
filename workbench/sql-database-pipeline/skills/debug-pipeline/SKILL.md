@@ -14,6 +14,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `hints` (optional, after `--`): specific issue to investigate
 
+## Before you start
+
+A pipeline must already exist — `create-sql-database-pipeline` should have scaffolded and run it (success or failure). If no pipeline exists yet, go back to `create-sql-database-pipeline`.
+
 ## Before debugging: increase verbosity
 
 Always do this first before any pipeline debugging:
@@ -168,3 +172,9 @@ Do NOT remove settings the user had before you started.
 - **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (`data-exploration` toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → revisit `create-sql-database-pipeline` — "Set up config and secrets" section
 - **No pipeline exists yet** → use `create-sql-database-pipeline` to scaffold one first
+
+## What's next
+
+- **Load successful** → use `validate-data` to inspect schema and data.
+- **Errors remain** → keep iterating here on `debug-pipeline`.
+- **Working pipeline, want to deploy right away (Early)** → hand over to **dlthub-platform** to run it on dltHub.

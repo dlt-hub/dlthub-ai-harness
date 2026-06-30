@@ -1,3 +1,10 @@
+---
+name: transformations
+description: "Transform and model already-loaded data into a CDM or dimensional (Kimball) model with dlt transformations. Use when the user wants to reshape, join, or model data across sources. DO NOT USE to ingest data (use a *-pipeline toolkit) or to only view/chart it (use data-exploration)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
 # Transformations workflow
 
 ## Workflow Entry

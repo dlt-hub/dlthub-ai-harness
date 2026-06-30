@@ -12,6 +12,10 @@ Parse `$ARGUMENTS`:
 - `source-name` (required): what the user wants to extract data from (e.g., "alpaca markets", "stripe", "postgres", "csv files", "rest api")
 - everything after that: additional context, i.e. which data the user wants to ingest. In case the user does not specify, ask them which data they want to ingest.
 
+## Before you start
+
+This is the entry point of the rest-api-pipeline workflow — nothing else needs to run first. You just need to know what data source the user wants to extract from.
+
 ## Steps
 
 ### 1. Classify the request
@@ -84,3 +88,8 @@ Ask user to pick a single endpoint to start the work - do it directly or infer i
 
 Do NOT run `dlthub pipeline init` yet — wait for user confirmation.
 After that continue workflow in `create-rest-api-pipeline` skill
+
+## What's next
+
+- **REST API confirmed** → continue with `create-rest-api-pipeline` to scaffold and write the pipeline.
+- **Source is file-based** (S3, GCS, local CSV, SFTP, etc.) → hand over to **filesystem-pipeline** (`create-filesystem-pipeline`) instead of continuing here.

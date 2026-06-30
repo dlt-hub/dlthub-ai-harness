@@ -17,6 +17,10 @@ If not provided in arguments, ask the user for:
 2. What they want to achieve (use cases, analytics goals, reports)
 3. How the sources relate to each other (important)
 
+## Before you start
+
+This is the entry skill of the transformations workflow — there is no prerequisite skill. You only need data already loaded by a dlt pipeline (locally or on a remote destination). If no pipeline exists for a stated source, hand over to **rest-api-pipeline** to ingest it first.
+
 **IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
 All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 3 below.
@@ -286,3 +290,7 @@ Apply any corrections to `taxonomy.json`.
 - `.schema/<cdm-name>/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions; `_name` holds the confirmed CDM folder name
 
 Hand over to `create-ontology` skill.
+
+## What's next
+
+On success — all sources confirmed and `taxonomy.json` written — continue to `create-ontology` to build the entity graph. On failure — a stated source has no local pipeline and no remote dataset — hand over to **rest-api-pipeline** to ingest it first, then return here.

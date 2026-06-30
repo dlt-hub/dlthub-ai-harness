@@ -1,3 +1,10 @@
+---
+name: rest-api-pipeline
+description: "Build a production REST API ingestion pipeline with dlt. Use when the user wants to load data from an HTTP API, REST endpoint, or web service into a destination. DO NOT USE for SQL databases (use sql-database-pipeline), file ingestion (use filesystem-pipeline), or a quick throwaway demo (use one-shot)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
 # New ingestion pipeline
 
 ## Workflow Entry

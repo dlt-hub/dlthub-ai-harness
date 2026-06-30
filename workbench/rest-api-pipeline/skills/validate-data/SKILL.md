@@ -12,6 +12,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `hints` (optional, after `--`): specific validation concerns
 
+## Before you start
+
+Run `debug-pipeline` first and confirm a successful load — there must be loaded data before you can validate its schema and shape.
+
 ## 1. Inspect schema
 
 ### Export schema as mermaid
@@ -70,3 +74,11 @@ Re-run the pipeline after changes (`dev_mode` gives a fresh dataset each time). 
 - **User is happy with data** → suggest `new-endpoint` for more resources, `view-data` for querying, or the `data-exploration` toolkit for interactive notebooks and reports
 - **Need to fix pipeline code** → edit and re-run with `debug-pipeline`
 - **User wants to see the data** -> Workspace Dashboard with command above
+
+## What's next
+
+- **Harden for production** → use `adjust-endpoint` to remove dev limits, verify pagination, and add incremental loading.
+- **Add more resources** → use `new-endpoint`.
+- **Query or explore the data** → use `view-data`.
+- **Deploy or schedule on dltHub** (Later) → hand over to **dlthub-platform**.
+- **Deeper analysis** → hand over to **data-exploration** (interactive notebooks, charts), **transformations** (model into a CDM or cross-source transforms), or **data-quality** (ongoing validation and contracts on every load).

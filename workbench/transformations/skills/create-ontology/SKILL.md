@@ -20,6 +20,10 @@ When a concept has a natural key, rows from different source tables that share t
 - Which source "wins" for each attribute when both have a value (**master source**)
 - Whether rows that exist in only one source are still included (**union vs. intersection**)
 
+## Before you start
+
+Run `annotate-sources` first. You need its outputs — `.schema/<cdm-name>/<pipeline_name>.dbml` (annotated) and `.schema/<cdm-name>/taxonomy.json` (confirmed concepts, table mappings, and natural keys). If either is missing, go back to `annotate-sources`.
+
 ## Steps
 
 ### 1. Build entity list
@@ -157,3 +161,7 @@ Let me know if anything looks wrong or needs changing before we move on.
 ```
 
 Wait for explicit confirmation before handing over to `generate-cdm` skill.
+
+## What's next
+
+On success — `ontology.ison` and `ontology.md` written and reviewed by the user — continue to `generate-cdm` to apply Kimball dimensional modeling. On failure — required inputs are missing or the entity graph is wrong — return to `annotate-sources` to fix the mappings or natural keys.

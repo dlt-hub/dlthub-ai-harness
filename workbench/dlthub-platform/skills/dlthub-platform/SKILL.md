@@ -1,3 +1,12 @@
+---
+name: dlthub-platform
+description: "Deploy and schedule dlt pipelines on the dltHub platform — runtimes, profiles, triggers, and monitoring. Use when the user wants to run a working pipeline in production on dltHub. DO NOT USE to build or debug a pipeline locally (use the relevant *-pipeline toolkit first)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
+See [profiles.md](./profiles.md) for these conventions.
+
 # Deploy to dltHub Platform
 
 ## Workflow Entry

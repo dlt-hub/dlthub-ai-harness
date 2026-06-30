@@ -11,6 +11,10 @@ Add a new resource to an existing dlt REST API pipeline source.
 Parse `$ARGUMENTS`:
 - `endpoint-description` (required): what data the user wants to add (e.g., "claude code analytics", "user profiles", "transactions")
 
+## Before you start
+
+You need an existing, working REST API pipeline to add a resource to — typically one already hardened in `adjust-endpoint` (or a validated pipeline from `validate-data`).
+
 ## Steps
 
 ### 1. Read the existing pipeline
@@ -165,3 +169,9 @@ Load with:
 
 Available resources: <list all resource names>
 ```
+
+## What's next
+
+- **Verify the new resource** → use `validate-data` to check the schema and data look correct.
+- **Query or explore the data** → use `view-data`.
+- **Deploy or schedule on dltHub** (Later) → hand over to **dlthub-platform**.

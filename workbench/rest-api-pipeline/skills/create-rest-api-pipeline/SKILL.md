@@ -13,6 +13,10 @@ If you don't have one yet, run `find-source` first to identify the right source.
 
 The argument is the full `dlthub pipeline init` command to run (e.g. `dlthub pipeline init shopify_store duckdb` or `dlthub pipeline init sql_database postgres`).
 
+## Before you start
+
+Run `find-source` first — you need a confirmed REST API source and a `dlthub pipeline init` command before scaffolding here.
+
 ## Steps
 
 ### 1. Snapshot current folder
@@ -160,3 +164,8 @@ For more complex credential setup (research where to get keys, multiple provider
 ### 7. Debug pipeline - first run
 When user requests to run pipeline **ALWAYS use `debug-pipeline`** to diagnose and guide credential setup
 **NEVER add more endpoints** before that - keep it simple
+
+## What's next
+
+- **Ready to run** → continue with `debug-pipeline` to run the pipeline, inspect traces, and fix errors.
+- **User wants to deploy right away** (Early) → a working pipeline is enough; hand over to **dlthub-platform** to run it on dltHub.

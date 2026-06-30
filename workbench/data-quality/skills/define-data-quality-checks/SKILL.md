@@ -14,6 +14,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): carry-over from `setup-data-quality`. If missing, ask the user.
 - `table` (optional): narrow scope to a single table. If omitted, cover all tables.
 
+## Before you start
+
+Run `setup-data-quality` first — you need the confirmed pipeline name, table list, and auto-detected check candidates. If that context is missing, recover it inline as described below.
+
 ## Session context — carry-over from setup-data-quality
 
 This skill is usually entered with context already in session:
@@ -282,3 +286,7 @@ Do not modify any file. The checks dict generated in step 5 is passed forward as
 Checks defined. Ready to run.
 Moving to run-data-quality →
 ```
+
+## What's next
+
+Next step: **Run data quality** (`run-data-quality`) — execute the confirmed checks against the loaded data. If the user wants to add or refine checks after seeing results, return here.

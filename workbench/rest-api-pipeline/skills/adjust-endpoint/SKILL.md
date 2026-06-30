@@ -10,6 +10,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `hints` (optional, after `--`): specific adjustments to make
 
+## Before you start
+
+Run `validate-data` first and confirm the user is happy with the schema and data — you harden a working, validated pipeline here, not a broken one.
+
 ## Critical rule: removing `.add_limit()` requires verified pagination
 
 `.add_limit(1)` during development masks pagination problems — only one page is fetched, so a broken paginator never loops. Removing it without explicit pagination causes stuck pipelines.
@@ -61,3 +65,9 @@ Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md
 *If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
 
 - Full load complete → hand over to **data-exploration** (`explore-data`) to chart and analyze the data
+
+## What's next
+
+- **Add more resources** → use `new-endpoint`.
+- **Query or explore the data** → use `view-data`.
+- **Deploy or schedule on dltHub** (Later) → hand over to **dlthub-platform**.

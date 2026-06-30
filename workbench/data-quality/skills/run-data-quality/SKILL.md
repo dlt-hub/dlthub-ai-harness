@@ -9,6 +9,10 @@ Execute checks against the already-loaded destination data using `dq.run_checks(
 
 Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.md)
 
+## Before you start
+
+Run `define-data-quality-checks` first — you need the confirmed pipeline name and the full checks dict (or decorators already applied to the pipeline file).
+
 ## Session context — carry-over from define-data-quality-checks
 
 Expected from prior steps:
@@ -194,3 +198,7 @@ Pass to `review-data-quality`:
 If the user chooses [1], hand over to **dlthub-platform** (start at `setup-runtime`), passing:
 - The script path (`<script_path>`) as the deployment target
 - The confirmed pipeline name and destination
+
+## What's next
+
+Next step: **Review data quality** (`review-data-quality`) — review the full results and metrics. On failures, if the user wants to adjust an over-strict check, return to `define-data-quality-checks` with the failing checks pre-targeted. Profile B may also hand over to **dlthub-platform** (start at `setup-runtime`) to schedule the standalone script.

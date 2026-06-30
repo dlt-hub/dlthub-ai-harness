@@ -1,4 +1,4 @@
 {
   "dependencies": ["init"],
-  "workflow_entry_skill": "setup-runtime"
+  "workflow_entry_skill": "dlthub-platform"
 }

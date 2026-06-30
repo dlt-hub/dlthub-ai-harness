@@ -14,6 +14,10 @@ Parse `$ARGUMENTS`:
 - `database` (required): description of the source database (e.g. "postgres on localhost", "Rfam MySQL", a connection URL, or just the DB type)
 - `destination` (optional, default `duckdb`): where to load data
 
+## Before you start
+
+Run `find-source` first — the source database, first table, destination, backend, and reflection level should already be chosen.
+
 ## Steps
 
 ### 1. Assess data volume
@@ -288,3 +292,9 @@ Re-run the test to confirm the backend works before moving on.
 - **Want more tables** → use `add-table` to add resources to the pipeline
 - **Ready to explore data** → hand over to **data-exploration** toolkit
 - **Ready to deploy** → hand over to **dlthub-platform** toolkit
+
+## What's next
+
+- **Test run succeeded** → use `validate-data` to inspect the schema and loaded data.
+- **Pipeline errors or 0 rows** → use `debug-pipeline` to inspect traces and load packages.
+- **Working pipeline, want to deploy right away (Early)** → hand over to **dlthub-platform** to run it on dltHub.

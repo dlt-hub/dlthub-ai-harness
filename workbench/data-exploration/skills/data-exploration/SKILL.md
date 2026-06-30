@@ -1,3 +1,10 @@
+---
+name: data-exploration
+description: "Explore and profile already-loaded data, then build charts, notebooks, and dashboards (marimo). Use when the user wants to analyze or visualize data that is already in a destination. DO NOT USE to ingest new data (use a *-pipeline toolkit) or to model/transform it (use transformations)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
 # Data exploration workflow
 
 ## Workflow Entry

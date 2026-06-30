@@ -9,6 +9,10 @@ description: Deploy dlt pipelines to dltHub Platform. Use when the user says "de
 
 If this is a first deployment, complete (`setup-runtime`) and (`prepare-deployment`) first — they set up the workspace, configure credentials, and log in to runtime. Otherwise, continue from here.
 
+## Before you start
+
+Complete (`prepare-deployment`) first — production credentials, the production destination, and (when needed) the `__deployment__.py` manifest must be in place before deploying.
+
 ## Step 1: Prepare scripts for production
 
 **If transformation scripts are included in this deployment and the production destination differs from the dev destination (e.g. DuckDB → BigQuery): STOP. Run (`debug-transformation`) from the transformations toolkit first and confirm no dialect and schema issues before continuing. Skipping this check is the most common cause of failed remote runs.**
@@ -145,3 +149,11 @@ dlthub job unpublish <job_name>  # revoke public access
 - Runtime installs from `pyproject.toml` — add all needed packages (e.g. `uv add numpy pandas` if using `.df()`).
 - Jobs are killed after 120 minutes. Overwrite timeout in the decorators for long running (backfill) jobs
 - One workspace per GitHub account — connecting a new repo replaces existing deployments.
+
+## What's next
+
+On success, the pipeline is live — run `dlthub show` to show the user their deployment. If a run fails or misbehaves, continue with (`debug-deployment`) to check job status, read logs, and diagnose failures.
+
+Cross-toolkit handover:
+- **rest-api-pipeline** → `debug-pipeline` / `adjust-endpoint` — when the user needs to build or modify a pipeline before deploying
+- **data-exploration** → `build-notebook` — when the user wants to create marimo notebooks to deploy as interactive jobs

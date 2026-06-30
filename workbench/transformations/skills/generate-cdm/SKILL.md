@@ -14,6 +14,10 @@ Read `_name` from `.schema/<cdm-name>/taxonomy.json` to determine `<cdm-name>` �
 
 Reference: DBML format — https://dbml.dbdiagram.io/
 
+## Before you start
+
+Run `create-ontology` first. You need its output — `.schema/<cdm-name>/ontology.ison` (the entity graph with attributes, relationships, and gaps). If it is missing, go back to `create-ontology`.
+
 ## Steps
 
 ### 1. Classify entities as fact or dimension
@@ -124,3 +128,7 @@ Let me know if anything looks wrong or needs changing before we move on.
 ```
 
 Wait for explicit confirmation before handing over to `create-transformation` skill.
+
+## What's next
+
+On success — `CDM.dbml` written and reviewed by the user — continue to `create-transformation` to write the dlthub transformation functions. On failure — the model is wrong or required inputs are missing — return to `create-ontology` to revise the entity graph.

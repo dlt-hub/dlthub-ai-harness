@@ -1,3 +1,10 @@
+---
+name: sql-database-pipeline
+description: "Build a dlt pipeline from a SQL database (Postgres, MySQL, Snowflake, etc.). Use when the user wants to load tables from a relational database into a destination. DO NOT USE for REST/HTTP APIs (use rest-api-pipeline) or file ingestion (use filesystem-pipeline)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
 # SQL database pipeline
 
 ## Workflow Entry
