@@ -69,7 +69,7 @@ Wait for it to complete before continuing.
 uv run dlthub workspace list --non-interactive
 ```
 
-Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding and testing only.
+Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding only.
 
 Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
 
@@ -228,16 +228,26 @@ Print to the user: `- [x] Test source on DuckDB`
 
 Print to the user: `- [ ] Set up destination`
 
-Ask the user: which cloud destination do they want? Options: MotherDuck, BigQuery, Snowflake, Redshift.
+Ask the user: which cloud destination do they want? Common options:
+
+BigQuery, Snowflake, Redshift, Databricks, MotherDuck, Postgres, MS SQL, ClickHouse, Athena, Synapse
+
+We support more destinations — if theirs isn't listed, ask them and consult the **Supported Destinations** reference table at the bottom of this skill.
 
 **Stop and wait** for the answer, then install the destination package:
 
 | Destination | Package |
 |---|---|
-| MotherDuck | `dlt[motherduck]` |
 | BigQuery | `dlt[bigquery]` |
 | Snowflake | `dlt[snowflake]` |
 | Redshift | `dlt[redshift]` |
+| Databricks | `dlt[databricks]` |
+| MotherDuck | `dlt[motherduck]` |
+| Postgres | `dlt[postgres]` |
+| MS SQL | `dlt[mssql]` |
+| ClickHouse | `dlt[clickhouse]` |
+| Athena | `dlt[athena]` |
+| Synapse | `dlt[synapse]` |
 
 ```bash
 uv add "dlt[<extra>]"
@@ -249,7 +259,7 @@ Add to `.dlt/prod.config.toml`:
 
 ```toml
 [destination.warehouse]
-destination_type = "motherduck"  # or bigquery, snowflake, redshift
+destination_type = "bigquery"  # use the destination name from the Supported Destinations table below
 ```
 
 Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`. **Never use Write/Edit/Read on this file directly.**
@@ -325,3 +335,28 @@ You can now extend it using the rest-api-pipeline toolkit:
 - Add incremental loading so only new or updated records are fetched on each run
 - Add pagination to handle APIs that return large result sets across multiple pages
 ```
+
+## Supported Destinations
+
+For destinations not listed in Step 7, fetch the credential structure and configuration details from the destination's docs page at runtime.
+
+| Destination | Install | Docs |
+|---|---|---|
+| BigQuery | `uv add "dlt[bigquery]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/bigquery |
+| Snowflake | `uv add "dlt[snowflake]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake |
+| Redshift | `uv add "dlt[redshift]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/redshift |
+| Databricks | `uv add "dlt[databricks]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/databricks |
+| MotherDuck | `uv add "dlt[motherduck]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/motherduck |
+| Postgres | `uv add "dlt[postgres]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/postgres |
+| MS SQL | `uv add "dlt[mssql]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/mssql |
+| ClickHouse | `uv add "dlt[clickhouse]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/clickhouse |
+| Athena | `uv add "dlt[athena]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/athena |
+| Synapse | `uv add "dlt[synapse]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/synapse |
+| Dremio | `uv add "dlt[dremio]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/dremio |
+| DuckDB | `uv add "dlt[duckdb]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/duckdb |
+| Filesystem (S3) | `uv add "dlt[filesystem]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| Filesystem (GCS) | `uv add "dlt[gs]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| Filesystem (Azure) | `uv add "dlt[az]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| LanceDB | `uv add "dlt[lancedb]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/lancedb |
+| Qdrant | `uv add "dlt[qdrant]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/qdrant |
+| Weaviate | `uv add "dlt[weaviate]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/weaviate |
