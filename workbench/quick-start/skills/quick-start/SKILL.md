@@ -1,6 +1,6 @@
 ---
 name: quick-start
-description: "Use when the user wants a guided end-to-end run from data to dashboard in a few prompts: 'show me a demo', 'give me a quick start', 'take me through the full workflow', 'how do I go from data to dashboard', 'walk me through ingestion to visualization', 'I want to try everything end-to-end'.
+description: "The guided entry point for dltHub workbench use cases — ingestion from APIs, data exploration, transformations, deployment, data quality. Use when the user names a use case or wants to be oriented before starting: 'I want to ingest from Stripe', 'show me how to go from data to dashboard', 'take me through the full workflow', 'explore the workbench', 'what can I do with dlthub', 'give me a quick start', 'show me a demo', 'walk me through ingestion to visualization', 'I want to try everything end-to-end', 'teach me dltHub'.
   Do NOT use when the user is asking what's available or where to start in general — use the `dlthub-router` skill (in init) for capability-discovery questions ('what can you do', 'what toolkits are there', 'I'm new to dlthub').
   Do NOT use when the user already has a specific task underway (debugging, adding an endpoint, deploying)."
 argument-hint: "[data-source] [path]"
@@ -14,9 +14,21 @@ Parse `$ARGUMENTS`:
 - `data-source` (optional): what the user wants to extract data from
 - `path` (optional): one of `production` (default), `discover`, `inspect`, `cdm`
 
+## Anti-patterns
+
+- ❌ **Triggering on 'Help me build and deploy a minimal pipeline'** — that phrase is the dedicated entry point for `deploy-minimal-ingestion-pipeline` in the `dlthub-init-skills` toolkit, not a quick-start tour.
+
 ## Step 1 — Check workspace status
 
-Run `uv run dlthub ai status`.
+**Onboarding exception — check this first:** if the user explicitly asks to be onboarded or to be taught how to use dltHub (e.g. "onboard me", "I want to learn dltHub", "teach me dltHub"), ask them to run:
+
+```
+uvx dlthub-start@latest
+```
+
+This scaffolds a fresh **playground** workspace — an onboarding experience, **not** where production workflows should live. **NEVER run it yourself** — it is interactive and requires authentication; it only works in a real terminal, do NOT use `!` mode. **Stop and wait** for the user to confirm it has finished, then re-check `uv run dlthub ai status` before continuing to Step 2.
+
+Otherwise, run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
 - If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**.
@@ -24,14 +36,6 @@ Run `uv run dlthub ai status`.
   - **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from "dlt[hub]" dlthub init` (equivalent to `uv init` + `uv add "dlt[hub]"` + `uv run dlthub init`), then `uv run dlthub ai init` to set up AI support.
 
   Wait for completion, then re-check status before continuing to Step 2.
-
-  **Onboarding exception — only when the user asks to be onboarded or to be taught how to use dltHub** (e.g. "onboard me", "I want to learn dltHub"): ask the user to run `uvx dlthub-start@latest`. This scaffolds a fresh **playground** workspace — an onboarding experience, **not** where production workflows should live, and not for setting up an existing project. **NEVER run it yourself** — it is interactive and does not work when an agent runs it:
-
-  ```
-  uvx dlthub-start@latest
-  ```
-
-  It must be run by a human because it requires interaction for authentication; it only works in a real terminal — **do NOT use `!` mode for it**. Tell the user to run it in their own terminal. (For agent-driven setup of a clean new project, use `uvx dlthub-init@latest` above instead.)
 
 ## Step 2 — Present capability index and ask one question
 
