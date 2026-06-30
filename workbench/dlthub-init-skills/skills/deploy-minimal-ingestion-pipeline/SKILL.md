@@ -10,7 +10,7 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 
 **Goal: fastest time to deployment. Every step must serve that goal.**
 
-**Do not explore the workspace before starting. Go directly to Setup — every file read is called out explicitly in the steps below.**
+**Do not scan the workspace or execute any discovery commands before starting. Go directly to Setup — every file read is called out explicitly in the steps below.**
 
 **References**:
 - https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
