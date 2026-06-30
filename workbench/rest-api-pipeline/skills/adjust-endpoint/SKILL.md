@@ -1,6 +1,6 @@
 ---
 name: adjust-endpoint
-description: Adjust a working dlt pipeline for production — remove dev limits, verify pagination, configure incremental loading, expand date ranges. Use when the user wants to remove .add_limit(), load more data, fix pagination, or set up incremental loading.
+description: Adjust a working dlt pipeline for production — remove dev limits, verify pagination (including stuck or looping paginators), configure incremental loading, expand date ranges, and handle rate-limit/429 errors with retries, backoff, and request timeouts. Use when the user wants to remove .add_limit(), load more data, fix stuck or looping pagination, set up incremental loading, or make the pipeline retry/back off on 429s. For throughput/concurrency tuning (parallel resources, page size) when a working pipeline is slow, use optimize-rest-api-performance instead. For inspecting loaded data, fixing column types, or flattening nested structures after a load, use validate-data instead.
 argument-hint: "[pipeline-name] [adjustments]"
 ---
 
@@ -26,9 +26,41 @@ Pipeline worked with `.add_limit(1)`. After removing the limit, it hung forever 
 
 Some endpoints return 404 or an error body for certain parent items (e.g. a repo with no issues, an org with no members). In production this kills the pipeline. Fix with `response_actions` — no custom Python needed. See `new-endpoint` step 3A for syntax and examples.
 
-## Enable parallelization for dependent resources
+## Add incremental loading
 
-If the pipeline has child resources (transformer pattern, e.g. comments per post), add `parallelized: True` to fetch child pages concurrently. Caveat: all child pages for one parent are buffered in memory — skip for parents with very large child sets. See `new-endpoint` step 3A for syntax and the memory caveat.
+Load only new or updated records each run instead of re-fetching everything. In `rest_api`, declare an incremental cursor on the query parameter the API filters by:
+
+```python
+{
+    "name": "issues",
+    "endpoint": {
+        "path": "repos/{owner}/{repo}/issues",
+        "params": {
+            "since": {                       # the API's "updated since" query param
+                "type": "incremental",
+                "cursor_path": "updated_at", # field in each record to track
+                "initial_value": "2024-01-01T00:00:00Z",
+            },
+        },
+    },
+    "primary_key": "id",
+    "write_disposition": "merge",            # upsert on primary_key
+}
+```
+
+Key decisions:
+- **cursor query param** (`since`, `updated_since`, `start_date`…): the API parameter that filters server-side — without it the API returns everything and dlt only filters client-side.
+- **`cursor_path`**: the field in each record holding the cursor value (e.g. `updated_at`).
+- **`initial_value`**: where the first run starts — also how you **expand or shrink the backfill date range**.
+- **`write_disposition: "merge"` + `primary_key`**: required so updated records upsert instead of duplicating.
+
+dlt stores the last cursor value in pipeline state and resumes next run — check it with `uv run dlthub local pipeline info <name> -v` (look for `last_value`).
+
+**Ref:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic#incremental-loading
+
+## Speed and concurrency
+
+Throughput tuning — parallelizing child/independent resources, page size, running resources concurrently — lives in `optimize-rest-api-performance`. Use it once the pipeline loads correctly and you need it faster.
 
 ## Configure retry settings for rate-limited APIs
 
@@ -61,3 +93,5 @@ Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md
 *If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
 
 - Full load complete → hand over to **data-exploration** (`explore-data`) to chart and analyze the data
+- Pipeline works but slow (too many requests, slow endpoints) → use `optimize-rest-api-performance` (parallel resources, page size, concurrency)
+- Pipeline is memory-heavy or you need stage-level tuning (extract/normalize/load workers, buffers, file rotation) → hand over to the **performance** toolkit → `optimize-performance` (install it via the router if not present)
