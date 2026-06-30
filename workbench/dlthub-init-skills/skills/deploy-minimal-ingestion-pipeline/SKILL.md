@@ -1,10 +1,10 @@
 ---
-name: deploy-minimal-custom-source
+name: deploy-minimal-ingestion-pipeline
 description: Build and deploy a minimal custom REST API pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline".
 argument-hint: "[source-name]"
 ---
 
-# Build and deploy a minimal custom source
+# Build and deploy a minimal ingestion pipeline
 
 Build a minimal single-endpoint REST API pipeline and get it running on dltHub Platform as fast as possible. The 50-row limit stays throughout — this is a first-run cloud validation, not a full production load.
 

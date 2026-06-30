@@ -16,7 +16,7 @@ Parse `$ARGUMENTS`:
 
 ## Anti-patterns
 
-- ❌ **Triggering on 'Help me build and deploy a minimal pipeline'** — that phrase is the dedicated entry point for `deploy-minimal-custom-source` in the `dlthub-init-skills` toolkit, not a quick-start tour.
+- ❌ **Triggering on 'Help me build and deploy a minimal pipeline'** — that phrase is the dedicated entry point for `deploy-minimal-ingestion-pipeline` in the `dlthub-init-skills` toolkit, not a quick-start tour.
 
 ## Step 1 — Check workspace status
 

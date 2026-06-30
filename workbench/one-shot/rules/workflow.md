@@ -12,4 +12,4 @@ This workflow has exactly one step.
 
 ### Outgoing (from one-shot)
 
-- **dlthub-init-skills** — after `deploy-run-sample-pipeline` completes and the user says "Help me get started building and running a data pipeline on dltHub". The user will run `uvx dlthub-init@latest` in a new directory and restart the agent session there, then say "Help me build and deploy a minimal pipeline". Enter at `deploy-minimal-custom-source`.
+- **dlthub-init-skills** — after `deploy-run-sample-pipeline` completes and the user says "Help me get started building and running a data pipeline on dltHub". The user will run `uvx dlthub-init@latest` in a new directory and restart the agent session there, then say "Help me build and deploy a minimal pipeline". Enter at `deploy-minimal-ingestion-pipeline`.
