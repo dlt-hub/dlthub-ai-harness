@@ -1,0 +1,12 @@
+{
+  "name": "performance",
+  "description": "Tune dlt pipeline performance — diagnose the bottleneck stage (extract, normalize, load) and apply the right lever: parallelism, workers, memory buffers, file rotation, and batching.",
+  "version": "0.1.1",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
+}
