@@ -1,6 +1,6 @@
 ---
 name: quick-start
-description: "The guided entry point for dltHub workbench use cases — ingestion from APIs, data exploration, transformations, deployment, data quality. Use when the user names a use case or wants to be oriented before starting: 'I want to ingest from Stripe', 'show me how to go from data to dashboard', 'take me through the full workflow', 'explore the workbench', 'what can I do with dlthub', 'give me a quick start', 'show me a demo', 'walk me through ingestion to visualization', 'I want to try everything end-to-end'.
+description: "The guided entry point for dltHub workbench use cases — ingestion from APIs, data exploration, transformations, deployment, data quality. Use when the user names a use case or wants to be oriented before starting: 'I want to ingest from Stripe', 'show me how to go from data to dashboard', 'take me through the full workflow', 'explore the workbench', 'what can I do with dlthub', 'give me a quick start', 'show me a demo', 'walk me through ingestion to visualization', 'I want to try everything end-to-end', 'teach me dltHub'.
   Do NOT use when the user is asking what's available or where to start in general — use the `dlthub-router` skill (in init) for capability-discovery questions ('what can you do', 'what toolkits are there', 'I'm new to dlthub').
   Do NOT use when the user already has a specific task underway (debugging, adding an endpoint, deploying)."
 argument-hint: "[data-source] [path]"
@@ -20,7 +20,7 @@ Parse `$ARGUMENTS`:
 
 ## Step 1 — Check workspace status
 
-**Onboarding exception — check this first:** if the user explicitly asks to be onboarded or to be taught how to use dltHub (e.g. "onboard me", "I want to learn dltHub"), ask them to run:
+**Onboarding exception — check this first:** if the user explicitly asks to be onboarded or to be taught how to use dltHub (e.g. "onboard me", "I want to learn dltHub", "teach me dltHub"), ask them to run:
 
 ```
 uvx dlthub-start@latest
