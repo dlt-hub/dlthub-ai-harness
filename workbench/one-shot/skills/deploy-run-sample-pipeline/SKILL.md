@@ -44,7 +44,7 @@ Summarize which jobs were created or updated.
 
 **Run:**
 
-Print to the user: `Starting dataset browser setup in the background.`
+Print to the user: `Running your pipeline and preparing your data in the background.`
 
 Run both commands at the same time — start `serve_headless.py` in the background, then run the pipeline in the foreground:
 

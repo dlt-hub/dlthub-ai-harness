@@ -1,6 +1,6 @@
 ---
 name: deploy-minimal-ingestion-pipeline
-description: Build and deploy a minimal custom REST API pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline".
+description: Build and deploy a minimal custom REST API pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline", "I've finished onboarding, now what?", or "I just ran dlthub-start and want to build my own pipeline".
 argument-hint: "[source-name]"
 ---
 
