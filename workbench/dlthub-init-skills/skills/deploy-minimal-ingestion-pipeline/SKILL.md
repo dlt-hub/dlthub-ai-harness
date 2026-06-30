@@ -6,7 +6,7 @@ argument-hint: "[source-name]"
 
 # Build and deploy a minimal ingestion pipeline
 
-Build a minimal single-endpoint REST API pipeline and get it running on dltHub Platform as fast as possible. The 50-row limit stays throughout — this is a first-run cloud validation, not a full production load.
+Build a minimal single-endpoint REST API pipeline and get it running on dltHub Platform as fast as possible. The 100-row limit stays throughout — this is a first-run cloud validation, not a full production load.
 
 **Goal: fastest time to deployment. Every step must serve that goal.**
 
@@ -141,11 +141,11 @@ def load_<source>():
         destination="warehouse",
         dataset_name="<source>",
     )
-    pipeline.run(source.add_limit(50, count_rows=True))
+    pipeline.run(source.add_limit(100, count_rows=True))
 ```
 
 Rules:
-- Always keep `.add_limit(50, count_rows=True)` for the first validation run
+- Always keep `.add_limit(100, count_rows=True)` for the first validation run
 - Omit `data_selector` if the response is a root JSON array
 - Omit pagination config
 - Adjust `primary_key` only if the API has an obvious unique field
