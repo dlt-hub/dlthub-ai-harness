@@ -1,3 +1,10 @@
+---
+name: filesystem-pipeline
+description: "Load files (CSV, Parquet, JSONL) from a filesystem into a destination with dlt — local disk, S3, GCS, Azure, or SFTP. Use when the source is file-based. DO NOT USE for REST/HTTP APIs (use rest-api-pipeline) or SQL databases (use sql-database-pipeline)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
 # Filesystem pipeline workflow
 
 ## Workflow Entry

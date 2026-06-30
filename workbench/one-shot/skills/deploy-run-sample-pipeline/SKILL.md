@@ -12,6 +12,10 @@ If the user wants to build their own pipeline, recommend they complete onboardin
 
 **Assumption:** By the time this skill runs, the project has been scaffolded, the user is logged in to dltHub, and the playground workspace is connected. Steps 1–2 are complete.
 
+## Before you start
+
+This is the first and only step of the one-shot workflow. No prior sub-skill is required. Scaffolding, dltHub login, and the playground workspace connection (onboarding Steps 1–2) must already be complete, and `pipeline.py` must exist in the project root.
+
 ## Orientation
 
 Print this to the user before doing anything else:
@@ -88,3 +92,9 @@ Print to the user: `- [x] Opening dltHub dataset browser`
 After Step 4 completes, immediately print to the user:
 
 > "Onboarding complete! When you're ready to continue, ask me: `Give me a guided tour through dltHub`"
+
+## What's next
+
+This is the final step of the one-shot workflow — it ends when the cloud run completes and the dataset browser opens. There is no next sub-skill and no cross-toolkit handover.
+
+On success: onboarding is complete; point the user to the guided tour as printed above. On failure: use `uv run dlthub job logs load_sample_shop` and the error table in Step 3 to diagnose and retry.

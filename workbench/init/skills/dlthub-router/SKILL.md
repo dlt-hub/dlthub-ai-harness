@@ -7,7 +7,7 @@ description: "The entry point for building anything with dlthub. Use this skill 
 
 Route the user to the right toolkit and skill, then install it. **Fast path first** — the always-loaded toolkit index (in your project rules / `AGENTS.md`) already maps intent → toolkit → install command → entry skill, so you usually do **not** need any discovery round-trip.
 
-> **Router vs handovers.** This skill handles **cold start** — picking and installing a toolkit when none relevant is installed. Once inside a workflow, a toolkit's `workflow.md` **handover** sections take over: they carry context forward (pipeline name, dataset, destination) and route to a specific skill. Do **not** use this skill mid-workflow when the relevant toolkit is already installed. But when a handover names a toolkit that **isn't installed yet**, that's your cue — install it via the index below, then follow the handover's entry point + context.
+> **Router vs handovers.** This skill handles **cold start** — picking and installing a toolkit when none relevant is installed. Once inside a workflow, a toolkit's **handover** sections (the `What's next` block in each sub-skill) take over: they carry context forward (pipeline name, dataset, destination) and route to a specific skill. Do **not** use this skill mid-workflow when the relevant toolkit is already installed. But when a handover names a toolkit that **isn't installed yet**, that's your cue — install it via the index below, then follow the handover's entry point + context.
 
 ## Step 1: Route from the always-loaded index (fast path)
 
@@ -39,9 +39,9 @@ uv run dlthub ai status
 
 The `dlt-workspace-mcp` server is already running (installed with `init`) and toolkits reuse it — installing one adds **no new MCP server**, so continue in this session. Do **not** ask the user to restart; that would lose the conversation context.
 
-1. **Load the new toolkit inline** — prefer `toolkit_info <name>` (MCP), which is agent-agnostic and returns the entry skill + workflow rule. If MCP is unavailable, read the installed files directly; the install path depends on the agent (`.claude/`, `.cursor/`, or `.agents/`) — e.g. `<agent-dir>/skills/<entry-skill>/SKILL.md` and the toolkit's workflow rule.
-2. **Follow that workflow rule and start at the entry skill**, continuing the user's task with the context you already have. Do not start unrelated workflows on your own.
-3. The new skills become natively registered (`/`-invocable, always-loaded workflow rule) on the next natural session start — no need to restart now.
+1. **Load the new toolkit inline** — prefer `toolkit_info <name>` (MCP), which is agent-agnostic and returns the parent skill. If MCP is unavailable, read the installed files directly; the install path depends on the agent (`.claude/`, `.cursor/`, or `.agents/`) — e.g. `<agent-dir>/skills/<toolkit-name>/SKILL.md` (the parent skill).
+2. **Start at the parent skill**, continuing the user's task with the context you already have. Do not start unrelated workflows on your own.
+3. The new skills become natively registered (`/`-invocable) on the next natural session start — no need to restart now.
 
 > Exception: if a future toolkit ever ships its **own** MCP server (none do today), that server only starts on restart — suggest a restart **only** in that case, and use CLI fallbacks until then.
 

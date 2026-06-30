@@ -10,6 +10,10 @@ Create the simplest working dlt filesystem pipeline — a single bucket, a singl
 
 The argument is the destination (e.g. `duckdb`, `postgres`, `filesystem`). Defaults to `duckdb` if omitted.
 
+## Before you start
+
+This is the entry skill for the filesystem-pipeline workflow — there is no prerequisite skill. The user must have file-based data (CSV, Parquet, JSONL, or custom) on a filesystem (local disk, S3, GCS, Azure, or SFTP) and a bucket/path you can reach.
+
 ## Steps
 
 ### 1. Gather inputs
@@ -339,3 +343,11 @@ Once the pipeline is verified, suggest next steps in this order:
 2. **Explore the data** — hand off to **data-exploration** toolkit to profile and visualise the loaded tables
 3. **Add data quality checks** — hand off to **data-quality** toolkit
 4. **Deploy** — hand off to **dlthub-platform** toolkit to schedule the pipeline on dltHub
+
+## What's next
+
+On success — the single-resource pipeline runs end-to-end and the user has reviewed the loaded data — continue to `add-incremental-loading` to load only new or modified files on each run.
+
+On failure beyond the first-run errors above (schema errors, failed jobs, normalisation issues), hand off to the **rest-api-pipeline** toolkit's `debug-pipeline` skill.
+
+Cross-toolkit handovers from here: **data-exploration** (explore, chart, or build dashboards from the loaded files), **data-quality** (column-level validation or load metrics on every run), and **dlthub-platform** (deploy or schedule the pipeline on dltHub).

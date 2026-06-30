@@ -11,6 +11,10 @@ Extend an existing SQL database pipeline with a new table or view from the same 
 Parse `$ARGUMENTS`:
 - `table-name` (required): the table or view to add (e.g. "orders", "public.users", "vw_daily_summary")
 
+## Before you start
+
+A working pipeline must already exist (built via `create-sql-database-pipeline`, typically after `adjust-table`). This skill adds a table to that existing pipeline.
+
 ## Steps
 
 ### 1. Read the existing pipeline
@@ -99,3 +103,9 @@ Available tables: <list all table names>
 - **All tables loaded correctly** → use `validate-data` to check schemas and data
 - **Errors on the new table** → use `debug-pipeline` to inspect traces
 - **New table needs incremental loading** → use `adjust-table`
+
+## What's next
+
+- **All tables loaded correctly** → use `validate-data` to check schemas and data.
+- **Errors on the new table** → use `debug-pipeline` to inspect traces.
+- **New table needs incremental loading** → use `adjust-table`.

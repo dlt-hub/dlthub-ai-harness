@@ -7,6 +7,10 @@ description: Prepare production credentials and destinations for dltHub Platform
 
 Set up profile-scoped credentials and production destinations so the runtime can run pipelines with the right config.
 
+## Before you start
+
+Complete (`setup-runtime`) first — the workspace must be verified (Python project, `.dlt/.workspace`, `dlt[hub]` installed, logged in to runtime) before configuring production credentials here.
+
 **Reference**: https://dlthub.com/docs/hub/pipeline-operations/profiles.md
 
 ## 1. Verify `.dlt/` config structure
@@ -150,3 +154,7 @@ Every deployed job gets a `job_ref` in `jobs.<module>.<function>` form:
 **STOP** before making changes. Show your **plan** and get approval from the user.
 
 Tell the user the workspace is ready for deployment — use (`deploy-workspace`) next.
+
+## What's next
+
+On success, continue with (`deploy-workspace`) to prepare scripts for production, simulate job runs locally, deploy, launch, and schedule. If prod credentials or the production destination could not be verified, resolve that here before deploying.

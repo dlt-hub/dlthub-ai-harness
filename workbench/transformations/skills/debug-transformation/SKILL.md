@@ -7,6 +7,10 @@ description: Debug dlthub transformation failures. Use when a transformation fai
 
 Diagnose and fix dlthub transformation failures. Two main failure classes: **SQL dialect incompatibility** (transformation works on dev destination, fails on production) and **pipeline state errors** (stale packages, schema drift, failed jobs).
 
+## Before you start
+
+You need an existing transformation script from `create-transformation` that is failing (or that you want to check for portability before deploying). You usually arrive here from `create-transformation`'s Run step on a dialect error, or incoming from **dlthub-platform** during deployment when the prod destination differs from dev and SQL dialect errors surface — in which case the dev and prod destination types are already known.
+
 ## When to use this skill
 
 - Transformation works on DuckDB locally but fails on BigQuery, Snowflake, or Postgres after deployment
@@ -208,3 +212,7 @@ Reference: https://dlthub.com/docs/hub/transformations.md
 ## 4. Validate transformation output
 
 After fixing an issue and re-running, validate the output using the same checks as the happy path — see **`create-transformation` Step 9**.
+
+## What's next
+
+On success — the SQL transpiles cleanly, the pipeline runs, and validation passes — resume where you left off: hand over to **dlthub-platform** to finish deploying or scheduling the transformation, or return to `create-transformation`'s post-validation choices (explore via **data-exploration**, add checks via **data-quality**). On failure — the error persists after the recovery steps — stop and ask the user before any destructive `drop`.

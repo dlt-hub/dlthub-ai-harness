@@ -11,6 +11,10 @@ Switch an existing `@dlt.hub.transformation` from `write_disposition="replace"` 
 
 Reference: https://dlthub.com/docs/hub/transformations.md#incremental-transformations
 
+## Before you start
+
+Run `create-transformation` first. You need an existing transformation script (`transformations/<dataset_name>_to_cdm.py`) that currently uses `write_disposition="replace"`. If you don't have one, run that skill first.
+
 ## Steps
 
 ### 1. Choose a pattern
@@ -134,3 +138,7 @@ python transformations/<dataset_name>_to_cdm.py
 ```
 
 Verify row counts with `dlthub local pipeline show <pipeline_name>` or the `preview_table` MCP tool. If the second run still reprocesses everything, check that `primary_key` is set and that the cursor column name matches exactly (case-sensitive).
+
+## What's next
+
+On success — the second run processes only new/changed rows — the transformation is ready for scheduled, high-volume use; hand over to **dlthub-platform** to deploy and schedule it. On failure — a SQL dialect error or the run breaks on a different destination — go to `debug-transformation`.

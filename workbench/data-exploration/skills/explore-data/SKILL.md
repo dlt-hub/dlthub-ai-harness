@@ -8,6 +8,10 @@ description: This skill should be used when the user asks to "explore my data", 
 
 Connect to a dlt pipeline, understand the data, and plan one chart at a time. Outputs a `<date>_<pipeline_name>_analysis_plan.md` artifact that `build-notebook` consumes. Use today's date in `YYYY-MM-DD` format (e.g., `2026-03-10`).
 
+## Before you start
+
+This is the workflow entry skill — no prior sub-skill is required. You need a dlt pipeline whose data is already loaded into a destination (or a standalone `.duckdb` file).
+
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `question` (optional, after `--`): a specific business question (e.g., `-- what's the revenue trend?`)
@@ -158,3 +162,9 @@ Tell the user the plan was updated, then ask: "Ready to build the notebook — s
 
 - **Pipeline not found** — check spelling (case-sensitive), run `list_pipelines`, or use explicit `.duckdb` path via `dlt.pipeline(..., destination=dlt.destinations.duckdb("<path>"))`.
 - **MCP tools unavailable** — run `uv run dlthub ai status` to diagnose. If the MCP server is not running or misconfigured, attempt to fix it (e.g., `dlthub ai init`). Only fall back to Python path (`dlt.attach` / `dlt.pipeline`) if MCP cannot be restored.
+
+## What's next
+
+On success (a chart was planned and written to analysis_plan.md): hand off to `build-notebook` to assemble the marimo notebook from the plan.
+
+If a data gap blocks the question: the data needs to be extended or modeled before charting — hand off to **rest-api-pipeline** (new source, missing endpoint/column, or truncated/stale data) or to **transformations** (raw tables need proper modeling).

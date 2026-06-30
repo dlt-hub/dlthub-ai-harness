@@ -9,6 +9,10 @@ Extends a working filesystem pipeline to load only new or modified files (and op
 
 **Reference**: https://dlthub.com/docs/tutorial/filesystem#7-loading-data-incrementally
 
+## Before you start
+
+Run `create-filesystem-pipeline` first. You need a working replace-mode filesystem pipeline that has run end-to-end and whose loaded data the user has reviewed.
+
 ## Preconditions
 
 Requires a working filesystem pipeline. If the pipeline file is not already known from session context, ask the user which file to modify before proceeding.
@@ -86,3 +90,11 @@ Run the pipeline twice to confirm incremental behaviour:
 2. **Second run (no new files)** — should load 0 rows. Check pipeline state with `get_local_pipeline_state` MCP tool to confirm the `modification_date` cursor advanced.
 
 If the user can add a test file to the bucket, run a third time to confirm only the new file is picked up.
+
+## What's next
+
+This is the last step of the core filesystem-pipeline workflow. On success — incremental runs load only new or modified files — the pipeline is ready to harden or hand off.
+
+On failure (schema errors, failed jobs, normalisation issues), hand off to the **rest-api-pipeline** toolkit's `debug-pipeline` skill.
+
+Cross-toolkit handovers from here: **data-exploration** (explore, chart, or build dashboards from the loaded files), **data-quality** (column-level validation or load metrics on every run), and **dlthub-platform** (deploy or schedule the pipeline on dltHub).

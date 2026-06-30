@@ -1,3 +1,10 @@
+---
+name: one-shot
+description: "Test or try dlthub end to end with a minimal, row-limited single-endpoint pipeline on local DuckDB plus an educational test deploy. Use for a quick demo, onboarding, or trying dlthub — NOT production. DO NOT USE for a real or production pipeline (use rest-api-pipeline)."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
 # One-shot workflow
 
 ## Workflow Entry

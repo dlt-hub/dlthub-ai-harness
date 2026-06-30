@@ -1,3 +1,12 @@
+---
+name: data-quality
+description: "Add data quality checks to a dlt pipeline — column expectations, validation rules, and contracts enforced on load. Use when the user wants ongoing data validation or quality guarantees. DO NOT USE to ingest (use a *-pipeline toolkit) or transform (use transformations) data."
+---
+
+Read SOUL.md — it defines who you are and how you operate in this workspace.
+
+See [dq-rules.md](./dq-rules.md) for these conventions.
+
 # Data quality workflow
 
 ## Workflow Entry

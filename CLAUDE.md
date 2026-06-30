@@ -10,11 +10,10 @@ workbench/                                # All toolkits live here
   <toolkit-name>/                  # One directory per toolkit
     .claude-plugin/plugin.json     # Plugin manifest (strict Claude schema, name must match directory)
     .claude-plugin/toolkit.json    # dlthub-specific metadata: dependencies, listed (optional)
-    skills/                        # Skills (SKILL.md with frontmatter)
+    skills/                        # Skills: one parent skill (named after the toolkit, routes) + sub-skills (steps with start/end blocks)
     commands/                      # Slash commands (plain .md files)
-    rules/                         # Catch-all rules loaded every session
     .mcp.json                      # MCP servers (optional)
-  init/                            # Shared rules, secrets handling, and workspace MCP
+  init/                            # SOUL.md (identity), rules/intent-index.md (cold-start index), secrets handling, workspace MCP
 tools/                             # Dev tooling
   validate_toolkits.py              # Marketplace & plugin consistency checker
   extract_refs.py                  # Extract component map & external URLs from a toolkit
@@ -31,7 +30,7 @@ A toolkit is a Claude Code plugin. It may contain:
 
 - **Skills** (`skills/<name>/SKILL.md`) — frontmatter required (`name`, `description`). Name must match directory name.
 - **Commands** (`commands/<name>.md`) — frontmatter required (`name`, `description`). Name must match filename. User-invoked via `/toolkit:command`.
-- **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
+- **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed, loaded every session. The only rule is `init/rules/intent-index.md` (the cold-start intent→install index); toolkits no longer carry their own rules. Toolkit orchestration lives in the **parent skill** instead (see Toolkit Workflow below).
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
 
 ### Toolkit Workflow (`rules/workflow.md`)

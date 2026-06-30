@@ -8,6 +8,10 @@ description: This skill should be used when the user asks to "build the notebook
 
 Read a `<date>_<pipeline_name>_analysis_plan.md` artifact and assemble a marimo notebook with all charts.
 
+## Before you start
+
+Run `explore-data` first. A `<date>_<pipeline_name>_analysis_plan.md` artifact with at least one chart must already exist — this skill consumes it.
+
 Parse `$ARGUMENTS`:
 - `spec-path` (optional): path to the analysis_plan.md file. If omitted, look for `*_analysis_plan.md` in the working directory. If multiple found, ask the user and stop.
 
@@ -94,3 +98,9 @@ Pipeline name is wrong or pipeline hasn't been run. Run `dlthub local pipeline i
 
 **Validation:** `uvx marimo check orders_pipeline_dashboard.py` → passes
 **Launch:** `uv run marimo edit orders_pipeline_dashboard.py --no-token`
+
+## What's next
+
+On success (notebook validates and launches): offer to add another chart by re-invoking `explore-data` (which enters the Returning/iteration path), or stop.
+
+If the notebook is working and the user wants to deploy or schedule it: hand off to **dlthub-platform** to set up the runtime.

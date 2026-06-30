@@ -10,6 +10,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `hints` (optional, after `--`): specific adjustments (e.g. "add incremental on updated_at", "remove limit")
 
+## Before you start
+
+Run `validate-data` first — the schema and sample data should already be confirmed correct before you remove dev limits or add incremental loading.
+
 ## Critical rule: verify the table before removing `.add_limit()`
 
 `.add_limit(1)` during development loads one chunk only — a broken setup (wrong column types, large blobs) won't surface until you load the full table. Before removing it:
@@ -84,3 +88,9 @@ Use `debug-pipeline` to inspect the first full run — large tables can surface 
 - **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-platform** to deploy
 - **Errors on full load** → use `debug-pipeline`; consider reducing `chunk_size` or switching backend
 - **Need more tables** → use `add-table`
+
+## What's next
+
+- **Need more tables** → use `add-table` to add resources to the pipeline.
+- **Errors on full load** → use `debug-pipeline` to inspect traces and load packages.
+- **Pipeline is refined and ready to deploy or schedule (Later)** → hand over to **dlthub-platform**.

@@ -12,6 +12,10 @@ Parse `$ARGUMENTS`:
 - `database` (required): description or connection URL of the source database (e.g. "postgres on localhost", "Rfam MySQL at rfam.org", a connection string, or just the DB type)
 - `destination` (optional, default `duckdb`): where to load data
 
+## Before you start
+
+This is the entry skill — no prerequisite. Start here when building a SQL database pipeline from scratch.
+
 ## Incoming context check
 
 **Before running any steps**, check whether the pipeline already exists in this session:
@@ -128,3 +132,8 @@ Transform before load: <brief description, e.g. "filter rows by status=active", 
 ```
 
 Then proceed to `create-sql-database-pipeline` with this information. If transformations are needed, address them in step 7 (Add transformation callbacks).
+
+## What's next
+
+- **Source, table, and destination chosen** → use `create-sql-database-pipeline` to scaffold and write the pipeline.
+- **A verified/hub source fits better** → stop and use that source instead of `sql_database`.

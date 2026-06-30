@@ -13,6 +13,10 @@ Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.m
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, list pipelines and ask the user to choose.
 
+## Before you start
+
+This is the entry skill — the data quality workflow starts here. You need a dlt pipeline that has been run at least once so its tables exist.
+
 ## Session context — skip redundant work
 
 Before any discovery step, check what is already known:
@@ -171,3 +175,7 @@ Pass the following context to `define-data-quality-checks`:
 Schema inspected. Ready to define checks.
 Moving to define-data-quality-checks →
 ```
+
+## What's next
+
+Next step: **Define data quality checks** (`define-data-quality-checks`) — map the schema candidates and business intent into concrete checks. If no tables or pipeline were found, resolve that first before continuing.

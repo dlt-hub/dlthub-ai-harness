@@ -14,10 +14,11 @@ Checks:
 - Skill frontmatter name matches directory name
 - Commands have valid frontmatter (name, description), name matches filename
 - argument-hint uses [bracket] convention per Anthropic docs
-- Rules are catch-all (no frontmatter allowed)
-- workflow.md (`skill-name`) references point to real skill directories
-- workflow.md has required sections (Core workflow, Handover to other toolkits)
-- workflow.md handover references point to real toolkits in marketplace
+- The only rule is init/rules/intent-index.md (cold-start index); no other rules/ exist
+- Every workflow toolkit has a parent skill skills/<toolkit>/SKILL.md (the router)
+- Parent skill description carries a 'DO NOT USE' negative trigger
+- Every sub-skill has '## Before you start' and '## What's next' blocks
+- The intent index (intent-index.md + AGENTS.md) lists exactly the workflow toolkits
 - All workbench/ directories must be listed in marketplace
 """
 
@@ -33,7 +34,7 @@ AI_DIR = "workbench"
 # (the only always-loaded surface on Codex, where rules become opt-in skills).
 # Both must list the same workflow toolkits.
 _INDEX_FILES = (
-    "workbench/init/rules/dlthub-workspace.md",
+    "workbench/init/rules/intent-index.md",
     "workbench/init/AGENTS.md",
 )
 # Toolkits that are NOT workflow toolkits, so they don't belong in the intent index:
@@ -52,109 +53,90 @@ _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/
 # invalid: <angle-brackets>, unquoted values with [, -- separators
 _ARGUMENT_HINT_TOKEN = re.compile(r"^\[[\w-]+\]$")
 
-# workflow.md section headings (case-insensitive match)
-_WORKFLOW_REQUIRED_SECTIONS = ["core workflow"]
-_WORKFLOW_OPTIONAL_SECTIONS = ["extend and harden"]
-_WORKFLOW_HANDOVER_SECTION = "handover to other toolkits"
-
-# (`skill-name`) references in workflow
-_WORKFLOW_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
-
-# **toolkit-name** references in handover section
-_WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
-
-
 def parse_frontmatter(path: Path) -> dict:
-    """Extract YAML-like frontmatter from a markdown file."""
+    """Extract YAML-like frontmatter from a markdown file.
+
+    Folds multi-line (indented continuation) values into the preceding key, so a
+    `description:` wrapped across several lines is read in full rather than truncated
+    at its first line.
+    """
     text = path.read_text(encoding="utf-8")
     match = re.match(r"^---\s*\n(.*?)\n---", text, re.DOTALL)
     if not match:
         return {}
-    fm = {}
+    fm: dict[str, str] = {}
+    current_key: str | None = None
     for line in match.group(1).splitlines():
-        if ":" in line:
-            key, _, value = line.partition(":")
-            fm[key.strip()] = value.strip()
+        # A top-level key starts at column 0 as `key:` (optionally with a value).
+        key_match = re.match(r"^([A-Za-z][\w-]*):\s?(.*)$", line)
+        if key_match:
+            current_key = key_match.group(1).strip()
+            fm[current_key] = key_match.group(2).strip()
+        elif current_key is not None and line.strip():
+            # Indented continuation of a folded scalar value.
+            fm[current_key] = f"{fm[current_key]} {line.strip()}".strip()
     return fm
 
 
-def _extract_sections(text: str) -> dict[str, str]:
-    """Split markdown into {heading_lower: body} by ## headings."""
-    sections: dict[str, str] = {}
-    current_heading = None
-    current_lines: list[str] = []
-
-    for line in text.splitlines():
-        if line.startswith("## "):
-            if current_heading is not None:
-                sections[current_heading] = "\n".join(current_lines)
-            current_heading = line[3:].strip().lower()
-            current_lines = []
-        else:
-            current_lines.append(line)
-
-    if current_heading is not None:
-        sections[current_heading] = "\n".join(current_lines)
-    return sections
+# A sub-skill must carry an explicit start block and end block so it reads
+# standalone. Headings matched case-insensitively against the lowercased file.
+_SUBSKILL_REQUIRED = ("## before you start", "## what's next")
 
 
-def validate_workflow(
+def validate_parent_skill(
     pname: str,
     plugin_dir: Path,
-    skill_names: set[str],
-    marketplace_names: set[str],
     errors: list[str],
     warnings: list[str],
 ) -> None:
-    """Validate workflow.md structure, skill refs, and handover refs."""
-    workflow_path = plugin_dir / "rules" / "workflow.md"
-    if not workflow_path.exists():
+    """The parent skill is skills/<toolkit>/SKILL.md. It routes (does not execute)
+    and must carry a 'DO NOT USE' negative trigger in its description. Toolkits
+    without a parent skill (e.g. init, bootstrap) are not workflow toolkits and are
+    skipped here; the "every workflow toolkit has a parent skill" invariant is
+    enforced separately in validate_index_drift."""
+    parent_md = plugin_dir / "skills" / pname / "SKILL.md"
+    if not parent_md.exists():
         return
-
-    text = workflow_path.read_text()
-
-    # --- skill references (across entire file) ---
-    workflow_refs = set(_WORKFLOW_SKILL_REF.findall(text))
-    for ref in sorted(workflow_refs):
-        if ref not in skill_names:
-            errors.append(f"[{pname}] workflow.md references '{ref}' but no skill directory exists")
-
-    # --- section structure ---
-    sections = _extract_sections(text)
-
-    for required in _WORKFLOW_REQUIRED_SECTIONS:
-        if required not in sections:
-            errors.append(
-                f"[{pname}] workflow.md missing required section: '## {required.title()}'"
-            )
-
-    if _WORKFLOW_HANDOVER_SECTION not in sections:
-        warnings.append(
-            f"[{pname}] workflow.md missing section: '## {_WORKFLOW_HANDOVER_SECTION.title()}'"
+    fm = parse_frontmatter(parent_md)
+    if "do not use" not in fm.get("description", "").lower():
+        errors.append(
+            f"[{pname}] parent skill description missing a 'DO NOT USE' negative trigger"
         )
 
-    # --- handover references must point to real toolkits ---
-    handover_text = sections.get(_WORKFLOW_HANDOVER_SECTION, "")
-    if handover_text:
-        handover_refs = set(_WORKFLOW_HANDOVER_REF.findall(handover_text))
-        for ref in sorted(handover_refs):
-            if ref == pname:
-                warnings.append(f"[{pname}] workflow.md handover references itself")
-            elif ref not in marketplace_names:
+
+def validate_subskill_blocks(
+    pname: str,
+    plugin_dir: Path,
+    errors: list[str],
+) -> None:
+    """Every sub-skill (a skill dir whose name != toolkit name) needs a start block
+    and an end block. Only enforced once the toolkit is converted (parent exists)."""
+    skills_dir = plugin_dir / "skills"
+    if not skills_dir.is_dir():
+        return
+    if not (skills_dir / pname / "SKILL.md").exists():
+        return  # not converted yet
+    for skill_dir in sorted(skills_dir.iterdir()):
+        if not skill_dir.is_dir() or skill_dir.name == pname:
+            continue
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.exists():
+            continue
+        text = skill_md.read_text(encoding="utf-8").lower()
+        for needed in _SUBSKILL_REQUIRED:
+            if needed not in text:
                 errors.append(
-                    f"[{pname}] workflow.md handover references '{ref}' "
-                    f"but no such toolkit in marketplace"
+                    f"[{pname}] {skill_dir.name}/SKILL.md missing section '{needed}'"
                 )
 
 
 def validate_toolkit_content(
     pname: str,
     plugin_dir: Path,
-    marketplace_names: set[str],
     errors: list[str],
     warnings: list[str],
 ) -> set[str]:
-    """Validate skills, commands, rules, and workflow. Returns skill names."""
+    """Validate skills, commands, rules, and the parent skill. Returns skill names."""
     # --- skills ---
     skills_dir = plugin_dir / "skills"
     skill_names: set[str] = set()
@@ -241,19 +223,28 @@ def validate_toolkit_content(
                         f"got: {' '.join(bad)}"
                     )
 
-    # --- rules (must be catch-all, no frontmatter) ---
+    # --- rules: the only allowed rule is init/rules/intent-index.md (the cold-start
+    # index). Every other toolkit must have no rules/ directory; orchestration now
+    # lives in the parent skill, not a workflow rule. Any rule still present must be
+    # catch-all (no frontmatter). ---
     rules_dir = plugin_dir / "rules"
     if rules_dir.is_dir():
         for rule_file in sorted(rules_dir.rglob("*.md")):
-            fm = parse_frontmatter(rule_file)
-            if fm:
-                rel = rule_file.relative_to(plugin_dir)
+            rel = rule_file.relative_to(plugin_dir)
+            allowed = pname == "init" and rel.as_posix() == "rules/intent-index.md"
+            if not allowed:
+                errors.append(
+                    f"[{pname}] {rel} is not allowed — the only rule is "
+                    f"init/rules/intent-index.md; orchestration belongs in the parent skill"
+                )
+            if parse_frontmatter(rule_file):
                 errors.append(
                     f"[{pname}] {rel} has frontmatter — rules must be catch-all (no frontmatter)"
                 )
 
-    # --- workflow.md ---
-    validate_workflow(pname, plugin_dir, skill_names, marketplace_names, errors, warnings)
+    # --- parent skill + sub-skill start/end blocks (the skill-centric model) ---
+    validate_parent_skill(pname, plugin_dir, errors, warnings)
+    validate_subskill_blocks(pname, plugin_dir, errors)
 
     return skill_names
 
@@ -296,6 +287,14 @@ def validate_index_drift(
             errors.append(
                 f"[init] {fname} intent index lists '{name}' "
                 f"which is not a workflow toolkit in marketplace.json"
+            )
+
+    # Every workflow toolkit must own a parent skill at skills/<name>/SKILL.md
+    # (the router that replaced its workflow.md).
+    for name in sorted(expected):
+        if not (root / "workbench" / name / "skills" / name / "SKILL.md").exists():
+            errors.append(
+                f"[{name}] workflow toolkit has no parent skill skills/{name}/SKILL.md"
             )
 
 
@@ -372,9 +371,7 @@ def validate(
                     f"!= expected '{_EXPECTED_LICENSE}'"
                 )
 
-        all_skills[pname] = validate_toolkit_content(
-            pname, plugin_dir, marketplace_names, errors, warnings
-        )
+        all_skills[pname] = validate_toolkit_content(pname, plugin_dir, errors, warnings)
 
     if only and only not in all_skills:
         errors.append(f"Toolkit '{only}' not found in marketplace.json")

@@ -10,6 +10,10 @@ Read data quality check and metric results incrementally, surface failures with 
 
 Reference: [dlthub data quality docs](https://dlthub.com/docs/hub/data-quality.md)
 
+## Before you start
+
+Run `run-data-quality` first — you need the confirmed pipeline name and the run outcome (success / failures). If invoked directly with no carry-over, use Quick summary mode below to read the latest results.
+
 ## Session context — carry-over from run-data-quality
 
 Expected from prior steps:
@@ -213,3 +217,12 @@ Then recommend one of these next steps based on what was found:
   - If checks run via a standalone script: deploy that script as a separate scheduled job, passing the script path and pipeline name to `setup-runtime`
 
   If the execution context was not carried over, ask: "Are your checks part of the pipeline code, or do you run them separately via a script?"
+
+## What's next
+
+This is the final step of the core workflow. Branch on what the review found:
+
+- **Checks need adjustment** — loop back to `define-data-quality-checks` to add or refine checks with the specific checks pre-targeted.
+- **Upstream modeling issues** — hand over to **transformations** (start at `annotate-sources`).
+- **Metric anomalies need deeper investigation** — hand over to **data-exploration** (start at `explore-data`).
+- **Everything looks good and the user wants to schedule it** — hand over to **dlthub-platform** (start at `setup-runtime`): Profile A deploys the pipeline script with embedded `@dq.with_checks` decorators; Profile B schedules `tools/dq_run.py` as a standalone recurring job.

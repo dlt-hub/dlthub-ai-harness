@@ -12,6 +12,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `hints` (optional, after `--`): additional requirements or focus areas (e.g., `-- show top users by spend`)
 
+## Before you start
+
+The pipeline must have loaded data successfully — typically after `validate-data`. If the last run errored or loaded 0 rows, use `debug-pipeline` first.
+
 ## Workspace Dashboard UI if just exploring
 
 Tell the user to run Workspace Dashboard **if no precise query or instructions were give**, this
@@ -81,3 +85,8 @@ dataset("SELECT * FROM my_table WHERE amount > 100").df()
 ## Custom charts and insights
 
 If the user wants to create custom charts or generate insights from their data, install the **data-exploration** toolkit (`dlthub ai toolkit install data-exploration`) and follow the workflow there.
+
+## What's next
+
+- **Want interactive notebooks, charts, or deeper analysis** → hand over to **data-exploration**.
+- **Want to model the data into a CDM or run cross-source transformations** → hand over to **transformations**.

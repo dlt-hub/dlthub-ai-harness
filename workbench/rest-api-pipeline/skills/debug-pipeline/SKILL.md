@@ -12,6 +12,10 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
 - `hints` (optional, after `--`): specific issue to investigate
 
+## Before you start
+
+Run `create-rest-api-pipeline` first — you need a pipeline that has been scaffolded and run (or attempted) before there is anything to debug.
+
 ## Before debugging: increase verbosity
 
 Always do this first before any pipeline debugging:
@@ -175,3 +179,9 @@ Do NOT remove settings the user had before you started debugging.
 - **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (data-exploration toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → check TOML sections, revisit `create-rest-api-pipeline` step 6b for credential setup
 - **No pipeline exists** → use `create-rest-api-pipeline` to scaffold one first
+
+## What's next
+
+- **Load successful** → continue with `validate-data` to inspect schema and data and iterate until correct.
+- **Still failing** → stay in `debug-pipeline`, or revisit `create-rest-api-pipeline` if the pipeline structure or credentials need fixing.
+- **User wants to deploy right away** (Early) → a working pipeline is enough; hand over to **dlthub-platform** to run it on dltHub.
