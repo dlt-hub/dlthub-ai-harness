@@ -73,7 +73,7 @@ def scan_toolkit(plugin_dir: Path) -> dict:
         if any(part.startswith(".") for part in rel_parts):
             continue
 
-        text = md_file.read_text()
+        text = md_file.read_text(encoding="utf-8")
         rel = str(md_file.relative_to(plugin_dir))
         urls = extract_urls_with_context(text)
 

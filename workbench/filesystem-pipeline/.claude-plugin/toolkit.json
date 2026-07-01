@@ -1,4 +1,4 @@
 {
-  "dependencies": ["init"],
-  "workflow_entry_skill": "create-filesystem-pipeline"
+  "dependencies": [],
+  "workflow_entry_skill": "filesystem-pipeline"
 }
