@@ -52,6 +52,7 @@ By default dlt extracts **one resource at a time, one item at a time** — N end
 | Lever | Default | Effect |
 |---|---|---|
 | `@dlt.resource(parallelized=True)` | off | run the (sync) resource's generator in a worker thread, so resources overlap |
+| `@dlt.defer` on a per-item fn, then `yield fn(item)` | — | run per-item work (e.g. one HTTP request per item, inside a transformer) concurrently in the extract thread pool — the sync alternative to `async` |
 | `async def` resource / async `@dlt.transformer` | concurrent | many awaited items in flight on one event loop — no flag needed |
 | `[extract] workers` | 5 | thread-pool size for parallelized sync resources |
 | `[extract] max_parallel_items` | 20 | max in-flight items for async resources |
@@ -85,15 +86,17 @@ A pipeline that dies on a constrained machine fails one of two ways — the **fa
 
 With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pulling the source into memory; normalize spiking = buffering items. A traceback that **isn't** `Errno 28` is a different bug → use `debug-pipeline`.
 
-**RAM — bound peak memory:**
+#### **RAM — bound peak memory:**
 
 | Lever | Default | Effect |
 |---|---|---|
 | `[data_writer] buffer_max_items` | 5000 | items in RAM before flush; **lower to cut memory** (scope per stage: `[extract.data_writer]`, `[normalize.data_writer]`) |
-| yield pages / stream input | — | stream the source (see [Extract](#extract-is-slow-io-bound)) so peak memory stays bounded regardless of input size |
+| yield pages / stream input | — | stream the source (see [Extract](#extract-is-slow-io-bound)) so the **extract** side stays bounded — the load and destination still scale with data (see below) |
 | `file_max_items` / `file_max_bytes` | none | rotate files (see Normalize) so less is held in flight at once |
 
-Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithreading** — don't. And **don't cut `workers` to fix memory** — peak memory is bounded by the levers above, not worker count; lowering workers usually just slows the run.
+Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithreading** — don't. And **don't cut dlt's `workers` to fix memory** — that usually just slows the run; peak memory is bounded by the levers above and by the destination (next), not by dlt's worker count.
+
+**Cap the destination's own memory — dlt's buffers don't reach it.** Streaming and file rotation bound *dlt's* in-flight memory, but the destination loads with its **own** memory and thread/connection settings — often sized to the machine's total RAM — in or beside the same process. On a constrained box this is frequently the real OOM source **even when extract is fully streamed**, and dlt's `buffer_max_items`/rotation won't change it. Cap the destination itself — its memory limit, thread/connection count, or insert/batch size (check the destination's own config) — rather than touching dlt's `workers`. Measured on a constrained run, the *same* streamed load peaked **~1.9 GB with the destination at defaults vs ~0.5 GB after capping the destination's memory and threads** — nearly 4× lower for one setting change.
 
 **Many-object loops — use a fresh pipeline per object.** Reusing one `pipeline` object across many `run()` calls grows its in-memory state (schema deltas, load packages, cursor values) run-over-run, which can OOM a long job. Create a **fresh pipeline per object** and drop it when done:
 
@@ -105,7 +108,8 @@ for obj in objects:
 ```
 Caveat: trades away cross-run convenience, and `pipeline.default_schema.tables` keeps every table ever loaded under a given pipeline name — track the object list explicitly.
 
-**Disk — stop intermediate/staging files filling the volume:** see [Constrained disk / environment](#constrained-disk--environment) — point `DLT_DATA_DIR` at a bigger volume, stage to blob, set `delete_completed_jobs`, and keep compression **on** (don't `disable_compression`).
+#### **Disk** 
+Stop intermediate/staging files filling the volume: see [Constrained disk / environment](#constrained-disk--environment) — point `DLT_DATA_DIR` at a bigger volume, stage to blob, set `delete_completed_jobs`, and keep compression **on** (don't `disable_compression`).
 
 ### Load is slow (destination I/O-bound)
 
@@ -141,6 +145,18 @@ Re-run with `progress="log"` and compare per-stage durations / peak memory again
 - **Extract & load → threads.** I/O-bound (HTTP, file/destination IO), so the GIL isn't the limit; threading overlaps waits. It does **not** speed up CPU-bound work inside a generator — keep generators thin.
 - **Normalize → process pool.** CPU-bound (parsing, type inference, compression); processes bypass the GIL for true parallelism.
 - **Async resources → single event loop.** Many concurrent awaits, lightweight, no threads. What runs in parallel: across resources; across in-flight items of an async resource; across parallelized child/transformer pages. A plain resource (no flag, not async) stays serial; item order within one resource is preserved.
+- **`@dlt.defer` → thread pool (sync alternative to async).** Decorate a per-item function and `yield` its calls so dlt runs them concurrently in the extract thread pool — ideal for per-item I/O in a transformer (e.g. one request per parent) without rewriting to `async`. Sized by `[extract] workers` / `max_parallel_items`, same as `parallelized=True`.
+
+```python
+@dlt.transformer
+def details(items):
+    @dlt.defer                                  # runs in the extract thread pool
+    def fetch(item):
+        return requests.get(item["url"]).json()
+    for item in items:
+        yield fetch(item)                       # calls run concurrently
+```
+See the transformers example: https://dlthub.com/docs/examples/transformers
 
 ### Config forms
 Every knob can be set in `.dlt/config.toml` under a section, or as an env var by upper-casing and joining the path with double underscores:
