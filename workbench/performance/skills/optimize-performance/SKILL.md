@@ -135,9 +135,13 @@ uv run dlthub --non-interactive ai toolkit install <toolkit>
 
 Apply source-specific tuning **in addition** to the stage levers above. These skills live in other toolkits, so always install the toolkit before invoking the skill — never assume it is present.
 
-## Step 3: Re-measure
+## Step 3: Re-measure, then repeat
 
 Re-run with `progress="log"` and compare per-stage durations / peak memory against Step 1. Change **one lever at a time** so you can attribute the effect, and use `debug-pipeline` to confirm no new failures (timeouts, type errors) surfaced under higher concurrency.
+
+**Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
+- **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (source throughput, destination limits, disk/network bandwidth) that tuning can't move.
+- **Repeat** from Step 1 — the bottleneck often *moves* to another stage after a fix. Apply the next lever one at a time. "Fast enough" is the user's call — a minor improvement may already be enough, so confirm before another round rather than chasing micro-gains.
 
 ## Reference
 
