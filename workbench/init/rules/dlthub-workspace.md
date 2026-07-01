@@ -1,5 +1,5 @@
 # setup
-* On new session verify: is `uv` available? is Python running in a uv venv? `uv run dlthub --version`? If anything is missing, set it up **in place**:
+* On new session verify: is `uv` available? is Python running in a uv venv? To confirm, run `uv run dlthub --version`? If any uv commands have already run in the agent session, skip this. However, if anything is missing, set it up **in place**:
   * **Preferred — you (the agent) run `uvx dlthub-init@latest`.** It is non-interactive and AI-aware, so an agent can run it directly. **This is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory; bare `uvx dlthub-init@latest` sets up in place). It scaffolds a dlthub workspace with AI support, collision-safe, in one step. Re-check `uv run dlthub ai status` when done.
   * **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from "dlt[hub]" dlthub init` (equivalent to `uv init` + `uv add "dlt[hub]"` + `uv run dlthub init`), then `uv run dlthub ai init`. Re-check `uv run dlthub ai status` when done.
 
@@ -60,6 +60,7 @@ add data quality checks (column expectations, validation rules) → data-quality
 deploy / schedule pipelines on the dltHub platform      → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | setup-runtime
 guided end-to-end tour, ingest to dashboard (uses the real toolkits) → quick-start | dlthub --non-interactive ai toolkit install quick-start          | quick-start
 test/try dlthub end-to-end — minimal pipeline + educational test deploy, NOT production → one-shot       | dlthub --non-interactive ai toolkit install one-shot               | deploy-run-sample-pipeline
+build and deploy a minimal custom REST API pipeline after uvx dlthub-init setup → dlthub-init-skills | dlthub --non-interactive ai toolkit install dlthub-init-skills     | deploy-minimal-ingestion-pipeline
 optimize / speed up a slow or memory-heavy pipeline — parallelism, workers, batching → performance | dlthub --non-interactive ai toolkit install performance            | optimize-performance
 ```
 * `one-shot` vs `rest-api-pipeline`: one-shot is for **testing / trying dlthub / onboarding / a quick demo** — a minimal single-endpoint, row-limited pipeline on local DuckDB plus an educational test deploy. Educational examples only, NOT production-grade. For a **real or production** REST pipeline (auth, incremental, multiple endpoints, production deploy), use `rest-api-pipeline`. `quick-start` is the guided tour that walks the real toolkits end-to-end.
