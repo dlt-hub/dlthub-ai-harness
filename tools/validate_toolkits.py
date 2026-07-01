@@ -28,17 +28,14 @@ from pathlib import Path
 
 AI_DIR = "workbench"
 
-# The always-loaded compact intent->toolkit index is duplicated across two
-# always-loaded surfaces: the rule (native on Claude/Cursor) and AGENTS.md
-# (the only always-loaded surface on Codex, where rules become opt-in skills).
-# Both must list the same workflow toolkits.
+# The always-loaded compact intent->toolkit index lives in the single routing
+# surface AGENTS.md at the workbench root. It must list every workflow toolkit.
 _INDEX_FILES = (
-    "workbench/init/rules/dlthub-workspace.md",
-    "workbench/init/AGENTS.md",
+    "workbench/AGENTS.md",
 )
-# Toolkits that are NOT workflow toolkits, so they don't belong in the intent index:
-# `init` is the lean base itself; `bootstrap` only scaffolds the environment.
-_NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# Toolkits that are NOT workflow toolkits, so they don't belong in the intent index.
+# (None in the lean workbench — every shipped toolkit is a workflow toolkit.)
+_NON_WORKFLOW_TOOLKITS: set[str] = set()
 # An index row: "<intent text> → <toolkit> | <install> | <entry skill>".
 # Capture the toolkit name (the token right after the arrow, before the pipe).
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
@@ -111,7 +108,7 @@ def validate_workflow(
     if not workflow_path.exists():
         return
 
-    text = workflow_path.read_text()
+    text = workflow_path.read_bytes().decode("utf-8")
 
     # --- skill references (across entire file) ---
     workflow_refs = set(_WORKFLOW_SKILL_REF.findall(text))
@@ -285,7 +282,7 @@ def validate_index_drift(
 
         indexed = {
             m.group(1)
-            for line in path.read_text().splitlines()
+            for line in path.read_bytes().decode("utf-8").splitlines()
             # data rows carry an install command; this skips the column header
             if "ai toolkit" in line and (m := _INDEX_ENTRY.search(line))
         }
@@ -327,8 +324,7 @@ def validate(
 
         # source must live under ./workbench/
         source_path = Path(source)
-        clean = str(source_path).lstrip("./")
-        if not clean.startswith("workbench/"):
+        if AI_DIR not in source_path.parts:
             errors.append(f"[{pname}] source '{source}' must be under ./workbench/")
 
         # last path segment must match plugin name

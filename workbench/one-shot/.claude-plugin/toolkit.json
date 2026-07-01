@@ -1,5 +1,0 @@
-{
-  "dependencies": ["init"],
-  "workflow_entry_skill": "deploy-run-sample-pipeline",
-  "listed": true
-}

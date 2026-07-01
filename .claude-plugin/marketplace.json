@@ -13,98 +13,26 @@
     {
       "name": "rest-api-pipeline",
       "source": "./workbench/rest-api-pipeline",
-      "description": "REST API data pipelines with dlt (data load tool). Find sources, scaffold pipelines, debug, validate data, add endpoints, configure incremental loading, query data, and create interactive reports.",
+      "description": "Build a dlt pipeline that loads data from a REST API or HTTP endpoint (Stripe, GitHub, Salesforce, HubSpot, any web service).",
       "version": "0.1.1",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python"]
     },
     {
-      "name": "bootstrap",
-      "source": "./workbench/bootstrap",
-      "description": "Prepare Python environment for dlthub workspace",
-      "version": "0.1.1",
-      "category": "data",
-      "tags": ["dlthub", "workspace", "setup"]
-    },
-    {
-      "name": "data-exploration",
-      "source": "./workbench/data-exploration",
-      "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
-      "version": "0.1.1",
-      "category": "data",
-      "tags": ["dlthub", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
-    },
-    {
-      "name": "dlthub-platform",
-      "source": "./workbench/dlthub-platform",
-      "description": "Deploy dlthub workspace and pipelines to the dltHub platform",
-      "version": "0.1.3",
-      "category": "data",
-      "tags": ["dlthub", "deploy", "platform"]
-    },
-    {
-      "name": "init",
-      "source": "./workbench/init",
-      "description": "Shared rules, secrets handling, and workspace MCP for dlthub",
-      "version": "0.1.1",
-      "category": "data",
-      "tags": ["dlthub", "init", "rules", "secrets", "mcp"]
-    },
-    {
-      "name": "transformations",
-      "source": "./workbench/transformations",
-      "description": "Transform raw dlt pipeline data into a Canonical Data Model. Annotate sources, build an ontology, design a CDM with Kimball dimensional modeling, and write @dlt.hub.transformation functions.",
-      "version": "0.1.1",
-      "category": "data",
-      "tags": ["dlthub", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
-    },
-    {
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
-      "description": "Build SQL database pipelines with dlt: connect to any SQLAlchemy-supported database, load tables to a destination, tune performance with backends.",
+      "description": "Build a dlt pipeline that loads tables from a SQL database (Postgres, MySQL, SQL Server, Snowflake, BigQuery, any SQLAlchemy-supported database).",
       "version": "0.1.1",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"]
     },
     {
-      "name": "data-quality",
-      "source": "./workbench/data-quality",
-      "description": "Add checks and metrics to dlt pipelines — inspect schema for candidates, define column-level validations and load metrics, run them on every pipeline load, and review results with failure diagnosis.",
-      "version": "0.1.1",
-      "category": "data",
-      "tags": ["dlthub", "data-quality", "validation", "checks", "metrics"]
-    },
-    {
       "name": "filesystem-pipeline",
       "source": "./workbench/filesystem-pipeline",
-      "description": "Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination using dlt's filesystem source.",
+      "description": "Build a dlt pipeline that loads files (CSV, Parquet, JSONL) from local disk, S3, GCS, Azure, or SFTP into a destination.",
       "version": "0.1.1",
       "category": "data",
       "tags": ["dlthub", "filesystem", "s3", "gcs", "azure", "sftp", "csv", "parquet", "jsonl"]
-    },
-    {
-      "name": "quick-start",
-      "source": "./workbench/quick-start",
-      "description": "Full-path guided start: ingest → visualize → transform → deploy in 3-5 prompts. Routes to the right entry skill based on a chosen depth.",
-      "version": "0.1.1",
-      "category": "data",
-      "tags": ["dlthub", "quick-start", "onboarding", "demo", "router"]
-    },
-    {
-      "name": "one-shot",
-      "source": "./workbench/one-shot",
-      "description": "Build and run a minimal REST API pipeline for GitHub, then deploy it to dltHub Platform.",
-      "version": "0.1.0",
-      "category": "data",
-      "tags": ["dlthub", "pipeline", "one-shot", "data-pipeline", "python"]
-    },
-    {
-      "name": "dlthub-init-skills",
-      "source": "./workbench/dlthub-init-skills",
-      "description": "Build and deploy a minimal custom REST API pipeline to dltHub Platform after uvx dlthub-init setup",
-      "version": "0.1.0",
-      "category": "data",
-      "tags": ["dlthub", "init", "pipeline", "deploy", "rest-api"]
     }
   ]
 }

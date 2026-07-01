@@ -6,72 +6,54 @@
 
 The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlthub ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
-**Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code. New users can start with the `quick-start` toolkit for a guided end-to-end run from data to dashboard.
+This is the **lean** workbench: it ships three ingestion toolkits — `rest-api-pipeline`, `sql-database-pipeline`, and `filesystem-pipeline` — covering OSS dlt (`dlthub.com/docs`). The premise is that a coding agent already knows how to write dlt pipelines; what it needs is *direction*. Each toolkit provides the sequence of steps, a doc link for the "how" of each step, and a verifiable check for when each step is done.
 
 The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI workbench.
 
 ## The dlthub AI workbench supports the iterative data engineering workflow
 
-Building data pipelines is iterative and covers two major phases — ingestion and transformations — each following the same inner loop:
+Building an ingestion pipeline is iterative, and each toolkit follows the same inner loop:
 
-**Build (local development)**
-- Develop the pipeline iteratively — for ingestion: first REST API endpoint, then additional endpoints; for transformation: data model first, then the full transformation pipeline
-- Explore the loaded data and validate it after each step
+- Find or scaffold the source, then configure credentials
+- Run on a sample and inspect the loaded tables before a full load
+- Confirm the data looks right, then run the full load (adding incremental loading where the source supports it)
 - Loop back to refine until the pipeline is solid
 
-**Run (production)**
-- Deploy the ingestion or transformation pipeline to production
-- Serve insights via data apps built on top of the loaded data
-
-The outer loop connects the two phases: insights from the transformation and serving layer feed back into ingestion refinement. The workbench **Build toolkits** support the local development loop; the **Run toolkits** handle deployment and data apps.
+Every step points at an authoritative dlt doc for the "how", and closes with a verifiable "done when" check before the agent moves on.
 
 ![Data Development Lifecycle](images/data_development_lifecycle.png)
 
 ## dltHub AI Workbench Toolkits
 
-The workbench gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
+The workbench gives your coding assistant **toolkits** — each a structured, guided workflow for one ingestion source type. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish.
 
-A **Toolkit** contains skills, commands, rules, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP. 
-
-All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
+The lean workbench is built from exactly three kinds of file:
 
 ![AI Workbench](images/ai_workbench.png)
 
-### Toolkit components
+### The three layers
 
-| Component | What it is | When it runs |
-|-----------|-----------|-------------|
-| **Skill** | Step-by-step procedure the assistant follows | Triggered by user intent or explicitly with `/skill-name` |
-| **Command** | A slash command for a specific action | User invokes with `/toolkit:command` |
-| **Rule** | Always-on context (conventions, constraints) | Every session, automatically |
-| **Workflow** | Ordered sequence of skills with a fixed entry point | Loaded as a rule — always active |
-| **MCP server** | Exposes pipelines, tables, and secrets as tools | During a session, via MCP protocol |
-| **[dltHub context](https://dlthub.com/context)** | 9,700+ REST API source definitions with verified connectors and pipeline patterns | During source discovery, via `search_dlthub_sources` |
+| Layer | What it is | When it runs |
+|-------|-----------|-------------|
+| **SOUL.md** | The agent's identity and guardrails, written as character (cwd grounding, secrets-as-sacred, sample-before-full-load, prefer dlt built-ins, docs-from-the-source) | Always loaded, every session |
+| **AGENTS.md** | The routing table: user intent → toolkit → parent skill, with disambiguation notes | Always loaded; the agent's first read |
+| **Parent skill** | One per toolkit: the ordered sequence, a doc link per step, and a verifiable "done when" check | Loaded when the user's intent matches the toolkit |
 
+There are no separate rules, commands, sub-skills, or workflow files — a toolkit is its parent skill plus its plugin manifests.
 
 ### MCP tools
 
-Two MCP servers give the agent structured context throughout the workflow to avoid the need for manual copy-pasting.
-
-**dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
-
-**[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
+**dlt-workspace-mcp** (local, configured via each toolkit's `plugin.json`) gives the agent structured context so it never has to copy-paste output into chat. It exposes data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `display_schema`, `get_local_pipeline_state`) and secrets tools (`secrets_view_redacted`, `secrets_update_fragment`) for inspecting and updating credentials without reading raw values.
 
 ### Available toolkits
 
-| Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
-|---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
-| `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlthub`; installs what's missing; initializes the workspace; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlthub"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
-| `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
-| `sql-database-pipeline` | Build | `find-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-source to load tables from my Postgres database into DuckDB"* | Run `/find-source` |
-| `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
-| `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform                                        | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
+Each toolkit's parent skill is named the same as the toolkit; invoke it with `/<toolkit-name>` or just describe your intent.
 
-> `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlthub ai init` or as a separate plugin via the Claude marketplace.
+| Toolkit | What it does | Example prompt |
+|---------|--------------|----------------|
+| `rest-api-pipeline` | Load data from a REST API or HTTP endpoint (Stripe, GitHub, Salesforce, HubSpot, any web service) | *"Load data from the Stripe API into DuckDB"* |
+| `sql-database-pipeline` | Load tables from a SQL database (Postgres, MySQL, SQL Server, Snowflake, BigQuery) | *"Load tables from my Postgres database into DuckDB"* |
+| `filesystem-pipeline` | Load files (CSV, Parquet, JSONL) from local disk, S3, GCS, Azure, or SFTP | *"Load my S3 CSV files into DuckDB"* |
 
 
 ## Getting started
@@ -148,25 +130,19 @@ uvx dlthub-start@latest
 
 ### Browse and install toolkits
 
-> **Don't have dlthub set up yet?** Follow [New project](#new-project-recommended) or [Existing project](#existing-project) above first (or the `bootstrap` toolkit's `/init-workspace`, which the assistant can drive). The toolkit commands below assume `dlthub` is installed in your environment.
+> **Don't have dlthub set up yet?** Follow [New project](#new-project-recommended) or [Existing project](#existing-project) above first. The toolkit commands below assume `dlthub` is installed in your environment.
 
 
 ```bash
 uv run dlthub ai toolkit list
 ```
 
-Install toolkits (if you are not sure which toolkits to install we recommend installing all of them):
+Install the ingestion toolkits (install all three, or just the one matching your source):
 
 ```bash
-uv run dlthub ai toolkit install quick-start
-uv run dlthub ai toolkit install bootstrap
 uv run dlthub ai toolkit install rest-api-pipeline
 uv run dlthub ai toolkit install sql-database-pipeline
 uv run dlthub ai toolkit install filesystem-pipeline
-uv run dlthub ai toolkit install dlthub-platform
-uv run dlthub ai toolkit install data-exploration
-uv run dlthub ai toolkit install transformations
-uv run dlthub ai toolkit install data-quality
 ```
 
 ### Starting the workbench
@@ -175,27 +151,21 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 **Claude Code** — start a new session via `claude` in your terminal. Restart after installation for skills and MCP to take effect.
 
-**Cursor** — open the project in Cursor and use the chat panel (Cmd+L). The installed skills and rules are picked up automatically.
+**Cursor** — open the project in Cursor and use the chat panel (Cmd+L). The installed skills are picked up automatically.
 
 **Codex** — launch the Codex CLI via `codex` or use the Codex chat in the UI. Restart Codex after setup for the MCP server to take effect.
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. If you're new to dltHub and want to try or learn it, see [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub) — you run `uvx dlthub-start@latest` yourself. The marketplace path below is useful when you want to bootstrap an existing/empty project from inside Claude Code via the `bootstrap` toolkit (which prefers `uvx dlthub-init@latest` — the agent-runnable command for setting up a clean new or existing dlthub project — and falls back to the in-place install steps).
+> **Early Access:** The Claude Code plugin is currently in early access. If you're new to dltHub and want to try or learn it, see [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub) — you run `uvx dlthub-start@latest` yourself. To set up a clean new or existing dlthub project for agent-driven work, use `uvx dlthub-init@latest` (see [New project](#new-project-recommended)).
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-workbench
-/plugin install init@dlthub-ai-workbench --scope project
-/plugin install quick-start@dlthub-ai-workbench --scope project
-/plugin install bootstrap@dlthub-ai-workbench --scope project
 /plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
 /plugin install sql-database-pipeline@dlthub-ai-workbench --scope project
-/plugin install dlthub-platform@dlthub-ai-workbench --scope project
-/plugin install data-exploration@dlthub-ai-workbench --scope project
-/plugin install transformations@dlthub-ai-workbench --scope project
-/plugin install data-quality@dlthub-ai-workbench --scope project
+/plugin install filesystem-pipeline@dlthub-ai-workbench --scope project
 ```
 
 Start a new session — plugins take effect only after restarting Claude Code: `claude`
