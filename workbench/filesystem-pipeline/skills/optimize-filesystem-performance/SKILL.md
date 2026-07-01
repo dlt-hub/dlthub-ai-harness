@@ -70,7 +70,8 @@ filesystem(bucket_url="<url>", file_glob="<pattern>", files_per_page=1000)
 
 **Just moving files? skip parsing** — if you don't need the contents (e.g. copying files to another bucket), don't pipe to a reader at all. Use fsspec directly to avoid parse + memory entirely:
 ```python
-from dlt.sources.filesystem import filesystem, fsspec_from_resource
+from dlt.sources.filesystem import filesystem
+from dlt.sources.filesystem.helpers import fsspec_from_resource
 files = filesystem(bucket_url="<url>", file_glob="<pattern>")
 fs = fsspec_from_resource(files)            # authenticated fsspec client for bulk ops
 # per item: item.open() / item.read_bytes()
