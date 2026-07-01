@@ -97,6 +97,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlthub", "pipeline", "one-shot", "data-pipeline", "python"]
+    },
+    {
+      "name": "dlthub-init-skills",
+      "source": "./workbench/dlthub-init-skills",
+      "description": "Build and deploy a minimal custom REST API pipeline to dltHub Platform after uvx dlthub-init setup",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlthub", "init", "pipeline", "deploy", "rest-api"]
     }
   ]
 }

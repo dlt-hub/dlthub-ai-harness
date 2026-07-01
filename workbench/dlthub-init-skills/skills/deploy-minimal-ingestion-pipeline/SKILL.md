@@ -1,0 +1,362 @@
+---
+name: deploy-minimal-ingestion-pipeline
+description: Build and deploy a minimal custom REST API pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline", "I've finished onboarding, now what?", or "I just ran dlthub-start and want to build my own pipeline".
+argument-hint: "[source-name]"
+---
+
+# Build and deploy a minimal ingestion pipeline
+
+Build a minimal single-endpoint REST API pipeline and get it running on dltHub Platform as fast as possible. The 100-row limit stays throughout — this is a first-run cloud validation, not a full production load.
+
+**Goal: fastest time to deployment. Every step must serve that goal.**
+
+**Do not scan the workspace or execute any discovery commands before starting. Go directly to Setup — every file read is called out explicitly in the steps below.**
+
+**References**:
+- https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
+- https://dlthub.com/docs/hub/pipeline-operations/deployments
+- https://dlthub.com/docs/hub/pipeline-operations/profiles
+
+## DO NOT USE WHEN
+- The data source is a SQL database or files — use `sql-database-pipeline` or `filesystem-pipeline` instead
+- The user already has a working pipeline and wants to extend or harden it — use `rest-api-pipeline` instead
+- The user wants a production-grade pipeline (auth, incremental, multiple endpoints) — use `rest-api-pipeline` instead
+
+## Anti-patterns
+
+These are the mistakes an agent makes without this skill. Avoid them:
+
+- ❌ **Reading any `*.secrets.toml` file directly** — this is NEVER allowed. Reading `.dlt/secrets.toml`, `.dlt/dev.secrets.toml`, or `.dlt/prod.secrets.toml` with the Read tool dumps credential values (API keys, tokens, private keys) into the conversation context. Use `secrets_view_redacted` with `path=` instead — it shows `***` for all values.
+- ❌ **Writing any `*.secrets.toml` file directly** — this is NEVER allowed. Never use the Write or Edit tool on any `*.secrets.toml` file. Use `secrets_update_fragment` with `path=` to write credential structure, and leave values empty (`""`) for the user to fill in.
+- ❌ **`@dlt.resource` or a plain function** — not recognized as a platform job. Always use `@run.pipeline`.
+- ❌ **`destination_type` written via `secrets_update_fragment`** — the MCP secrets tool normalizes `destination_type` to `type`, which the cloud runtime does not recognize. Always write `destination_type` directly to the profile config file (`.dlt/dev.config.toml` or `.dlt/prod.config.toml`) using the Edit tool.
+- ❌ **Running `python <source>_pipeline.py` directly** — always use `uv run dlthub local run --profile dev --non-interactive load_<source>` instead. Running the file directly bypasses the dltHub job system and won't behave the same as a platform run.
+- ❌ **Running `uvx dlthub-init` as a bash command** — running it from within this session would interfere with the new workspace's AI assistance setup. Always tell the user to run it themselves in a separate terminal.
+
+## Output contract
+
+**DO NOT OMIT.** This skill must end by printing the completion block defined at the end of Step 8. Print it before any summary or closing remarks.
+
+## Orientation
+
+Print this to the user before doing anything else:
+
+```
+- [ ] Set up workspace
+- [ ] Set up source
+- [ ] Test source on DuckDB
+- [ ] Set up destination
+- [ ] Deploy to dltHub
+```
+
+## Setup — Initialize AI support
+
+Print to the user: `- [ ] Set up workspace`
+
+Determine which agent you are and run the corresponding command — do not ask the user:
+
+```bash
+uv run dlthub ai init --agent claude --non-interactive   # if you are Claude Code
+uv run dlthub ai init --agent cursor --non-interactive   # if you are Cursor
+uv run dlthub ai init --agent codex --non-interactive    # if you are Codex
+```
+
+Wait for it to complete before continuing.
+
+## Step 0 — Connect workspace
+
+```bash
+uv run dlthub workspace list --non-interactive
+```
+
+Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding only.
+
+Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
+
+**Stop and wait** for the user's answer, then run the appropriate command:
+
+```bash
+uv run dlthub workspace connect <workspace_uuid> --non-interactive   # connect to existing
+uv run dlthub workspace connect <name> --create --non-interactive    # create and connect to new
+```
+
+Print to the user: `- [x] Set up workspace`
+
+## Step 1 — Collect source
+
+Print to the user: `- [ ] Set up source`
+
+Ask the user: which API do they want to load from, and what data specifically? (e.g. "GitHub issues", "Stripe payments", "HubSpot contacts"). If not given, suggest `github` (issues), `hubspot` (contacts), or `stripe_analytics` (payments).
+
+Wait for the answer before proceeding.
+
+## Step 2 — Research the API
+
+Print to the user: `Looking up the API docs to find the base URL, auth method, and endpoint — I'll write the pipeline right after.`
+
+Run 1–2 targeted web searches for the API's documentation. Extract only what is needed to write the pipeline (no extra web search queries):
+- Base URL
+- Authentication method and header/token format
+- A single clear endpoint path
+- The response wrapper key (e.g. `"data"`, `"items"`, or none if root array)
+
+## Step 3 — Write the pipeline file
+
+Create `<source>_pipeline.py` in the project root. Use `@run.pipeline` so the function is recognized as a job on dltHub Platform. Use `destination="warehouse"` — a named destination that maps to duckdb in dev and the cloud destination in prod.
+
+```python
+import dlt
+from dlt.sources.rest_api import rest_api_source
+from dlt.hub import run
+from dlt.hub.run import trigger
+
+@run.pipeline(
+    "<source>_pipeline",
+    trigger=trigger.every("1d"),
+    expose={"tags": ["ingest"], "display_name": "<Source> ingest"},
+)
+def load_<source>():
+    source = rest_api_source(
+        {
+            "client": {
+                "base_url": "<base_url>",
+                "auth": {
+                    "type": "bearer",  # adjust to actual auth type
+                    "token": dlt.secrets["sources.<source>.api_token"],
+                },
+            },
+            "resources": [
+                {
+                    "name": "<resource_name>",
+                    "endpoint": {
+                        "path": "<endpoint_path>",
+                        "data_selector": "<wrapper_key>",  # omit if root array
+                    },
+                }
+            ],
+        }
+    )
+    pipeline = dlt.pipeline(
+        pipeline_name="<source>_pipeline",
+        destination="warehouse",
+        dataset_name="<source>",
+    )
+    pipeline.run(source.add_limit(100, count_rows=True))
+```
+
+Rules:
+- Always keep `.add_limit(100, count_rows=True)` for the first validation run
+- Omit `data_selector` if the response is a root JSON array
+- Omit pagination config
+- Adjust `primary_key` only if the API has an obvious unique field
+
+## Step 4 — Handle source credentials
+
+**Never read or write `.dlt/secrets.toml` directly with Read/Write/Edit tools.**
+
+Skip if the API is public.
+
+Check first — use `secrets_view_redacted` (no `path=` needed for the default secrets file) to see if `[sources.<source>]` already exists. If it does and the value is `***`, skip this step.
+
+Otherwise use `secrets_update_fragment` to write the skeleton — use the field names that match the auth structure found in Step 2, not a generic `api_token`. Examples:
+
+```toml
+# Bearer token / API key
+[sources.<source>]
+api_token = ""
+
+# OAuth client credentials
+[sources.<source>]
+client_id = ""
+client_secret = ""
+
+# Basic auth
+[sources.<source>]
+username = ""
+password = ""
+```
+
+Tell the user what fields they need to fill in and where to get them (e.g. the API's developer portal), then:
+> I've added the credential structure to `.dlt/secrets.toml`. Please fill in your values, then let me know when done.
+
+**Stop and wait** for confirmation.
+
+## Step 5 — Configure dev profile
+
+`destination_type` is config, not a secret — write it directly to `.dlt/dev.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
+
+Add to `.dlt/dev.config.toml`:
+
+```toml
+[destination.warehouse]
+destination_type = "duckdb"
+```
+
+Print to the user: `- [x] Set up source`
+
+## Step 6 — Register and validate locally
+
+Print to the user: `- [ ] Test source on DuckDB`
+
+Add the pipeline to `__deployment__.py`:
+
+```python
+from <source>_pipeline import load_<source>
+
+__all__ = [..., "load_<source>"]
+```
+
+Run locally against DuckDB:
+
+```bash
+uv run dlthub local run --profile dev --non-interactive load_<source>
+```
+
+Run this **once**. Check the exit code and whether rows were reported loaded — that is sufficient. Do not re-run to capture more output or inspect full logs; every pipeline run costs API calls. If it succeeded, move on. If it failed, debug using the troubleshooting table below, fix, then run once more.
+
+**Warnings are not failures.** Warnings about untyped columns, missing hints, or inferred schemas are expected on a first run and do not require investigation or a re-run. Only a non-zero exit code or zero rows loaded is a failure.
+
+| Error | Fix |
+|---|---|
+| Job not recognized | Ensure `load_<source>` uses `@run.pipeline` and is listed in `__all__` |
+| `Unknown DestinationModule` | Check `destination_type` is in `.dlt/dev.config.toml`, not written via `secrets_update_fragment` |
+| Auth / credential error | Use `secrets_view_redacted` to confirm source credentials show as `***` in `.dlt/secrets.toml` |
+
+Print to the user: `- [x] Test source on DuckDB`
+
+## Step 7 — Configure prod profile
+
+Print to the user: `- [ ] Set up destination`
+
+Ask the user: which cloud destination do they want? Common options:
+
+BigQuery, Snowflake, Redshift, Databricks, MotherDuck, Postgres, MS SQL, ClickHouse, Athena, Synapse
+
+We support more destinations — if theirs isn't listed, ask them and consult the **Supported Destinations** reference table at the bottom of this skill.
+
+**Stop and wait** for the answer, then install the destination package:
+
+| Destination | Package |
+|---|---|
+| BigQuery | `dlt[bigquery]` |
+| Snowflake | `dlt[snowflake]` |
+| Redshift | `dlt[redshift]` |
+| Databricks | `dlt[databricks]` |
+| MotherDuck | `dlt[motherduck]` |
+| Postgres | `dlt[postgres]` |
+| MS SQL | `dlt[mssql]` |
+| ClickHouse | `dlt[clickhouse]` |
+| Athena | `dlt[athena]` |
+| Synapse | `dlt[synapse]` |
+
+```bash
+uv add "dlt[<extra>]"
+```
+
+Write `destination_type` directly to `.dlt/prod.config.toml`. Read the file first; if `[destination.warehouse]` already exists, skip.
+
+Add to `.dlt/prod.config.toml`:
+
+```toml
+[destination.warehouse]
+destination_type = "bigquery"  # use the destination name from the Supported Destinations table below
+```
+
+Then write **only the credentials** to `.dlt/prod.secrets.toml` using `secrets_update_fragment` with `path=".dlt/prod.secrets.toml"`. **Never use Write/Edit/Read on this file directly.**
+
+Use the credential skeleton for the chosen destination:
+
+```toml
+# MotherDuck
+[destination.warehouse.credentials]
+database = ""
+token = ""
+
+# BigQuery
+[destination.warehouse.credentials]
+project_id = ""
+private_key = ""
+client_email = ""
+
+# Snowflake
+[destination.warehouse.credentials]
+database = ""
+username = ""
+password = ""
+host = ""
+
+# Redshift
+[destination.warehouse.credentials]
+database = ""
+username = ""
+password = ""
+host = ""
+port = ""
+```
+
+Tell the user:
+> I've added the credential structure to `.dlt/prod.secrets.toml`. Please fill in your values, then let me know when done.
+
+**Stop and wait** for confirmation.
+
+After the user confirms, run `secrets_view_redacted` with `path=".dlt/prod.secrets.toml"`. Check that every field under `destination.warehouse.credentials` shows `***` — not an empty string. If any field is still empty, tell the user which fields are missing and wait again. Do not proceed to Step 8 until all credential fields are filled.
+
+Print to the user: `- [x] Set up destination`
+
+## Step 8 — Deploy and run remotely
+
+Print to the user: `- [ ] Deploy to dltHub`
+
+```bash
+uv run dlthub deploy --non-interactive
+uv run dlthub job run -f load_<source> --non-interactive
+```
+
+If it fails, inspect logs:
+
+```bash
+uv run dlthub job logs load_<source> --non-interactive
+```
+
+Once successful:
+
+```bash
+uv run dlthub show --non-interactive
+```
+[Completion Block] Print to the user:
+
+Print to the user: `- [x] Deploy to dltHub`
+
+```
+Your pipeline is deployed and running on dltHub Platform.
+
+You can now extend it using the rest-api-pipeline toolkit:
+- Add more endpoints to load additional resources from the same API
+- Add incremental loading so only new or updated records are fetched on each run
+- Add pagination to handle APIs that return large result sets across multiple pages
+```
+
+## Supported Destinations
+
+For destinations not listed in Step 7, fetch the credential structure and configuration details from the destination's docs page at runtime.
+
+| Destination | Install | Docs |
+|---|---|---|
+| BigQuery | `uv add "dlt[bigquery]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/bigquery |
+| Snowflake | `uv add "dlt[snowflake]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake |
+| Redshift | `uv add "dlt[redshift]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/redshift |
+| Databricks | `uv add "dlt[databricks]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/databricks |
+| MotherDuck | `uv add "dlt[motherduck]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/motherduck |
+| Postgres | `uv add "dlt[postgres]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/postgres |
+| MS SQL | `uv add "dlt[mssql]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/mssql |
+| ClickHouse | `uv add "dlt[clickhouse]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/clickhouse |
+| Athena | `uv add "dlt[athena]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/athena |
+| Synapse | `uv add "dlt[synapse]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/synapse |
+| Dremio | `uv add "dlt[dremio]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/dremio |
+| DuckDB | `uv add "dlt[duckdb]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/duckdb |
+| Filesystem (S3) | `uv add "dlt[filesystem]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| Filesystem (GCS) | `uv add "dlt[gs]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| Filesystem (Azure) | `uv add "dlt[az]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/filesystem |
+| LanceDB | `uv add "dlt[lancedb]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/lancedb |
+| Qdrant | `uv add "dlt[qdrant]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/qdrant |
+| Weaviate | `uv add "dlt[weaviate]"` | https://dlthub.com/docs/dlt-ecosystem/destinations/weaviate |

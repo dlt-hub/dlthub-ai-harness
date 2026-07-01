@@ -1,0 +1,18 @@
+{
+  "name": "dlthub-init-skills",
+  "description": "Build and deploy a minimal custom REST API pipeline to dltHub Platform after uvx dlthub-init setup",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
+  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "keywords": ["dlthub"],
+  "mcpServers": {
+    "dlt-workspace-mcp": {
+      "command": "uv",
+      "args": ["run", "dlthub", "ai", "mcp", "--stdio"]
+    }
+  }
+}
