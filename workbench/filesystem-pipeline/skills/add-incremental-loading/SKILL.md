@@ -86,7 +86,3 @@ Run the pipeline twice to confirm incremental behaviour:
 2. **Second run (no new files)** — should load 0 rows. Check pipeline state with `get_local_pipeline_state` MCP tool to confirm the `modification_date` cursor advanced.
 
 If the user can add a test file to the bucket, run a third time to confirm only the new file is picked up.
-
-## Next steps
-
-- **Reading files is slow or memory-heavy** → use `optimize-filesystem-performance` (faster reader, chunked streaming, parallel reads, glob narrowing).

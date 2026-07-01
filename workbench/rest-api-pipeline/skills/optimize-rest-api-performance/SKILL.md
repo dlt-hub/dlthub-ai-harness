@@ -104,4 +104,4 @@ For rows the API can't filter server-side, drop them early with `processing_step
 
 - **Stage-level tuning (workers, buffers, normalize/load parallelism, memory)** → hand over to the **performance** toolkit → `optimize-performance` (install if not present: `uv run dlthub --non-interactive ai toolkit install performance`).
 - **Loops, stalls, or errors under concurrency** → use `debug-pipeline`.
-- **Tuned and stable** → hand over to **dlthub-platform** to deploy.
+- **Tuned and stable** → hand over to **dlthub-platform** to deploy (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).

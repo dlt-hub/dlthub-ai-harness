@@ -32,7 +32,7 @@ Match the symptom to a lever. They **compose** — apply every one that fits; ju
 | Parallelized, but threads stall or the DB refuses connections | Size the connection pool |
 | Slow startup before any rows load (many/huge tables) | Reduce `reflection_level` |
 | Pulling tables / columns / rows you don't need | Push filters/projection to SQL |
-| Huge first backfill won't finish | Partition the initial load |
+| Huge first backfill won't finish or OOMs | Partition / split-load the backfill |
 
 ## 3. Apply
 
@@ -70,6 +70,7 @@ sql_database(engine_kwargs={"pool_size": 8, "max_overflow": 4})
 ```python
 sql_database(reflection_level="minimal")   # names + nullability only ("full" is default)
 ```
+For **orchestrated / decomposed** parallel runs (e.g. Airflow `parallel-isolated`), `defer_table_reflect=True` reflects each table at execution time (in its own task/thread) instead of all up front. Requires `table_names`; and since schema is decided at execution, it can override `query_adapter_callback`/`apply_hints` — don't enable it for plain local `.parallelize()`.
 
 **Push work to the database** — less data crosses the wire:
 - **Fewer columns** — `included_columns` pulls only the columns you need (simpler than a `table_adapter_callback`):
@@ -82,7 +83,16 @@ sql_database(reflection_level="minimal")   # names + nullability only ("full" is
   source = sql_database(table_names=["orders", "customers"])
   ```
 
-**Partition a large initial load** — for an **already-incremental** table (set up in `adjust-table`) whose first backfill is too big for one pass: split the historical range, load the chunks, then let incremental take over. Set `range_start="open"` on the cursor (`>=` → `>`) to skip re-fetching boundary rows, and `row_order="asc"` so ordered reads allow splitting without extra dedup.
+**Partition / split-load a large initial load** — for an **already-incremental** table (set up in `adjust-table`) whose first backfill is too big for one pass. Two ways:
+- **Bounded date-range slices** — load parallel/sequential windows, then let incremental take over: `incremental("updated_at", initial_value=start, end_value=end, range_start="open", range_end="closed")`.
+- **`add_limit()` loop (caps memory per run)** — pull a few chunks per run and repeat until empty:
+  ```python
+  t = sql_table(table="events", chunk_size=1000,
+                incremental=dlt.sources.incremental("id", row_order="asc", range_start="open"))
+  while not pipeline.run(t.add_limit(5)).is_empty:   # 5 chunks per run
+      pass
+  ```
+`range_start="open"` (`>=` → `>`) skips re-fetching boundary rows; `row_order="asc"` keeps the split gap-free.
 
 ## 4. Measure, then repeat
 
@@ -95,4 +105,4 @@ sql_database(reflection_level="minimal")   # names + nullability only ("full" is
 ## Next steps
 
 - **Stage-level tuning (workers, buffers, normalize/load parallelism, memory)** → hand over to the **performance** toolkit → `optimize-performance` (install if not present: `uv run dlthub --non-interactive ai toolkit install performance`).
-- **Tuned and stable** → hand over to **dlthub-platform** to deploy.
+- **Tuned and stable** → hand over to **dlthub-platform** to deploy (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).

@@ -180,4 +180,4 @@ Every knob can be set in `.dlt/config.toml` under a section, or as an env var by
 ## Next steps
 
 - **Source-level tuning still needed** → [Source-specific tuning](#source-specific-tuning-separate-toolkits) — install the matching pipeline toolkit, then run its optimize skill.
-- **Tuned and stable** → hand over to **dlthub-platform** to deploy and schedule the pipeline on dltHub.
+- **Tuned and stable** → hand over to **dlthub-platform** to deploy and schedule the pipeline on dltHub (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).

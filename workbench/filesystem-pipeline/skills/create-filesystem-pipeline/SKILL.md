@@ -336,6 +336,7 @@ For failures not covered above (schema errors, bad data types, failed jobs, norm
 
 Once the pipeline is verified, suggest next steps in this order:
 1. **Add incremental loading** (`add-incremental-loading`) — load only new or modified files on each run
-2. **Explore the data** — hand off to **data-exploration** toolkit to profile and visualise the loaded tables
-3. **Add data quality checks** — hand off to **data-quality** toolkit
-4. **Deploy** — hand off to **dlthub-platform** toolkit to schedule the pipeline on dltHub
+2. **Optimize performance** (`optimize-filesystem-performance`) — if reading files is slow or memory-heavy (faster reader, chunked streaming, parallel reads, glob narrowing)
+3. **Explore the data** — hand off to **data-exploration** toolkit to profile and visualise the loaded tables
+4. **Add data quality checks** — hand off to **data-quality** toolkit
+5. **Deploy** — hand off to **dlthub-platform** toolkit to schedule the pipeline on dltHub
