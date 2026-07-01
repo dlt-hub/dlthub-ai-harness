@@ -1,8 +1,6 @@
-Read SOUL.md before anything else — it defines who you are and how you operate.
+# Toolkit routing
 
-## Toolkit routing
-
-Match the user's intent to a toolkit, install it if needed, then invoke the parent skill of the same name.
+Match the user's intent to a toolkit, install it if needed, then invoke the parent skill of the same name. Do not start data engineering work with no toolkit installed — install the matching one first.
 
 ```
 intent                                                             → toolkit               | install                                                           | parent skill

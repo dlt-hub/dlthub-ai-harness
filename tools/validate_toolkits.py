@@ -19,6 +19,7 @@ Checks:
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
 - All workbench/ directories must be listed in marketplace
+- init/AGENTS.md inlines every init/rules/*.md verbatim (the two always-loaded surfaces must not drift)
 """
 
 import json
@@ -28,14 +29,17 @@ from pathlib import Path
 
 AI_DIR = "workbench"
 
-# The always-loaded compact intent->toolkit index lives in the single routing
-# surface AGENTS.md at the workbench root. It must list every workflow toolkit.
+# The always-loaded compact intent->toolkit index is delivered by the `init` base
+# toolkit across two always-loaded surfaces: the rule (native on Claude/Cursor) and
+# AGENTS.md (the only always-loaded surface on Codex, where rules become opt-in
+# skills). Both must list the same workflow toolkits.
 _INDEX_FILES = (
-    "workbench/AGENTS.md",
+    "workbench/init/rules/toolkit-index.md",
+    "workbench/init/AGENTS.md",
 )
 # Toolkits that are NOT workflow toolkits, so they don't belong in the intent index.
-# (None in the lean workbench — every shipped toolkit is a workflow toolkit.)
-_NON_WORKFLOW_TOOLKITS: set[str] = set()
+# `init` is the lean base itself — it ships SOUL + the routing index, not a workflow.
+_NON_WORKFLOW_TOOLKITS = {"init"}
 # An index row: "<intent text> → <toolkit> | <install> | <entry skill>".
 # Capture the toolkit name (the token right after the arrow, before the pipe).
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
@@ -296,6 +300,41 @@ def validate_index_drift(
             )
 
 
+def _normalize_identity(text: str) -> str:
+    """Collapse markdown to comparable prose: drop heading levels and whitespace.
+
+    Strips leading '#' from each line (so '# X' and '## X' compare equal), drops
+    blank lines, and collapses all remaining whitespace to single spaces. Line
+    wrapping, blank lines, and heading levels then don't affect the comparison.
+    """
+    lines = [line.strip().lstrip("#").strip() for line in text.splitlines()]
+    return re.sub(r"\s+", " ", " ".join(l for l in lines if l))
+
+
+def validate_agents_inlines_rules(root: Path, errors: list[str]) -> None:
+    """AGENTS.md must inline every init rule, so the two surfaces never drift.
+
+    The init rules (init/rules/*.md — SOUL identity, the routing index, …) are the
+    always-loaded surface on Claude/Cursor. Codex reads only init/AGENTS.md, so that
+    file inlines every rule verbatim. Enforce that each rule's full text appears
+    inside AGENTS.md (ignoring heading levels and wrapping), so editing a rule
+    without updating AGENTS.md fails. This auto-covers any rule added later.
+    """
+    rules_dir = root / "workbench/init/rules"
+    agents_path = root / "workbench/init/AGENTS.md"
+    if not rules_dir.is_dir() or not agents_path.exists():
+        return
+
+    agents = _normalize_identity(agents_path.read_text(encoding="utf-8"))
+    for rule_path in sorted(rules_dir.glob("*.md")):
+        rule = _normalize_identity(rule_path.read_text(encoding="utf-8"))
+        if rule and rule not in agents:
+            errors.append(
+                f"[init] AGENTS.md must inline the full text of rules/{rule_path.name} "
+                f"verbatim (they drifted — update AGENTS.md to match)"
+            )
+
+
 def validate(
     root: Path, only: str | None = None
 ) -> tuple[list[str], list[str], dict[str, set[str]]]:
@@ -389,6 +428,7 @@ def validate(
                     )
 
         validate_index_drift(root, marketplace_names, errors)
+        validate_agents_inlines_rules(root, errors)
 
     return errors, warnings, all_skills
 
