@@ -6,7 +6,7 @@ description: Build a dlt pipeline that loads data from a REST API or HTTP endpoi
   or local/cloud files (use filesystem-pipeline).
 ---
 
-Read SOUL.md before anything else — it defines who you are and how you operate.
+Your identity and guardrails (SOUL) are already loaded via the `init` base toolkit — operate from them, especially on secrets, sampling, and running from the project root.
 
 ## Before you start
 

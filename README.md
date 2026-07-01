@@ -27,7 +27,7 @@ Every step points at an authoritative dlt doc for the "how", and closes with a v
 
 The workbench gives your coding assistant **toolkits** — each a structured, guided workflow for one ingestion source type. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish.
 
-The lean workbench is built from exactly three kinds of file:
+The lean workbench is built from three kinds of content:
 
 ![AI Workbench](images/ai_workbench.png)
 
@@ -35,11 +35,11 @@ The lean workbench is built from exactly three kinds of file:
 
 | Layer | What it is | When it runs |
 |-------|-----------|-------------|
-| **SOUL.md** | The agent's identity and guardrails, written as character (cwd grounding, secrets-as-sacred, sample-before-full-load, prefer dlt built-ins, docs-from-the-source) | Always loaded, every session |
-| **AGENTS.md** | The routing table: user intent → toolkit → parent skill, with disambiguation notes | Always loaded; the agent's first read |
+| **SOUL** | The agent's identity and guardrails, written as character (cwd grounding, secrets-as-sacred, sample-before-full-load, prefer dlt built-ins, docs-from-the-source) | Always loaded — shipped by the `init` base toolkit |
+| **Routing index** | The intent → toolkit → parent skill table, with disambiguation notes | Always loaded — shipped by the `init` base toolkit |
 | **Parent skill** | One per toolkit: the ordered sequence, a doc link per step, and a verifiable "done when" check | Loaded when the user's intent matches the toolkit |
 
-There are no separate rules, commands, sub-skills, or workflow files — a toolkit is its parent skill plus its plugin manifests.
+The always-on content lives in the **`init`** base toolkit, a dependency of every workflow toolkit: `init/rules/SOUL.md` and `init/rules/toolkit-index.md` install as always-on rules (Claude/Cursor), and `init/AGENTS.md` inlines both for Codex (where rules are opt-in). Installing any toolkit pulls `init` in, so SOUL and routing are always present. Beyond `init`, a workflow toolkit is just its parent skill plus its plugin manifests — no sub-skills or workflow files.
 
 ### MCP tools
 
@@ -137,7 +137,7 @@ uvx dlthub-start@latest
 uv run dlthub ai toolkit list
 ```
 
-Install the ingestion toolkits (install all three, or just the one matching your source):
+Install the ingestion toolkits (install all three, or just the one matching your source). The `init` base toolkit is pulled in automatically as a dependency, so SOUL and routing are always present:
 
 ```bash
 uv run dlthub ai toolkit install rest-api-pipeline
@@ -161,8 +161,11 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 
+Install `init` first (it carries SOUL + routing and is a dependency of every toolkit), then the ingestion toolkits:
+
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-workbench
+/plugin install init@dlthub-ai-workbench --scope project
 /plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
 /plugin install sql-database-pipeline@dlthub-ai-workbench --scope project
 /plugin install filesystem-pipeline@dlthub-ai-workbench --scope project

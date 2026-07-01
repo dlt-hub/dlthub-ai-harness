@@ -11,6 +11,14 @@
   },
   "plugins": [
     {
+      "name": "init",
+      "source": "./workbench/init",
+      "description": "Shared base for the lean workbench: the agent's identity (SOUL) and toolkit routing index, installed as always-on context. A dependency of every toolkit.",
+      "version": "0.1.0",
+      "category": "data",
+      "tags": ["dlthub", "init", "soul", "routing"]
+    },
+    {
       "name": "rest-api-pipeline",
       "source": "./workbench/rest-api-pipeline",
       "description": "Build a dlt pipeline that loads data from a REST API or HTTP endpoint (Stripe, GitHub, Salesforce, HubSpot, any web service).",
