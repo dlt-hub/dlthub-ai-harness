@@ -49,18 +49,15 @@ Memory caveat: all child pages for one parent are buffered in memory — skip fo
 "endpoint": {"params": {"per_page": 100}}   # use the API's documented max
 ```
 
-**Run resources concurrently** — independent top-level resources extract in parallel via the extract thread pool; size it in `optimize-performance` (`[extract] workers`).
+**Run resources concurrently** — independent top-level (list) endpoints extract in parallel via the extract thread pool; size it in `optimize-performance` (`[extract] workers`).
 
-In the `rest_api` config, set `parallelized` per resource or in `resource_defaults`:
+For `rest_api`, parallelize top-level resources at the **source level** — the `parallelized=True` kwarg on `rest_api_source(...)`, or `.parallelize()` on each resource:
 ```python
-source = rest_api_source({
-    "client": {"base_url": "https://api.example.com"},
-    "resource_defaults": {"parallelized": True},   # applies to all resources below
-    "resources": [
-        "repos",
-        {"name": "issues", "endpoint": {"path": "issues"}, "parallelized": True},  # or per-resource
-    ],
-})
+source = rest_api_source(
+    {"client": {"base_url": "https://api.example.com"}, "resources": ["repos", "issues"]},
+    parallelized=True,                       # parallelizes the top-level list endpoints
+)
+# equivalently: src = rest_api_source(cfg); [src.resources[n].parallelize() for n in ("repos", "issues")]
 ```
 
 For custom Python resources, pick one:

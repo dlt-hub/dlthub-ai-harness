@@ -97,7 +97,12 @@ With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pullin
 
 Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithreading** — don't. And **don't cut dlt's `workers` to fix memory** — that usually just slows the run; peak memory is bounded by the levers above and by the destination (next), not by dlt's worker count.
 
-**Cap the destination's own memory — dlt's buffers don't reach it.** Streaming and file rotation bound *dlt's* in-flight memory, but the destination loads with its **own** memory and thread/connection settings — often sized to the machine's total RAM — in or beside the same process. On a constrained box this is frequently the real OOM source **even when extract is fully streamed**, and dlt's `buffer_max_items`/rotation won't change it. Cap the destination itself — its memory limit, thread/connection count, or insert/batch size (check the destination's own config) — rather than touching dlt's `workers`. Measured on a constrained run, the *same* streamed load peaked **~1.9 GB with the destination at defaults vs ~0.5 GB after capping the destination's memory and threads** — nearly 4× lower for one setting change.
+**Cap the destination's own memory — dlt's buffers don't reach it.** Streaming and file rotation bound *dlt's* in-flight memory, but the destination loads with its **own** memory and thread/connection settings — often sized to the machine's total RAM — in or beside the same process. When extract is already fully streamed but the run still OOMs on a constrained box, suspect the destination: dlt's `buffer_max_items`/rotation won't touch it. To fix, cap the destination itself, not dlt's `workers`:
+- **Memory limit** — set the destination's own max-memory/heap setting below the container/cgroup limit.
+- **Threads / connections** — reduce the destination's concurrent thread or connection count (each holds its own buffers).
+- **Insert / batch size** — lower the destination's write batch size.
+
+Check the destination's own config for these knobs (they live in the destination, not in dlt). Capping destination memory and threads typically drops peak RSS several-fold versus running the destination at its RAM-sized defaults — often the single change that keeps a streamed load inside its limit.
 
 **Many-object loops — use a fresh pipeline per object.** Reusing one `pipeline` object across many `run()` calls grows its in-memory state (schema deltas, load packages, cursor values) run-over-run, which can OOM a long job. Create a **fresh pipeline per object** and drop it when done:
 

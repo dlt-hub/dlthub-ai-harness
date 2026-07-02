@@ -8,7 +8,7 @@ argument-hint: "[pipeline-name] [symptom]"
 
 Source-specific tuning for `filesystem` pipelines. Work the loop — **diagnose → pick the fix → apply → measure → repeat**, one change at a time. Combine these with the source-agnostic stage levers in the **performance** toolkit's `optimize-performance` skill.
 
-**Essential reading:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem/basic
+**Essential reading:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline. If omitted, infer from session context; if ambiguous, ask and stop.
