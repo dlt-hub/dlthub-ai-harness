@@ -55,18 +55,13 @@ def read_big_csv(items, chunksize=10000, **kwargs):
 
 reader = filesystem(bucket_url="<url>", file_glob="<pattern>") | read_big_csv
 ```
-
-**`.parallelize()` reads** — read matching files concurrently; size `[extract] workers` in `optimize-performance`:
+**Read files concurrently** — only worth it for **remote/object-store** reads (local files are CPU/GIL-bound — use Parquet / `read_csv_duckdb` / more `[normalize] workers` there). `.parallelize()` splits reads **across pages**, so it needs several pages: set `files_per_page` well below your file count **and** call `.parallelize()`. At the default `files_per_page=100`, `.parallelize()` does nothing until you have >100 files (and under-uses workers otherwise).
 ```python
-filesystem(bucket_url="<url>", file_glob="<pattern>").parallelize()
+reader = (filesystem(bucket_url="<url>", file_glob="<pattern>", files_per_page=10) | read_csv()).parallelize()
 ```
+Concurrency is capped by `[extract] workers` — pick `files_per_page` for a few pages per worker, not 1 file per page. (Instead **raise** `files_per_page` if *listing* a huge bucket is the bottleneck, not reading.)
 
 **Narrow the glob** — the cheapest win is reading fewer files. Make `file_glob` as specific as possible (path prefixes, date partitions, extensions) so dlt never lists or fetches irrelevant objects — important on object stores where listing is slow.
-
-**Batch file listing (`files_per_page`)** — the source lists/yields files in pages of `files_per_page` (default 100). On buckets with very many files, a larger page cuts listing overhead. (Note: `create-filesystem-pipeline` sample runs set `files_per_page=1` — remove that for a full load.)
-```python
-filesystem(bucket_url="<url>", file_glob="<pattern>", files_per_page=1000)
-```
 
 **Just moving files? skip parsing** — if you don't need the contents (e.g. copying files to another bucket), don't pipe to a reader at all. Use fsspec directly to avoid parse + memory entirely:
 ```python

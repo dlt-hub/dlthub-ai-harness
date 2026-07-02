@@ -64,16 +64,16 @@ Group related resources into a `@dlt.source` (`return (r1, r2, r3)`) so dlt sche
 
 Normalize runs a **process pool with one worker per extract file** — so more workers only help if **extract produced many files**. Key rule: each stage's `data_writer` rotates the files it *writes* (= the next stage's input), so **rotate extract output to parallelize normalize; rotate normalize output to parallelize load**.
 
-| Lever | Default | Effect |
-|---|---|---|
-| `[normalize] workers` | 1 (serial) | process pool; raise toward CPU-core count |
-| `[normalize] start_method = "spawn"` | — | recommended on Linux when resources use threads |
-| `[extract.data_writer] file_max_items` / `file_max_bytes` | none | **rotate the _extract_ output** so normalize has many files to split across workers — this is what actually parallelizes normalize (or set it globally under `[data_writer]`) |
-| `[normalize.data_writer] disable_compression = true` | off (gzip) | trade disk for CPU when CPU-bound |
+| Lever | Default | Effect                                                                                                                                                                         |
+|---|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `[normalize] workers` | 1 (serial) | process pool; raise toward CPU-core count                                                                                                                                      |
+| `[normalize] start_method = "spawn"` | — | recommended on Linux when resources use threads                                                                                                                                |
+| `[data_writer] file_max_items` / `file_max_bytes` | none | rotate the **extract** and **normalize** outputs so normalize and load each have many files to split across workers — **this is the lever that parallelizes both normalize and load**. See [Load](#load-is-slow-destination-io-bound)|
+| `[normalize.data_writer] disable_compression = true` | off (gzip) | trade disk for CPU when CPU-bound                                                                                                                                              |
 
-> Note: `[normalize.data_writer] file_max_items` rotates normalize's *output*, which parallelizes the **load** stage — **not** normalize. See [Load](#load-is-slow-destination-io-bound).
+Note: there's no `[extract.data_writer]` scope — dlt **silently ignores** it (no error, no effect). Rotate the extract output with the global **`[data_writer]`** instead.
 
-(Running *out of memory* during normalize is a different problem with a different fix set → [Out of memory](#out-of-memory-ram-or-disk).)
+Running *out of memory* during normalize is a different problem with a different fix set → [Out of memory](#out-of-memory-ram-or-disk).
 
 ### Out of memory (RAM or disk)
 
@@ -91,9 +91,9 @@ With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pullin
 
 | Lever | Default | Effect |
 |---|---|---|
-| `[data_writer] buffer_max_items` | 5000 | items in RAM before flush; **lower to cut memory** (scope per stage: `[extract.data_writer]`, `[normalize.data_writer]`) |
+| `[data_writer] buffer_max_items` | 5000 | items in RAM before flush; **lower to cut memory** (scope per stage: `[sources.data_writer]` for extract, `[normalize.data_writer]` for normalize; `[data_writer]` for both) |
 | yield pages / stream input | — | stream the source (see [Extract](#extract-is-slow-io-bound)) so the **extract** side stays bounded — the load and destination still scale with data (see below) |
-| `file_max_items` / `file_max_bytes` | none | rotate extract/normalize output (`[extract.data_writer]` / `[normalize.data_writer]`) so less is held in flight at once |
+| `[data_writer] file_max_items` / `file_max_bytes` | none | rotate files (global scope) so less is held in a single file at once |
 
 Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithreading** — don't. And **don't cut dlt's `workers` to fix memory** — that usually just slows the run; peak memory is bounded by the levers above and by the destination (next), not by dlt's worker count.
 
@@ -171,7 +171,7 @@ See the transformers example: https://dlthub.com/docs/examples/transformers
 ### Config forms
 Every knob can be set in `.dlt/config.toml` under a section, or as an env var by upper-casing and joining the path with double underscores:
 - `[extract] workers = 5` ⇄ `EXTRACT__WORKERS=5`
-- `[normalize.data_writer] file_max_items = 100000` ⇄ `NORMALIZE__DATA_WRITER__FILE_MAX_ITEMS=100000`
+- `[data_writer] file_max_items = 100000` ⇄ `DATA_WRITER__FILE_MAX_ITEMS=100000`
 
 ### Constrained disk / environment
 - `DLT_DATA_DIR=/path/to/large/or/mounted/volume` — offload load packages off the working disk.
