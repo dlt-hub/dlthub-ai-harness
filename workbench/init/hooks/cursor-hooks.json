@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeReadFile": [
+      {
+        "command": "python3 cursor_block_secrets_access.py"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "python3 cursor_block_secrets_access.py"
+      }
+    ]
+  }
+}
