@@ -20,17 +20,23 @@ The discriminator is the `hook_event_name` **value**, not its presence — Claud
 sends `hook_event_name` (as `"PreToolUse"`), so only Cursor's event names route to the
 Cursor dialect.
 
-## Status per agent
+## Delivery channels
 
-| Config | Agent | Wired up? |
-|--------|-------|-----------|
-| `hooks.json` | Claude Code | **Yes** — auto-discovered when this plugin is installed via the Claude Code marketplace. |
-| `codex-hooks.json` | Codex | Via `dlthub-init` (planned) — scaffolder copies the script and writes `.codex/hooks.json`. Note: `.codex/config.toml [hooks]` is avoided due to an open upstream bug (openai/codex#17532 — repo-local config.toml hooks don't fire in interactive sessions); `hooks.json` is confirmed working. |
-| `cursor-hooks.json` | Cursor | Via `dlthub-init` (planned) — scaffolder copies the script and writes `.cursor/hooks.json`. |
+- **Claude Code marketplace** — `hooks.json` here is auto-discovered when the `init`
+  plugin is installed. Claude-only.
+- **`dlthub-init` scaffolder** ([dlt-hub/dlthub-init](https://github.com/dlt-hub/dlthub-init))
+  — syncs this script into its wheel and, at scaffold time, copies it to
+  `.agents/hooks/` and registers it for all three agents (`.claude/settings.json`,
+  `.cursor/hooks.json`, `.codex/hooks.json`). The per-agent config shapes are generated
+  by its `hooks.py` — this directory intentionally ships no Cursor/Codex config
+  templates to avoid drift. Codex note: configs go in `.codex/hooks.json`, not
+  `.codex/config.toml [hooks]` (openai/codex#17532 — repo-local config.toml hooks
+  don't fire in interactive sessions).
 
-The `codex-hooks.json` / `cursor-hooks.json` files here are templates: the `command`
-paths reference the script by bare filename and must be adjusted to the actual install
-location when wired up (neither agent exposes a `${CLAUDE_PLUGIN_ROOT}`-style variable).
+**Both channels at once:** a project scaffolded by `dlthub-init` that also installs the
+`init` plugin from the marketplace registers the guard twice for Claude (plugin hook +
+project settings hook). It then runs twice per tool call — harmless (same deny message,
+allows are silent) but expected.
 
 ## Manual testing
 

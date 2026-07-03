@@ -46,7 +46,9 @@ Any unhandled error (bad JSON on stdin, unexpected payload shape) results in exi
 
 ## Path/cwd caveat (dlthub-init phase)
 
-The three agents give no common guarantee about the hook process's working directory. Claude Code has `${CLAUDE_PLUGIN_ROOT}` (plugin path) / `${CLAUDE_PROJECT_DIR}` (project settings); Codex and Cursor expose no such variable. The `codex-hooks.json` / `cursor-hooks.json` files in the workbench are templates with bare-filename commands; the scaffolder must write configs with paths that resolve at runtime (verified per agent during the dlthub-init implementation). Codex-specific: hooks go in `.codex/hooks.json`, **not** `.codex/config.toml [hooks]`, due to open upstream bug openai/codex#17532 (repo-local config.toml hooks don't fire in interactive sessions).
+The three agents give no common guarantee about the hook process's working directory. Claude Code has `${CLAUDE_PLUGIN_ROOT}` (plugin path) / `${CLAUDE_PROJECT_DIR}` (project settings); Codex and Cursor expose no such variable, so the scaffolder's generated commands resolve the project root via `$(git rev-parse --show-toplevel 2>/dev/null || pwd)`. The per-agent config shapes for Cursor/Codex are generated in code by dlthub-init's `hooks.py` — the workbench deliberately ships no Cursor/Codex config templates, so the shape is defined in exactly one place. Codex-specific: hooks go in `.codex/hooks.json`, **not** `.codex/config.toml [hooks]`, due to open upstream bug openai/codex#17532 (repo-local config.toml hooks don't fire in interactive sessions).
+
+A project that gets the guard from both channels (scaffolded by dlthub-init *and* `init` plugin installed from the marketplace) registers it twice for Claude — it runs twice per tool call, harmlessly (same deny, silent allow).
 
 ## Testing
 
