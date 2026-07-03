@@ -1,34 +1,46 @@
-# Secrets-read PreToolUse hook
+# Universal secrets-read guard
 
-Blocks direct reads of dlt secrets (`secrets.toml`, `*.secrets.toml`) and dotenv files
-(`.env`, `.env.*` except `.env.example`/`.env.template`/`.env.sample`). See
-`docs/superpowers/specs/2026-07-01-secrets-read-hook-design.md` for the full design.
+`secrets_guard.py` blocks direct reads of dlt secrets (`secrets.toml`, `*.secrets.toml`)
+and dotenv files (`.env`, `.env.*` except `.env.example`/`.env.template`/`.env.sample`)
+across **Claude Code, Codex, and Cursor** — one stdlib-only script, no imports, safe to
+copy anywhere. See `docs/superpowers/specs/2026-07-01-secrets-read-hook-design.md` for
+the full design.
+
+## How one script serves three agents
+
+The script detects the calling agent from the stdin payload and answers in that
+agent's dialect:
+
+| Agent | Detection | Input fields | Deny output |
+|-------|-----------|--------------|-------------|
+| Claude Code / Codex | `tool_name` present, `hook_event_name` not a Cursor event | `tool_input.file_path` / `.paths` / `.command` | `{"hookSpecificOutput": {"permissionDecision": "deny", ...}}` |
+| Cursor | `hook_event_name` ∈ {`beforeReadFile`, `beforeShellExecution`} | top-level `file_path` / `command` | `{"permission": "deny", ...}` |
+
+The discriminator is the `hook_event_name` **value**, not its presence — Claude also
+sends `hook_event_name` (as `"PreToolUse"`), so only Cursor's event names route to the
+Cursor dialect.
 
 ## Status per agent
 
-| File | Agent | Wired up? |
-|------|-------|-----------|
-| `hooks.json` + `block_secrets_access.py` | Claude Code | **Yes** — auto-discovered when this plugin is installed via the Claude Code marketplace. |
-| `codex-hooks.json` + `block_secrets_access.py` | Codex | No — Codex installs go through the separate `dlthub ai` CLI, which has no `hook` component type yet. Content is ready; not copied anywhere automatically. |
-| `cursor-hooks.json` + `cursor_block_secrets_access.py` | Cursor | Same as Codex — not wired up by the `dlthub ai` CLI yet. |
+| Config | Agent | Wired up? |
+|--------|-------|-----------|
+| `hooks.json` | Claude Code | **Yes** — auto-discovered when this plugin is installed via the Claude Code marketplace. |
+| `codex-hooks.json` | Codex | Via `dlthub-init` (planned) — scaffolder copies the script and writes `.codex/hooks.json`. Note: `.codex/config.toml [hooks]` is avoided due to an open upstream bug (openai/codex#17532 — repo-local config.toml hooks don't fire in interactive sessions); `hooks.json` is confirmed working. |
+| `cursor-hooks.json` | Cursor | Via `dlthub-init` (planned) — scaffolder copies the script and writes `.cursor/hooks.json`. |
 
-`_secrets_patterns.py` holds the shared blocklist logic used by both entrypoint scripts.
-
-## Path assumption for the not-yet-wired configs
-
-`codex-hooks.json` and `cursor-hooks.json` reference their scripts by **bare filename**
-(e.g. `python3 block_secrets_access.py`), assuming the hook config and the script end up
-in the same directory — mirroring how they sit in this repo. Neither Codex nor Cursor
-expose a `${CLAUDE_PLUGIN_ROOT}`-style variable, so an absolute path can't be written
-correctly until the real install location is known. Whoever wires up CLI support for
-these two should adjust the `command` path to match wherever the script actually lands.
+The `codex-hooks.json` / `cursor-hooks.json` files here are templates: the `command`
+paths reference the script by bare filename and must be adjusted to the actual install
+location when wired up (neither agent exposes a `${CLAUDE_PLUGIN_ROOT}`-style variable).
 
 ## Manual testing
 
 ```bash
-# Claude / Codex schema (stdin: {tool_name, tool_input})
-echo '{"tool_name":"Read","tool_input":{"file_path":".dlt/secrets.toml"}}' | python3 block_secrets_access.py
+# Claude / Codex dialect (stdin: {tool_name, tool_input})
+echo '{"tool_name":"Read","tool_input":{"file_path":".dlt/secrets.toml"}}' | python3 secrets_guard.py
 
-# Cursor schema (stdin: {hook_event_name, file_path|command})
-echo '{"hook_event_name":"beforeShellExecution","command":"cat .env"}' | python3 cursor_block_secrets_access.py
+# Cursor dialect (stdin: {hook_event_name, file_path|command})
+echo '{"hook_event_name":"beforeShellExecution","command":"cat .env"}' | python3 secrets_guard.py
+
+# Allowed reads produce no output (Claude/Codex) or {"permission": "allow"} (Cursor)
+echo '{"tool_name":"Read","tool_input":{"file_path":".env.example"}}' | python3 secrets_guard.py
 ```

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/block_secrets_access.py"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/secrets_guard.py"
           }
         ]
       }

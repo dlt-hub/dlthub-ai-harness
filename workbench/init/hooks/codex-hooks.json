@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 block_secrets_access.py"
+            "command": "python3 secrets_guard.py"
           }
         ]
       }
