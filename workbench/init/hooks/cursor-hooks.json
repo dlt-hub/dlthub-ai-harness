@@ -3,12 +3,12 @@
   "hooks": {
     "beforeReadFile": [
       {
-        "command": "python3 cursor_block_secrets_access.py"
+        "command": "python3 secrets_guard.py"
       }
     ],
     "beforeShellExecution": [
       {
-        "command": "python3 cursor_block_secrets_access.py"
+        "command": "python3 secrets_guard.py"
       }
     ]
   }
