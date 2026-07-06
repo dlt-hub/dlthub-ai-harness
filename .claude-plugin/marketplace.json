@@ -14,7 +14,7 @@
       "name": "init",
       "source": "./workbench/init",
       "description": "Shared base for the lean workbench: the agent's identity (SOUL) and toolkit routing index, installed as always-on context. A dependency of every toolkit.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "data",
       "tags": ["dlthub", "init", "soul", "routing"]
     },
@@ -22,7 +22,7 @@
       "name": "rest-api-pipeline",
       "source": "./workbench/rest-api-pipeline",
       "description": "Build a dlt pipeline that loads data from a REST API or HTTP endpoint (Stripe, GitHub, Salesforce, HubSpot, any web service).",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python"]
     },
@@ -30,7 +30,7 @@
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
       "description": "Build a dlt pipeline that loads tables from a SQL database (Postgres, MySQL, SQL Server, Snowflake, BigQuery, any SQLAlchemy-supported database).",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"]
     },
@@ -38,7 +38,7 @@
       "name": "filesystem-pipeline",
       "source": "./workbench/filesystem-pipeline",
       "description": "Build a dlt pipeline that loads files (CSV, Parquet, JSONL) from local disk, S3, GCS, Azure, or SFTP into a destination.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "filesystem", "s3", "gcs", "azure", "sftp", "csv", "parquet", "jsonl"]
     }
