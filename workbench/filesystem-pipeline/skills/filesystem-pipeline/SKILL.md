@@ -24,22 +24,22 @@ Scaffold the `filesystem` source. Set the bucket URL / path, the file glob, and 
 ✓ Done when: a pipeline run can list the target files without an access error.
 
 ### Step 2 — Run on a sample
-Run against a small glob or a single file to validate the parsed schema before a full load.
-→ Docs: https://dlthub.com/docs/dlt-ecosystem/file-formats/
+Run under `dev_mode=True` against a small glob or a single file to validate the parsed schema before a full load.
+→ Docs: https://dlthub.com/docs/dlt-ecosystem/file-formats/ and https://dlthub.com/docs/general-usage/pipeline#do-experiments-with-dev-mode
 ✓ Done when: the pipeline completes without errors and at least one table loads with the expected schema.
 
 ### Step 3 — Inspect and confirm
-Show the user the loaded tables, row counts, and schema. Get confirmation the parse looks right before proceeding.
-→ Docs: https://dlthub.com/docs/general-usage/dataset-access/dataset.md
+Show the user the loaded tables, row counts, and schema through the dlt dataset API. Get confirmation the parse looks right before proceeding.
+→ Docs: https://dlthub.com/docs/hub/data-discovery/datasets
 ✓ Done when: the user confirms the data looks correct.
 
 ### Step 4 — Run full load
-Widen the glob to the full set and run. Add incremental loading — filter files by modification date and switch to merge write disposition where it fits.
+Widen the glob to the full set, switch off `dev_mode`, and run. Add incremental loading — filter files by modification date and switch to merge write disposition where it fits. If earlier runs left the dev namespace polluted (pending load packages, schema conflicts), run into a fresh dataset instead of migrating broken state.
 → Docs: https://dlthub.com/docs/tutorial/filesystem#7-loading-data-incrementally
-✓ Done when: a full run completes and row counts match expectations.
+✓ Done when: a full run completes and row counts, checked through the dataset API, match expectations.
 
 ## What's next
 
 - Data loaded successfully → the pipeline is ready for scheduling or transformation.
-- User wants to explore the data → point them to the dlt dataset API (https://dlthub.com/docs/general-usage/dataset-access/dataset.md).
+- User wants to explore the data → point them to the dlt dataset API (https://dlthub.com/docs/hub/data-discovery/datasets).
 - User wants to schedule or deploy → outside this toolkit's scope (requires dltHub Platform).

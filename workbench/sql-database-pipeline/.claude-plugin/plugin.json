@@ -1,7 +1,7 @@
 {
   "name": "sql-database-pipeline",
   "description": "Build SQL database pipelines with dlt: connect to any SQL source, load tables to a destination, tune performance with backends",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "ScaleVector GmbH"
   },

@@ -1,7 +1,7 @@
 {
   "name": "init",
   "description": "Shared base for the lean dlthub workbench: the agent's identity (SOUL) and the toolkit routing index, installed as always-on context.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },
