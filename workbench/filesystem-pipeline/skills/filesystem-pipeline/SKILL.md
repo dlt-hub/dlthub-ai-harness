@@ -19,12 +19,12 @@ filesystem source — https://dlthub.com/docs/dlt-ecosystem/verified-sources/fil
 ## Workflow
 
 ### Step 1 — Scaffold and configure access
-Scaffold the `filesystem` source. Set the bucket URL / path, the file glob, and the reader (CSV, Parquet, JSONL). Configure bucket credentials through the workspace secrets tools.
-→ Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem
+Scaffold the `filesystem` source. Set the bucket URL / path, the file glob, and the reader (CSV, Parquet, JSONL). Install the extras for your bucket protocol (S3, GCS, Azure, SFTP) and destination (`uv add "dlt[<destination>]"`), then configure bucket credentials through the workspace secrets tools.
+→ Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem (source setup and protocol extras) and https://dlthub.com/docs/dlt-ecosystem/destinations/ (destination extras)
 ✓ Done when: a pipeline run can list the target files without an access error.
 
 ### Step 2 — Run on a sample
-Run under `dev_mode=True` against a small glob or a single file to validate the parsed schema before a full load.
+Run under `dev_mode=True` against a small glob or a single file to validate the parsed schema before a full load. Keep this run plain — no incremental filtering or merge configuration yet; those come in Step 4 after the user confirms the data.
 → Docs: https://dlthub.com/docs/dlt-ecosystem/file-formats/ and https://dlthub.com/docs/general-usage/pipeline#do-experiments-with-dev-mode
 ✓ Done when: the pipeline completes without errors and at least one table loads with the expected schema.
 

@@ -25,12 +25,12 @@ Classify the database type, explore its schemas and tables, gather connection de
 ✓ Done when: the database type is known, connection details are gathered, and the user has chosen which tables to load.
 
 ### Step 2 — Scaffold and configure credentials
-Scaffold the `sql_database` source, set up the connection string via the workspace secrets tools, and choose the extraction backend.
-→ Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration.md
+Scaffold the `sql_database` source and install the dependencies for both ends — the database driver for your database type and the destination's extra (`uv add "dlt[<destination>]"`). Set up the connection string via the workspace secrets tools and choose the extraction backend.
+→ Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration.md (backends and drivers) and https://dlthub.com/docs/dlt-ecosystem/destinations/ (destination extras)
 ✓ Done when: a pipeline run connects to the database without a credentials or driver error.
 
 ### Step 3 — Run on a sample
-Run under `dev_mode=True` with a row-count limit — `add_limit(n, count_rows=True)` — or a single small table to validate the output and column types before a full load.
+Run under `dev_mode=True` with a row-count limit — `add_limit(n, count_rows=True)` — or a single small table to validate the output and column types before a full load. Keep this run plain — no incremental cursors, merge keys, or production filtering yet; those come in Step 5 after the user confirms the data.
 → Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/usage and https://dlthub.com/docs/general-usage/pipeline#do-experiments-with-dev-mode
 ✓ Done when: the pipeline completes without errors and the sample table loads with the expected schema.
 
