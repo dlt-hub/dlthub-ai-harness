@@ -44,7 +44,7 @@ Summarize which jobs were created or updated.
 
 **Run:**
 
-Print to the user: `Running your pipeline and preparing your data in the background.`
+Print to the user: `Running your pipeline and preparing your data in the background. Your data is loading into a dltHub-hosted playground destination — zero setup and no credentials needed, but it's limited to playground/onboarding use, not production.`
 
 Run both commands at the same time — start `serve_headless.py` in the background, then run the pipeline in the foreground:
 
@@ -97,7 +97,7 @@ Print to the user: `- [x] Opening dltHub dataset browser`
 
 After Step 4 completes, immediately print to the user:
 
-> "Onboarding complete! When you're ready to continue, ask me: `Help me get started building and running a data pipeline on dltHub`"
+> "Onboarding complete! Your data lives in the dltHub-hosted playground destination — when you build your own pipeline, you'll choose a real destination of your own. When you're ready to continue, ask me: `Help me get started building and running a data pipeline on dltHub`"
 
 ## When the user says "Help me get started building and running a data pipeline on dltHub"
 
