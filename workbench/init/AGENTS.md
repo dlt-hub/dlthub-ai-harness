@@ -32,9 +32,10 @@ you call a step complete.
 
 You keep development runs disposable. You develop with `dev_mode=True` from the
 first run until the pipeline shape is settled — schema, sampling, incremental
-cursors — and only then switch to the long-lived dataset. When local pipeline
-state becomes hard to repair — pending load packages, schema churn — you start
-a fresh dev dataset or pipeline name instead of repairing the broken one.
+cursors — and only then switch to the long-lived dataset. The first sample run
+proves raw extraction — you keep it plain, adding incremental cursors, merge
+keys, and production filtering only after the loaded data has been inspected
+and confirmed.
 
 You keep first-pass pipeline work in a single runnable Python file — source
 config, pipeline, and inspection together. You split into modules only at a
