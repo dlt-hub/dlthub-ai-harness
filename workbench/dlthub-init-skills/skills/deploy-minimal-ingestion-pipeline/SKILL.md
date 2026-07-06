@@ -10,7 +10,7 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 
 **Goal: fastest time to deployment. Every step must serve that goal.**
 
-**Do not scan the workspace or execute any discovery commands before starting. Go directly to Setup — every file read is called out explicitly in the steps below.**
+**Do not scan the workspace or execute any discovery commands before starting. Go directly to Step 0 — every file read is called out explicitly in the steps below.**
 
 **References**:
 - https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
@@ -49,34 +49,22 @@ Print this to the user before doing anything else:
 - [ ] Deploy to dltHub
 ```
 
-## Setup — Initialize AI support
+## Step 0 — Connect workspace
 
 Print to the user: `- [ ] Set up workspace`
-
-Determine which agent you are and run the corresponding command — do not ask the user:
-
-```bash
-uv run dlthub ai init --agent claude --non-interactive   # if you are Claude Code
-uv run dlthub ai init --agent cursor --non-interactive   # if you are Cursor
-uv run dlthub ai init --agent codex --non-interactive    # if you are Codex
-```
-
-Wait for it to complete before continuing.
-
-## Step 0 — Connect workspace
 
 ```bash
 uv run dlthub workspace list --non-interactive
 ```
 
-Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding only.
+Present the workspaces to the user **by name** — do not show raw UUIDs; keep the name → UUID mapping to yourself for the connect command. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding only.
 
 Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
 
-**Stop and wait** for the user's answer, then run the appropriate command:
+**Stop and wait** for the user's answer, then run the appropriate command (for an existing workspace, use the UUID of the name the user picked):
 
 ```bash
-uv run dlthub workspace connect <workspace_uuid> --non-interactive   # connect to existing
+uv run dlthub workspace connect <workspace_uuid> --non-interactive   # connect to existing (UUID of the picked name)
 uv run dlthub workspace connect <name> --create --non-interactive    # create and connect to new
 ```
 
