@@ -57,14 +57,14 @@ Print to the user: `- [ ] Set up workspace`
 uv run dlthub workspace list --non-interactive
 ```
 
-Show the output to the user. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding only.
+Present the workspaces to the user **by name** — do not show raw UUIDs; keep the name → UUID mapping to yourself for the connect command. Let them know: **if they want to build a pipeline with their own data, dltHub recommends using a dedicated workspace — not the playground.** The playground is for onboarding only.
 
 Ask: **"Which workspace do you want to deploy to — an existing one from the list, or a new one? If new, what name would you like?"**
 
-**Stop and wait** for the user's answer, then run the appropriate command:
+**Stop and wait** for the user's answer, then run the appropriate command (for an existing workspace, use the UUID of the name the user picked):
 
 ```bash
-uv run dlthub workspace connect <workspace_uuid> --non-interactive   # connect to existing
+uv run dlthub workspace connect <workspace_uuid> --non-interactive   # connect to existing (UUID of the picked name)
 uv run dlthub workspace connect <name> --create --non-interactive    # create and connect to new
 ```
 
