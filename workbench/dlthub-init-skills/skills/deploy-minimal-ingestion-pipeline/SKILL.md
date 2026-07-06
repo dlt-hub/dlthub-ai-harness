@@ -10,7 +10,7 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 
 **Goal: fastest time to deployment. Every step must serve that goal.**
 
-**Do not scan the workspace or execute any discovery commands before starting. Go directly to Setup — every file read is called out explicitly in the steps below.**
+**Do not scan the workspace or execute any discovery commands before starting. Go directly to Step 0 — every file read is called out explicitly in the steps below.**
 
 **References**:
 - https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
@@ -49,21 +49,9 @@ Print this to the user before doing anything else:
 - [ ] Deploy to dltHub
 ```
 
-## Setup — Initialize AI support
+## Step 0 — Connect workspace
 
 Print to the user: `- [ ] Set up workspace`
-
-Determine which agent you are and run the corresponding command — do not ask the user:
-
-```bash
-uv run dlthub ai init --agent claude --non-interactive   # if you are Claude Code
-uv run dlthub ai init --agent cursor --non-interactive   # if you are Cursor
-uv run dlthub ai init --agent codex --non-interactive    # if you are Codex
-```
-
-Wait for it to complete before continuing.
-
-## Step 0 — Connect workspace
 
 ```bash
 uv run dlthub workspace list --non-interactive

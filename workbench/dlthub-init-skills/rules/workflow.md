@@ -10,7 +10,7 @@
 
 ### Incoming (to dlthub-init-skills)
 
-- From **one-shot** (after `deploy-run-sample-pipeline`) — the user has just completed onboarding with the sample pipeline in the same environment. A playground workspace is already connected. Skip the Setup section and Step 0 (workspace connection) and start from Step 1.
+- From **one-shot** (after `deploy-run-sample-pipeline`) — the user has just completed onboarding with the sample pipeline in the same environment. A playground workspace is already connected. Skip Step 0 (workspace connection) and start from Step 1.
 
 ### Outgoing (from dlthub-init-skills)
 
