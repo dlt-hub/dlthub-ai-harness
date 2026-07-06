@@ -19,7 +19,7 @@ filesystem source — https://dlthub.com/docs/dlt-ecosystem/verified-sources/fil
 ## Workflow
 
 ### Step 1 — Scaffold and configure access
-Scaffold the `filesystem` source. Set the bucket URL / path, the file glob, and the reader (CSV, Parquet, JSONL). Install the extras for your bucket protocol (S3, GCS, Azure, SFTP) and destination (`uv add "dlt[<destination>]"`), then configure bucket credentials through the workspace secrets tools.
+Scaffold the `filesystem` source as a single runnable Python file — split into modules only at a clear reuse boundary. Set the bucket URL / path, the file glob, and the reader (CSV, Parquet, JSONL). Install the extras for your bucket protocol (S3, GCS, Azure, SFTP) and destination (`uv add "dlt[<destination>]"`), then configure bucket credentials through the workspace secrets tools.
 → Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/filesystem (source setup and protocol extras) and https://dlthub.com/docs/dlt-ecosystem/destinations/ (destination extras)
 ✓ Done when: a pipeline run can list the target files without an access error.
 
