@@ -25,7 +25,7 @@ Classify the database type, explore its schemas and tables, gather connection de
 ✓ Done when: the database type is known, connection details are gathered, and the user has chosen which tables to load.
 
 ### Step 2 — Scaffold and configure credentials
-Scaffold the `sql_database` source and install the dependencies for both ends — the database driver for your database type and the destination's extra (`uv add "dlt[<destination>]"`). Set up the connection string via the workspace secrets tools and choose the extraction backend.
+Scaffold the `sql_database` source as a single runnable Python file — split into modules only at a clear reuse boundary — and install the dependencies for both ends — the database driver for your database type and the destination's extra (`uv add "dlt[<destination>]"`). Set up the connection string via the workspace secrets tools and choose the extraction backend.
 → Docs: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration.md (backends and drivers) and https://dlthub.com/docs/dlt-ecosystem/destinations/ (destination extras)
 ✓ Done when: a pipeline run connects to the database without a credentials or driver error.
 
