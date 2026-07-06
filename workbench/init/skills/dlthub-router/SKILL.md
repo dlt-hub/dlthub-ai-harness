@@ -27,13 +27,16 @@ Use this **only** when the index has no matching row (an unfamiliar need, or you
 
 Match intent to the best toolkit, then install as in Step 1. Toolkits marked `(installed: <version>)` are already available.
 
-## Step 3: Confirm & enable MCP
+## Step 3: Verify install (only when needed)
 
-```
-uv run dlthub ai status
-```
-1. You should see the new toolkit and its entry skill.
-2. If you see any **WARNING** about the MCP server (e.g. cannot be started), **fix it** using the error message.
+**Skip this step** when the install output already confirms success and the new toolkit's entry skill is available in this session — that is all the confirmation you need. (MCP health was already checked at session start via `dlthub ai status`.)
+
+Run `uv run dlthub ai status` only if:
+- the install output was ambiguous or reported an error,
+- the entry skill doesn't appear to be available, or
+- the `dlt-workspace-mcp` server hasn't been verified this session (no session-start status check and no successful MCP call yet).
+
+If status shows a **WARNING** about the MCP server (e.g. cannot be started), **fix it** using the error message before handing over.
 
 ## Step 4: Handover (no restart needed)
 
