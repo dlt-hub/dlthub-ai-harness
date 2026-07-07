@@ -27,7 +27,7 @@ Always measure before changing anything. Enable progress logging and read the pe
 progress = "log"     # or PROGRESS=log, or dlt.pipeline(..., progress="log")
 ```
 
-**Install `psutil` first** (`pip install psutil` or `uv add psutil`) — then `progress="log"` adds a `Memory usage: … MB (…%) | CPU usage: …%` line per stage; without it that line reads "System stats unavailable". It's one interface across macOS/Windows/Linux, so the same profiling runs in dev and prod.
+**Install `psutil` first** (`pip install psutil` or `uv add psutil`) — then `progress="log"` adds a `Memory usage: … MB (…%) | CPU usage: …%` line per stage; without it dlt warns once (`psutil dependency is not installed and memory stats will not be available`) and omits that line. It's one interface across macOS/Windows/Linux, so the same profiling runs in dev and prod.
 
 Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load packages). Benchmark on a real machine — shared or resource-constrained environments give unreliable numbers.
 
