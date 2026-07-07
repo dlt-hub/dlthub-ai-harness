@@ -27,6 +27,8 @@ Always measure before changing anything. Enable progress logging and read the pe
 progress = "log"     # or PROGRESS=log, or dlt.pipeline(..., progress="log")
 ```
 
+**Install `psutil` first** (`pip install psutil` or `uv add psutil`) — then `progress="log"` adds a `Memory usage: … MB (…%) | CPU usage: …%` line per stage; without it that line reads "System stats unavailable". It's one interface across macOS/Windows/Linux, so the same profiling runs in dev and prod.
+
 Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load packages). Benchmark on a real machine on a **representative** run — shared or resource-constrained environments give unreliable numbers, and a tiny `.add_limit(1)` run distorts the stage ratios (fixed overhead dominates, normalize/load barely run), so don't use it to decide *which* stage is slow. Then route to the slowest stage:
 
 | Bottleneck | Bound by | Go to |
@@ -83,9 +85,17 @@ A pipeline that dies on a constrained machine fails one of two ways — the **fa
 |---|---|---|
 | How it dies | **killed** — exit **137 / SIGKILL**, pod `OOMKilled`, **no Python traceback** | Python exception with traceback: `OSError: [Errno 28] No space left on device` |
 | Killed by | the OS / k8s OOM-killer (RSS hit the cgroup/container limit) | dlt/Python writing intermediate, load-package, or staging files |
-| Confirm mid-run | `kubectl top pod` / `docker stats` / RSS in `top`; cgroup `memory.current` vs `memory.max` | `df -h` on the working volume and `$DLT_DATA_DIR`; `du -sh ~/.dlt` and the staging path |
+| Confirm mid-run | the `progress="log"` memory line (needs `psutil` — see Step 1); for the whole picture see [Tracking memory](#tracking-memory-dev-vs-production) below | `df -h` on the working volume and `$DLT_DATA_DIR`; `du -sh ~/.dlt` and the staging path |
 
 With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pulling the source into memory; normalize spiking = buffering items. A traceback that **isn't** `Errno 28` is a different bug → use `debug-pipeline`.
+
+##### Tracking memory (dev vs production)
+The `progress="log"` line reports **main-process RSS**, which is complete for the default serial run but undercounts once `[normalize] workers > 1` (the process pool runs in child processes). How to see the whole picture depends on where you can reach:
+- **Dev / staging, with a shell** — `docker stats` / `kubectl top pod` / `top` (sorted by RSS) / cgroup `memory.current` vs `memory.max`. These measure the **whole container**, so they already include the normalize pool.
+- **Production, no interactive shell** (the agent isn't attached) — don't rely on ad-hoc commands. Read memory from things emitted by the run itself:
+  - **dltHub platform logs** — if the pipeline runs on the dltHub platform, read its logs directly: `dlthub job logs <name>` (latest run), `dlthub job runs logs <name> [run#]` (a specific run), or `-f` to stream. The `progress="log"` memory lines show up here. Ref: https://dlthub.com/docs/hub/pipeline-operations/monitoring
+  - **From inside the run** — the `progress="log"` memory line lands in your logs; to capture the whole-tree peak with no external tooling, log the container's cgroup peak at the end of the run (cgroup v2: read `/sys/fs/cgroup/memory.peak`; v1: `memory.max_usage_in_bytes`) — it accounts for all processes in the container.
+  - **The OOM-kill itself is a signal** — exit 137 / `OOMKilled` in the pod status or orchestrator events confirms RAM was the cause even with no live metrics.
 
 #### **RAM — bound peak memory:**
 
@@ -143,7 +153,7 @@ Apply source-specific tuning **in addition** to the stage levers above. These sk
 
 ## Step 3: Re-measure, then repeat
 
-Re-run with `progress="log"` and compare per-stage durations / peak memory against Step 1. Change **one lever at a time** so you can attribute the effect, and use `debug-pipeline` to confirm no new failures (timeouts, type errors) surfaced under higher concurrency.
+Re-run with `progress="log"` and compare per-stage durations against Step 1, plus the peak `Memory usage` line it logs (`last_trace` has timings, not RAM). Change **one lever at a time** so you can attribute the effect, and use `debug-pipeline` to confirm no new failures (timeouts, type errors) surfaced under higher concurrency.
 
 **Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
 - **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (source throughput, destination limits, disk/network bandwidth) that tuning can't move.
