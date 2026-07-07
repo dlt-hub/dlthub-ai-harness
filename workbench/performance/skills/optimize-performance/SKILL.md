@@ -29,7 +29,7 @@ progress = "log"     # or PROGRESS=log, or dlt.pipeline(..., progress="log")
 
 **Install `psutil` first** (`pip install psutil` or `uv add psutil`) — then `progress="log"` adds a `Memory usage: … MB (…%) | CPU usage: …%` line per stage; without it dlt warns once (`psutil dependency is not installed and memory stats will not be available`) and omits that line. It's one interface across macOS/Windows/Linux, so the same profiling runs in dev and prod.
 
-Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load packages). Benchmark on a real machine — shared or resource-constrained environments give unreliable numbers.
+Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load packages; `debug-pipeline` ships with the calling pipeline toolkit — use it only if that toolkit is installed, otherwise read `last_trace` directly). Benchmark on a real machine — shared or resource-constrained environments give unreliable numbers.
 
 **Tune on a representative subset, not the full dataset.** For time tuning a slice (e.g. a few million of tens of millions of rows) reproduces the stage ratios and lever effects while iterating far faster. Size it in a band: big enough that fixed overhead doesn't dominate **and** that enough files/resources exist for parallelism levers to show (too small → a good lever looks useless; a tiny `.add_limit(1)` fails this floor and `.add_limit()` masks pagination), small enough to iterate. **Reduce volume only once you've confirmed the subset is representative** — it reproduces the full-run stage ratios and clears the floor (>1 file, >1 resource); if you can't confirm that, run the full dataset. Memory/OOM work and the final confirmation always run full volume.
 
@@ -74,10 +74,10 @@ Normalize runs a **process pool with one worker per extract file** — so more w
 |---|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `[normalize] workers` | 1 (serial) | process pool; raise toward CPU-core count                                                                                                                                      |
 | `[normalize] start_method = "spawn"` | — | recommended on Linux when resources use threads                                                                                                                                |
-| `[data_writer] file_max_items` / `file_max_bytes` | none | rotate the **extract** and **normalize** outputs so normalize and load each have many files to split across workers — **this is the lever that parallelizes both normalize and load**. See [Load](#load-is-slow-destination-io-bound)|
+| `[data_writer] file_max_items` / `file_max_bytes` | none | rotate stage outputs so normalize and load each get many files to split across workers — **the lever that parallelizes both**. Global `[data_writer]` rotates **both** stages' outputs at once; scope it to target one — `[sources.data_writer]` (extract output → parallelizes normalize), `[normalize.data_writer]` (normalize output → parallelizes load, see [Load](#load-is-slow-destination-io-bound)) |
 | `[normalize.data_writer] disable_compression = true` | off (gzip) | trade disk for CPU when CPU-bound                                                                                                                                              |
 
-Note: there's no `[extract.data_writer]` scope — dlt **silently ignores** it (no error, no effect). Rotate the extract output with the global **`[data_writer]`** instead.
+Note: the extract writer is scoped under **`[sources.data_writer]`** (or global **`[data_writer]`**) — there is no `[extract.data_writer]` scope; dlt **silently ignores** that one (no error, no effect).
 
 Running *out of memory* during normalize is a different problem with a different fix set → [Out of memory](#out-of-memory-ram-or-disk).
 
