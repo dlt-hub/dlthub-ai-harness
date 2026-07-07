@@ -29,7 +29,11 @@ progress = "log"     # or PROGRESS=log, or dlt.pipeline(..., progress="log")
 
 **Install `psutil` first** (`pip install psutil` or `uv add psutil`) — then `progress="log"` adds a `Memory usage: … MB (…%) | CPU usage: …%` line per stage; without it that line reads "System stats unavailable". It's one interface across macOS/Windows/Linux, so the same profiling runs in dev and prod.
 
-Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load packages). Benchmark on a real machine on a **representative** run — shared or resource-constrained environments give unreliable numbers, and a tiny `.add_limit(1)` run distorts the stage ratios (fixed overhead dominates, normalize/load barely run), so don't use it to decide *which* stage is slow. Then route to the slowest stage:
+Read durations from `pipeline.last_trace` or via `debug-pipeline` (trace + load packages). Benchmark on a real machine — shared or resource-constrained environments give unreliable numbers.
+
+**Tune on a representative subset, not the full dataset.** For time tuning a slice (e.g. a few million of tens of millions of rows) reproduces the stage ratios and lever effects while iterating far faster. Size it in a band: big enough that fixed overhead doesn't dominate **and** that enough files/resources exist for parallelism levers to show (too small → a good lever looks useless; a tiny `.add_limit(1)` fails this floor and `.add_limit()` masks pagination), small enough to iterate. **Reduce volume only once you've confirmed the subset is representative** — it reproduces the full-run stage ratios and clears the floor (>1 file, >1 resource); if you can't confirm that, run the full dataset. Memory/OOM work and the final confirmation always run full volume.
+
+Then route to the slowest stage:
 
 | Bottleneck | Bound by | Go to |
 |---|---|---|
@@ -153,7 +157,17 @@ Apply source-specific tuning **in addition** to the stage levers above. These sk
 
 ## Step 3: Re-measure, then repeat
 
-Re-run with `progress="log"` and compare per-stage durations against Step 1, plus the peak `Memory usage` line it logs (`last_trace` has timings, not RAM). Change **one lever at a time** so you can attribute the effect, and use `debug-pipeline` to confirm no new failures (timeouts, type errors) surfaced under higher concurrency.
+Re-run with `progress="log"` and compare per-stage durations against Step 1, plus the peak `Memory usage` line it logs (`last_trace` has timings, not RAM). Change **one lever at a time** so you can attribute the effect, and use `debug-pipeline` to confirm no new failures (timeouts, type errors) surfaced under higher concurrency. **If a lever regresses — slower, higher peak memory, or a new failure — roll it back to its previous value before trying the next**; changing one at a time is what makes this a clean revert.
+
+**Iterate on one stage — skip the full `run()`.** dlt exposes each stage as its own method (`pipeline.extract(source)`, `pipeline.normalize()`, `pipeline.load()`), and each consumes the previous stage's packages. So when tuning a lever, **re-run from the changed stage's input forward, up to the stage you're timing** — not the whole pipeline:
+
+| Lever | Re-run |
+|---|---|
+| extract parallelism / page size | `extract()` |
+| `[normalize] workers`, extract-output rotation | `extract()` → `normalize()` |
+| `[load] workers`, normalize-output rotation (parallelizes load) | `extract()` → `normalize()` → `load()` |
+
+Two exceptions — **use a full `run()`**: memory/OOM work (peak RSS is cross-stage and the destination loads with its own memory), and the final confirmation run that re-diagnoses whether the bottleneck moved.
 
 **Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
 - **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (source throughput, destination limits, disk/network bandwidth) that tuning can't move.
