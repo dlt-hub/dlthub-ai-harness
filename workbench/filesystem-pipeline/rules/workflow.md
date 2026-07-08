@@ -9,6 +9,7 @@
 ## Extend and harden
 2. **Debug pipeline** — for failures beyond first-run errors, hand off to **rest-api-pipeline** → `debug-pipeline`
 3. **Add incremental loading** (`add-incremental-loading`) — filter files by modification date, optionally filter records by timestamp column, switch to merge write disposition
+4. **Optimize performance** (`optimize-filesystem-performance`) — when reading files is slow or memory-heavy: choose a faster reader, stream in chunks, read files in parallel, narrow the glob
 
 ## Handover to other toolkits
 
@@ -18,6 +19,7 @@
 - **data-quality** — after the pipeline runs, when the user wants column-level validation or load metrics on every run
 - **dlthub-platform** — when the pipeline is working and the user wants to deploy or schedule it on dltHub
 - **rest-api-pipeline** → `debug-pipeline` — for complex pipeline failures (schema errors, failed jobs, normalisation issues) beyond the first-run debug table
+- **performance** — after `optimize-filesystem-performance`, when the pipeline works but is slow or memory-heavy and needs source-agnostic stage tuning (extract/normalize/load workers, buffers, file rotation); start at `optimize-performance`
 
 ### Incoming (to filesystem-pipeline)
 

@@ -105,6 +105,14 @@
       "version": "0.1.0",
       "category": "data",
       "tags": ["dlthub", "init", "pipeline", "deploy", "rest-api"]
+    },
+    {
+      "name": "performance",
+      "source": "./workbench/performance",
+      "description": "Tune dlt pipeline performance — diagnose the bottleneck stage (extract, normalize, load) and apply the right lever: parallelism, workers, memory buffers, file rotation, and batching.",
+      "version": "0.1.1",
+      "category": "data",
+      "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
     }
   ]
 }

@@ -15,6 +15,7 @@
 6. **Add incremental loading** — set up `dlt.sources.incremental`, merge keys, and lag windows for production efficiency
 7. **Add endpoints** (`new-endpoint`) — add more resources to the source
 8. **View data** (`view-data`) — show data to the user & query and explore loaded data in Python
+9. **Optimize performance** (`optimize-rest-api-performance`) — when the pipeline works but is slow: parallelize child resources, raise page size, run resources concurrently, tune retries
 
 ## Handover to other toolkits
 
@@ -35,3 +36,4 @@ When the user's needs go beyond this toolkit, hand over to:
   - **Early** (after `create-rest-api-pipeline` or `debug-pipeline`): when the user wants to run the pipeline on dltHub right away — a working pipeline is enough to deploy
   - **Later** (after `adjust-endpoint`, incremental loading, `new-endpoint`, or a subsequent `debug-pipeline` run): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
 - **filesystem-pipeline** — from (`find-source`) when the user's data source is file-based (S3, GCS, local CSV, SFTP, etc.) rather than a REST API
+- **performance** — after `optimize-rest-api-performance`, when the pipeline works but is slow or memory-heavy and needs source-agnostic stage tuning (extract/normalize/load workers, buffers, file rotation); start at `optimize-performance`
