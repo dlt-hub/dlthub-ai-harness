@@ -1,6 +1,6 @@
 ---
 name: adjust-table
-description: Adjust a working dlt SQL database pipeline for production — remove dev limits, add incremental loading, configure merge keys. Use when the user wants to remove .add_limit(), load the full table, or set up incremental loading on a cursor column.
+description: Adjust a working dlt SQL database pipeline for production — remove dev limits, add incremental loading, configure merge keys. Use when the user wants to remove .add_limit(), load the full table, or set up incremental loading on a cursor column. For speed/memory tuning (backend, chunk size, parallelism) use optimize-sql-performance instead. For inspecting loaded data or fixing column types/schema after a load, use validate-data instead.
 argument-hint: "[pipeline-name] [adjustments]"
 ---
 
@@ -50,8 +50,6 @@ table = sql_table(
         "<cursor_column>",                    # e.g. "updated_at" or "id"
         initial_value="2020-01-01T00:00:00Z", # where to start on the first run
     ),
-    chunk_size=500,
-    backend="pyarrow",
 )
 
 pipeline.run(table, write_disposition="merge", primary_key="<pk_column>")
@@ -82,5 +80,6 @@ Use `debug-pipeline` to inspect the first full run — large tables can surface 
 ## Next steps
 
 - **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-platform** to deploy
-- **Errors on full load** → use `debug-pipeline`; consider reducing `chunk_size` or switching backend
+- **Slow or memory-heavy load** → use `optimize-sql-performance` (backend, chunk size, parallel tables, push-down)
+- **Errors on full load** → use `debug-pipeline`
 - **Need more tables** → use `add-table`

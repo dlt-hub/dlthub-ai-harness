@@ -1,6 +1,6 @@
 ---
 name: add-incremental-loading
-description: Add incremental loading to a dlt filesystem pipeline — filter files by modification date and optionally filter records by a timestamp column. Use after create-filesystem-pipeline produces a working replace-mode pipeline.
+description: Add incremental loading to a dlt filesystem pipeline — filter files by modification date, optionally filter records by a timestamp column, and switch to merge with a primary key to deduplicate updated records, so each run only reads new or modified files. Use after create-filesystem-pipeline produces a working replace-mode pipeline, or when the user wants to set up merge/dedup or move a pipeline from replace to incremental. For speed/memory tuning (faster reader, chunked streaming, parallel reads, glob narrowing) use optimize-filesystem-performance instead.
 ---
 
 # Add incremental loading to a filesystem pipeline

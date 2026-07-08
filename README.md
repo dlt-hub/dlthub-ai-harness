@@ -70,6 +70,7 @@ Two MCP servers give the agent structured context throughout the workflow to avo
 | `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform                                        | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
+| `performance` | Build | `optimize-performance` | Tune a slow or memory-heavy pipeline — diagnose the bottleneck stage and apply parallelism, workers, buffers, and batching | *"Use optimize-performance to speed up my Postgres pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
 
 > `init` is a shared dependency that provides rules, secrets handling, and the MCP server. It is installed automatically by `dlthub ai init` or as a separate plugin via the Claude marketplace.
 
@@ -167,6 +168,7 @@ uv run dlthub ai toolkit install dlthub-platform
 uv run dlthub ai toolkit install data-exploration
 uv run dlthub ai toolkit install transformations
 uv run dlthub ai toolkit install data-quality
+uv run dlthub ai toolkit install performance
 ```
 
 ### Starting the workbench
