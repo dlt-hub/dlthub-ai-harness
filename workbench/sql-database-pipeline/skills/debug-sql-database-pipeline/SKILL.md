@@ -1,5 +1,5 @@
 ---
-name: debug-pipeline
+name: debug-sql-database-pipeline
 description: Debug and inspect a dlt SQL database pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, and diagnose errors like connection failures, missing credentials, driver issues, or failed jobs.
 argument-hint: "[pipeline-name] [issue]"
 ---
@@ -165,6 +165,6 @@ Do NOT remove settings the user had before you started.
 
 ## Next steps
 
-- **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (`data-exploration` toolkit) to jump straight into charts and analysis
+- **Load successful** → use `validate-sql-database-data` to inspect schema and data, or hand over to `explore-data` (`data-exploration` toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → revisit `create-sql-database-pipeline` — "Set up config and secrets" section
 - **No pipeline exists yet** → use `create-sql-database-pipeline` to scaffold one first

@@ -155,7 +155,7 @@ Key rules:
 
 ### 7. Apply reflection level
 
-Using the reflection level chosen in `find-source`, set it on the source:
+Using the reflection level chosen in `find-sql-database-source`, set it on the source:
 
 ```python
 # Scenario A
@@ -246,7 +246,7 @@ uv run python <pipeline_script>.py
 
 Expected output shows extract/normalize/load steps with row counts and timing from `progress="log"`.
 
-**When errors occur, use `debug-pipeline`** to diagnose — do not add more complexity first.
+**When errors occur, use `debug-sql-database-pipeline`** to diagnose — do not add more complexity first.
 
 Common first-run errors:
 - `ConfigFieldMissingException` — a credentials field is missing or misnamed in secrets.toml
@@ -284,7 +284,7 @@ Re-run the test to confirm the backend works before moving on.
 ## Next steps
 
 - **Test run succeeded, backend chosen** → use `adjust-table` to remove limits and add incremental loading for production
-- **Pipeline errors or 0 rows** → use `debug-pipeline` to inspect traces and load packages
+- **Pipeline errors or 0 rows** → use `debug-sql-database-pipeline` to inspect traces and load packages
 - **Want more tables** → use `add-table` to add resources to the pipeline
 - **Ready to explore data** → hand over to **data-exploration** toolkit
 - **Ready to deploy** → hand over to **dlthub-platform** toolkit

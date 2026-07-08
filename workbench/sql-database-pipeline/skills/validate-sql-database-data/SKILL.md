@@ -1,5 +1,5 @@
 ---
-name: validate-data
+name: validate-sql-database-data
 description: Validate schema and data after a successful dlt SQL database pipeline load. Use when the user wants to check if loaded data looks correct, inspect table schemas, fix data types, or verify column mappings from the source database.
 argument-hint: "[pipeline-name] [concerns]"
 ---
@@ -85,11 +85,11 @@ dlt normalizes column names to snake_case by default. If source DB column names 
 
 ## 4. Iterate
 
-Re-run the pipeline after changes (`dev_mode=True` gives a fresh dataset each time). Use `debug-pipeline` to inspect traces after each run. Repeat until the user is satisfied with the schema.
+Re-run the pipeline after changes (`dev_mode=True` gives a fresh dataset each time). Use `debug-sql-database-pipeline` to inspect traces after each run. Repeat until the user is satisfied with the schema.
 
 ## Next steps
 
 - **User is happy with the data** → use `adjust-table` to remove limits and configure incremental loading for production
 - **Need to add more tables** → use `add-table`
-- **Need to fix pipeline code** → edit and re-run with `debug-pipeline`
+- **Need to fix pipeline code** → edit and re-run with `debug-sql-database-pipeline`
 - **User wants to explore data** → hand over to **data-exploration** toolkit for notebooks and charts
