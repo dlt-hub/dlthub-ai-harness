@@ -46,9 +46,9 @@ uv add "dlt[hub]"
 ### 2. Read inputs
 
 Read in parallel:
-- `.schema/annotated-sources.dbml` — source columns and their concept mappings
-- `.schema/taxonomy.json` — table mappings and natural keys
-- `.schema/CDM.dbml` — CDM entity definitions and column specs
+- `.schema/<cdm-name>/<pipeline_name>.dbml` — annotated source columns and their concept mappings (one file per pipeline)
+- `.schema/<cdm-name>/taxonomy.json` — table mappings and natural keys
+- `.schema/<cdm-name>/CDM.dbml` — CDM entity definitions and column specs
 
 ### 3. Get actual source schema
 
@@ -64,7 +64,7 @@ relation = dataset.<table_name>
 schema = relation.schema()  # authoritative column list
 ```
 
-Cross-check the annotated columns in `annotated-sources.dbml` against the schema from `relation.schema()`. Note any discrepancies.
+Cross-check the annotated columns in `.schema/<cdm-name>/<pipeline_name>.dbml` against the schema from `relation.schema()`. Note any discrepancies.
 
 ### 4. Plan transformation order
 
@@ -239,14 +239,14 @@ if __name__ == "__main__":
     source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
     source_dataset = source_pipeline.dataset()
 
-    load_info = source_pipeline.run(<business_domain>_to_cdm(source_dataset))
+    load_info = source_pipeline.run(<dataset_name>_to_cdm(source_dataset))
     print(load_info)
 ```
 
 **Naming convention:** `pipeline_name` and `dataset_name` should reflect the **business domain and central fact**, not the source systems. Derive the name from:
-1. The central fact table in `.schema/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
-2. The primary dimension in `.schema/ontology.ison` (e.g. `Person`)
-3. The use cases in `.schema/taxonomy.json`
+1. The central fact table in `.schema/<cdm-name>/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
+2. The primary dimension in `.schema/<cdm-name>/ontology.ison` (e.g. `Person`)
+3. The use cases in `.schema/<cdm-name>/taxonomy.json`
 
 Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
 

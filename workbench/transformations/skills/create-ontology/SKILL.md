@@ -24,7 +24,7 @@ When a concept has a natural key, rows from different source tables that share t
 
 ### 1. Build entity list
 
-Read `.schema/taxonomy.json`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
+Read `.schema/<cdm-name>/taxonomy.json`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
 - Create one ontology entity per canonical concept
 - Name = concept key (PascalCase)
 - Mark as `inferred: false` (grounded in confirmed source mappings)
@@ -107,7 +107,7 @@ Present gaps to the user before writing output.
 
 ### 6. Write ontology
 
-Write `.schema/ontology.ison` in Graph ISON format (https://graph.ison.dev/) — tabular DSV sections, NOT JSON:
+Write `.schema/<cdm-name>/ontology.ison` in Graph ISON format (https://graph.ison.dev/) — tabular DSV sections, NOT JSON:
 
 ```ison
 nodes.Entity
@@ -151,7 +151,7 @@ Contract  track subscription billing     no source table found
 After writing both files, explicitly ask the user to open and review `.schema/<cdm-name>/ontology.md` before continuing:
 
 ```
-Please review `.schema/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
+Please review `.schema/<cdm-name>/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
 
 Let me know if anything looks wrong or needs changing before we move on.
 ```

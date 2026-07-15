@@ -18,7 +18,7 @@ Reference: DBML format — https://dbml.dbdiagram.io/
 
 ### 1. Classify entities as fact or dimension
 
-Read `.schema/ontology.ison`. For each entity, apply Kimball classification:
+Read `.schema/<cdm-name>/ontology.ison`. For each entity, apply Kimball classification:
 
 | Signals | Classification |
 |---|---|
@@ -85,7 +85,7 @@ If a new collapse is warranted, confirm with the user before merging the tables.
 
 ### 6. Write CDM
 
-Write `.schema/CDM.dbml` using DBML syntax. Encode metadata in `Table` notes:
+Write `.schema/<cdm-name>/CDM.dbml` using DBML syntax. Encode metadata in `Table` notes:
 
 ```dbml
 Table dim_person [note: 'table_type:dimension; surrogate_key:person_sk; scd_type:1; conformed:true'] {
