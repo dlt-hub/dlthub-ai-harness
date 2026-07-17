@@ -1,0 +1,48 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    # Skip PRs opened by bots to avoid noisy / self-review loops.
+    if: >-
+      github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@30544b674398ee15c84819bd87caf8a87e8c7b55 # v1.0.154
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_PLATFORM_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. This repository is the dltHub AI Workbench: a
+            collection of toolkits (markdown workflows + Python tools) that give AI coding
+            assistants step-by-step guidance for building dlt data pipelines.
+
+            Follow the review conventions in the repository's CLAUDE.md and REVIEW.md.
+            Focus on:
+            - Correctness and clarity of toolkit instructions and Python tools
+            - Consistency with existing toolkit structure and naming
+            - Broken links, wrong paths, and stale references
+            - Anything that would lint (see the Makefile `lint` target)
+
+            Provide concise, actionable feedback. Post your review as a single PR comment
+            using `gh pr comment`. If the change looks good, say so briefly rather than
+            inventing issues.
+          claude_args: |
+            --allowed-tools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(make lint)"
