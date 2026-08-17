@@ -1,16 +1,16 @@
-# dltHub AI Workbench
+# dltHub AI Harness
 
 **dlt** (data load tool) is an open-source Python library for loading data from APIs and databases into a warehouse or lakehouse. **dltHub** (paid platform) extends dlt with enterprise-grade features tailored to the needs of coding agents: transformations, data quality validation, managed runtime infrastructure, managed data apps, and an AI-powered workspace environment.
 
-![AI Workbench Components](images/ai_workbench_components.png)
+![AI Harness Components](images/ai_workbench_components.png)
 
-The **dltHub AI Workbench** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the workbench as-is or fork and customize it for your own stack. The **dlthub ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
+The **dltHub AI Harness** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the harness as-is or fork and customize it for your own stack. The **dlthub ai CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
 **Build** toolkits cover ingestion (REST API, SQL), transformation, and data quality; **Run** toolkits handle deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code. New users can start with the `quick-start` toolkit for a guided end-to-end run from data to dashboard.
 
-The dltHub AI Workbench is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI workbench.
+The dltHub AI Harness is tested with **Claude Code**, **Cursor**, and **Codex** and may work with other AI coding assistants. We recommend workings in `accept edits` (Claude) / `--approval-mode` (Codex) mode to review the changes and familiarizing with dlthub AI workflows when getting started with the dlthub AI Harness.
 
-## The dlthub AI workbench supports the iterative data engineering workflow
+## The dlthub AI Harness supports the iterative data engineering workflow
 
 Building data pipelines is iterative and covers two major phases — ingestion and transformations — each following the same inner loop:
 
@@ -23,19 +23,19 @@ Building data pipelines is iterative and covers two major phases — ingestion a
 - Deploy the ingestion or transformation pipeline to production
 - Serve insights via data apps built on top of the loaded data
 
-The outer loop connects the two phases: insights from the transformation and serving layer feed back into ingestion refinement. The workbench **Build toolkits** support the local development loop; the **Run toolkits** handle deployment and data apps.
+The outer loop connects the two phases: insights from the transformation and serving layer feed back into ingestion refinement. The harness **Build toolkits** support the local development loop; the **Run toolkits** handle deployment and data apps.
 
 ![Data Development Lifecycle](images/data_development_lifecycle.png)
 
-## dltHub AI Workbench Toolkits
+## dltHub AI Harness Toolkits
 
-The workbench gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
+The harness gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
 
 A **Toolkit** contains skills, commands, rules, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP. 
 
 All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
 
-![AI Workbench](images/ai_workbench.png)
+![AI Harness](images/ai_workbench.png)
 
 ### Toolkit components
 
@@ -87,7 +87,7 @@ uvx dlthub-init@latest <dir>    # scaffold a clean new project into <dir>
 
 ### Existing project
 
-To add the AI workbench to an existing project, run the same [`dlthub-init`](https://pypi.org/project/dlthub-init/) **in place**. It uses per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — and, being non-interactive, your coding assistant can run it for you:
+To add the AI harness to an existing project, run the same [`dlthub-init`](https://pypi.org/project/dlthub-init/) **in place**. It uses per-file collision handling (merges `pyproject.toml`, never overwrites `secrets.toml`, unions `.gitignore`), pins `dlt[hub]`, and runs `uv sync` — and, being non-interactive, your coding assistant can run it for you:
 
 ```bash
 uvx dlthub-init@latest          # set up AI support in the current directory
@@ -171,7 +171,7 @@ uv run dlthub ai toolkit install data-quality
 uv run dlthub ai toolkit install performance
 ```
 
-### Starting the workbench
+### Starting the harness
 
 Use one of the example prompts from the [Available toolkits](#available-toolkits) table above to kick off a workflow.
 
@@ -185,19 +185,19 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 > **Early Access:** The Claude Code plugin is currently in early access and may not provide the best linking experience between different toolkits. If you're new to dltHub and want to try or learn it, see [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub) — you run `uvx dlthub-start@latest` yourself. The marketplace path below is useful when you want to bootstrap an existing/empty project from inside Claude Code via the `bootstrap` toolkit (which prefers `uvx dlthub-init@latest` — the agent-runnable command for setting up a clean new or existing dlthub project — and falls back to the in-place install steps).
 
-The workbench is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
+The harness is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
 
 ```
-/plugin marketplace add dlt-hub/dlthub-ai-workbench
-/plugin install init@dlthub-ai-workbench --scope project
-/plugin install quick-start@dlthub-ai-workbench --scope project
-/plugin install bootstrap@dlthub-ai-workbench --scope project
-/plugin install rest-api-pipeline@dlthub-ai-workbench --scope project
-/plugin install sql-database-pipeline@dlthub-ai-workbench --scope project
-/plugin install dlthub-platform@dlthub-ai-workbench --scope project
-/plugin install data-exploration@dlthub-ai-workbench --scope project
-/plugin install transformations@dlthub-ai-workbench --scope project
-/plugin install data-quality@dlthub-ai-workbench --scope project
+/plugin marketplace add dlt-hub/dlthub-ai-harness
+/plugin install init@dlthub-ai-harness --scope project
+/plugin install quick-start@dlthub-ai-harness --scope project
+/plugin install bootstrap@dlthub-ai-harness --scope project
+/plugin install rest-api-pipeline@dlthub-ai-harness --scope project
+/plugin install sql-database-pipeline@dlthub-ai-harness --scope project
+/plugin install dlthub-platform@dlthub-ai-harness --scope project
+/plugin install data-exploration@dlthub-ai-harness --scope project
+/plugin install transformations@dlthub-ai-harness --scope project
+/plugin install data-quality@dlthub-ai-harness --scope project
 ```
 
 Start a new session — plugins take effect only after restarting Claude Code: `claude`
@@ -207,13 +207,13 @@ Start a new session — plugins take effect only after restarting Claude Code: `
 
 ## The `dlthub ai` CLI
 
-The `dlthub ai` subcommand is the bridge between the workbench and your coding assistant. `dlthub ai init` installs project rules, a secrets management skill, appropriate ignore files, and configures the dlt MCP server for your agent. `dlthub ai toolkit install` copies additional toolkit components (skills, rules, commands) into the right locations for your assistant.
+The `dlthub ai` subcommand is the bridge between the harness and your coding assistant. `dlthub ai init` installs project rules, a secrets management skill, appropriate ignore files, and configures the dlt MCP server for your agent. `dlthub ai toolkit install` copies additional toolkit components (skills, rules, commands) into the right locations for your assistant.
 
-**Toolkit management** — copies skills, rules, commands, and MCP config from the workbench into your project's agent config directory (`.claude/`, `.cursor/`, `.agents/`, etc.):
+**Toolkit management** — copies skills, rules, commands, and MCP config from the harness into your project's agent config directory (`.claude/`, `.cursor/`, `.agents/`, etc.):
 
 ```bash
 uv run dlthub ai status                        # show installed agent, dlthub version, active toolkits
-uv run dlthub ai toolkit list                  # list available toolkits from the workbench
+uv run dlthub ai toolkit list                  # list available toolkits from the harness
 uv run dlthub ai toolkit info <name>           # show a toolkit's skills, commands, and workflow
 uv run dlthub ai toolkit install <name>        # install a toolkit for the detected agent
 uv run dlthub ai toolkit install <name> --agent <agent>  # <agent>: claude | cursor | codex  - override agent detection
@@ -239,4 +239,4 @@ The MCP server allows the assistant to answer questions like "what tables were l
 
 ## License
 
-This project is licensed under the [dltHub AI Workbench License](LICENSE).
+This project is licensed under the [dltHub AI Harness License](LICENSE).
