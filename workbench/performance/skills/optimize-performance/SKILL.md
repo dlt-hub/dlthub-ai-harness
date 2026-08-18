@@ -98,7 +98,7 @@ The `progress="log"` line reports **main-process RSS**, which is complete for th
 
 > **It is a floor, not a peak — it is sampled at progress ticks, not continuously.** A spike *inside* a stage (parsing a whole payload, materializing a dataframe) happens between two log lines and never appears. Measured on the dltHub platform: a run whose true peak was ~5.3 GiB never logged above **2.5 GiB** — a 2.1× undercount. **Never conclude "memory is fine" from this line**, and never size an instance down on the strength of it; only an OOM kill, or a cgroup peak read at the end of the run, gives you the real high-water mark.
 
-> **Use the MB/percentage pair to confirm which instance you are on.** The line prints both, so `MB ÷ pct` is the container's memory limit — e.g. `262.93 MB (6.50%)` → ~4045 MB ≈ 4 GiB (`small`), `2509.65 MB (30.60%)` → ~8201 MB ≈ 8 GiB (`medium`). Cheapest way to verify a tier change actually took effect.
+> **The percentage is NOT your process's share — ignore it.** dlt prints `rss` for the current process but takes the percentage from `psutil.virtual_memory().percent`, i.e. **system-wide** memory in use. The two numbers measure different things, so a scary-looking `81%` can sit next to a 400 MB process on a busy laptop, and dividing MB by the percentage does **not** give you the container limit. To confirm which tier a job actually ran on, read the deployed manifest (`dlthub deploy --show-manifest`) or the job page — not this line.
 
 How to see the whole picture depends on where you can reach:
 - **Dev / staging, with a shell** — `docker stats` / `kubectl top pod` / `top` (sorted by RSS) / cgroup `memory.current` vs `memory.max`. These measure the **whole container**, so they already include the normalize pool.
@@ -124,7 +124,7 @@ Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithr
 
 Check the destination's own config for these knobs (they live in the destination, not in dlt). Capping destination memory and threads typically drops peak RSS several-fold versus running the destination at its RAM-sized defaults — often the single change that keeps a streamed load inside its limit.
 
-Only once **all** of the above are in place — buffers lowered, files rotated, destination capped, fresh pipeline per object — is a genuinely undersized runner a possibility: see [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform) (dltHub platform only).
+Only once **all** the levers in this section are in place — buffers lowered, files rotated, destination capped, and the fresh-pipeline-per-object pattern below where it applies — is a genuinely undersized runner a possibility: see [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform) (dltHub platform only).
 
 **Many-object loops — use a fresh pipeline per object.** Reusing one `pipeline` object across many `run()` calls grows its in-memory state (schema deltas, load packages, cursor values) run-over-run, which can OOM a long job. Create a **fresh pipeline per object** and drop it when done:
 
@@ -188,14 +188,13 @@ Applies **only** to pipelines running on the dltHub platform, and **only** after
 
 **Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size 
 
-| Size | vCPU | Memory | Disk | Budget multiplier |
-|---|---|---|---|---|
-| `small` (default) | 2 | 4 GiB | 500 GB | 1× |
-| `medium` | 4 | 8 GiB | 500 GB | 2× |
-| `large` | 8 | 16 GiB | 500 GB | 4× |
-| `xlarge` | 16 | 32 GiB | 500 GB | 8× |
+Tiers step `small` → `medium` → `large` → `xlarge`, doubling vCPU and memory each step and doubling the
+budget multiplier with them (`small` is the default at 1×). **Read the current numbers from the reference
+above, or from `deploy-workspace` (`advanced-patterns.md`) if that toolkit is installed — never quote tiers
+or multipliers from memory**, since instance sizing is in public preview.
 
-Note **disk is 500 GB on every tier** — scaling up never buys disk.
+Two facts that hold regardless of the numbers: **disk is the same on every tier**, so scaling up never buys
+disk; and each step **doubles** the charge, so it must roughly **halve** wall-clock to break even.
 
 ### Gate 0: never change it without the user's explicit permission
 
@@ -223,19 +222,19 @@ Bump only when **all five** are true. If you can't answer one with a number, you
 
 1. **The bottleneck is known and its levers are applied.** Step 1 named the stage; Step 2's levers for that stage are set and Step 3 re-measured them. The bottleneck is still the same stage.
 2. **You have the number, from the run itself.** Peak RSS or CPU% from the `progress="log"` line (needs `psutil`), read out of `dlthub job logs <name>` — see [Tracking memory](#tracking-memory-dev-vs-production). A remembered "it felt slow" is not evidence. **That line is a sampled floor, so a low reading disproves nothing** — for RAM, the kill itself and the end-of-run cgroup peak are the trustworthy signals.
-3. **That number sits at the tier's ceiling.** RAM: the job was **killed** — exit **247** on the dltHub runner (137 / `OOMKilled` elsewhere) — or a cgroup peak within ~20% of the tier's memory. Confirm the tier you were actually on with the `MB ÷ pct` check above. CPU: the CPU line pegged near 100% with `[normalize] workers` **already** at the tier's vCPU count.
+3. **That number sits at the tier's ceiling.** RAM: the job was **killed** — exit **247** on the dltHub runner (137 / `OOMKilled` elsewhere) — or a cgroup peak within ~20% of the tier's memory (look the tier's memory up; don't assume it). Confirm the tier you were actually on with the `MB ÷ pct` check above. CPU: the CPU line pegged near 100% with `[normalize] workers` **already** at the tier's vCPU count.
 4. **There is headroom the extra hardware can actually use.** You measured a *scaling curve* below the ceiling: raising `[normalize] workers` 1 → 2 (or `[load] workers`) gave a real improvement, so 4 vCPU plausibly extends it. If 1 → 2 gained nothing, 4 vCPU gains nothing either — the limit is elsewhere (one un-rotated file, one resource, the source, the destination).
-5. **The cheap fixes are exhausted.** `buffer_max_items` lowered, file rotation set, destination memory/threads/batch-size capped, fresh-pipeline-per-object for many-object loops, `DLT_DATA_DIR` / blob staging for disk, and `execute={"timeout": ...}` raised if the job was cut off rather than starved.
+5. **The cheap fixes are exhausted.** `buffer_max_items` lowered, file rotation set, destination memory/threads/batch-size capped, fresh-pipeline-per-object for many-object loops, `DLT_DATA_DIR` / blob staging for disk, and `execute={"timeout": ...}` raised if the job was cut off rather than starved — that one is **also** permission-gated (Gate 0), so propose it, don't apply it.
 
 ### Anti-signals — do **not** bump
 
 | Symptom | Why a bigger instance won't help | Do instead |
 |---|---|---|
-| `OSError: [Errno 28] No space left on device` | disk is 500 GB on **all** tiers | [Out of memory → Disk](#disk) — staging to blob, `DLT_DATA_DIR`, `delete_completed_jobs` |
+| `OSError: [Errno 28] No space left on device` | disk is the same on **all** tiers | [Out of memory → Disk](#disk) — staging to blob, `DLT_DATA_DIR`, `delete_completed_jobs` |
 | Extract-bound: waiting on network, pagination, or a rate-limited API | CPU/RAM don't make the source answer faster | [Extract](#extract-is-slow-io-bound) + [Source-specific tuning](#source-specific-tuning-separate-toolkits) |
 | Load-bound on destination I/O | the ceiling is the destination, not the runner | [Load](#load-is-slow-destination-io-bound), destination-side capacity |
-| Job stopped at a time limit (not `OOMKilled`) | it wasn't starved of resources | `execute={"timeout": "6h", "grace_period": 60}` |
-| Peak RSS far below the tier limit (e.g. 1.5 GiB on `small`) | memory isn't the constraint | re-diagnose from Step 1 |
+| Job stopped at a time limit (not `OOMKilled`) | it wasn't starved of resources | `execute={"timeout": "6h"}`, or `execute={"timeout": {"timeout": 7200, "grace_period": 60}}` for a custom grace period (`grace_period` nests **inside** `timeout`) |
+| Job **completes** and never comes near the limit (checked against a cgroup peak, not the sampled log line) | memory isn't the constraint | re-diagnose from Step 1 |
 | Normalize slow but extract wrote **one** file | the process pool can't split one file across cores | rotate extract output: `[sources.data_writer] file_max_items` |
 
 ### Applying it
@@ -253,9 +252,9 @@ def heavy_sync():
     ...
 ```
 
-`require` is a **decorator argument only** — there is no `config.toml` or env-var form, and it needs a `__deployment__.py` manifest plus `dlthub deploy` to take effect. **Only with the approval from Gate 0 in hand**, hand over to **dlthub-platform** (`deploy-workspace`) to edit the manifest and deploy; install it if absent: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`. That toolkit's `rules/job-resources.md` carries the full budget reference and the same permission requirement.
+`require` is a **decorator argument only** — there is no `config.toml` or env-var form, and it needs a `__deployment__.py` manifest plus `dlthub deploy` to take effect. **Only with the approval from Gate 0 in hand**, hand over to **dlthub-platform** (`deploy-workspace`) to edit the manifest and deploy; install it if absent: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`. That toolkit's always-loaded **job resources and run-time budget** rule carries the full budget reference and the same permission requirement.
 
-Then **verify the spend is earning its multiplier**: re-read `dlthub job logs <name>` and check peak RSS now fits, or that the stage duration dropped roughly in proportion to the extra vCPU. If it didn't, **drop back to the smaller tier** — you are paying the multiplier for nothing — and return to Step 1.
+Then **verify the spend is earning its multiplier**: re-read `dlthub job logs <name>` and check peak RSS now fits, or that the stage duration dropped roughly in proportion to the extra vCPU. If it didn't, **propose dropping back to the smaller tier** — you are paying the multiplier for nothing — and return to Step 1. Lowering a tier is a resource change like raising one: recommend it, let the user decide (Gate 0).
 
 ## Reference
 
