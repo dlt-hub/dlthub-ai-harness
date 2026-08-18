@@ -87,14 +87,20 @@ A pipeline that dies on a constrained machine fails one of two ways — the **fa
 
 | Signal | RAM exhaustion | Disk exhaustion |
 |---|---|---|
-| How it dies | **killed** — exit **137 / SIGKILL**, pod `OOMKilled`, **no Python traceback** | Python exception with traceback: `OSError: [Errno 28] No space left on device` |
+| How it dies | **killed** — **no Python traceback**. Exit **137 / SIGKILL** or pod `OOMKilled` on k8s/Docker; on the **dltHub platform the runner reports `Runner failed with exit code: 247`** | Python exception with traceback: `OSError: [Errno 28] No space left on device` |
 | Killed by | the OS / k8s OOM-killer (RSS hit the cgroup/container limit) | dlt/Python writing intermediate, load-package, or staging files |
 | Confirm mid-run | the `progress="log"` memory line (needs `psutil` — see Step 1); for the whole picture see [Tracking memory](#tracking-memory-dev-vs-production) below | `df -h` on the working volume and `$DLT_DATA_DIR`; `du -sh ~/.dlt` and the staging path |
 
 With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pulling the source into memory; normalize spiking = buffering items. A traceback that **isn't** `Errno 28` is a different bug → use `debug-pipeline`.
 
 ##### Tracking memory (dev vs production)
-The `progress="log"` line reports **main-process RSS**, which is complete for the default serial run but undercounts once `[normalize] workers > 1` (the process pool runs in child processes). How to see the whole picture depends on where you can reach:
+The `progress="log"` line reports **main-process RSS**, which is complete for the default serial run but undercounts once `[normalize] workers > 1` (the process pool runs in child processes).
+
+> **It is a floor, not a peak — it is sampled at progress ticks, not continuously.** A spike *inside* a stage (parsing a whole payload, materializing a dataframe) happens between two log lines and never appears. Measured on the dltHub platform: a run whose true peak was ~5.3 GiB never logged above **2.5 GiB** — a 2.1× undercount. **Never conclude "memory is fine" from this line**, and never size an instance down on the strength of it; only an OOM kill, or a cgroup peak read at the end of the run, gives you the real high-water mark.
+
+> **Use the MB/percentage pair to confirm which instance you are on.** The line prints both, so `MB ÷ pct` is the container's memory limit — e.g. `262.93 MB (6.50%)` → ~4045 MB ≈ 4 GiB (`small`), `2509.65 MB (30.60%)` → ~8201 MB ≈ 8 GiB (`medium`). Cheapest way to verify a tier change actually took effect.
+
+How to see the whole picture depends on where you can reach:
 - **Dev / staging, with a shell** — `docker stats` / `kubectl top pod` / `top` (sorted by RSS) / cgroup `memory.current` vs `memory.max`. These measure the **whole container**, so they already include the normalize pool.
 - **Production, no interactive shell** (the agent isn't attached) — don't rely on ad-hoc commands. Read memory from things emitted by the run itself:
   - **dltHub platform logs** — if the pipeline runs on the dltHub platform, read its logs directly: `dlthub job logs <name>` (latest run), `dlthub job runs logs <name> [run#]` (a specific run), or `-f` to stream. The `progress="log"` memory lines show up here. Ref: https://dlthub.com/docs/hub/pipeline-operations/monitoring
@@ -216,8 +222,8 @@ faster".
 Bump only when **all five** are true. If you can't answer one with a number, you haven't finished Step 1–3 — go back rather than up.
 
 1. **The bottleneck is known and its levers are applied.** Step 1 named the stage; Step 2's levers for that stage are set and Step 3 re-measured them. The bottleneck is still the same stage.
-2. **You have the number, from the run itself.** Peak RSS or CPU% from the `progress="log"` line (needs `psutil`), read out of `dlthub job logs <name>` — see [Tracking memory](#tracking-memory-dev-vs-production). A remembered "it felt slow" is not evidence.
-3. **That number sits at the tier's ceiling.** RAM: peak RSS within ~20% of the tier's memory, or exit **137 / `OOMKilled`** (on `small` that means ~3.3+ GiB of 4 GiB). CPU: the CPU line pegged near 100% with `[normalize] workers` **already** at the tier's vCPU count.
+2. **You have the number, from the run itself.** Peak RSS or CPU% from the `progress="log"` line (needs `psutil`), read out of `dlthub job logs <name>` — see [Tracking memory](#tracking-memory-dev-vs-production). A remembered "it felt slow" is not evidence. **That line is a sampled floor, so a low reading disproves nothing** — for RAM, the kill itself and the end-of-run cgroup peak are the trustworthy signals.
+3. **That number sits at the tier's ceiling.** RAM: the job was **killed** — exit **247** on the dltHub runner (137 / `OOMKilled` elsewhere) — or a cgroup peak within ~20% of the tier's memory. Confirm the tier you were actually on with the `MB ÷ pct` check above. CPU: the CPU line pegged near 100% with `[normalize] workers` **already** at the tier's vCPU count.
 4. **There is headroom the extra hardware can actually use.** You measured a *scaling curve* below the ceiling: raising `[normalize] workers` 1 → 2 (or `[load] workers`) gave a real improvement, so 4 vCPU plausibly extends it. If 1 → 2 gained nothing, 4 vCPU gains nothing either — the limit is elsewhere (one un-rotated file, one resource, the source, the destination).
 5. **The cheap fixes are exhausted.** `buffer_max_items` lowered, file rotation set, destination memory/threads/batch-size capped, fresh-pipeline-per-object for many-object loops, `DLT_DATA_DIR` / blob staging for disk, and `execute={"timeout": ...}` raised if the job was cut off rather than starved.
 
