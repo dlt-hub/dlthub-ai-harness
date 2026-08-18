@@ -153,6 +153,44 @@ def transform():
 Default timeout is 120 minutes. Grace period (default 30s) is the window
 for graceful shutdown before hard kill.
 
+A longer timeout raises the ceiling on billable wall-clock, so it spends
+run-time budget like a size bump does — **ask the user before changing it**
+(`rules/job-resources.md`).
+
+## Instance size
+
+Runner resources are set with `require={"instance": {"size": ...}}` (public preview):
+
+```python
+@run.pipeline(my_pipeline, require={"instance": {"size": "medium"}})
+def heavy_sync():
+    ...
+```
+
+| Size | vCPU | Memory | Disk | Budget multiplier |
+|---|---|---|---|---|
+| `small` (default) | 2 | 4 GiB | 500 GB | 1x |
+| `medium` | 4 | 8 GiB | 500 GB | 2x |
+| `large` | 8 | 16 GiB | 500 GB | 4x |
+| `xlarge` | 16 | 32 GiB | 500 GB | 8x |
+
+Decorator-only — there is no toml/env form. Disk is 500 GB on every tier, so a
+bigger instance never fixes `Errno 28 No space left on device`.
+
+**STOP — never set or change this without explicit human permission.** The
+multiplier is charged against the organization's run-time budget on every run,
+forever. Propose it with the budget math (current vs proposed multiplier,
+wall-clock per run, cadence, resulting charged hours per month), then wait for an
+explicit yes for that one job. Same for `execute={"timeout": ...}` and trigger
+cadence. See `rules/job-resources.md` — it is always loaded and it governs.
+
+**Do not raise this to fix a slow or OOM-ing job before the pipeline itself is
+tuned.** Hand over to the **performance** toolkit (`optimize-performance`,
+Step 4) to diagnose the stage bottleneck and check the gate first; install if
+absent: `uv run dlthub --non-interactive ai toolkit install performance`.
+
+Reference: https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size
+
 ## Timezone
 
 Set the timezone for cron interpretation:

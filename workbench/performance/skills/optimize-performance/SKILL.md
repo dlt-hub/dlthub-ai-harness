@@ -1,6 +1,6 @@
 ---
 name: optimize-performance
-description: Make a dlt pipeline faster or lighter on memory. Use when the user says a pipeline is slow, takes too long, runs out of memory, uses too much RAM, or wants to optimize, speed up, parallelize, or increase throughput. Covers source-agnostic levers (parallelism, workers, buffers, file rotation); for source-specific tuning use the pipeline toolkit's own optimize skill.
+description: Make a dlt pipeline faster or lighter on memory. Use when the user says a pipeline is slow, takes too long, runs out of memory, uses too much RAM, or wants to optimize, speed up, parallelize, or increase throughput. Covers source-agnostic levers (parallelism, workers, buffers, file rotation); for source-specific tuning use the pipeline toolkit's own optimize skill. Also decides whether a dltHub platform job genuinely needs a larger instance (more memory/CPU) — the last resort after tuning.
 argument-hint: "[pipeline-name] [symptom]"
 ---
 
@@ -118,6 +118,8 @@ Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithr
 
 Check the destination's own config for these knobs (they live in the destination, not in dlt). Capping destination memory and threads typically drops peak RSS several-fold versus running the destination at its RAM-sized defaults — often the single change that keeps a streamed load inside its limit.
 
+Only once **all** of the above are in place — buffers lowered, files rotated, destination capped, fresh pipeline per object — is a genuinely undersized runner a possibility: see [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform) (dltHub platform only).
+
 **Many-object loops — use a fresh pipeline per object.** Reusing one `pipeline` object across many `run()` calls grows its in-memory state (schema deltas, load packages, cursor values) run-over-run, which can OOM a long job. Create a **fresh pipeline per object** and drop it when done:
 
 ```python
@@ -171,7 +173,83 @@ Two exceptions — **use a full `run()`**: memory/OOM work (peak RSS is cross-st
 
 **Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
 - **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (source throughput, destination limits, disk/network bandwidth) that tuning can't move.
+- **Scale up** ([Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform)) only if the run is on the dltHub platform and you hit that external ceiling **in the runner's own RAM or vCPU** — never before Steps 1–3 are done, and never without the user's explicit approval (Step 4, Gate 0).
 - **Repeat** from Step 1 — the bottleneck often *moves* to another stage after a fix. Apply the next lever one at a time. "Fast enough" is the user's call — a minor improvement may already be enough, so confirm before another round rather than chasing micro-gains.
+
+## Step 4: Last resort — raise the instance size (dltHub platform)
+
+Applies **only** to pipelines running on the dltHub platform, and **only** after Steps 1–3 have been done and re-measured. A bigger runner is not a tuning lever: it is a **recurring cost** charged against your organization's run-time budget by a multiplier, so one hour on `large` spends four hours of budget — every run, forever. A config change is free; a tier bump is not. Reach for it when you have **measured** that the machine, not the pipeline, is the ceiling.
+
+**Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size 
+
+| Size | vCPU | Memory | Disk | Budget multiplier |
+|---|---|---|---|---|
+| `small` (default) | 2 | 4 GiB | 500 GB | 1× |
+| `medium` | 4 | 8 GiB | 500 GB | 2× |
+| `large` | 8 | 16 GiB | 500 GB | 4× |
+| `xlarge` | 16 | 32 GiB | 500 GB | 8× |
+
+Note **disk is 500 GB on every tier** — scaling up never buys disk.
+
+### Gate 0: never change it without the user's explicit permission
+
+**This is a spending decision, not a tuning decision — it is the user's to make, every time.**
+
+Your job is to diagnose and **propose**; never edit `require`, deploy a size change, or raise
+`execute={"timeout": ...}` on your own initiative — not when the job is OOM-killed, not when it is timing
+out, and not when the user asked you to "just make it work". Ask, and put the budget math in the question:
+
+> "`ingest_orders` runs ~50 min/day on `small` (1×) = ~25 charged hours/month. Peak RSS is 3.8 of 4 GiB and
+> it was `OOMKilled` twice. Moving to `medium` (4 vCPU / 8 GiB, **2×**) makes that ~50 charged hours/month
+> at the same runtime. Shall I apply it?"
+
+Then **wait for an explicit yes**. Approval covers **one** tier change to **one** job — re-ask for the next
+tier, another job, or a later session. Never bundle a size or timeout change into a deploy with other edits.
+
+**Budget break-even, tell the user this:** `small` → `medium` doubles the charge, so it only stays
+budget-neutral if wall-clock drops by **≥50%**. A bigger box that doesn't roughly halve the run costs more
+budget for the same throughput — worth it for an OOM that has no other fix, rarely worth it for "a bit
+faster".
+
+### Gate 1: how to know it's really necessary
+
+Bump only when **all five** are true. If you can't answer one with a number, you haven't finished Step 1–3 — go back rather than up.
+
+1. **The bottleneck is known and its levers are applied.** Step 1 named the stage; Step 2's levers for that stage are set and Step 3 re-measured them. The bottleneck is still the same stage.
+2. **You have the number, from the run itself.** Peak RSS or CPU% from the `progress="log"` line (needs `psutil`), read out of `dlthub job logs <name>` — see [Tracking memory](#tracking-memory-dev-vs-production). A remembered "it felt slow" is not evidence.
+3. **That number sits at the tier's ceiling.** RAM: peak RSS within ~20% of the tier's memory, or exit **137 / `OOMKilled`** (on `small` that means ~3.3+ GiB of 4 GiB). CPU: the CPU line pegged near 100% with `[normalize] workers` **already** at the tier's vCPU count.
+4. **There is headroom the extra hardware can actually use.** You measured a *scaling curve* below the ceiling: raising `[normalize] workers` 1 → 2 (or `[load] workers`) gave a real improvement, so 4 vCPU plausibly extends it. If 1 → 2 gained nothing, 4 vCPU gains nothing either — the limit is elsewhere (one un-rotated file, one resource, the source, the destination).
+5. **The cheap fixes are exhausted.** `buffer_max_items` lowered, file rotation set, destination memory/threads/batch-size capped, fresh-pipeline-per-object for many-object loops, `DLT_DATA_DIR` / blob staging for disk, and `execute={"timeout": ...}` raised if the job was cut off rather than starved.
+
+### Anti-signals — do **not** bump
+
+| Symptom | Why a bigger instance won't help | Do instead |
+|---|---|---|
+| `OSError: [Errno 28] No space left on device` | disk is 500 GB on **all** tiers | [Out of memory → Disk](#disk) — staging to blob, `DLT_DATA_DIR`, `delete_completed_jobs` |
+| Extract-bound: waiting on network, pagination, or a rate-limited API | CPU/RAM don't make the source answer faster | [Extract](#extract-is-slow-io-bound) + [Source-specific tuning](#source-specific-tuning-separate-toolkits) |
+| Load-bound on destination I/O | the ceiling is the destination, not the runner | [Load](#load-is-slow-destination-io-bound), destination-side capacity |
+| Job stopped at a time limit (not `OOMKilled`) | it wasn't starved of resources | `execute={"timeout": "6h", "grace_period": 60}` |
+| Peak RSS far below the tier limit (e.g. 1.5 GiB on `small`) | memory isn't the constraint | re-diagnose from Step 1 |
+| Normalize slow but extract wrote **one** file | the process pool can't split one file across cores | rotate extract output: `[sources.data_writer] file_max_items` |
+
+### Applying it
+
+Step **one** tier at a time, and pair the bump with the lever that consumes it — **size alone changes nothing**, because `[normalize] workers` defaults to 1 and `[load] workers` to 20 regardless of the box. The instance is a *ceiling*, not a lever:
+
+- **RAM-bound** → one tier up; keep the memory levers in place (a bigger box is not a reason to un-tune `buffer_max_items`).
+- **CPU-bound** → one tier up **and** raise `[normalize] workers` to the new vCPU count in the same change.
+
+```python
+from dlt.hub import run
+
+@run.pipeline(my_pipeline, require={"instance": {"size": "medium"}})
+def heavy_sync():
+    ...
+```
+
+`require` is a **decorator argument only** — there is no `config.toml` or env-var form, and it needs a `__deployment__.py` manifest plus `dlthub deploy` to take effect. **Only with the approval from Gate 0 in hand**, hand over to **dlthub-platform** (`deploy-workspace`) to edit the manifest and deploy; install it if absent: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`. That toolkit's `rules/job-resources.md` carries the full budget reference and the same permission requirement.
+
+Then **verify the spend is earning its multiplier**: re-read `dlthub job logs <name>` and check peak RSS now fits, or that the stage duration dropped roughly in proportion to the extra vCPU. If it didn't, **drop back to the smaller tier** — you are paying the multiplier for nothing — and return to Step 1.
 
 ## Reference
 
@@ -210,4 +288,5 @@ Every knob can be set in `.dlt/config.toml` under a section, or as an env var by
 ## Next steps
 
 - **Source-level tuning still needed** → [Source-specific tuning](#source-specific-tuning-separate-toolkits) — install the matching pipeline toolkit, then run its optimize skill.
+- **Every lever applied and the runner itself is the measured ceiling** (dltHub platform only) → [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform) — pass the gates, **get the user's explicit approval with the budget math**, then hand the manifest change to **dlthub-platform** (`deploy-workspace`).
 - **Tuned and stable** → hand over to **dlthub-platform** to deploy and schedule the pipeline on dltHub (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).
