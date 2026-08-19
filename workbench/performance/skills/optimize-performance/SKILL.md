@@ -136,7 +136,7 @@ for obj in objects:
 ```
 Caveat: trades away cross-run convenience, and `pipeline.default_schema.tables` keeps every table ever loaded under a given pipeline name — track the object list explicitly.
 
-#### **Disk** 
+#### **Disk**
 Stop intermediate/staging files filling the volume: see [Constrained disk / environment](#constrained-disk--environment) — point `DLT_DATA_DIR` at a bigger volume, stage to blob, set `delete_completed_jobs`, and keep compression **on** (don't `disable_compression`).
 
 ### Load is slow (destination I/O-bound)
@@ -179,82 +179,20 @@ Two exceptions — **use a full `run()`**: memory/OOM work (peak RSS is cross-st
 
 **Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
 - **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (source throughput, destination limits, disk/network bandwidth) that tuning can't move.
-- **Scale up** ([Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform)) only if the run is on the dltHub platform and you hit that external ceiling **in the runner's own RAM or vCPU** — never before Steps 1–3 are done, and never without the user's explicit approval (Step 4, Gate 0).
+- **Scale up** ([Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform)) only if the run is on the dltHub platform and you hit that external ceiling **in the runner's own RAM or vCPU** — never before Steps 1–3 are done, and never without the user's explicit approval ([Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform)).
 - **Repeat** from Step 1 — the bottleneck often *moves* to another stage after a fix. Apply the next lever one at a time. "Fast enough" is the user's call — a minor improvement may already be enough, so confirm before another round rather than chasing micro-gains.
 
 ## Step 4: Last resort — raise the instance size (dltHub platform)
 
-Applies **only** to pipelines running on the dltHub platform, and **only** after Steps 1–3 have been done and re-measured. A bigger runner is not a tuning lever: it is a **recurring cost** charged against your organization's run-time budget by a multiplier, so one hour on `large` spends four hours of budget — every run, forever. A config change is free; a tier bump is not. Reach for it when you have **measured** that the machine, not the pipeline, is the ceiling.
+Applies **only** to pipelines on the dltHub platform, and **only** once Steps 1–3 are done and re-measured. A bigger runner is not a tuning lever — it is a **recurring cost** charged against your organization's run-time budget by a multiplier, every run, forever.
 
-**Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size 
+**Never change it without the user's explicit permission.** This is a spending decision, not a tuning decision: diagnose and **propose**, never edit `require`, deploy a size change, or raise `execute={"timeout": ...}` on your own initiative — not when the job is OOM-killed, not when it is timing out, not when the user asked you to "just make it work".
 
-Tiers step `small` → `medium` → `large` → `xlarge`, doubling vCPU and memory each step and doubling the
-budget multiplier with them (`small` is the default at 1×). **Read the current numbers from the reference
-above, or from `deploy-workspace` (`advanced-patterns.md`) if that toolkit is installed — never quote tiers
-or multipliers from memory**, since instance sizing is in public preview.
+Two facts that save a wasted trip: **disk is the same on every tier**, so scaling up never fixes `Errno 28`; and each step **doubles** the charge, so it must roughly **halve** wall-clock to break even.
 
-Two facts that hold regardless of the numbers: **disk is the same on every tier**, so scaling up never buys
-disk; and each step **doubles** the charge, so it must roughly **halve** wall-clock to break even.
+**When Steps 1–3 are genuinely exhausted and the runner itself is the measured ceiling, read [instance-sizing.md](instance-sizing.md)** — gates, anti-signals, the budget-math question to ask, and how to apply the change. Do not read it earlier; "raise the instance size" is not an option until the gates there pass.
 
-### Gate 0: never change it without the user's explicit permission
-
-**This is a spending decision, not a tuning decision — it is the user's to make, every time.**
-
-Your job is to diagnose and **propose**; never edit `require`, deploy a size change, or raise
-`execute={"timeout": ...}` on your own initiative — not when the job is OOM-killed, not when it is timing
-out, and not when the user asked you to "just make it work". Ask, and put the budget math in the question:
-
-> "`ingest_orders` runs ~50 min/day on `small` (1×) = ~25 charged hours/month. Peak RSS is 3.8 of 4 GiB and
-> it was `OOMKilled` twice. Moving to `medium` (4 vCPU / 8 GiB, **2×**) makes that ~50 charged hours/month
-> at the same runtime. Shall I apply it?"
-
-Then **wait for an explicit yes**. Approval covers **one** tier change to **one** job — re-ask for the next
-tier, another job, or a later session. Never bundle a size or timeout change into a deploy with other edits.
-
-**Budget break-even, tell the user this:** `small` → `medium` doubles the charge, so it only stays
-budget-neutral if wall-clock drops by **≥50%**. A bigger box that doesn't roughly halve the run costs more
-budget for the same throughput — worth it for an OOM that has no other fix, rarely worth it for "a bit
-faster".
-
-### Gate 1: how to know it's really necessary
-
-Bump only when **all five** are true. If you can't answer one with a number, you haven't finished Step 1–3 — go back rather than up.
-
-1. **The bottleneck is known and its levers are applied.** Step 1 named the stage; Step 2's levers for that stage are set and Step 3 re-measured them. The bottleneck is still the same stage.
-2. **You have the number, from the run itself.** Peak RSS or CPU% from the `progress="log"` line (needs `psutil`), read out of `dlthub job logs <name>` — see [Tracking memory](#tracking-memory-dev-vs-production). A remembered "it felt slow" is not evidence. **That line is a sampled floor, so a low reading disproves nothing** — for RAM, the kill itself and the end-of-run cgroup peak are the trustworthy signals.
-3. **That number sits at the tier's ceiling.** RAM: the job was **killed** — exit **247** on the dltHub runner (137 / `OOMKilled` elsewhere) — or a cgroup peak within ~20% of the tier's memory (look the tier's memory up; don't assume it). Confirm the tier you were actually on with `dlthub deploy --show-manifest` or the job page (see [Tracking memory](#tracking-memory-dev-vs-production)). CPU: the CPU line pegged near 100% with `[normalize] workers` **already** at the tier's vCPU count.
-4. **There is headroom the extra hardware can actually use.** You measured a *scaling curve* below the ceiling: raising `[normalize] workers` 1 → 2 (or `[load] workers`) gave a real improvement, so 4 vCPU plausibly extends it. If 1 → 2 gained nothing, 4 vCPU gains nothing either — the limit is elsewhere (one un-rotated file, one resource, the source, the destination).
-5. **The cheap fixes are exhausted.** `buffer_max_items` lowered, file rotation set, destination memory/threads/batch-size capped, fresh-pipeline-per-object for many-object loops, `DLT_DATA_DIR` / blob staging for disk, and `execute={"timeout": ...}` raised if the job was cut off rather than starved — that one is **also** permission-gated (Gate 0), so propose it, don't apply it.
-
-### Anti-signals — do **not** bump
-
-| Symptom | Why a bigger instance won't help | Do instead |
-|---|---|---|
-| `OSError: [Errno 28] No space left on device` | disk is the same on **all** tiers | [Out of memory → Disk](#disk) — staging to blob, `DLT_DATA_DIR`, `delete_completed_jobs` |
-| Extract-bound: waiting on network, pagination, or a rate-limited API | CPU/RAM don't make the source answer faster | [Extract](#extract-is-slow-io-bound) + [Source-specific tuning](#source-specific-tuning-separate-toolkits) |
-| Load-bound on destination I/O | the ceiling is the destination, not the runner | [Load](#load-is-slow-destination-io-bound), destination-side capacity |
-| Job stopped at a time limit (not `OOMKilled`) | it wasn't starved of resources | `execute={"timeout": "6h"}`, or `execute={"timeout": {"timeout": 7200, "grace_period": 60}}` for a custom grace period (`grace_period` nests **inside** `timeout`) |
-| Job **completes** and never comes near the limit (checked against a cgroup peak, not the sampled log line) | memory isn't the constraint | re-diagnose from Step 1 |
-| Normalize slow but extract wrote **one** file | the process pool can't split one file across cores | rotate extract output: `[sources.data_writer] file_max_items` |
-
-### Applying it
-
-Step **one** tier at a time, and pair the bump with the lever that consumes it — **size alone changes nothing**, because `[normalize] workers` defaults to 1 and `[load] workers` to 20 regardless of the box. The instance is a *ceiling*, not a lever:
-
-- **RAM-bound** → one tier up; keep the memory levers in place (a bigger box is not a reason to un-tune `buffer_max_items`).
-- **CPU-bound** → one tier up **and** raise `[normalize] workers` to the new vCPU count in the same change.
-
-```python
-from dlt.hub import run
-
-@run.pipeline(my_pipeline, require={"instance": {"size": "medium"}})
-def heavy_sync():
-    ...
-```
-
-`require` is a **decorator argument only** — there is no `config.toml` or env-var form, and it needs a `__deployment__.py` manifest plus `dlthub deploy` to take effect. **Only with the approval from Gate 0 in hand**, hand over to **dlthub-platform** (`deploy-workspace`) to edit the manifest and deploy; install it if absent: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`. That toolkit's always-loaded **job resources and run-time budget** rule carries the full budget reference and the same permission requirement.
-
-Then **verify the spend is earning its multiplier**: re-read `dlthub job logs <name>` and check peak RSS now fits, or that the stage duration dropped roughly in proportion to the extra vCPU. If it didn't, **propose dropping back to the smaller tier** — you are paying the multiplier for nothing — and return to Step 1. Lowering a tier is a resource change like raising one: recommend it, let the user decide (Gate 0).
+**Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size
 
 ## Reference
 
@@ -293,5 +231,5 @@ Every knob can be set in `.dlt/config.toml` under a section, or as an env var by
 ## Next steps
 
 - **Source-level tuning still needed** → [Source-specific tuning](#source-specific-tuning-separate-toolkits) — install the matching pipeline toolkit, then run its optimize skill.
-- **Every lever applied and the runner itself is the measured ceiling** (dltHub platform only) → [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform) — pass the gates, **get the user's explicit approval with the budget math**, then hand the manifest change to **dlthub-platform** (`deploy-workspace`).
+- **Every lever applied and the runner itself is the measured ceiling** (dltHub platform only) → [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform), then [instance-sizing.md](instance-sizing.md) — pass the gates there, **get the user's explicit approval with the budget math**, then hand the manifest change to **dlthub-platform** (`deploy-workspace`).
 - **Tuned and stable** → hand over to **dlthub-platform** to deploy and schedule the pipeline on dltHub (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).
