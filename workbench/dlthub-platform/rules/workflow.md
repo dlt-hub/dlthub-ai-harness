@@ -16,6 +16,7 @@
 
 - **rest-api-pipeline** → `debug-pipeline` / `adjust-endpoint` (modify existing) — when the user needs to build or modify a pipeline before deploying
 - **data-exploration** → `build-notebook` — when the user wants to create marimo notebooks to deploy as interactive jobs
+- **performance** → `optimize-performance` — when a deployed job is slow, OOM-killed, or hitting its timeout, *before* proposing a bigger instance size or a longer `execute.timeout`; those spend run-time budget on every run, so tune first (install if absent: `uv run dlthub --non-interactive ai toolkit install performance`)
 
 ### Incoming (to dlthub-platform)
 
@@ -26,6 +27,7 @@
 - From **data-exploration** (after `build-notebook`) — notebook file already exists; `deploy-workspace` should use `dlthub serve` for the notebook job
 - From **data-quality** Profile A (after `run-data-quality`) — pipeline script with embedded `@dq.with_checks` decorators is the deployment target; carry the pipeline script path, pipeline name, and destination into `setup-runtime`
 - From **data-quality** Profile B (after `run-data-quality`) — `tools/dq_run.py` already exists with confirmed checks; carry the script path, pipeline name, and destination into `setup-runtime` as the deployment target
+- From **performance** (after `optimize-performance` Step 4, with the user's explicit approval and budget math) — the bottleneck is diagnosed and the tier bump is agreed; apply `require={"instance": {"size": ...}}` in the manifest and `dlthub deploy`. Without that approval, route back to `optimize-performance`.
 - From **quick-start** (shortcut path when a working pipeline exists) — pipeline name and destination may be inferred from `dlthub ai status`; `setup-runtime` runs full discovery if not.
 
 References:
