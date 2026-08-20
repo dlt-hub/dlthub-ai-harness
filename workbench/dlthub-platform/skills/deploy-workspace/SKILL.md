@@ -31,6 +31,7 @@ Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns
 ### Step 2a. Deploy a workspace
 **SKIP** for simple workspaces without deployment manifest
 If `__deployment__.py` is set up, first run `dlthub deploy --dry-run` to preview changes, then **STOP** — show the plan and get approval from the user before deploying.
+If the diff touches `require.instance.size`, `execute.timeout`, or a trigger cadence, call it out **separately and explicitly** with its budget impact — a general "yes, deploy" does not cover a resource change (**job resources and run-time budget** rule).
 
 ```bash
 dlthub deploy  # synchronizes deployment module with runtime
@@ -126,6 +127,7 @@ See [advanced-patterns.md](advanced-patterns.md) for full examples of each patte
 - **Non-pipeline jobs** -- `@run.job` for general batch work (DQ checks, reports), `@run.interactive` for MCP servers, dashboards, REST APIs.
 - **Dependency groups** -- `require={"dependency_groups": ["ibis"]}` installs extra packages only for jobs that need them. Declare groups in `[dependency-groups]` in `pyproject.toml`.
 - **Timeouts** -- `execute={"timeout": "6h"}` overrides the default 120-minute limit. Use for backfill or long-running jobs.
+- **Instance size** -- `require={"instance": {"size": "medium"}}` gives the runner more vCPU/RAM (default `small`: 2 vCPU / 4 GiB). Charged by a budget multiplier on **every** run — **never set or change it without asking the user first** (see the always-loaded **job resources and run-time budget** rule), and tune the pipeline via the **performance** toolkit (`optimize-performance`) before proposing a bump.
 
 
 ## Step 5: Public links for interactive jobs
@@ -144,4 +146,5 @@ dlthub job unpublish <job_name>  # revoke public access
 - Scripts must have `if __name__ == "__main__":` or the job does nothing.
 - Runtime installs from `pyproject.toml` — add all needed packages (e.g. `uv add numpy pandas` if using `.df()`).
 - Jobs are killed after 120 minutes. Overwrite timeout in the decorators for long running (backfill) jobs
+- **Resource and budget parameters (`require.instance.size`, `execute.timeout`, trigger cadence) require explicit human permission every time** — propose with the budget math, wait for a yes, never bundle one into a `dlthub deploy` with other edits. See the always-loaded **job resources and run-time budget** rule.
 - One workspace per GitHub account — connecting a new repo replaces existing deployments.
