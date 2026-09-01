@@ -60,6 +60,7 @@ Key decisions:
 - **`write_disposition="merge"`**: required with incremental — replaces rows with matching primary key
 - **`primary_key`**: set this to the table's primary key so upserts work correctly
 - **`initial_value`**: where to start on the very first run — older values are excluded
+- **`lag`** (Optional): re-load a trailing window each run so late-arriving or back-dated updates are caught. **The unit is inferred from the shape of the cursor value, not from your config** — dlt sniffs it with `detect_datetime_format`: a date (`"2026-08-27"`) gets **days**, a datetime (`"2026-08-27T00:00:00Z"`) gets **seconds**. So "re-load the last 7 days" is `lag=7` on a date cursor but `lag=604800` on a datetime cursor. Needs `merge` + `primary_key`, or the re-fetched rows duplicate. Ref: https://dlthub.com/docs/general-usage/incremental/lag
 
 Check stored cursor state between runs:
 ```
