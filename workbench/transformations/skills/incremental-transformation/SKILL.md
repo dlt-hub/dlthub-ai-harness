@@ -116,6 +116,7 @@ def orders_window(
 
 - **`range_start="open"` (default)**: excludes the last-seen cursor value on the next run, preventing double-processing the boundary row. Switch to `"closed"` only if the source may update the record exactly at the cursor boundary.
 - **`merge` requires `primary_key`**: without it, rows are not deduped — merge silently behaves like append.
+- **`lag`** (Optional): `lag` re-loads a trailing window so late-arriving rows are caught, but dlt infers the unit from the shape of the cursor value (`detect_datetime_format`) — a date (`"2026-08-27"`) gets **days**, a datetime (`"2026-08-27T00:00:00Z"`) gets **seconds**. "Last 7 days" is `lag=7` on a date cursor, `lag=604800` on a datetime one. Ref: https://dlthub.com/docs/general-usage/incremental/lag
 - **Load-based auto-join**: the dotted path `_dlt_loads.inserted_at` triggers an automatic join to the `_dlt_loads` table. Do not write the JOIN yourself.
 - **`columns=` hints still apply**: any column that may be NULL on the first incremental run needs an explicit `columns=` hint, same as in `create-transformation`.
 - **Same vs. different destination**: when source and target use the same physical destination (same DB file or host), dlthub pushes SQL directly without materializing data. Across different destinations, dlthub streams Arrow chunks automatically.
