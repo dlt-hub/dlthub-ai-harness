@@ -39,6 +39,35 @@ Shell commands get three extra checks beyond "does a token name a guarded file":
 The guard also refuses tool calls that **rewrite the guard or its config**
 (`rm .agents/hooks/secrets_guard.py`, `sed -i … .claude/settings.json`, an `Edit`
 on either). Reading those files is fine; only mutating them is refused.
+`.codex/config.toml` is deliberately *not* on that list — Codex hooks live in
+`.codex/hooks.json` (openai/codex#17532), so config.toml carries no guard
+registration and blocking it would only get in the way of Codex configuration.
+
+### The escape hatch is exempt
+
+A guard that refuses the route its own deny message recommends leaves the agent
+with no sanctioned way to work with secrets — the state most likely to make it
+route around the guard. So these pass, even though they name a secrets file:
+
+```bash
+dlthub ai secrets view-redacted --path .dlt/secrets.toml
+dlthub ai secrets update-fragment --path .dlt/secrets.toml '<toml>'
+uv run dlthub ai secrets list
+```
+
+and so do MCP tools whose name ends in `secrets_list`, `secrets_view_redacted`,
+or `secrets_update_fragment` (matched by trailing name, so the server can be
+called anything).
+
+The exemption is per *command segment*, not per command line: `dlthub ai secrets
+list && cat .env` is still denied, as is the same chain inside `sh -c '…'`. Only
+the three redacted subcommands are exempt — any other `dlthub ai secrets`
+subcommand fails closed.
+
+Not secret, not restricted: `.dlt/config.toml` reads and edits are always
+allowed. The one place it gets caught is a *bulk* read of the whole `.dlt`
+directory (`grep -rn destination .dlt/`), which would also read `secrets.toml`
+— that denial carries its own message pointing at the direct read.
 
 ## How one script serves three agents
 
