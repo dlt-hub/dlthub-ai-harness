@@ -1,12 +1,12 @@
 ---
 name: rename-component
-description: Rename a skill, command, or rule within a toolkit and update all references. Use when the user wants to rename a plugin component.
+description: Rename a skill, command, rule, or agent within a toolkit and update all references. Use when the user wants to rename a plugin component.
 argument-hint: <toolkit:old-name> <new-name>
 ---
 
 # Rename toolkit component
 
-Rename a skill, command, or rule and update all cross-references within the toolkit.
+Rename a skill, command, rule, or agent and update all cross-references within the toolkit.
 
 Parse `$ARGUMENTS`:
 - `toolkit:old-name` (required): toolkit and component to rename (e.g. `rest-api-pipeline:debug-pipeline`)
@@ -20,6 +20,7 @@ Determine what `old-name` is:
 - **Skill**: exists in `components.skills` → directory at `workbench/<toolkit>/skills/<old-name>/`
 - **Command**: exists in `components.commands` → file at `workbench/<toolkit>/commands/<old-name>.md`
 - **Rule**: exists in `components.rules` → file at `workbench/<toolkit>/rules/<old-name>.md`
+- **Agent**: exists in `components.agents` → directory at `workbench/<toolkit>/dlthub/agents/<old-name>/`
 
 If `old-name` doesn't match any component, ERROR and stop.
 
@@ -28,6 +29,7 @@ If `old-name` doesn't match any component, ERROR and stop.
 - **Skill**: rename directory `skills/<old-name>/` → `skills/<new-name>/`, then update `name:` in SKILL.md frontmatter
 - **Command**: rename file `commands/<old-name>.md` → `commands/<new-name>.md`
 - **Rule**: rename file `rules/<old-name>.md` → `rules/<new-name>.md`
+- **Agent**: rename directory `dlthub/agents/<old-name>/` → `dlthub/agents/<new-name>/`, then update `name:` in AGENT.md frontmatter
 
 ## 3. Update cross-references within the toolkit
 
@@ -55,7 +57,7 @@ Run `make validate-toolkits` to confirm everything is consistent after the renam
 
 ```
 Renamed: <toolkit>:<old-name> → <toolkit>:<new-name>
-Type: skill | command | rule
+Type: skill | command | rule | agent
 Files updated: N
   - <list of files that were modified>
 Validation: passed | failed
