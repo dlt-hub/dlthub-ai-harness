@@ -104,14 +104,26 @@ _GLOB_CHARS = "*?["
 
 # Files that switch this guard off; a tool call that rewrites them is refused.
 _GUARD_FILES = {"secrets_guard.py"}
+# Only files that actually register the guard. `.codex/config.toml` is
+# deliberately absent: Codex hooks live in `.codex/hooks.json` (config.toml
+# hooks don't fire — openai/codex#17532), so guarding it would block ordinary
+# Codex configuration work and protect nothing.
 _GUARD_CONFIGS = {
     (".claude", "settings.json"),
     (".claude", "settings.local.json"),
     (".cursor", "hooks.json"),
     (".codex", "hooks.json"),
-    (".codex", "config.toml"),
 }
 _WRITE_TOOLS = {"write", "edit", "multiedit", "notebookedit", "apply_patch"}
+
+# The redacted-access route this guard's own deny message tells the agent to
+# use. Blocking it would leave the agent with no sanctioned way to work with
+# secrets — the state most likely to make it route around the guard.
+# Named by their trailing tool name so the MCP server can be called anything.
+_SAFE_TOOL_SUFFIXES = ("secrets_list", "secrets_view_redacted", "secrets_update_fragment")
+_SAFE_CLI_SUBCOMMANDS = {"list", "view-redacted", "update-fragment"}
+_CLI_RUNNERS = {"uv", "uvx", "poetry", "pipx", "run", "exec", "--"}
+_SEGMENT_BREAKS = {"|", "||", "&&", ";", "&", ">", ">>", "<", "<<"}
 
 # Payload fields that carry prose rather than paths. Scanning them produces
 # false denials (a Grep for the literal string "secrets.toml", a commit message
@@ -128,6 +140,13 @@ DENY_MESSAGE = (
     "`dlthub ai secrets update-fragment --path <file> '<toml>'`. "
     "If a dlt workspace MCP server is connected, its secrets_view_redacted and "
     "secrets_update_fragment tools do the same with richer output."
+)
+
+DIRECTORY_MESSAGE = (
+    "Blocked: this reads every file in a directory that holds secrets. "
+    "Read the specific file you need directly — non-secret files such as "
+    "`.dlt/config.toml` are not restricted — or use "
+    "`dlthub ai secrets view-redacted` for the secrets themselves."
 )
 
 TAMPER_MESSAGE = (
@@ -260,6 +279,55 @@ def _dumps_environment(tokens: list) -> bool:
     return False
 
 
+def _is_safe_secrets_cli(tokens: list) -> bool:
+    """True for `dlthub ai secrets {list,view-redacted,update-fragment}`.
+
+    That command takes a secrets path as an argument by design and never
+    prints an unredacted value — it is the route the deny message recommends,
+    so matching its path argument would make the guard self-defeating.
+    Anything else under `dlthub ai secrets` stays blocked: unknown
+    subcommands fail closed.
+    """
+    # `sh -c '<command>'` — judge the command it actually runs. `all` so that
+    # `sh -c 'dlthub ai secrets list && cat .env'` is not exempted wholesale.
+    for position, token in enumerate(tokens):
+        if token in _CODE_FLAGS and position + 1 < len(tokens):
+            if _basenames(tokens[:position]) & _INTERPRETERS:
+                inner = _split_segments(_tokenize(tokens[position + 1]))
+                return bool(inner) and all(_is_safe_secrets_cli(seg) for seg in inner)
+
+    words = [os.path.basename(token.replace("\\", "/")).lower() for token in tokens]
+    index = 0
+    while index < len(words) and words[index] in _CLI_RUNNERS:
+        index += 1
+    if words[index:index + 3] != ["dlthub", "ai", "secrets"]:
+        return False
+    for word in words[index + 3:]:
+        if word.startswith("-"):
+            continue  # a flag, or a flag's value; the subcommand comes first
+        return word in _SAFE_CLI_SUBCOMMANDS
+    return True  # bare `dlthub ai secrets` — prints usage
+
+
+def _split_segments(tokens: list) -> list:
+    """Split a token list on shell operators, so each command is judged alone.
+
+    Without this, `dlthub ai secrets list && cat .env` would inherit the safe
+    verdict of its first command.
+    """
+    segments, current = [], []
+    for token in tokens:
+        if token in _SEGMENT_BREAKS:
+            if current:
+                segments.append(current)
+            current = []
+        else:
+            current.append(token)
+    if current:
+        segments.append(current)
+    return segments
+
+
 def _runs_guarded_code(tokens: list) -> bool:
     """True if an interpreter is handed inline code that names a guarded file."""
     for index, token in enumerate(tokens):
@@ -267,14 +335,18 @@ def _runs_guarded_code(tokens: list) -> bool:
             continue
         if not (_basenames(tokens[:index]) & _INTERPRETERS):
             continue
-        for piece in _CODE_SPLIT.split(tokens[index + 1]):
+        blob = tokens[index + 1]
+        inner = _split_segments(_tokenize(blob))
+        if inner and all(_is_safe_secrets_cli(seg) for seg in inner):
+            continue  # `sh -c 'dlthub ai secrets view-redacted --path ...'`
+        for piece in _CODE_SPLIT.split(blob):
             if piece and is_blocked_path(piece):
                 return True
     return False
 
 
-def command_is_blocked(command: str, cwd: str) -> bool:
-    """True if a shell command reads a guarded file or dumps the environment."""
+def command_deny_reason(command: str, cwd: str):
+    """The deny message for a shell command, or None to allow."""
     # shlex on a non-string silently reads stdin on older pythons instead of
     # raising; force a raise so the caller fails closed on a malformed payload
     if not isinstance(command, str):
@@ -282,21 +354,27 @@ def command_is_blocked(command: str, cwd: str) -> bool:
 
     tokens = _tokenize(command)
     if _dumps_environment(tokens) or _runs_guarded_code(tokens):
-        return True
+        return DENY_MESSAGE
 
-    names = _basenames(tokens)
-    reads_in_bulk = bool(names & _BULK_READERS)
+    for segment in _split_segments(tokens):
+        if _is_safe_secrets_cli(segment):
+            continue  # the sanctioned redacted-access route
+        reads_in_bulk = bool(_basenames(segment) & _BULK_READERS)
+        for token in segment:
+            if any(char in token for char in _GLOB_CHARS):
+                if _glob_is_blocked(token, cwd):
+                    return DENY_MESSAGE
+                continue
+            if is_blocked_path(token):
+                return DENY_MESSAGE
+            if reads_in_bulk and is_secret_dir(token):
+                return DIRECTORY_MESSAGE
+    return None
 
-    for token in tokens:
-        if any(char in token for char in _GLOB_CHARS):
-            if _glob_is_blocked(token, cwd):
-                return True
-            continue
-        if is_blocked_path(token):
-            return True
-        if reads_in_bulk and is_secret_dir(token):
-            return True
-    return False
+
+def command_is_blocked(command: str, cwd: str) -> bool:
+    """True if a shell command reads a guarded file or dumps the environment."""
+    return command_deny_reason(command, cwd) is not None
 
 
 def command_tampers_with_guard(command: str) -> bool:
@@ -341,11 +419,14 @@ def _tool_reason(payload: dict, cwd: str):
         tool_input = {}
     name = tool_name.lower() if isinstance(tool_name, str) else ""
 
+    if name.endswith(_SAFE_TOOL_SUFFIXES):
+        return None  # the redacted-access tools take a secrets path by design
+
     if name in ("bash", "shell", "powershell"):
         command = tool_input.get("command", "")
         if command_tampers_with_guard(command):
             return TAMPER_MESSAGE
-        return DENY_MESSAGE if command_is_blocked(command, cwd) else None
+        return command_deny_reason(command, cwd)
 
     if name == "read":
         return DENY_MESSAGE if is_blocked_path(tool_input.get("file_path", "")) else None
@@ -405,7 +486,7 @@ def main() -> int:
             if command_tampers_with_guard(command):
                 reason = TAMPER_MESSAGE
             else:
-                reason = DENY_MESSAGE if command_is_blocked(command, cwd) else None
+                reason = command_deny_reason(command, cwd)
         else:
             reason = _tool_reason(payload, cwd)
     except Exception:

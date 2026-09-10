@@ -48,7 +48,11 @@ Shell commands are tokenized with `shlex` configured with `punctuation_chars=Tru
 - **Inline interpreter code** after `-c`/`-e` on a real interpreter is split open, catching `bash -c 'cat .env'` and `python3 -c "open('.env')"`. Restricting it to interpreters keeps `git commit -m "fix .env loading"` allowed.
 - **`env` / `printenv` dumps** are blocked: dlt resolves credentials from environment variables as readily as from `secrets.toml`, so `env | grep -i key` leaks exactly what this guard protects. The prefix form `env FOO=1 cmd` still runs.
 
-Tool calls that rewrite the guard itself or the config that installs it (`secrets_guard.py`, `.claude/settings.json`, `.cursor/hooks.json`, `.codex/hooks.json`, `.codex/config.toml`) are refused with a separate message. Reading them is allowed; only mutation is refused.
+Tool calls that rewrite the guard itself or the config that installs it (`secrets_guard.py`, `.claude/settings.json`, `.cursor/hooks.json`, `.codex/hooks.json`) are refused with a separate message. Reading them is allowed; only mutation is refused. `.codex/config.toml` is excluded on purpose: Codex hooks live in `hooks.json` (openai/codex#17532), so it holds no guard registration and blocking it would only obstruct ordinary Codex configuration.
+
+**The sanctioned escape hatch is exempt.** The deny message tells the agent to use `dlthub ai secrets view-redacted --path <file>` — which names a secrets file as an argument, and so was blocked by the guard that recommended it. The same held for the MCP tools. A guard that refuses its own escape hatch leaves the agent with no legitimate path and maximum incentive to work around it. Exempt now: `dlthub ai secrets {list, view-redacted, update-fragment}` (optionally behind `uv run`/`uvx`/`poetry run`, and inside `sh -c`), plus any tool whose name ends in `secrets_list`, `secrets_view_redacted`, or `secrets_update_fragment` — matched by trailing name so the MCP server can be called anything, consistent with the deny message not naming one.
+
+The exemption is evaluated **per command segment**, splitting on shell operators, so `dlthub ai secrets list && cat .env` is still denied and a safe first segment can't shield a later one. Unknown `dlthub ai secrets` subcommands fail closed.
 
 Tools with no dedicated branch fall through to a generic scan of every path-shaped string in `tool_input`, skipping prose fields (`pattern`, `content`, `query`, …) where a mention of `.env` is not an access.
 

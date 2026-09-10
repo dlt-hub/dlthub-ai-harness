@@ -239,6 +239,100 @@ class OtherToolsTest(GuardTestCase):
         self.assert_claude_allow(self.claude("Write", {"file_path": "src/pipeline.py", "content": "x"}))
 
 
+class EscapeHatchTest(GuardTestCase):
+    """The route the deny message recommends must not itself be blocked.
+
+    A guard that refuses its own escape hatch leaves the agent with no
+    sanctioned way to work with secrets, which is the state most likely to
+    make it route around the guard.
+    """
+
+    def test_cli_view_redacted_with_path_allowed(self):
+        self.assert_claude_allow(
+            self.bash("dlthub ai secrets view-redacted --path .dlt/secrets.toml")
+        )
+
+    def test_cli_update_fragment_with_path_allowed(self):
+        self.assert_claude_allow(
+            self.bash("dlthub ai secrets update-fragment --path .dlt/secrets.toml '[x]'")
+        )
+
+    def test_cli_behind_uv_run_allowed(self):
+        self.assert_claude_allow(
+            self.bash("uv run dlthub ai secrets view-redacted --path .dlt/dev.secrets.toml")
+        )
+
+    def test_cli_piped_allowed(self):
+        self.assert_claude_allow(
+            self.bash("dlthub ai secrets view-redacted --path .dlt/secrets.toml | head -20")
+        )
+
+    def test_cli_wrapped_in_sh_allowed(self):
+        self.assert_claude_allow(
+            self.bash("bash -c 'dlthub ai secrets view-redacted --path .dlt/secrets.toml'")
+        )
+
+    def test_mcp_redacted_tools_allowed(self):
+        for tool in (
+            "mcp__dlt-workspace-mcp__secrets_view_redacted",
+            "mcp__anything__secrets_update_fragment",
+            "mcp__x__secrets_list",
+        ):
+            with self.subTest(tool=tool):
+                self.assert_claude_allow(self.claude(tool, {"path": ".dlt/secrets.toml"}))
+
+    # the exemption must not become a hole
+
+    def test_unknown_secrets_subcommand_denied(self):
+        # unknown subcommands fail closed — only the three redacted ones pass
+        self.assert_claude_deny(self.bash("dlthub ai secrets export --path .dlt/secrets.toml"))
+
+    def test_chained_command_still_checked(self):
+        self.assert_claude_deny(self.bash("dlthub ai secrets list && cat .env"))
+        self.assert_claude_deny(
+            self.bash("dlthub ai secrets view-redacted --path .dlt/secrets.toml; cat .env")
+        )
+
+    def test_chained_inside_sh_still_checked(self):
+        self.assert_claude_deny(self.bash("sh -c 'dlthub ai secrets list && cat .env'"))
+
+    def test_unrelated_mcp_read_still_denied(self):
+        self.assert_claude_deny(
+            self.claude("mcp__filesystem__read_file", {"path": ".dlt/secrets.toml"})
+        )
+
+
+class ConfigTomlTest(GuardTestCase):
+    """`.dlt/config.toml` holds no secrets and agents read it constantly."""
+
+    def test_direct_read_allowed(self):
+        self.assert_claude_allow(self.claude("Read", {"file_path": ".dlt/config.toml"}))
+        self.assert_claude_allow(self.bash("cat .dlt/config.toml"))
+
+    def test_edit_allowed(self):
+        self.assert_claude_allow(
+            self.claude("Edit", {"file_path": ".dlt/config.toml", "old_string": "a", "new_string": "b"})
+        )
+
+    def test_codex_config_toml_not_guarded(self):
+        # Codex hooks live in .codex/hooks.json (openai/codex#17532), so
+        # .codex/config.toml carries no guard registration to protect
+        self.assert_claude_allow(
+            self.claude("Edit", {"file_path": ".codex/config.toml", "old_string": "a", "new_string": "b"})
+        )
+
+    def test_codex_hooks_json_still_guarded(self):
+        self.assert_claude_deny(
+            self.claude("Edit", {"file_path": ".codex/hooks.json", "old_string": "a", "new_string": "b"})
+        )
+
+    def test_bulk_read_of_secrets_dir_explains_the_alternative(self):
+        result = self.bash("grep -rn destination .dlt/")
+        self.assert_claude_deny(result)
+        reason = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("config.toml", reason)
+
+
 class TamperTest(GuardTestCase):
     def test_deleting_the_guard_denied(self):
         self.assert_claude_deny(self.bash("rm .agents/hooks/secrets_guard.py"))
