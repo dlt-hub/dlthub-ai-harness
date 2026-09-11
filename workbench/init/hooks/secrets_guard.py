@@ -15,7 +15,9 @@ Blocks reads of dlt secrets (secrets.toml, *.secrets.toml), dotenv files
 (.env, .env.*, .envrc) and common credential files (.netrc, .pgpass,
 service_account.json, ssh private keys, .aws/credentials). Placeholder
 variants — example/template/sample — stay readable. Matching is
-case-insensitive and ignores editor backup suffixes (.bak, ~, .save).
+case-insensitive and ignores editor backup suffixes (.bak, ~, .save). A
+symlink is judged by its real target too, so an innocuous-looking alias
+pointing at a guarded file doesn't get a pass.
 
 Shell commands are tokenized with shell punctuation split out, so `cat<.env`
 and `cat .env|head` are caught. Glob tokens are expanded against the payload's
@@ -172,8 +174,36 @@ def _strip_backup_suffixes(name: str) -> str:
     return name
 
 
-def is_blocked_path(path: str) -> bool:
-    """True if `path` names a dlt secrets, dotenv, or credential file."""
+def _is_blocked_name(name: str, parent: str) -> bool:
+    """True if an already-lowercased, backup-suffix-stripped basename (plus
+    its parent directory name) names a guarded secrets/dotenv/credential file."""
+    if name in _BLOCKED_NAMES:
+        return True
+    if (parent, name) in _BLOCKED_IN_DIR:
+        return True
+    if name.endswith(".secrets.toml"):
+        return name[: -len(".secrets.toml")] not in _PLACEHOLDER_SUFFIXES
+    if name.startswith(".env."):
+        return name.rsplit(".", 1)[-1] not in _PLACEHOLDER_SUFFIXES
+    return False
+
+
+def _resolve(path: str, cwd: str) -> str:
+    """Absolute path for `path`, resolved against `cwd` if relative.
+
+    `os.path.join` already returns an absolute `path` unchanged, so no
+    separate `isabs` branch is needed.
+    """
+    return os.path.join(cwd, os.path.expanduser(path))
+
+
+def is_blocked_path(path: str, cwd: str = None) -> bool:
+    """True if `path` names a dlt secrets, dotenv, or credential file.
+
+    When `cwd` is given and `path` is itself a symlink, also judges what it
+    resolves to: a symlink named `notes.txt` that points at `secrets.toml`
+    is blocked by its real target, not just its innocent-looking alias.
+    """
     if not isinstance(path, str):
         raise TypeError("path is not a string")
 
@@ -183,15 +213,17 @@ def is_blocked_path(path: str) -> bool:
     # lowercase: macOS/Windows resolve SECRETS.TOML and secrets.toml to the same file
     name = _strip_backup_suffixes(segments[-1].lower())
     parent = segments[-2].lower() if len(segments) > 1 else ""
+    if _is_blocked_name(name, parent):
+        return True
 
-    if name in _BLOCKED_NAMES:
-        return True
-    if (parent, name) in _BLOCKED_IN_DIR:
-        return True
-    if name.endswith(".secrets.toml"):
-        return name[: -len(".secrets.toml")] not in _PLACEHOLDER_SUFFIXES
-    if name.startswith(".env."):
-        return name.rsplit(".", 1)[-1] not in _PLACEHOLDER_SUFFIXES
+    if cwd is not None:
+        candidate = _resolve(path, cwd)
+        if os.path.islink(candidate):
+            # realpath is already absolute and fully resolved (chained
+            # symlinks included), so re-check it as a plain name — no cwd
+            # needed for a second hop.
+            return is_blocked_path(os.path.realpath(candidate))
+
     return False
 
 
@@ -227,11 +259,9 @@ def _glob_is_blocked(token: str, cwd: str) -> bool:
     if pattern.startswith(".env") or "secret" in pattern or "credential" in pattern:
         return True
 
-    expanded = os.path.expanduser(token)
-    if not os.path.isabs(expanded):
-        expanded = os.path.join(cwd, expanded)
+    expanded = _resolve(token, cwd)
     matches = globlib.glob(expanded)
-    return any(is_blocked_path(match) or is_secret_dir(match) for match in matches)
+    return any(is_blocked_path(match, cwd) or is_secret_dir(match) for match in matches)
 
 
 def _tokenize(command: str) -> list:
@@ -328,7 +358,7 @@ def _split_segments(tokens: list) -> list:
     return segments
 
 
-def _runs_guarded_code(tokens: list) -> bool:
+def _runs_guarded_code(tokens: list, cwd: str) -> bool:
     """True if an interpreter is handed inline code that names a guarded file."""
     for index, token in enumerate(tokens):
         if token not in _CODE_FLAGS or index + 1 >= len(tokens):
@@ -340,7 +370,7 @@ def _runs_guarded_code(tokens: list) -> bool:
         if inner and all(_is_safe_secrets_cli(seg) for seg in inner):
             continue  # `sh -c 'dlthub ai secrets view-redacted --path ...'`
         for piece in _CODE_SPLIT.split(blob):
-            if piece and is_blocked_path(piece):
+            if piece and is_blocked_path(piece, cwd):
                 return True
     return False
 
@@ -353,7 +383,7 @@ def command_deny_reason(command: str, cwd: str):
         raise TypeError("command is not a string")
 
     tokens = _tokenize(command)
-    if _dumps_environment(tokens) or _runs_guarded_code(tokens):
+    if _dumps_environment(tokens) or _runs_guarded_code(tokens, cwd):
         return DENY_MESSAGE
 
     for segment in _split_segments(tokens):
@@ -365,7 +395,7 @@ def command_deny_reason(command: str, cwd: str):
                 if _glob_is_blocked(token, cwd):
                     return DENY_MESSAGE
                 continue
-            if is_blocked_path(token):
+            if is_blocked_path(token, cwd):
                 return DENY_MESSAGE
             if reads_in_bulk and is_secret_dir(token):
                 return DIRECTORY_MESSAGE
@@ -395,7 +425,7 @@ def _scan_values(value, cwd: str, depth: int = 0) -> bool:
     if depth > 6:
         return False
     if isinstance(value, str):
-        return is_blocked_path(value)
+        return is_blocked_path(value, cwd)
     if isinstance(value, list):
         return any(_scan_values(item, cwd, depth + 1) for item in value)
     if isinstance(value, dict):
@@ -429,7 +459,7 @@ def _tool_reason(payload: dict, cwd: str):
         return command_deny_reason(command, cwd)
 
     if name == "read":
-        return DENY_MESSAGE if is_blocked_path(tool_input.get("file_path", "")) else None
+        return DENY_MESSAGE if is_blocked_path(tool_input.get("file_path", ""), cwd) else None
 
     if name == "grep":
         raw_paths = tool_input.get("paths")
@@ -443,13 +473,13 @@ def _tool_reason(payload: dict, cwd: str):
         for key in ("path", "file_path", "glob"):
             if tool_input.get(key):
                 paths.append(tool_input[key])
-        return DENY_MESSAGE if any(is_blocked_path(path) for path in paths) else None
+        return DENY_MESSAGE if any(is_blocked_path(path, cwd) for path in paths) else None
 
     if name in _WRITE_TOOLS:
         targets = [tool_input.get(key, "") for key in ("file_path", "path", "notebook_path")]
         if any(isinstance(t, str) and is_guard_path(t) for t in targets if t):
             return TAMPER_MESSAGE
-        if any(isinstance(t, str) and is_blocked_path(t) for t in targets if t):
+        if any(isinstance(t, str) and is_blocked_path(t, cwd) for t in targets if t):
             return DENY_MESSAGE
         return None
 
@@ -480,7 +510,7 @@ def main() -> int:
             cwd = os.getcwd()
 
         if event in _CURSOR_FILE_EVENTS:
-            reason = DENY_MESSAGE if is_blocked_path(payload.get("file_path", "")) else None
+            reason = DENY_MESSAGE if is_blocked_path(payload.get("file_path", ""), cwd) else None
         elif event == "beforeShellExecution":
             command = payload.get("command", "")
             if command_tampers_with_guard(command):

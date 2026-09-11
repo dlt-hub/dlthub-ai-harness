@@ -145,6 +145,28 @@ class FileNameTest(GuardTestCase):
         self.assert_claude_allow(self.claude("Read", {"file_path": "~/.ssh/id_ed25519.pub"}))
 
 
+class SymlinkTest(GuardTestCase):
+    """A symlink named around the blocklist still points at a real secret."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        (cls.workspace / "notes.txt").symlink_to(cls.workspace / ".dlt" / "secrets.toml")
+        (cls.workspace / "readme.md").symlink_to(cls.workspace / "pyproject.toml")
+
+    def test_read_symlink_to_secrets_denied(self):
+        self.assert_claude_deny(self.claude("Read", {"file_path": "notes.txt"}))
+
+    def test_read_symlink_to_harmless_file_allowed(self):
+        self.assert_claude_allow(self.claude("Read", {"file_path": "readme.md"}))
+
+    def test_cat_symlink_to_secrets_denied(self):
+        self.assert_claude_deny(self.bash("cat notes.txt"))
+
+    def test_cursor_read_symlink_to_secrets_denied(self):
+        self.assert_cursor_deny(self.cursor("beforeReadFile", file_path="notes.txt"))
+
+
 class GrepTest(GuardTestCase):
     def test_paths_as_string_denied(self):
         self.assert_claude_deny(self.claude("Grep", {"paths": ".dlt/secrets.toml"}))
