@@ -31,7 +31,7 @@ The outer loop connects the two phases: insights from the transformation and ser
 
 The harness gives your coding assistant **toolkits** — that contain a structured, guided workflow for a specific phase. Instead of generating ad-hoc code, the assistant follows a defined sequence of steps from start to finish. 
 
-A **Toolkit** contains skills, commands, rules, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP. 
+A **Toolkit** contains skills, commands, rules, agents, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to leverage the MCP. 
 
 All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
 
@@ -46,6 +46,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 | **Rule** | Always-on context (conventions, constraints) | Every session, automatically |
 | **Workflow** | Ordered sequence of skills with a fixed entry point | Loaded as a rule — always active |
 | **MCP server** | Exposes pipelines, tables, and secrets as tools | During a session, via MCP protocol |
+| **Agent** | A self-contained background agent: system prompt, preloaded skills and rules, declared access, and a structured result contract | Unattended — on a schedule, after a job fails, or on demand |
 | **[dltHub context](https://dlthub.com/context)** | 9,700+ REST API source definitions with verified connectors and pipeline patterns | During source discovery, via `search_dlthub_sources` |
 
 

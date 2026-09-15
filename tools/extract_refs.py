@@ -2,7 +2,7 @@
 """Extract references from toolkit markdown files for validation.
 
 For each toolkit under workbench/, outputs:
-- Component map: skills, commands, rules (for cross-reference resolution)
+- Component map: skills, commands, rules, agents (for cross-reference resolution)
 - Per-file URL extractions with surrounding context lines
 
 Usage:
@@ -39,7 +39,12 @@ def extract_urls_with_context(text: str) -> list[dict]:
 
 def build_component_map(plugin_dir: Path) -> dict:
     """Build map of addressable components in a toolkit."""
-    components: dict[str, list[str]] = {"skills": [], "commands": [], "rules": []}
+    components: dict[str, list[str]] = {
+        "skills": [],
+        "commands": [],
+        "rules": [],
+        "agents": [],
+    }
 
     skills_dir = plugin_dir / "skills"
     if skills_dir.is_dir():
@@ -58,6 +63,13 @@ def build_component_map(plugin_dir: Path) -> dict:
         for f in sorted(rules_dir.rglob("*.md")):
             rel = str(f.relative_to(rules_dir))
             components["rules"].append(rel)
+
+    # agents are folders holding an AGENT.md, like skills hold a SKILL.md
+    agents_dir = plugin_dir / "dlthub" / "agents"
+    if agents_dir.is_dir():
+        for d in sorted(agents_dir.iterdir()):
+            if (d / "AGENT.md").is_file():
+                components["agents"].append(d.name)
 
     return components
 

@@ -13,6 +13,7 @@ workbench/                                # All toolkits live here
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
+    dlthub/agents/<name>/AGENT.md  # Background agent manifests (optional)
     .mcp.json                      # MCP servers (optional)
   init/                            # Shared rules, secrets handling, and workspace MCP
 tools/                             # Dev tooling
@@ -33,6 +34,7 @@ A toolkit is a Claude Code plugin. It may contain:
 - **Commands** (`commands/<name>.md`) — frontmatter required (`name`, `description`). Name must match filename. User-invoked via `/toolkit:command`.
 - **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
+- **Agents** (`dlthub/agents/<name>/AGENT.md`) — background agent manifests: a folder like a skill, markdown + YAML frontmatter, body is the system prompt. Name must match the folder. Declares `access`, `inputs`, `output` (which must carry `status` and `summary`) and `defaults`. Lives under `dlthub/` so it never mixes with a host's native agents. See `BACKGROUND_AGENTS.md` — it is the spec.
 
 ### Toolkit Workflow (`rules/workflow.md`)
 Each toolkit has a **workflow** rule that shows how skills should be used together. It is always loaded so the agent knows the intended skill sequence.
@@ -92,10 +94,10 @@ Run after any change to skills, rules, commands, or marketplace.json:
 ```
 make validate-toolkits
 ```
-Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule format, command files, workflow.md references.
+Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule format, command files, agent manifests (access, inputs, output contract, refs), workflow.md references.
 
 ### Maintenance skills
-- `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, or rule and update all cross-references within the toolkit.
+- `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, rule, or agent and update all cross-references within the toolkit.
 - `/validate-toolkits <toolkit-path>` — deep-validate a toolkit: check external doc URLs are live, cross-references resolve, and fix what can be fixed.
 - `improve-skills` (in `init`) — capture session learnings back into skills. Run at the end of a session.
 

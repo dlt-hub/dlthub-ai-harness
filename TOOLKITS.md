@@ -142,6 +142,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `.claude/skills/<name>/` | `.cursor/skills/<name>/` | `.agents/skills/<name>/` |
 | command | `.claude/commands/<name>.md` | `.cursor/commands/<name>.md` | `.agents/skills/<name>/SKILL.md` |
 | rule | `.claude/rules/<toolkit>-<name>.md` | `.cursor/rules/<toolkit>-<name>.mdc` | `.agents/skills/<toolkit>-<name>/SKILL.md` |
+| agent | `.claude/dlthub/agents/<name>/` | `.cursor/dlthub/agents/<name>/` | `.agents/dlthub/agents/<name>/` |
 | mcp | `.mcp.json` → `mcpServers` | `.cursor/mcp.json` → `mcpServers` | `.codex/config.toml` → `mcp_servers` |
 | ignore | `.claudeignore` | `.cursorignore` | `.codexignore` |
 
@@ -152,6 +153,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | passthrough | passthrough | passthrough |
 | command | passthrough | passthrough | wrapped with `name`/`description` frontmatter |
 | rule | non-Claude frontmatter stripped (keeps `name`, `description`) | `alwaysApply: true` added, `description` derived from first heading if missing | wrapped with `name`/`description` frontmatter |
+| agent | passthrough (dlt reads it, not the host; see [BACKGROUND_AGENTS.md](BACKGROUND_AGENTS.md)) | passthrough | passthrough |
 | mcp | passthrough (`type` field kept) | `type` field stripped | `type` field stripped, converted to TOML |
 | ignore | passthrough (file renamed) | passthrough (file renamed) | passthrough (file renamed) |
 
