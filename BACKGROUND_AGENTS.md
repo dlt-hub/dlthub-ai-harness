@@ -2,26 +2,33 @@
 
 A **background agent** is a toolkit item alongside skills, commands and rules. Where a skill
 is a procedure a coding assistant follows with a person watching, a background agent runs
-unattended: on a schedule, after a job fails, or when someone starts it from the web UI.
+unattended: on a schedule, after a job fails, or when someone starts it from the web UI or
+the command line.
 
-This document is for people writing one. It is an `AGENT.md`, written much like a `SKILL.md`,
-and the working example is
+This document is a guideline for authors of background agents. An agent is an `AGENT.md`,
+written much like a `SKILL.md`, and the working example is
 [`job-inspector`](workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md).
 
-## Three terms
+## Definition of terms
 
 - **agent definition**: what the `AGENT.md` declares. The system prompt, the inputs and
   output, the tools, skills and rules the agent uses, and the access it needs. A toolkit ships
-  definitions. (pydantic-ai calls this an `AgentSpec`.)
+  definitions. (pydantic-ai, the AI harness the dltHub background agents are built on,
+  calls this an `AgentSpec`.)
 - **agent job**: a definition plus the settings that say how it operates in one workspace:
   model, token and turn limits, trigger, instructions, loop. A workspace declares it with
   `run.agent("<toolkit>:<name>", ...)`. (This is what pydantic-ai and claude-agent-sdk call an
-  Agent, and what the web UI lists as one.)
-- **agent run**: one execution of the job. Inputs in (a job run id, say), agent output and
-  trace out. Instructions, limits and model can be overridden for a single run.
+  Agent, and what the dltHub web UI lists as one.)
+- **agent run**: an execution of the agent job. It takes inputs (for example a job run id)
+  and returns the agent output and a trace. Instructions, limits and model can be overridden
+  for a single run through job configuration.
+- **agent loop**: the framework that runs the model turn by turn. Two are built in:
+  `pydantic-ai`, the default, and `claude-agent-sdk`, which runs Claude Code and accepts
+  Anthropic models only. A job selects one with `loop=` on `run.agent` or `agent.loop` in
+  config.
 
-Everything below is about the first: writing the definition so that any job built on it, and
-any run of that job, does what you meant.
+Everything below is about the first of these, the agent definition: writing it so that any
+job built on it, and any run of that job, follows your instructions.
 
 ## Where it lives, where it installs
 
@@ -31,7 +38,7 @@ workbench/<toolkit>/dlthub/agents/<name>/AGENT.md
 
 A folder, like a skill, so a definition can grow supporting files. It sits under `dlthub/`
 because the hosts scan their own folders for native subagents (`.claude/agents/`,
-`.codex/agents/`) and a dlt agent is not one. `dlthub ai toolkit install <toolkit>` copies
+`.codex/agents/`) and a dltHub agent is not one. `dlthub ai toolkit install <toolkit>` copies
 the folder to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`,
 `.agents/dlthub/agents/` on the other hosts), and a workspace refers to it as
 `<toolkit>:<name>`. The workspace's toolkit index (`.dlt/.toolkits`) travels with every
@@ -71,9 +78,9 @@ tools: [jobs, logs, telemetry]
 ### `skills` and `rules`
 
 References to components of the same toolkit or one of its declared dependencies, as
-`<toolkit>:<name>`. Skills are what the agent may invoke: on claude-agent-sdk they are
-listed by name and loaded when invoked, as Claude Code does natively; on pydantic-ai their
-text is inlined into the system prompt. Rules are inlined into the system prompt on every
+`<toolkit>:<name>`. Skills are what the agent may invoke. How they reach the model depends
+on the loop: pydantic-ai inlines their text into the system prompt, claude-agent-sdk lists
+them by name and loads them on demand. Rules are inlined into the system prompt on every
 loop. Only the listed components reach the agent; nothing else installed in the workspace
 does. A reference that does not resolve is skipped with a warning, and the agent runs with
 less.
@@ -101,18 +108,21 @@ access:
 | | `write` | `Write`, `Edit` |
 | | `execute` | `Bash` (`PowerShell` on Windows), `RunPython`, in the workspace, in the job's own process tree |
 | | `network` | `WebFetch`, `WebSearch` |
-| `data` | `read`, `write` | workspace data through the MCP server, enforced by the dlt profile the run uses (`read` maps to the `access` profile, `write` to `prod`) |
+| `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-`local` buys the same tool set on both loops, named as Claude Code names them, so one
-declaration means one thing everywhere. Credential files (`*secrets.toml`, `.env`) are never
-readable, whatever `local` says. MCP tools declare what they require, and a tool the
-declaration does not cover is not offered to the model. The declaration is a request: the
-runtime grants what it can, and the trace of every run lists the tools that were wired.
+`local` buys the same tool set on both loops, pydantic-ai and claude-agent-sdk, named after
+Claude Code's tools, so one declaration means one thing everywhere. Credential files
+(`*secrets.toml`, `.env`) are never readable, whatever `local` says. MCP tools declare what
+they require, and a tool the declaration does not cover is not offered to the model. The
+declaration is a request: the runtime grants what it can, and the trace of every run lists
+the tools that were wired.
 
-Write the policy the declaration enforces into the body as explanation, not as a second
-source of truth: "you are read-only" in the prompt helps the model understand its role; the
-`access` block is what makes it so.
+Write the policy the declaration enforces into the body as explanation: "you are read-only"
+in the prompt helps the model understand its role; the `access` block is what makes it so
+for the MCP tools. `local: execute` is the exception: the shell runs under the job's
+credentials and nothing gates what it does with them, so an agent with `execute` and data
+access needs an explicit rule in the body never to write data.
 
 ### `inputs`
 
@@ -143,7 +153,7 @@ inputs:
 
 ### Entities: `entity_type`
 
-An input that names a workspace thing carries `entity_type`: `job-run`, `job`, `pipeline`,
+An input that names a workspace entity carries `entity_type`: `job-run`, `job`, `pipeline`,
 `dataset` or `workspace`. The agent receives the bare id (a run id, a job ref, a pipeline
 name); dlt composes the entity reference `job-run/<id>` when it reports.
 
@@ -196,8 +206,9 @@ Add the agent's own fields next to them. Three things to know:
   schema-valid, wrong answer. The body has to define what each value means (§ the body).
 - **The schema reaches the model as declared.** dlt changes one thing: `entity_type` moves
   into `$comment`, because strict validators reject keywords they do not know. Nothing is
-  added or relaxed on your behalf, so write what the provider accepts: Anthropic's structured
-  output rejects `minimum`, `maximum` and `minLength`. Put numeric bounds in the description.
+  added or relaxed on your behalf, so write what the provider accepts. For example,
+  Anthropic's structured output rejects `minimum`, `maximum` and `minLength`. Put numeric
+  bounds in the description.
 
 The agent run's `status` decides what the job does: `succeeded` and `failed` complete the
 run; `aborted` raises with `summary` as the message and the run fails, after the result and
@@ -247,8 +258,8 @@ claude-agent-sdk the workspace's `CLAUDE.md` loads as in any Claude Code session
 Six things a body should do, with job-inspector as the example:
 
 1. **State the role in two sentences, including the unattended setting.** "You run
-   unattended, seconds after a job failed, and nobody reads your output unless it is wrong
-   or the job matters."
+   unattended, seconds after a job failed. An engineer reads your output only when the
+   failure matters, so it must stand on its own."
 2. **Define `succeeded`, `failed` and `aborted` for this agent.** The schema deliberately
    does not. Write the bar as a positive claim and name the failure mode you fear; with
    constrained decoding the cheap escape from `failed` is a guess dressed as success.
@@ -316,7 +327,7 @@ run prints to the job's log at the configured verbosity.
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency
 - `defaults` and `defaults.limits` keys are known
 
-dlt validates again when the deployment manifest is generated: the body is required, the
+dlthub validates again when the deployment manifest is generated: the body is required, the
 name falls back to the folder, `access` is checked, an unknown `entity_type` is refused, a
 `prompt` input is refused, an input the body never mentions is a warning, and a skill or rule
 that does not resolve in the workspace is skipped with a warning.
