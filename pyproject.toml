@@ -20,10 +20,11 @@ dependencies = [
 lint = [
   "ruff>=0.2.1",
   "mypy>=1.8.0",
+  "types-PyYAML>=6.0.12",
 ]
 
-# [tool.uv.sources]
-# dlt = { git = "https://github.com/dlt-hub/dlt", branch = "feat/ai-workbench-support" }
+[tool.uv.sources]
+dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=7" }
 
 [tool.ruff]
 preview = true
