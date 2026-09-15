@@ -37,6 +37,17 @@ dlthub job runs logs <name> [run#]           # specific run
 dlthub job logs <name> -f                    # stream in real-time
 ```
 
+## Read a failure log
+
+The answer is usually in the log. Read it whole once, then work through it:
+
+- **Start at the earliest error.** Logs cascade, so the final traceback is usually a consequence of something further up. Find the first line that is genuinely wrong and work from there.
+- **Tell the job's code apart from the platform's.** A traceback inside the workspace's own modules is a bug in the job. A traceback inside the runner, or in a call to the control plane after the job's work printed its completion, comes from the platform.
+- **Check the neighbouring runs before calling a failure intermittent.** Recurrence is the test. `dlthub job runs list <name_or_selector>` shows the runs before and after this one. If they are clean, the failure is a one-off. If you did not look, you do not know.
+- **Read the job definition when config looks suspect.** Profile, trigger, dependency groups and the arguments the job takes are all in it: see "Debug job definitions" above and the `job-resources` rule.
+
+The `job-inspector` agent (`dlthub/agents/job-inspector/AGENT.md`) runs this same method unattended after a job fails, and adds the rules for the classification and evidence it reports.
+
 ## Cancel running jobs
 
 ```bash
@@ -103,7 +114,7 @@ Prints the dltHub web UI URL. It should open automatically, but if the user says
 
 If a job failed:
 1. `dlthub job runs info <name> [run#]` -- check exit status and timing
-2. `dlthub job runs logs <name> [run#]` -- read the error output
+2. `dlthub job runs logs <name> [run#]` -- read the error output, working through it as in "Read a failure log" above
 3. Common causes:
    - **Missing dependencies** in `pyproject.toml` -- all packages must be declared, not just locally installed
    - **Secrets not configured for `prod` profile** -- runtime uses `prod` profile, ask the user to check `.dlt/prod.secrets.toml` — NEVER access it directly, only the user may modify it
