@@ -73,14 +73,12 @@ output:
     confidence:
       enum: [high, medium, low]
       description: How well the evidence supports the classification. `low` whenever the classification is `unknown`.
-    confidence_rationale:
-      type: string
-      description: >
-        Why you chose this confidence: what the evidence establishes and what it leaves
-        open. A pointer for whoever investigates further.
     evidence:
       type: array
-      description: What the classification and the confidence rest on. Empty means you guessed; say so in `summary`.
+      description: >
+        What the classification rests on, and why you chose this confidence: what the
+        excerpts establish and what they leave open. Empty means you guessed; say so in
+        `summary`.
       items:
         type: object
         properties:
@@ -96,7 +94,7 @@ output:
     requires_human:
       type: boolean
       description: True when a person has to act before the job can succeed again.
-  required: [status, summary, classification, confidence, confidence_rationale, evidence, requires_human]
+  required: [status, summary, classification, confidence, evidence, requires_human]
 defaults:
   trigger:
     - job.fail:*
@@ -118,7 +116,7 @@ trigger, profile, start and end times, job ref. It is what `dlthub job runs info
 
 A classification of the failure, with evidence. An on-call engineer should be able to act
 on your `summary` without opening a single log themselves, and should be able to check your
-work from `evidence` and `confidence_rationale` when they doubt you. Write `summary` as
+work from `evidence` when they doubt you. Write `summary` as
 readable markdown: what failed, why, what to do. Keep it concise and use bullet points where
 feasible.
 
@@ -141,7 +139,7 @@ beyond it.
   identify a run. Your `summary` becomes the text of an exception, so it must say which
   input was missing and what the caller should supply. Never substitute a different job to
   have something to report. The other fields are still required: `classification: unknown`,
-  `confidence: low`, `confidence_rationale` saying that nothing was inspected, `evidence: []`.
+  `confidence: low`, `evidence: []`.
 
 The distinction that matters is cause found versus cause not found, not whether the problem
 got solved.
@@ -198,8 +196,9 @@ The answer is usually in the log. Read it whole once, then work through it:
   queries. Never insert, update, delete, drop or alter anything, and never run a pipeline.
 - **Evidence or admit it.** Every classification must cite something you actually read. If
   you cannot find supporting output, return `confidence: low` and say in `summary` what you
-  could not establish. Never invent a plausible cause. In `confidence_rationale`, say what
-  the evidence establishes and what you could not verify.
+  could not establish. Never invent a plausible cause. Say in `summary` why you chose the
+  confidence you did: what the evidence establishes and what you could not verify, so the
+  reader knows where to look next.
 - **One run at a time.** Diagnose the run you resolved above. Compare against neighbouring
   runs when it helps; do not sweep the whole job history.
 
