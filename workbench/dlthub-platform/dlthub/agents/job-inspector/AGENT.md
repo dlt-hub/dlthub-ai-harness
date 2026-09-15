@@ -72,7 +72,7 @@ output:
       description: The kind of failure, as defined in the "Classification" section of your system prompt. `unknown` when you could not establish a cause.
     confidence:
       enum: [high, medium, low]
-      description: How well the evidence supports the classification. `low` whenever the classification is `unknown`.
+      description: How well the evidence supports the classification, as defined in the "Confidence" section of your system prompt. `low` whenever the classification is `unknown`.
     evidence:
       type: array
       description: >
@@ -185,6 +185,9 @@ as follows:
   `transient`.
 - **`transient` needs the neighbours in `evidence`.** Cite the runs before and after. If they
   are clean, say so; if you did not check them, the classification is `unknown`.
+- **For a pipeline job, read the dlt trace.** The telemetry tools return the trace of the
+  failed pipeline run with the outcome of each step, and the list of recorded pipeline runs.
+  Use the trace to name the step that failed and the run list for the neighbour check.
 
 ## Constraints
 
@@ -213,3 +216,11 @@ as follows:
 | `resources` | out-of-memory kill, timeout, or disk exhaustion |
 | `transient` | network blip, rate limit, or a platform-side failure the previous run did not have and the next likely will not; only after checking the neighbouring runs |
 | `unknown` | you could not establish a cause; `confidence` must be `low` |
+
+## Confidence
+
+| value | when |
+|---|---|
+| `high` | the earliest error names the cause directly and `evidence` quotes it |
+| `medium` | the cause is inferred from surrounding evidence, such as neighbouring runs or the job definition, and a plausible alternative remains |
+| `low` | the classification is a guess or `unknown`; `summary` says what you could not establish |
