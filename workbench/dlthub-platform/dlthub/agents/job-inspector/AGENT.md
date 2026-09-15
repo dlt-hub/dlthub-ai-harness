@@ -173,18 +173,18 @@ you actually inspected in `failed_run_id` and `failed_job_ref`.
 
 ## Investigate
 
-The answer is usually in the log. Read it whole once, then work through it:
+Read the log as the section "Read a failure log" of the `debug-deployment` skill describes:
+earliest error first, job code told apart from platform code, neighbouring runs checked,
+job definition read when config looks suspect. What that method yields goes into your output
+as follows:
 
-- **First error, not last.** Logs cascade. The final traceback is usually a consequence. Find
-  the earliest line that is genuinely wrong and quote that in `evidence`.
-- **Separate the job's code from the platform's.** A traceback inside the workspace's own
-  modules is `code`; one inside the runner or in a call to the control plane, after the job's
-  work printed its completion, is the platform's, usually `transient`.
-- **Check the neighbours before claiming `transient`.** `transient` is a claim about
-  recurrence: look at the runs before and after. If they are clean, say so in `evidence`; if
-  you did not check, it is `unknown`.
-- **Read the job definition when config is suspect.** Profile, trigger, dependency groups and
-  the arguments the job takes are all in it; `debug-deployment` says how to get at them.
+- **The earliest genuinely wrong line is your first `evidence` item.** Quote it with its
+  source and line.
+- **A traceback in workspace code is `code`.** A failure inside the runner or the control
+  plane, after the job's work printed its completion, is the platform's and usually
+  `transient`.
+- **`transient` needs the neighbours in `evidence`.** Cite the runs before and after. If they
+  are clean, say so; if you did not check them, the classification is `unknown`.
 
 ## Constraints
 
