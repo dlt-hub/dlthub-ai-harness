@@ -51,7 +51,7 @@ def setUpModule():
     """One workspace for every test; nothing below mutates it."""
     global WORKSPACE
     WORKSPACE = Path(tempfile.mkdtemp(prefix="dlt-guard-test-"))
-    for directory in (".dlt", ".claude", ".codex", ".ssh", "src", ".agents/hooks"):
+    for directory in (".dlt", ".claude", ".codex", ".ssh", ".gnupg", "src", ".agents/hooks"):
         (WORKSPACE / directory).mkdir(parents=True)
     for name, content in [
         (".dlt/secrets.toml", "password='REAL'\n"),
@@ -170,6 +170,9 @@ class BlockedNames(DecisionTestCase):
             (DENY, ".env~"),
             (DENY, ".env.swp"),
             (DENY, ".env.bak.bak"),
+            # needs the loop: one pass leaves secrets.toml.bak, which no rule matches
+            (DENY, "secrets.toml.bak.bak"),
+            (DENY, "secrets.toml.tmp.old"),
             (ALLOW, ".env.example.bak"),
             # a name that IS a suffix must not strip to "" and vanish
             (ALLOW, ".bak"),
@@ -217,7 +220,8 @@ class ShellDecisions(DecisionTestCase):
 
     def test_globs(self):
         self.assert_commands([
-            # arm 1: the directory it points at, whether or not it exists yet
+            # arm 1: the directory it points at, even when nothing matches
+            (DENY, "cat .gnupg/nothing*"),
             (DENY, "cat .dlt/*"),
             (DENY, "cat .dlt/*.toml"),
             # arm 2: the shape of the pattern itself
@@ -321,6 +325,14 @@ class SecretDirSymlinks(DecisionTestCase):
             (DIRECTORY, "tar cf - dlink"),
         ])
 
+    def test_a_trailing_slash_does_not_skip_the_hop(self):
+        """os.path.islink("d/") is False even when `d` is a link, so the
+        resolved path has to be normalized before the check."""
+        self.assert_commands([
+            (DIRECTORY, "grep -r key dlink/"),
+            (DIRECTORY, "tar -cf o.tar dlink/"),
+        ])
+
     def test_listing_through_the_link_is_still_fine(self):
         self.assert_commands([(ALLOW, "ls dlink")])
 
@@ -422,6 +434,41 @@ class Tampering(DecisionTestCase):
             (ALLOW, "cat .claude/CLAUDE.md"),
         ])
 
+    def test_the_check_is_per_segment(self):
+        """A mutator in one command must not vouch for a guard path in another.
+
+        Widening guard paths to whole directories made this reachable: every
+        one of these was denied as tampering until the check was segmented.
+        """
+        self.assert_commands([
+            (ALLOW, "rm -rf node_modules && ls .claude"),
+            (ALLOW, "echo hi > out.txt && ls .agents"),
+            (ALLOW, "rm -rf build\nls .cursor"),
+            (ALLOW, "rsync -a --delete src/ /tmp/d/ && ls .claude"),
+        ])
+
+    def test_a_redirect_is_judged_by_its_target(self):
+        # `>` is itself a segment break, so the target is checked by adjacency
+        self.assert_commands([
+            (TAMPER, "echo '{}' > .claude/settings.json"),
+            (ALLOW, "ls .claude > out.txt"),
+            (ALLOW, "grep -r foo .claude > out.txt"),
+        ])
+
+    def test_guard_directories_are_protected_only_against_destruction(self):
+        """`cp`/`tee` name a guard directory without disabling anything.
+
+        Guard *files* are protected against any mutation; directories only
+        against being destroyed or renamed. Refusing the rest denied ordinary
+        work in a repo that ships `.claude/` content.
+        """
+        self.assert_commands([
+            (ALLOW, "cp -r .claude /tmp/backup"),
+            (ALLOW, "cp README.md .claude/"),
+            (ALLOW, "tar -czf backup.tgz .claude"),
+            (ALLOW, "git add .claude"),
+        ])
+
     def test_codex_config_toml_is_deliberately_unguarded(self):
         # Codex hooks live in .codex/hooks.json (openai/codex#17532), so
         # config.toml carries no guard registration to protect
@@ -447,6 +494,9 @@ class ToolDecisions(DecisionTestCase):
             (DENY, {"paths": ["src/", ".env.production"]}),
             (DENY, {"glob": "secrets.toml"}),
             (DENY, {"path": ".env"}),
+            # Cursor's Claude-compatible Grep sends file_path, not path
+            (DENY, {"file_path": ".env"}),
+            (ALLOW, {"file_path": "README.md"}),
             (ALLOW, {"paths": ["src/"], "path": "README.md"}),
             (ALLOW, {"paths": 7}),
             (ALLOW, {}),

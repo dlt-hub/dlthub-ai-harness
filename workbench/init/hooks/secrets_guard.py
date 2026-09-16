@@ -110,6 +110,10 @@ _MUTATORS = {"rm", "mv", "cp", "sed", "tee", "truncate", "chmod", "dd", "ln", "s
 # Commands that only mutate with a flag: `find .claude -delete` deletes while
 # plain `find .claude` merely lists, so the verb alone cannot decide.
 _MUTATING_FLAGS = {"-delete", "--delete"}
+# Verbs that destroy or rename a whole directory. A guard *directory* is only
+# protected against these -- `cp`, `sed` and `tee` name it without disabling
+# anything, and treating them as tampering refused ordinary work.
+_DIR_DESTROYERS = {"rm", "rmdir", "mv", "chmod", "shred"}
 _INTERPRETERS = {
     "sh", "bash", "zsh", "dash", "ksh", "fish", "python", "python2", "python3",
     "node", "deno", "bun", "ruby", "perl", "php",
@@ -261,8 +265,11 @@ def _resolve(path: str, cwd: str) -> str:
 
     No isabs branch needed: os.path.join returns an already-absolute second
     argument unchanged, which is also what makes `~/...` work after expansion.
+    normpath matters for the symlink checks: os.path.islink("d/") is False
+    even when `d` is a link, because the OS resolves through the trailing
+    slash -- so `grep -r key dlink/` would skip the hop that `dlink` gets.
     """
-    return os.path.join(cwd, os.path.expanduser(path))
+    return os.path.normpath(os.path.join(cwd, os.path.expanduser(path)))
 
 
 def _is_blocked_path(path: str, cwd: str | None = None) -> bool:
@@ -303,15 +310,21 @@ def _is_secret_dir(path: str, cwd: str | None = None) -> bool:
     return real in _SECRET_DIRS
 
 
+def _is_guard_file(path: str) -> bool:
+    """True if `path` is this guard script or a config that registers it."""
+    name, parent = _name_and_parent(path)
+    return name in _GUARD_FILES or (parent, name) in _GUARD_CONFIGS
+
+
+def _is_guard_dir(path: str) -> bool:
+    """True if `path` is a directory holding the guard or its config."""
+    name, parent = _name_and_parent(path)
+    return name in _GUARD_DIRS or (parent, name) in _GUARD_SUBDIRS
+
+
 def _is_guard_path(path: str) -> bool:
     """True if `path` is this guard, its config, or a directory holding either."""
-    name, parent = _name_and_parent(path)
-    return (
-        name in _GUARD_FILES
-        or name in _GUARD_DIRS
-        or (parent, name) in _GUARD_CONFIGS
-        or (parent, name) in _GUARD_SUBDIRS
-    )
+    return _is_guard_file(path) or _is_guard_dir(path)
 
 
 # --- shell policy: what does this command touch? ---------------------------
@@ -405,7 +418,7 @@ def _glob_is_blocked(token: str, cwd: str) -> bool:
     pattern = _basename(normalized)
 
     # `cat .dlt/*` names no guarded file; blocked by the directory it targets
-    if _is_secret_dir(os.path.dirname(normalized)):
+    if _is_secret_dir(os.path.dirname(normalized), cwd):
         return True
 
     # The pattern itself is aimed at guarded names (`cat .env*`). Restricted to
@@ -553,12 +566,35 @@ def _read_deny_reason(command: str, cwd: str) -> str | None:
 
 
 def _tampers_with_guard(command: str) -> bool:
-    """True if a shell command rewrites or deletes the guard or its config."""
+    """True if a shell command rewrites or deletes the guard or its config.
+
+    Judged per segment, like every other shell check: without that, a mutator
+    in one command vouches for a guard path in an unrelated later one, and
+    `rm -rf build && ls .claude` reads as tampering.
+
+    Guard *files* are protected against any mutation; guard *directories* only
+    against being destroyed or renamed. `cp -r .claude backup/` reads the
+    directory and `cp x .claude/` adds to it — neither disables the guard, and
+    refusing them denied ordinary work in a repo that ships `.claude/` content.
+    """
     tokens = _tokenize(command)
-    mutates = bool(_basenames(tokens) & _MUTATORS) or bool(
-        set(tokens) & (_WRITE_REDIRECTS | _MUTATING_FLAGS)
-    )
-    return mutates and any(_is_guard_path(token) for token in tokens)
+
+    # A redirect writes to the token right after it. Checked by adjacency
+    # rather than per segment because `>` is itself a segment break, so the
+    # target always lands in a segment of its own.
+    for index, token in enumerate(tokens):
+        if token in _WRITE_REDIRECTS and index + 1 < len(tokens):
+            if _is_guard_file(tokens[index + 1]):
+                return True
+
+    for segment in _command_segments(tokens):
+        verbs = _basenames(segment)
+        flagged = bool(set(segment) & _MUTATING_FLAGS)
+        if (bool(verbs & _MUTATORS) or flagged) and any(_is_guard_file(t) for t in segment):
+            return True
+        if (bool(verbs & _DIR_DESTROYERS) or flagged) and any(_is_guard_dir(t) for t in segment):
+            return True
+    return False
 
 
 def _shell_deny_reason(command: str, cwd: str) -> str | None:

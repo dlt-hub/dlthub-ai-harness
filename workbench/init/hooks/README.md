@@ -62,11 +62,20 @@ installs it** are refused with their own message:
   (`python3 -c "shutil.rmtree('.claude')"`), which the shell tokenizer sees
   only as one opaque quoted blob
 
-Reading those files is fine; only mutating them is refused, and only the
-directory itself — `rm .claude/CLAUDE.md` is untouched.
-`.codex/config.toml` is deliberately *not* on the list: Codex hooks live in
-`.codex/hooks.json` (openai/codex#17532), so config.toml carries no guard
-registration and blocking it would only get in the way.
+Two scopes, deliberately different:
+
+- a guard **file** is protected against any mutation;
+- a guard **directory** only against being destroyed or renamed (`rm`, `rmdir`,
+  `mv`, `chmod`, `shred`, `find -delete`). `cp -r .claude backup/` reads it and
+  `cp x .claude/` adds to it — neither disables the guard.
+
+The check is per command segment, so a mutator in one command does not vouch
+for a guard path in another: `rm -rf build && ls .claude` is allowed. Reading
+with `cat`, `grep` or `head` is fine, and only the directory itself is the
+target — `rm .claude/CLAUDE.md` is untouched. `.codex/config.toml` is
+deliberately *not* on the list: Codex hooks live in `.codex/hooks.json`
+(openai/codex#17532), so config.toml carries no guard registration and
+blocking it would only get in the way.
 
 ### The escape hatch is exempt
 
@@ -152,6 +161,12 @@ Conservative by design; each of these is denied even though it leaks nothing:
 - `find .dlt -name '*.toml'`, which only lists names, because `find` is on the
   bulk-reader list. `ls .dlt` is allowed.
 - `cat *` in a directory that happens to contain a guarded file.
+- Reads of a guard config that use a verb on the mutator list —
+  `sed -n '1,5p' .claude/settings.json`, `cp .claude/settings.json /tmp/` — are
+  refused as tampering. The verb cannot be told apart from its writing form by
+  tokens alone. `cat`, `grep` and `head` are unaffected.
+- `cat .ssh/*.pub`, because any glob pointing into a secret directory is
+  refused even though the public halves are readable by name.
 
 ### What still gets through
 
