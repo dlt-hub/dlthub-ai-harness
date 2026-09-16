@@ -102,13 +102,22 @@ _BULK_READERS = {
     "cp", "rsync", "tee",
 }
 _MUTATORS = {"rm", "mv", "cp", "sed", "tee", "truncate", "chmod", "dd", "ln", "shred", "unlink"}
+# Commands that only mutate with a flag: `find .claude -delete` deletes while
+# plain `find .claude` merely lists, so the verb alone cannot decide.
+_MUTATING_FLAGS = {"-delete", "--delete"}
 _INTERPRETERS = {
     "sh", "bash", "zsh", "dash", "ksh", "fish", "python", "python2", "python3",
     "node", "deno", "bun", "ruby", "perl", "php",
 }
 _CODE_FLAGS = {"-c", "-e", "--command", "--eval"}
 _CODE_SPLIT = re.compile(r"""[\s"'(),;=\[\]{}]+""")
-_OPERATORS = {"|", "||", "&&", ";", "&", ">", ">>", "<", "<<"}
+# "\n" is one: a line break ends a command just as `;` does. _tokenize emits it
+# only for newlines that are not inside a quote.
+_OPERATORS = {"|", "||", "&&", ";", "&", ">", ">>", "<", "<<", "\n"}
+# Command substitution does not *end* a command, so it is not an operator — but
+# it does start a nested one, which must be judged on its own rather than
+# riding on an exempt outer segment (`dlthub ai secrets list $(cat .env)`).
+_SEGMENT_BREAKS = _OPERATORS | {"$", "(", ")"}
 # Output redirections only — the subset of _OPERATORS that writes. Widening
 # this to _OPERATORS would make `cat .claude/settings.json | head` a tamper.
 _WRITE_REDIRECTS = {">", ">>"}
@@ -128,6 +137,11 @@ _GUARD_CONFIGS = {
     (".cursor", "hooks.json"),
     (".codex", "hooks.json"),
 }
+# Removing or renaming the directory disables the guard as surely as editing
+# the files in it (`rm -rf .claude`). Matched as the last segment only, so
+# `rm .claude/CLAUDE.md` and `edit .codex/config.toml` stay unaffected.
+_GUARD_DIRS = {".claude", ".cursor", ".codex", ".agents"}
+_GUARD_SUBDIRS = {(".agents", "hooks")}
 _WRITE_TOOLS = {"write", "edit", "multiedit", "notebookedit", "apply_patch"}
 
 # --- the sanctioned escape hatch -------------------------------------------
@@ -265,41 +279,89 @@ def _is_blocked_path(path: str, cwd: str | None = None) -> bool:
     return os.path.islink(candidate) and _names_blocked_file(os.path.realpath(candidate))
 
 
-def _is_secret_dir(path: str) -> bool:
-    """True if `path` names a directory whose whole contents are secret."""
+def _is_secret_dir(path: str, cwd: str | None = None) -> bool:
+    """True if `path` names a directory whose whole contents are secret.
+
+    With `cwd`, a symlink is judged by its target too — otherwise `ln -s .dlt
+    d && grep -r key d` reads the whole secrets directory under a harmless
+    name, the directory-level twin of the symlink check in _is_blocked_path.
+    """
     name, _ = _name_and_parent(path)
-    return name in _SECRET_DIRS
+    if name in _SECRET_DIRS:
+        return True
+    if cwd is None:
+        return False
+    candidate = _resolve(path, cwd)
+    if not os.path.islink(candidate):
+        return False
+    real, _ = _name_and_parent(os.path.realpath(candidate))
+    return real in _SECRET_DIRS
 
 
 def _is_guard_path(path: str) -> bool:
-    """True if `path` is this guard or the config that installs it."""
+    """True if `path` is this guard, its config, or a directory holding either."""
     name, parent = _name_and_parent(path)
-    return name in _GUARD_FILES or (parent, name) in _GUARD_CONFIGS
+    return (
+        name in _GUARD_FILES
+        or name in _GUARD_DIRS
+        or (parent, name) in _GUARD_CONFIGS
+        or (parent, name) in _GUARD_SUBDIRS
+    )
 
 
 # --- shell policy: what does this command touch? ---------------------------
 
 
-def _tokenize(command: str) -> list[str]:
-    """Split a shell command, keeping punctuation as separate tokens.
+def _lex(text: str) -> list[str]:
+    """One line of shell, with punctuation split out. Raises on open quotes.
 
     punctuation_chars is what makes `cat<.env` and `cat .env|head` visible:
     plain shlex.split returns them as single glued tokens whose basename
     matches nothing.
+    """
+    lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    return list(lexer)
+
+
+def _tokenize(command: str) -> list[str]:
+    """Split a shell command into tokens, with "\\n" marking a line break.
+
+    shlex treats a newline as ordinary whitespace, which would collapse a
+    multi-line command into one segment and let an exempt first line vouch for
+    every line after it (`dlthub ai secrets list` + `cat .env`). So lines are
+    lexed one at a time and joined with an explicit separator token.
+
+    A newline inside an unbalanced quote is not a separator — it continues the
+    word — so a line that fails to lex is rejoined with the next one and
+    retried. That keeps `git commit -m "fix<newline>.env loading"` a single
+    token rather than a denied path.
     """
     # shlex treats a None instream as "read sys.stdin" (still true on 3.13), so
     # a Cursor payload with "command": null would silently lex the drained
     # stdin instead of failing. Raise instead, so the caller fails closed.
     if not isinstance(command, str):
         raise TypeError("command is not a string")
-    try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        return list(lexer)
-    except ValueError:
-        # Broken quoting — bash would reject it too, but strip the quote
+
+    tokens: list[str] = []
+    pending = ""
+    for line in command.splitlines():
+        pending = f"{pending}\n{line}" if pending else line
+        try:
+            lexed = _lex(pending)
+        except ValueError:
+            continue  # quote still open: this newline is inside a word
+        if tokens:
+            tokens.append("\n")
+        tokens.extend(lexed)
+        pending = ""
+    if pending:
+        # Never closed — bash would reject it too, but strip the quote
         # characters so a half-quoted path still matches.
-        return [token.strip("\"'") for token in command.split()]
+        if tokens:
+            tokens.append("\n")
+        tokens.extend(token.strip("\"'") for token in pending.split())
+    return tokens
 
 
 def _basenames(tokens: list[str]) -> set[str]:
@@ -315,7 +377,7 @@ def _command_segments(tokens: list[str]) -> list[list[str]]:
     segments: list[list[str]] = []
     current: list[str] = []
     for token in tokens:
-        if token in _OPERATORS:  # a shell operator ends the current command
+        if token in _SEGMENT_BREAKS:  # an operator or subshell ends this command
             if current:
                 segments.append(current)
             current = []
@@ -349,7 +411,7 @@ def _glob_is_blocked(token: str, cwd: str) -> bool:
 
     # Last: what it actually expands onto right now.
     matches = glob.glob(_resolve(token, cwd))
-    return any(_is_blocked_path(match, cwd) or _is_secret_dir(match) for match in matches)
+    return any(_is_blocked_path(match, cwd) or _is_secret_dir(match, cwd) for match in matches)
 
 
 def _env_dumps(rest: list[str]) -> bool:
@@ -427,15 +489,27 @@ def _is_safe_secrets_cli(tokens: list[str]) -> bool:
     return True  # bare `dlthub ai secrets` — prints usage
 
 
-def _runs_guarded_code(tokens: list[str], cwd: str) -> bool:
-    """True if an interpreter is handed inline code that names a guarded file."""
+def _code_blob_reason(tokens: list[str], cwd: str) -> str | None:
+    """Deny reason for inline code handed to an interpreter, or None to allow.
+
+    A guard path named in inline code is treated as tampering: the shell
+    tamper check only ever sees the blob as one opaque quoted token, so
+    `python3 -c "shutil.rmtree('.claude')"` would otherwise disable the guard.
+    Agents have no reason to name these files from a one-liner — reading them
+    with `cat` or the Read tool is unaffected.
+    """
     for blob in _inline_code_blobs(tokens):
         inner = _command_segments(_tokenize(blob))
         if inner and all(_is_safe_secrets_cli(segment) for segment in inner):
             continue  # `sh -c 'dlthub ai secrets view-redacted --path ...'`
-        if any(piece and _is_blocked_path(piece, cwd) for piece in _CODE_SPLIT.split(blob)):
-            return True
-    return False
+        for piece in _CODE_SPLIT.split(blob):
+            if not piece:
+                continue
+            if _is_guard_path(piece):
+                return TAMPER_MESSAGE
+            if _is_blocked_path(piece, cwd):
+                return DENY_MESSAGE
+    return None
 
 
 def _read_deny_reason(command: str, cwd: str) -> str | None:
@@ -448,8 +522,11 @@ def _read_deny_reason(command: str, cwd: str) -> str | None:
     # Phase 1 — whole-command checks, before splitting: an env dump or an
     # interpreter blob must not be laundered by a safe segment elsewhere in
     # the pipeline (this is why `<safe cli> | grep -i env` denies).
-    if _dumps_environment(tokens) or _runs_guarded_code(tokens, cwd):
+    if _dumps_environment(tokens):
         return DENY_MESSAGE
+    blob_reason = _code_blob_reason(tokens, cwd)
+    if blob_reason:
+        return blob_reason
 
     # Phase 2 — per segment, so a safe first command cannot vouch for a later one.
     for segment in _command_segments(tokens):
@@ -465,7 +542,7 @@ def _read_deny_reason(command: str, cwd: str) -> str | None:
                 continue
             if _is_blocked_path(token, cwd):
                 return DENY_MESSAGE
-            if reads_in_bulk and _is_secret_dir(token):
+            if reads_in_bulk and _is_secret_dir(token, cwd):
                 return DIRECTORY_MESSAGE
     return None
 
@@ -473,7 +550,9 @@ def _read_deny_reason(command: str, cwd: str) -> str | None:
 def _tampers_with_guard(command: str) -> bool:
     """True if a shell command rewrites or deletes the guard or its config."""
     tokens = _tokenize(command)
-    mutates = bool(_basenames(tokens) & _MUTATORS) or bool(set(tokens) & _WRITE_REDIRECTS)
+    mutates = bool(_basenames(tokens) & _MUTATORS) or bool(
+        set(tokens) & (_WRITE_REDIRECTS | _MUTATING_FLAGS)
+    )
     return mutates and any(_is_guard_path(token) for token in tokens)
 
 
@@ -492,37 +571,43 @@ def _shell_deny_reason(command: str, cwd: str) -> str | None:
 # --- payload policy: what is this tool call doing? -------------------------
 
 
-def _scan_values(value: object, cwd: str, depth: int = 0) -> bool:
-    """Check every path-shaped string in an arbitrary tool payload.
+def _scan_values(value: object, cwd: str, depth: int = 0) -> str | None:
+    """Deny reason for any path-shaped string in an arbitrary tool payload.
 
     The fallback for tools with no dedicated branch — MCP servers, vendor
     payload drift, tools added after this script was written. _is_blocked_path
     matches a whole basename, so prose that merely mentions `.env` does not
-    trip it.
+    trip it. Returns the reason rather than a bool so a nested `command` keeps
+    its own message: telling an agent that `rm …/secrets_guard.py` was refused
+    because it should use `secrets view-redacted` is advice for a different
+    problem.
     """
     if depth > _MAX_SCAN_DEPTH:
         # deeper than any real tool payload nests; bounds cost per tool call.
         # Note this is the one fail-OPEN path in the evaluator — a guarded
         # string nested deeper than this is allowed through.
-        return False
+        return None
     if isinstance(value, str):
-        return _is_blocked_path(value, cwd)
+        return DENY_MESSAGE if _is_blocked_path(value, cwd) else None
     if isinstance(value, list):
-        return any(_scan_values(item, cwd, depth + 1) for item in value)
+        for item in value:
+            reason = _scan_values(item, cwd, depth + 1)
+            if reason:
+                return reason
+        return None
     if isinstance(value, dict):
         for key, item in value.items():
             lowered = key.lower() if isinstance(key, str) else ""
             if lowered in _PROSE_KEYS:
                 continue  # prose, not a path: skips the whole subtree
-            if lowered == "command" and isinstance(item, str):
-                # read check only: tamper detection is not applied to commands
-                # nested inside a generic payload
-                if _read_deny_reason(item, cwd) is not None:
-                    return True
-                continue
-            if _scan_values(item, cwd, depth + 1):
-                return True
-    return False
+            reason = (
+                _shell_deny_reason(item, cwd)
+                if lowered == "command" and isinstance(item, str)
+                else _scan_values(item, cwd, depth + 1)
+            )
+            if reason:
+                return reason
+    return None
 
 
 def _grep_paths(tool_input: dict) -> list:
@@ -570,7 +655,7 @@ def _tool_reason(payload: dict, cwd: str) -> str | None:
             return DENY_MESSAGE
         return None
 
-    return DENY_MESSAGE if _scan_values(tool_input, cwd) else None
+    return _scan_values(tool_input, cwd)
 
 
 # --- entry point -----------------------------------------------------------
