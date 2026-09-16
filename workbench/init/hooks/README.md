@@ -3,9 +3,9 @@
 `secrets_guard.py` blocks direct reads of dlt secrets and credential files across
 **Claude Code, Codex, and Cursor** — one stdlib-only script, no imports, safe to
 copy anywhere. See `docs/superpowers/specs/2026-07-01-secrets-read-hook-design.md`
-for the full design.
+for the design record.
 
-## What it blocks
+## What it blocks — files
 
 | Blocked | Still readable |
 |---|---|
@@ -17,31 +17,56 @@ for the full design.
 
 Matching is on the **basename**, case-insensitively, after stripping editor
 backup suffixes (`.bak`, `~`, `.save`, `.orig`, `.swp`, …) — so `SECRETS.TOML`
-and `.dlt/secrets.toml.bak` are blocked too.
+and `.dlt/secrets.toml.bak` are blocked too. The placeholder exemption is the
+whole stem, not a suffix: `example.secrets.toml` is readable,
+`dev.example.secrets.toml` is not.
 
-Shell commands get three extra checks beyond "does a token name a guarded file":
+**Symlinks are judged by their target.** A link named `notes.txt` pointing at
+`.dlt/secrets.toml` is blocked, and so is a link pointing at a secrets
+*directory* (`ln -s .dlt d && grep -r key d`). This needs the payload to carry
+`cwd` — all three agents send it — and follows one hop to `os.path.realpath`,
+which is already fully resolved.
 
-- **Punctuation is tokenized out.** `cat<.env` and `cat .env|head` are single
-  glued tokens under plain `shlex.split`; the guard uses `punctuation_chars=True`
-  so the path becomes visible.
-- **Globs are resolved.** A glob whose directory is a secrets dir (`cat .dlt/*`)
-  or whose pattern targets guarded names (`cat .env*`) is blocked, as is any
-  glob that expands onto a guarded file in the payload's `cwd`.
-- **Bulk readers aimed at a secrets directory** (`grep -r password .dlt/`,
-  `tar cf - .dlt`) are blocked, while name-only commands (`ls .dlt`) are not.
-- **Inline interpreter code** is split open: `bash -c 'cat .env'` and
-  `python3 -c "open('.env')"` are blocked. Only tokens after `-c`/`-e` on a real
-  interpreter are inspected, so `git commit -m "fix .env loading"` still runs.
-- **`env` / `printenv` dumps** are blocked — dlt resolves credentials from
-  environment variables as readily as from `secrets.toml`. `env FOO=1 cmd` (the
-  prefix form) still runs.
+## What it blocks — commands
 
-The guard also refuses tool calls that **rewrite the guard or its config**
-(`rm .agents/hooks/secrets_guard.py`, `sed -i … .claude/settings.json`, an `Edit`
-on either). Reading those files is fine; only mutating them is refused.
-`.codex/config.toml` is deliberately *not* on that list — Codex hooks live in
+| Rule | Denied | Still allowed |
+|---|---|---|
+| Punctuation is tokenized out | `cat<.env`, `cat .env\|head` | — |
+| A newline ends a command | `dlthub ai secrets list`⏎`cat .env` | `git commit -m "fix`⏎`.env loading"` (newline inside quotes) |
+| Globs, three ways | `cat .dlt/*`, `cat .env*`, `cat .netr*` | `cat *.toml`, `cat src/*.py` |
+| Bulk readers on a secrets dir | `grep -r pw .dlt/`, `tar cf - .dlt` | `ls .dlt` (names, not contents) |
+| Inline interpreter code | `bash -c 'cat .env'`, `python3 -c "open('.env')"` | `git commit -m "fix .env loading"` |
+| `env` / `printenv` dumps | `env`, `printenv \| grep -i key` | `env FOO=1 cmd`, `env -i ls` |
+
+`env` dumps are blocked because dlt resolves credentials from environment
+variables as readily as from `secrets.toml`.
+
+Globs get three checks, cheapest first: the directory the pattern points at,
+the shape of the pattern itself (`.env*`, anything containing `secret` or
+`credential`), and — only then — what it actually expands onto in `cwd`. The
+first two are filesystem-independent, so they hold for a file that does not
+exist yet.
+
+## What it blocks — tampering with itself
+
+Bash commands and Write/Edit calls that **rewrite the guard or the config that
+installs it** are refused with their own message:
+
+- the script (`secrets_guard.py`) and the configs that register it
+  (`.claude/settings.json`, `.claude/settings.local.json`, `.cursor/hooks.json`,
+  `.codex/hooks.json`)
+- the directories holding them (`rm -rf .claude`, `mv .claude .claude.off`,
+  `rm -r .agents/hooks`, `find .claude -delete`) — removing the directory
+  disables the guard just as surely as editing the file
+- the same names inside an interpreter one-liner
+  (`python3 -c "shutil.rmtree('.claude')"`), which the shell tokenizer sees
+  only as one opaque quoted blob
+
+Reading those files is fine; only mutating them is refused, and only the
+directory itself — `rm .claude/CLAUDE.md` is untouched.
+`.codex/config.toml` is deliberately *not* on the list: Codex hooks live in
 `.codex/hooks.json` (openai/codex#17532), so config.toml carries no guard
-registration and blocking it would only get in the way of Codex configuration.
+registration and blocking it would only get in the way.
 
 ### The escape hatch is exempt
 
@@ -59,9 +84,19 @@ and so do MCP tools whose name ends in `secrets_list`, `secrets_view_redacted`,
 or `secrets_update_fragment` (matched by trailing name, so the server can be
 called anything).
 
-The exemption is per *command segment*, not per command line: `dlthub ai secrets
-list && cat .env` is still denied, as is the same chain inside `sh -c '…'`. Only
-the three redacted subcommands are exempt — any other `dlthub ai secrets`
+The exemption is per *command segment*, and a segment ends at an operator, a
+newline, or a subshell. So all of these are still denied:
+
+```bash
+dlthub ai secrets list && cat .env
+dlthub ai secrets list; cat .env
+dlthub ai secrets list
+cat .env                          # a later line is judged on its own
+dlthub ai secrets list $(cat .env)  # so is a subshell
+sh -c 'dlthub ai secrets list && cat .env'
+```
+
+Only the three redacted subcommands are exempt — any other `dlthub ai secrets`
 subcommand fails closed.
 
 Not secret, not restricted: `.dlt/config.toml` reads and edits are always
@@ -76,7 +111,7 @@ agent's dialect:
 
 | Agent | Detection (`hook_event_name`) | Input fields | Deny output |
 |-------|-----------|--------------|-------------|
-| Claude Code / Codex | `PreToolUse`, or absent | `tool_input.file_path` / `.paths` / `.glob` / `.command` | `{"hookSpecificOutput": {"permissionDecision": "deny", ...}}` |
+| Claude Code / Codex | any value that is **not** a Cursor event — `PreToolUse`, an unrecognized value, or absent | `tool_input.command` / `.file_path` / `.path` / `.paths` / `.glob` / `.notebook_path` | `{"hookSpecificOutput": {"permissionDecision": "deny", ...}}` |
 | Cursor | `beforeReadFile`, `beforeTabFileRead`, `beforeShellExecution`, `beforeMCPExecution`, `preToolUse` | top-level `file_path` / `command`, or `tool_name` + `tool_input` | `{"permission": "deny", "user_message": ..., "agent_message": ...}` |
 
 The discriminator is the `hook_event_name` **value**, and the comparison is
@@ -100,6 +135,46 @@ written) fall through to a generic scan of every path-shaped string in
 The deny channel is always the JSON on stdout, never the exit code: in both
 Claude Code and Cursor only exit 2 blocks; exit 1 is a non-blocking error and the
 action proceeds.
+
+## Limits
+
+### Known false positives
+
+Conservative by design; each of these is denied even though it leaks nothing:
+
+- Any command whose last word is `env` — `cat env`, `ls env`, `rm -rf env`. The
+  dump check is basename-based and position-agnostic; tightening it to `argv[0]`
+  would open `xargs env`, `sudo env` and `time env`.
+- Any command mentioning `printenv`, including `echo printenv`.
+- `grep secrets.toml src/` — searching *for* the literal string. The `Grep`
+  tool has a prose-field exemption; a Bash `grep` pattern is indistinguishable
+  from a path argument.
+- `find .dlt -name '*.toml'`, which only lists names, because `find` is on the
+  bulk-reader list. `ls .dlt` is allowed.
+- `cat *` in a directory that happens to contain a guarded file.
+
+### What still gets through
+
+Documented on purpose, so nobody mistakes this for a sandbox:
+
+- **Unscoped recursive readers**: `grep -rn api_key .` never names a guarded file.
+  (Claude's own `Read` deny rules don't cover this either.) In practice
+  `.gitignore` blunts it — dlt workspaces gitignore `secrets.toml` and `.env`, and
+  Claude's `Grep` (ripgrep) honors that; plain `grep -r` does not.
+- **Indirection**: `cat "$SECRETS"`, or a script that opens the file itself.
+  (`cat $(echo .env)` *is* caught — the subshell is judged on its own — but
+  backticks are not tokenized, so `` cat `echo .env` `` is not.)
+- **A glob character laundering a name**: `cat .netrc?` is allowed, because a
+  token containing `*`, `?` or `[` is judged as a pattern, never as a literal.
+- **Guard tampering through a generic MCP tool**: a payload carrying a nested
+  `command` string is tamper-checked, but one carrying a `path` to write is
+  only checked against the *secrets* blocklist — adding the guard's own files
+  there would deny legitimate reads of `.claude/settings.json`.
+- **Deeply nested payloads**: the generic scan stops after 6 levels.
+- **Unbounded glob cost**: an agent-supplied `~/*/*/*/*/*/*` makes `glob.glob`
+  walk the tree, measured at seconds against a ~15 ms startup budget.
+- **Anything outside the agent's tool calls** — values already printed into the
+  transcript by a pipeline trace or a CLI command.
 
 ## Delivery channels — and why the two paths differ
 
@@ -142,9 +217,8 @@ Python start per tool call — measured at ~15 ms.
 
 This hook is the portable layer. On Claude Code a **stronger** native layer
 exists and should be used alongside it — deny rules are evaluated regardless of
-what a PreToolUse hook returns, and they cover three things a token matcher
-can't: file commands Claude recognizes inside Bash, `<` / `>` redirection
-targets, and symlinks (both the link and what it resolves to).
+what a PreToolUse hook returns, and they cover file commands Claude recognizes
+inside Bash and `<` / `>` redirection targets.
 
 A plugin manifest can't ship permission rules, so this belongs in the
 CLI-generated `.claude/settings.json`:
@@ -172,19 +246,20 @@ For an actual boundary rather than a deterrent, enable Claude Code's
 [sandbox](https://code.claude.com/docs/en/sandboxing) — OS-level enforcement that
 applies to every process, including ones this hook can't see.
 
-## What still gets through
+## Testing
 
-Documented on purpose, so nobody mistakes this for a sandbox:
+```bash
+make test     # or: python3 -m unittest tests.test_secrets_guard
+```
 
-- **Unscoped recursive readers**: `grep -rn api_key .` never names a guarded file.
-  (Claude's own `Read` deny rules don't cover this either.) In practice
-  `.gitignore` blunts it — dlt workspaces gitignore `secrets.toml` and `.env`, and
-  Claude's `Grep` (ripgrep) honors that; plain `grep -r` does not.
-- **Indirection**: `cat "$SECRETS"`, or a script that opens the file itself.
-- **Anything outside the agent's tool calls** — values already printed into the
-  transcript by a pipeline trace or a CLI command.
+`tests/test_secrets_guard.py` has two tiers. Most of it calls `deny_reason()`
+in process and asserts the **exact** message constant — that is what stops a
+refactor from silently swapping `DENY` for `TAMPER`, or denying by crashing.
+The rest runs the script as a subprocess to pin the process contract: both
+output dialects, allow-is-silence, exit codes, and the fail-open/fail-closed
+split.
 
-## Manual testing
+Manual stdin checks, one per dialect:
 
 ```bash
 # Claude / Codex dialect (stdin: {tool_name, tool_input}) -> deny JSON
@@ -195,11 +270,4 @@ echo '{"hook_event_name":"beforeShellExecution","command":"cat .env"}' | python3
 
 # Allowed reads produce no output (Claude/Codex) or {"permission": "allow"} (Cursor)
 echo '{"tool_name":"Read","tool_input":{"file_path":".env.example"}}' | python3 secrets_guard.py
-```
-
-The full matrix — every bypass above, plus the false-positive cases that must
-stay allowed — lives in `tests/test_secrets_guard.py`:
-
-```bash
-python3 -m unittest tests.test_secrets_guard
 ```
