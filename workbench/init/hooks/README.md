@@ -195,6 +195,15 @@ two different places, so they must point at two different paths:
   are generated in the CLI's own code, which is why this directory ships no
   Cursor/Codex templates: one definition, no drift.
 
+> **Known issue with the `git rev-parse` fallback.** In a workspace with no
+> `.git`, `git rev-parse --show-toplevel` climbs to the *parent* repository and
+> resolves to the wrong path. The hook command then fails, and because Cursor
+> treats a failing hook as an explicit deny, it hard-denies **every** file read
+> — not just guarded ones. `dlthub-init` does not `git init` its scaffolds, so
+> this is reachable. The candidate fix is to bake the absolute project dir in at
+> install time rather than resolving it at run time; it belongs in
+> `dlthub-init`'s `hooks.py`, not here.
+
 `hooks.json` is therefore Claude-plugin-only, and the CLI ignoring it is correct.
 Two consequences to know:
 

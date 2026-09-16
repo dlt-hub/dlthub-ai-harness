@@ -7,6 +7,11 @@ README travels with it, so this docstring carries what a reader needs to judge
 it alone. Full reference: `workbench/init/hooks/README.md` in
 dlt-hub/dlthub-ai-harness.
 
+This repo is the source of truth. The file is also bundled by the dlthub-init
+scaffolder (repo-root `hooks/` -> wheel `_bundled_hooks/`), which keeps a test
+fixture copy: any edit here must be mirrored there byte for byte, or the two
+channels silently diverge on what they block.
+
 Refuses four things, each with its own message: reads of secrets/dotenv/
 credential files, bulk reads of a directory whose contents are secret,
 `env`/`printenv` dumps (dlt resolves credentials from the environment too),
@@ -611,7 +616,17 @@ def _scan_values(value: object, cwd: str, depth: int = 0) -> str | None:
 
 
 def _grep_paths(tool_input: dict) -> list:
-    """Every path-like field of a Grep payload; shapes vary across agents."""
+    """Every path-like field of a Grep payload.
+
+    All four names are checked because the agents disagree: Claude Code sends
+    `path`/`paths`, while Cursor's Claude-compatible Grep sends `file_path`/
+    `glob`. Checking only Claude's pair let a real `.env` grep through on
+    Cursor — found in live testing, not by reading either vendor's docs. Do
+    not narrow this list to the fields one agent happens to document.
+
+    `paths` also arrives as a bare string rather than a list, which spreads
+    into characters if passed to a list constructor blindly.
+    """
     raw = tool_input.get("paths")
     paths = [raw] if isinstance(raw, str) else list(raw) if isinstance(raw, list) else []
     return paths + [tool_input[key] for key in ("path", "file_path", "glob") if tool_input.get(key)]
