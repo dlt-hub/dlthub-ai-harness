@@ -276,6 +276,30 @@ class ShellDecisions(DecisionTestCase):
             (ALLOW, "/usr/bin/env python3 x.py"),
         ])
 
+    def test_a_grep_pattern_is_not_a_path(self):
+        """`grep secrets.toml src/` searches FOR the string; it reads nothing.
+
+        The Grep *tool* already skips its `pattern` field; a Bash `grep` had
+        its pattern checked as though it were a filename.
+        """
+        self.assert_commands([
+            (ALLOW, "grep secrets.toml src/"),
+            (ALLOW, "grep -rn .env src/"),
+            (ALLOW, "rg secrets.toml"),
+            # the operands after the pattern are still paths
+            (DENY, "grep api_key .env"),
+            (DENY, "grep -rn api_key .env src/"),
+            # -e/-f supply the pattern, so every positional is a file and
+            # none may be skipped — without this the first one is a free read.
+            # The attached spellings matter most: there the FILE is the first
+            # positional, so skipping it hands over the read.
+            (DENY, "grep -e api_key .env"),
+            (DENY, "grep -f patterns.txt .env"),
+            (DENY, "grep -eapi_key .env"),
+            (DENY, "grep -fpat.txt .env"),
+            (DENY, "grep --regexp=api_key .env"),
+        ])
+
     def test_malformed_quoting_still_matches(self):
         self.assert_commands([(DENY, 'cat "unterminated .env'), (ALLOW, "cat 'a")])
 
@@ -306,6 +330,19 @@ class MultiLineCommands(DecisionTestCase):
             (ALLOW, "cd src\nmake all\nls -la"),
             (ALLOW, "dlthub ai secrets list\n"
                     "dlthub ai secrets view-redacted --path .dlt/secrets.toml"),
+        ])
+
+    def test_a_backslash_continues_the_line(self):
+        """`cat \\<newline>.env` is one command in bash, reading `.env`.
+
+        shlex raises on a line ending in a backslash, so the continuation took
+        the same retry path as an unbalanced quote and glued a literal newline
+        onto the next word — producing a token that matched nothing.
+        """
+        self.assert_commands([
+            (DENY, "cat \\\n.env"),
+            # the continuation is one command, so `grep` still owns `.dlt/`
+            (DIRECTORY, "grep -r key \\\n.dlt/"),
         ])
 
     def test_a_newline_inside_quotes_is_not_a_separator(self):
