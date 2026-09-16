@@ -1,10 +1,22 @@
-"""End-to-end tests for workbench/init/hooks/secrets_guard.py.
+"""Tests for workbench/init/hooks/secrets_guard.py.
 
-Runs the guard as a subprocess exactly the way the agents do: payload on
-stdin, decision read from stdout JSON + exit code. Path checks run against a
-real temp workspace so glob expansion has something to expand onto.
+Two tiers, because the guard has two contracts:
+
+- **Decisions** (most of the file) exercise `deny_reason()` in process and
+  assert the *exact* message constant. Table-driven, ~20ms for the lot, so
+  coverage is limited by imagination rather than by subprocess cost. Asserting
+  the constant — not merely "something was returned" — is what stops a refactor
+  from silently swapping DENY for TAMPER, or denying by crashing.
+- **The process contract** (`ProcessContract` and below) runs the guard as a
+  subprocess exactly the way the agents do: payload on stdin, decision read
+  from stdout JSON plus the exit code. That is the right altitude for the two
+  output dialects, allow-is-silence, and the fail-open/fail-closed split.
+
+Both tiers share one real temp workspace so glob expansion and symlink
+resolution have something to resolve against.
 """
 
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -16,252 +28,304 @@ from pathlib import Path
 GUARD = Path(__file__).resolve().parents[1] / "workbench" / "init" / "hooks" / "secrets_guard.py"
 
 
-def run_guard(stdin_text: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, str(GUARD)],
-        input=stdin_text,
-        capture_output=True,
-        text=True,
-    )
-
-
-class GuardTestCase(unittest.TestCase):
-    """A temp dlt workspace, plus assertions in each agent's dialect."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.workspace = Path(tempfile.mkdtemp(prefix="dlt-guard-test-"))
-        (cls.workspace / ".dlt").mkdir()
-        (cls.workspace / ".dlt" / "secrets.toml").write_text("password='REAL'\n")
-        (cls.workspace / ".dlt" / "dev.secrets.toml").write_text("password='REAL'\n")
-        (cls.workspace / ".dlt" / "example.secrets.toml").write_text("password='<set me>'\n")
-        (cls.workspace / ".dlt" / "config.toml").write_text("[runtime]\n")
-        (cls.workspace / ".env").write_text("API_KEY=REAL\n")
-        (cls.workspace / ".env.example").write_text("API_KEY=\n")
-        (cls.workspace / "pyproject.toml").write_text("[project]\n")
-        (cls.workspace / "src").mkdir()
-        (cls.workspace / "src" / "pipeline.py").write_text("import dlt\n")
-
-    @classmethod
-    def tearDownClass(cls):
-        shutil.rmtree(cls.workspace, ignore_errors=True)
-
-    # payload builders
-
-    def claude(self, tool_name, tool_input) -> subprocess.CompletedProcess:
-        return run_guard(
-            json.dumps(
-                {
-                    "hook_event_name": "PreToolUse",
-                    "cwd": str(self.workspace),
-                    "tool_name": tool_name,
-                    "tool_input": tool_input,
-                }
-            )
-        )
-
-    def bash(self, command) -> subprocess.CompletedProcess:
-        return self.claude("Bash", {"command": command})
-
-    def cursor(self, event, **fields) -> subprocess.CompletedProcess:
-        return run_guard(
-            json.dumps({"hook_event_name": event, "cwd": str(self.workspace), **fields})
-        )
-
-    # assertions
-
-    def assert_claude_deny(self, result):
-        self.assertEqual(result.returncode, 0, result.stderr)
-        decision = json.loads(result.stdout)["hookSpecificOutput"]
-        self.assertEqual(decision["hookEventName"], "PreToolUse")
-        self.assertEqual(decision["permissionDecision"], "deny")
-        self.assertTrue(decision["permissionDecisionReason"])
-
-    def assert_claude_allow(self, result):
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "")
-
-    def assert_cursor_deny(self, result):
-        self.assertEqual(result.returncode, 0, result.stderr)
-        out = json.loads(result.stdout)
-        self.assertEqual(out["permission"], "deny")
-        self.assertTrue(out["user_message"])
-        self.assertTrue(out["agent_message"])
-
-    def assert_cursor_allow(self, result):
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {"permission": "allow"})
-
-
-class FileNameTest(GuardTestCase):
-    def test_read_secrets_toml_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".dlt/secrets.toml"}))
-
-    def test_read_profile_secrets_toml_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".dlt/dev.secrets.toml"}))
-
-    def test_read_example_secrets_toml_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": ".dlt/example.secrets.toml"}))
-
-    def test_read_template_secrets_toml_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": ".dlt/template.secrets.toml"}))
-
-    def test_read_uppercase_secrets_toml_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".dlt/SECRETS.TOML"}))
-
-    def test_read_uppercase_env_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".ENV"}))
-
-    def test_read_env_example_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": ".env.example"}))
-
-    def test_read_dlt_config_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": ".dlt/config.toml"}))
-
-    def test_backup_copy_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".dlt/secrets.toml.bak"}))
-
-    def test_editor_swapfile_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".env~"}))
-
-    def test_backup_of_placeholder_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": ".env.example.bak"}))
-
-    def test_envrc_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".envrc"}))
-
-    def test_credential_files_denied(self):
-        for path in (
-            "~/.netrc",
-            "~/.pgpass",
-            "service_account.json",
-            "~/.aws/credentials",
-            "~/.ssh/id_ed25519",
-        ):
-            with self.subTest(path=path):
-                self.assert_claude_deny(self.claude("Read", {"file_path": path}))
-
-    def test_public_key_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": "~/.ssh/id_ed25519.pub"}))
-
-
-class SymlinkTest(GuardTestCase):
-    """A symlink named around the blocklist still points at a real secret."""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        (cls.workspace / "notes.txt").symlink_to(cls.workspace / ".dlt" / "secrets.toml")
-        (cls.workspace / "readme.md").symlink_to(cls.workspace / "pyproject.toml")
-
-    def test_read_symlink_to_secrets_denied(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": "notes.txt"}))
-
-    def test_read_symlink_to_harmless_file_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": "readme.md"}))
-
-    def test_cat_symlink_to_secrets_denied(self):
-        self.assert_claude_deny(self.bash("cat notes.txt"))
-
-    def test_cursor_read_symlink_to_secrets_denied(self):
-        self.assert_cursor_deny(self.cursor("beforeReadFile", file_path="notes.txt"))
-
-
-class GrepTest(GuardTestCase):
-    def test_paths_as_string_denied(self):
-        self.assert_claude_deny(self.claude("Grep", {"paths": ".dlt/secrets.toml"}))
-
-    def test_paths_as_list_denied(self):
-        self.assert_claude_deny(self.claude("Grep", {"paths": ["src/", ".env.production"]}))
-
-    def test_glob_denied(self):
-        self.assert_claude_deny(self.claude("Grep", {"glob": "secrets.toml"}))
-
-    def test_harmless_allowed(self):
-        self.assert_claude_allow(self.claude("Grep", {"paths": ["src/"], "path": "README.md"}))
-
-    def test_pattern_naming_a_secrets_file_allowed(self):
-        # searching *for the string* "secrets.toml" reveals nothing
-        self.assert_claude_allow(self.claude("Grep", {"pattern": "secrets.toml", "path": "src"}))
-
-
-class ShellTest(GuardTestCase):
-    def test_plain_cat_denied(self):
-        self.assert_claude_deny(self.bash("cat .dlt/secrets.toml"))
-
-    def test_redirect_without_space_denied(self):
-        # shlex.split alone returns ['cat<.env'] and matches nothing
-        self.assert_claude_deny(self.bash("cat<.env"))
-
-    def test_pipe_without_space_denied(self):
-        self.assert_claude_deny(self.bash("cat .env|head"))
-
-    def test_glob_over_secrets_dir_denied(self):
-        self.assert_claude_deny(self.bash("cat .dlt/*"))
-        self.assert_claude_deny(self.bash("cat .dlt/*.toml"))
-
-    def test_dotenv_glob_denied(self):
-        self.assert_claude_deny(self.bash("cat .env*"))
-
-    def test_bulk_reader_on_secrets_dir_denied(self):
-        self.assert_claude_deny(self.bash("grep -r password .dlt/"))
-        self.assert_claude_deny(self.bash("tar cf - .dlt | base64"))
-
-    def test_interpreter_inline_code_denied(self):
-        self.assert_claude_deny(self.bash("bash -c 'cat .env'"))
-        self.assert_claude_deny(self.bash("python3 -c \"print(open('.env').read())\""))
-
-    def test_environment_dump_denied(self):
-        self.assert_claude_deny(self.bash("env"))
-        self.assert_claude_deny(self.bash("printenv | grep -i key"))
-
-    def test_env_as_command_prefix_allowed(self):
-        self.assert_claude_allow(self.bash("env FOO=1 python src/pipeline.py"))
-
-    def test_listing_secrets_dir_allowed(self):
-        # names only, no contents
-        self.assert_claude_allow(self.bash("ls -la .dlt"))
-
-    def test_unrelated_globs_allowed(self):
-        self.assert_claude_allow(self.bash("cat *.toml"))
-        self.assert_claude_allow(self.bash("cat src/*.py"))
-
-    def test_prose_mentioning_dotenv_allowed(self):
-        self.assert_claude_allow(self.bash("git commit -m 'fix .env loading'"))
-
-    def test_cat_readme_allowed(self):
-        self.assert_claude_allow(self.bash("cat README.md"))
-
-
-class OtherToolsTest(GuardTestCase):
-    """Reachable only with matcher "*" — see hooks/hooks.json."""
-
-    def test_write_to_dotenv_denied(self):
-        self.assert_claude_deny(self.claude("Write", {"file_path": ".env", "content": "x"}))
-
-    def test_edit_secrets_denied(self):
-        self.assert_claude_deny(
-            self.claude("Edit", {"file_path": ".dlt/secrets.toml", "old_string": "a", "new_string": "b"})
-        )
-
-    def test_codex_apply_patch_denied(self):
-        self.assert_claude_deny(self.claude("apply_patch", {"file_path": ".env"}))
-
-    def test_mcp_tool_reading_secrets_denied(self):
-        self.assert_claude_deny(
-            self.claude("mcp__filesystem__read_file", {"path": ".dlt/secrets.toml"})
-        )
-
-    def test_mcp_tool_with_unrelated_prose_allowed(self):
-        self.assert_claude_allow(
-            self.claude("mcp__linear__list_issues", {"query": "check .env handling"})
-        )
-
-    def test_write_to_source_file_allowed(self):
-        self.assert_claude_allow(self.claude("Write", {"file_path": "src/pipeline.py", "content": "x"}))
-
-
-class EscapeHatchTest(GuardTestCase):
+def _load_guard():
+    """Import the guard as a module. It guards `__main__`, so this is safe."""
+    spec = importlib.util.spec_from_file_location("secrets_guard", GUARD)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+guard = _load_guard()
+
+# The four verdicts, named so a table row reads as its own assertion.
+ALLOW = None
+DENY = guard.DENY_MESSAGE
+DIRECTORY = guard.DIRECTORY_MESSAGE
+TAMPER = guard.TAMPER_MESSAGE
+
+WORKSPACE: Path
+
+
+def setUpModule():
+    """One workspace for every test; nothing below mutates it."""
+    global WORKSPACE
+    WORKSPACE = Path(tempfile.mkdtemp(prefix="dlt-guard-test-"))
+    for directory in (".dlt", ".claude", ".codex", ".ssh", "src", ".agents/hooks"):
+        (WORKSPACE / directory).mkdir(parents=True)
+    for name, content in [
+        (".dlt/secrets.toml", "password='REAL'\n"),
+        (".dlt/dev.secrets.toml", "password='REAL'\n"),
+        (".dlt/example.secrets.toml", "password='<set me>'\n"),
+        (".dlt/config.toml", "[runtime]\n"),
+        (".env", "API_KEY=REAL\n"),
+        (".env.example", "API_KEY=\n"),
+        (".netrc", "machine x login y\n"),
+        (".claude/settings.json", "{}\n"),
+        (".claude/CLAUDE.md", "# project\n"),
+        (".codex/config.toml", "model = 'x'\n"),
+        (".ssh/id_ed25519", "KEY\n"),
+        (".ssh/id_ed25519.pub", "PUB\n"),
+        (".agents/hooks/secrets_guard.py", "# the guard\n"),
+        ("pyproject.toml", "[project]\n"),
+        ("README.md", "# readme\n"),
+        ("src/pipeline.py", "import dlt\n"),
+    ]:
+        (WORKSPACE / name).write_text(content)
+    # a link named innocently, pointing at a secret; and one at a secret *dir*
+    (WORKSPACE / "notes.txt").symlink_to(WORKSPACE / ".dlt" / "secrets.toml")
+    (WORKSPACE / "readme-link.md").symlink_to(WORKSPACE / "pyproject.toml")
+    (WORKSPACE / "dlink").symlink_to(WORKSPACE / ".dlt")
+
+
+def tearDownModule():
+    shutil.rmtree(WORKSPACE, ignore_errors=True)
+
+
+class DecisionTestCase(unittest.TestCase):
+    """Tier 1: `deny_reason()` in process, asserting the exact message."""
+
+    def assert_decisions(self, cases, tool=None):
+        """Each case is (expected_message_or_ALLOW, tool_input-or-command)."""
+        for expected, payload in cases:
+            with self.subTest(payload=payload):
+                if tool is not None:
+                    full = {"tool_name": tool, "tool_input": payload}
+                else:
+                    full = payload
+                self.assertEqual(guard.deny_reason(full, str(WORKSPACE)), expected)
+
+    def assert_reads(self, cases):
+        self.assert_decisions([(e, {"file_path": p}) for e, p in cases], tool="Read")
+
+    def assert_commands(self, cases):
+        self.assert_decisions([(e, {"command": c}) for e, c in cases], tool="Bash")
+
+
+class BlockedNames(DecisionTestCase):
+    """Which basenames are guarded, at any directory depth."""
+
+    def test_dlt_secrets(self):
+        self.assert_reads([
+            (DENY, ".dlt/secrets.toml"),
+            (DENY, "secrets.toml"),
+            (DENY, ".dlt/dev.secrets.toml"),
+            (DENY, "deep/nested/prod.secrets.toml"),
+            (ALLOW, ".dlt/example.secrets.toml"),
+            (ALLOW, ".dlt/template.secrets.toml"),
+            (ALLOW, ".dlt/sample.secrets.toml"),
+            # the placeholder exemption is the whole stem, not a suffix
+            (DENY, ".dlt/dev.example.secrets.toml"),
+            (ALLOW, ".dlt/config.toml"),
+        ])
+
+    def test_dotenv(self):
+        self.assert_reads([
+            (DENY, ".env"),
+            (DENY, ".env.production"),
+            (DENY, ".env.local"),
+            (DENY, ".envrc"),
+            (ALLOW, ".env.example"),
+            (ALLOW, ".env.template"),
+            (ALLOW, ".env.sample"),
+            (ALLOW, ".environment"),
+            (ALLOW, ".envy"),
+            (ALLOW, "environment.ts"),
+            (ALLOW, "myenv"),
+        ])
+
+    def test_credentials(self):
+        self.assert_reads([
+            (DENY, "~/.netrc"),
+            (DENY, "~/_netrc"),
+            (DENY, "~/.pgpass"),
+            (DENY, "~/.pypirc"),
+            (DENY, "service_account.json"),
+            (DENY, "application_default_credentials.json"),
+            (DENY, "~/.ssh/id_rsa"),
+            (DENY, "~/.ssh/id_dsa"),
+            (DENY, "~/.ssh/id_ecdsa"),
+            (DENY, "~/.ssh/id_ed25519"),
+            (DENY, "~/.aws/credentials"),
+            (DENY, "~/.azure/credentials"),
+            (ALLOW, "~/.ssh/id_ed25519.pub"),
+            (ALLOW, "id_rsa.pub"),
+            # the bare name is too common to block; only inside .aws/.azure
+            (ALLOW, "credentials"),
+            (ALLOW, "aws/credentials"),
+        ])
+
+    def test_case_insensitive(self):
+        self.assert_reads([
+            (DENY, ".dlt/SECRETS.TOML"),
+            (DENY, ".dlt/SeCrEtS.ToMl"),
+            (DENY, ".ENV"),
+        ])
+
+    def test_backup_suffixes_are_stripped(self):
+        self.assert_reads([
+            (DENY, ".dlt/secrets.toml.bak"),
+            (DENY, "secrets.toml.orig"),
+            (DENY, "secrets.toml.save"),
+            (DENY, ".env~"),
+            (DENY, ".env.swp"),
+            (DENY, ".env.bak.bak"),
+            (ALLOW, ".env.example.bak"),
+            # a name that IS a suffix must not strip to "" and vanish
+            (ALLOW, ".bak"),
+            (ALLOW, "~"),
+        ])
+
+    def test_windows_separators(self):
+        self.assert_reads([(DENY, r".dlt\secrets.toml"), (DENY, r"C:\proj\.env")])
+
+    def test_empty_and_degenerate_paths(self):
+        self.assert_reads([(ALLOW, ""), (ALLOW, "."), (ALLOW, "/"), (ALLOW, "..")])
+
+    def test_symlinks_are_judged_by_target(self):
+        self.assert_reads([
+            (DENY, "notes.txt"),          # -> .dlt/secrets.toml
+            (ALLOW, "readme-link.md"),    # -> pyproject.toml
+        ])
+
+
+class ShellDecisions(DecisionTestCase):
+    """What a Bash command earns, by exact message."""
+
+    def test_plain_reads(self):
+        self.assert_commands([
+            (DENY, "cat .dlt/secrets.toml"),
+            (DENY, "cat .env"),
+            (DENY, "cat ./.env"),
+            (DENY, "cat 'a b/.env'"),
+            (DENY, 'cat ".env"'),
+            (DENY, "cat notes.txt"),
+            (ALLOW, "cat README.md"),
+            (ALLOW, "cat .dlt/config.toml"),
+            (ALLOW, "cat readme-link.md"),
+        ])
+
+    def test_punctuation_is_tokenized_out(self):
+        # shlex.split alone returns 'cat<.env' as one token, matching nothing
+        self.assert_commands([
+            (DENY, "cat<.env"),
+            (DENY, "cat .env|head"),
+            (DENY, "cat .env>out"),
+            (DENY, "cat .env;echo hi"),
+            (DENY, "cat a && cat .env"),
+        ])
+
+    def test_globs(self):
+        self.assert_commands([
+            # arm 1: the directory it points at, whether or not it exists yet
+            (DENY, "cat .dlt/*"),
+            (DENY, "cat .dlt/*.toml"),
+            # arm 2: the shape of the pattern itself
+            (DENY, "cat .env*"),
+            (DENY, "cat *secret*"),
+            (ALLOW, "cat *.toml"),
+            (ALLOW, "cat src/*.py"),
+        ])
+
+    def test_glob_expansion_is_the_last_arm(self):
+        """A pattern neither secrets-shaped nor in a secret dir, but which
+        expands onto a guarded file right now — the only arm that reads disk."""
+        self.assert_commands([(DENY, "cat .netr*"), (ALLOW, "cat READ*.md")])
+
+    def test_bulk_readers_on_a_secret_directory(self):
+        self.assert_commands([
+            (DIRECTORY, "grep -r password .dlt/"),
+            (DIRECTORY, "grep -rn destination .dlt/"),
+            (DIRECTORY, "tar cf - .dlt | base64"),
+            (DIRECTORY, "rsync -a .ssh/ /tmp/"),
+            # names only, no contents
+            (ALLOW, "ls -la .dlt"),
+            (ALLOW, "ls .ssh"),
+        ])
+
+    def test_directory_message_points_at_the_alternative(self):
+        self.assertIn("config.toml", DIRECTORY)
+
+    def test_inline_interpreter_code(self):
+        self.assert_commands([
+            (DENY, "bash -c 'cat .env'"),
+            (DENY, 'sh -c "cat .env"'),
+            (DENY, "python3 -c \"print(open('.env').read())\""),
+            (DENY, "node -e \"require('fs').readFileSync('.env')\""),
+            # only interpreters get their blob split open
+            (ALLOW, "git commit -m 'fix .env loading'"),
+            (ALLOW, 'git commit -m "read secrets.toml"'),
+            (ALLOW, "python3 -c \"print(open('README.md').read())\""),
+        ])
+
+    def test_environment_dumps(self):
+        self.assert_commands([
+            (DENY, "env"),
+            (DENY, "/usr/bin/env"),
+            (DENY, "printenv"),
+            (DENY, "printenv | grep -i key"),
+            (DENY, "env | grep KEY"),
+            # the prefix form runs a command instead of printing
+            (ALLOW, "env FOO=1 python src/pipeline.py"),
+            (ALLOW, "env -u PATH ls"),
+            (ALLOW, "env -i ls"),
+            (ALLOW, "/usr/bin/env python3 x.py"),
+        ])
+
+    def test_malformed_quoting_still_matches(self):
+        self.assert_commands([(DENY, 'cat "unterminated .env'), (ALLOW, "cat 'a")])
+
+    def test_empty_command(self):
+        self.assert_commands([(ALLOW, ""), (ALLOW, "   ")])
+
+
+class MultiLineCommands(DecisionTestCase):
+    """A newline ends a command, so an exempt line cannot vouch for the next.
+
+    Regression: shlex treats "\\n" as plain whitespace, which collapsed a
+    multi-line command into one segment and let the safe-CLI exemption launder
+    every line after the first.
+    """
+
+    def test_later_lines_are_judged_on_their_own(self):
+        self.assert_commands([
+            (DENY, "dlthub ai secrets list\ncat .env"),
+            (DENY, "echo hi\ndlthub ai secrets list\ncat .dlt/secrets.toml"),
+            (DENY, "cd src\ncat ../.env"),
+        ])
+
+    def test_a_bare_env_line_is_still_a_dump(self):
+        self.assert_commands([(DENY, "cd src\nenv"), (DENY, "env\nls")])
+
+    def test_every_line_safe_stays_allowed(self):
+        self.assert_commands([
+            (ALLOW, "cd src\nmake all\nls -la"),
+            (ALLOW, "dlthub ai secrets list\n"
+                    "dlthub ai secrets view-redacted --path .dlt/secrets.toml"),
+        ])
+
+    def test_a_newline_inside_quotes_is_not_a_separator(self):
+        # the quote continues the word, so this is one token, not a path
+        self.assert_commands([
+            (ALLOW, 'git commit -m "fix\n.env loading"'),
+            (ALLOW, 'echo "line1\nline2"'),
+        ])
+
+
+class SecretDirSymlinks(DecisionTestCase):
+    """A link to a secret directory leaks it under a harmless name."""
+
+    def test_bulk_read_through_a_directory_symlink(self):
+        self.assert_commands([
+            (DIRECTORY, "grep -r key dlink"),
+            (DIRECTORY, "tar cf - dlink"),
+        ])
+
+    def test_listing_through_the_link_is_still_fine(self):
+        self.assert_commands([(ALLOW, "ls dlink")])
+
+
+class EscapeHatch(DecisionTestCase):
     """The route the deny message recommends must not itself be blocked.
 
     A guard that refuses its own escape hatch leaves the agent with no
@@ -269,179 +333,357 @@ class EscapeHatchTest(GuardTestCase):
     make it route around the guard.
     """
 
-    def test_cli_view_redacted_with_path_allowed(self):
-        self.assert_claude_allow(
-            self.bash("dlthub ai secrets view-redacted --path .dlt/secrets.toml")
-        )
+    def test_sanctioned_cli(self):
+        self.assert_commands([
+            (ALLOW, "dlthub ai secrets list"),
+            (ALLOW, "dlthub ai secrets"),
+            (ALLOW, "dlthub ai secrets view-redacted --path .dlt/secrets.toml"),
+            (ALLOW, "dlthub ai secrets update-fragment --path .dlt/secrets.toml '[x]'"),
+            (ALLOW, "uv run dlthub ai secrets view-redacted --path .dlt/dev.secrets.toml"),
+            (ALLOW, "uvx dlthub ai secrets list"),
+            (ALLOW, "poetry run dlthub ai secrets list"),
+            (ALLOW, "dlthub ai secrets view-redacted --path .dlt/secrets.toml | head -20"),
+            (ALLOW, "bash -c 'dlthub ai secrets view-redacted --path .dlt/secrets.toml'"),
+        ])
 
-    def test_cli_update_fragment_with_path_allowed(self):
-        self.assert_claude_allow(
-            self.bash("dlthub ai secrets update-fragment --path .dlt/secrets.toml '[x]'")
-        )
+    def test_the_exemption_is_not_a_hole(self):
+        self.assert_commands([
+            # unknown subcommands fail closed
+            (DENY, "dlthub ai secrets export --path .dlt/secrets.toml"),
+            # a safe first command cannot vouch for a later one
+            (DENY, "dlthub ai secrets list && cat .env"),
+            (DENY, "dlthub ai secrets view-redacted --path .dlt/secrets.toml; cat .env"),
+            (DENY, "sh -c 'dlthub ai secrets list && cat .env'"),
+            # nor for a subshell sharing its segment
+            (DENY, "dlthub ai secrets list $(cat .env)"),
+            (DENY, "dlthub ai secrets view-redacted --path .dlt/secrets.toml $(cat .env)"),
+        ])
 
-    def test_cli_behind_uv_run_allowed(self):
-        self.assert_claude_allow(
-            self.bash("uv run dlthub ai secrets view-redacted --path .dlt/dev.secrets.toml")
-        )
-
-    def test_cli_piped_allowed(self):
-        self.assert_claude_allow(
-            self.bash("dlthub ai secrets view-redacted --path .dlt/secrets.toml | head -20")
-        )
-
-    def test_cli_wrapped_in_sh_allowed(self):
-        self.assert_claude_allow(
-            self.bash("bash -c 'dlthub ai secrets view-redacted --path .dlt/secrets.toml'")
-        )
-
-    def test_mcp_redacted_tools_allowed(self):
+    def test_redacted_mcp_tools(self):
         for tool in (
             "mcp__dlt-workspace-mcp__secrets_view_redacted",
             "mcp__anything__secrets_update_fragment",
             "mcp__x__secrets_list",
         ):
             with self.subTest(tool=tool):
-                self.assert_claude_allow(self.claude(tool, {"path": ".dlt/secrets.toml"}))
+                payload = {"tool_name": tool, "tool_input": {"path": ".dlt/secrets.toml"}}
+                self.assertIsNone(guard.deny_reason(payload, str(WORKSPACE)))
 
-    # the exemption must not become a hole
-
-    def test_unknown_secrets_subcommand_denied(self):
-        # unknown subcommands fail closed — only the three redacted ones pass
-        self.assert_claude_deny(self.bash("dlthub ai secrets export --path .dlt/secrets.toml"))
-
-    def test_chained_command_still_checked(self):
-        self.assert_claude_deny(self.bash("dlthub ai secrets list && cat .env"))
-        self.assert_claude_deny(
-            self.bash("dlthub ai secrets view-redacted --path .dlt/secrets.toml; cat .env")
-        )
-
-    def test_chained_inside_sh_still_checked(self):
-        self.assert_claude_deny(self.bash("sh -c 'dlthub ai secrets list && cat .env'"))
-
-    def test_unrelated_mcp_read_still_denied(self):
-        self.assert_claude_deny(
-            self.claude("mcp__filesystem__read_file", {"path": ".dlt/secrets.toml"})
-        )
+    def test_a_near_miss_on_the_suffix_is_not_exempt(self):
+        payload = {"tool_name": "mcp__x__secrets_listing", "tool_input": {"path": ".env"}}
+        self.assertEqual(guard.deny_reason(payload, str(WORKSPACE)), DENY)
 
 
-class ConfigTomlTest(GuardTestCase):
-    """`.dlt/config.toml` holds no secrets and agents read it constantly."""
+class Tampering(DecisionTestCase):
+    """Rewriting the guard, or the config that installs it, is refused."""
 
-    def test_direct_read_allowed(self):
-        self.assert_claude_allow(self.claude("Read", {"file_path": ".dlt/config.toml"}))
-        self.assert_claude_allow(self.bash("cat .dlt/config.toml"))
+    def test_shell_mutations_of_guard_files(self):
+        self.assert_commands([
+            (TAMPER, "rm .agents/hooks/secrets_guard.py"),
+            (TAMPER, "sed -i '' 's/secrets_guard//' .claude/settings.json"),
+            (TAMPER, "mv .claude/settings.json /tmp/"),
+            (TAMPER, "echo '{}' > .claude/settings.json"),
+            (TAMPER, "chmod 000 .cursor/hooks.json"),
+            (TAMPER, "ln -sf /dev/null .codex/hooks.json"),
+        ])
 
-    def test_edit_allowed(self):
-        self.assert_claude_allow(
-            self.claude("Edit", {"file_path": ".dlt/config.toml", "old_string": "a", "new_string": "b"})
-        )
+    def test_shell_mutations_of_guard_directories(self):
+        self.assert_commands([
+            (TAMPER, "rm -rf .claude"),
+            (TAMPER, "mv .claude .claude.off"),
+            (TAMPER, "chmod -R 000 .claude"),
+            (TAMPER, "rm -r .agents/hooks"),
+            (TAMPER, "find .claude -delete"),
+            (TAMPER, "find . -name secrets_guard.py -exec rm {} ;"),
+        ])
 
-    def test_codex_config_toml_not_guarded(self):
+    def test_interpreter_one_liners(self):
+        self.assert_commands([
+            (TAMPER, "python3 -c \"import shutil;shutil.rmtree('.claude')\""),
+            (TAMPER, "python3 -c \"import os;os.unlink('.agents/hooks/secrets_guard.py')\""),
+        ])
+
+    def test_write_tools(self):
+        self.assert_decisions([
+            (TAMPER, {"file_path": ".agents/hooks/secrets_guard.py", "content": "x"}),
+            (TAMPER, {"file_path": ".claude/settings.json", "content": "x"}),
+        ], tool="Write")
+
+    def test_reading_the_config_is_fine(self):
+        self.assert_commands([
+            (ALLOW, "cat .claude/settings.json"),
+            (ALLOW, "cat .codex/hooks.json"),
+        ])
+
+    def test_unrelated_files_inside_a_guard_directory(self):
+        # only the directory itself is the guarded target
+        self.assert_commands([
+            (ALLOW, "rm .claude/CLAUDE.md"),
+            (ALLOW, "cat .claude/CLAUDE.md"),
+        ])
+
+    def test_codex_config_toml_is_deliberately_unguarded(self):
         # Codex hooks live in .codex/hooks.json (openai/codex#17532), so
-        # .codex/config.toml carries no guard registration to protect
-        self.assert_claude_allow(
-            self.claude("Edit", {"file_path": ".codex/config.toml", "old_string": "a", "new_string": "b"})
+        # config.toml carries no guard registration to protect
+        self.assert_commands([(ALLOW, "sed -i '' 's/a/b/' .codex/config.toml")])
+        self.assert_decisions(
+            [(ALLOW, {"file_path": ".codex/config.toml", "old_string": "a", "new_string": "b"})],
+            tool="Edit",
         )
 
-    def test_codex_hooks_json_still_guarded(self):
-        self.assert_claude_deny(
-            self.claude("Edit", {"file_path": ".codex/hooks.json", "old_string": "a", "new_string": "b"})
+    def test_codex_hooks_json_is_guarded(self):
+        self.assert_decisions(
+            [(TAMPER, {"file_path": ".codex/hooks.json", "old_string": "a", "new_string": "b"})],
+            tool="Edit",
         )
 
-    def test_bulk_read_of_secrets_dir_explains_the_alternative(self):
-        result = self.bash("grep -rn destination .dlt/")
-        self.assert_claude_deny(result)
-        reason = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
-        self.assertIn("config.toml", reason)
+
+class ToolDecisions(DecisionTestCase):
+    """Per-tool branches: Read, Grep, the write tools, and the generic scan."""
+
+    def test_grep_path_shapes(self):
+        self.assert_decisions([
+            (DENY, {"paths": ".dlt/secrets.toml"}),
+            (DENY, {"paths": ["src/", ".env.production"]}),
+            (DENY, {"glob": "secrets.toml"}),
+            (DENY, {"path": ".env"}),
+            (ALLOW, {"paths": ["src/"], "path": "README.md"}),
+            (ALLOW, {"paths": 7}),
+            (ALLOW, {}),
+            # searching *for the string* reveals nothing
+            (ALLOW, {"pattern": "secrets.toml", "path": "src"}),
+        ], tool="Grep")
+
+    def test_write_tools(self):
+        for tool in ("Write", "Edit", "MultiEdit", "apply_patch", "NotebookEdit"):
+            with self.subTest(tool=tool):
+                self.assert_decisions([(DENY, {"file_path": ".env"})], tool=tool)
+        self.assert_decisions([(ALLOW, {"file_path": "src/pipeline.py"})], tool="Write")
+        self.assert_decisions([(DENY, {"notebook_path": ".env"})], tool="NotebookEdit")
+
+    def test_shell_aliases(self):
+        for tool in ("Bash", "shell", "powershell"):
+            with self.subTest(tool=tool):
+                self.assert_decisions([(DENY, {"command": "cat .env"})], tool=tool)
+
+    def test_glob_tool_is_not_covered(self):
+        # Glob lists filenames only; it reveals no content
+        self.assert_decisions([(ALLOW, {"pattern": "**/.env"})], tool="Glob")
+
+    def test_generic_scan_of_unknown_tools(self):
+        self.assert_decisions([
+            (DENY, {"path": ".dlt/secrets.toml"}),
+            (DENY, {"a": {"b": {"c": [".env"]}}}),
+            (DENY, {"command": "cat .env"}),
+            (TAMPER, {"command": "rm .agents/hooks/secrets_guard.py"}),
+            (ALLOW, {"command": "ls"}),
+            # prose fields are skipped: a mention is not an access
+            (ALLOW, {"query": "check .env handling"}),
+            (ALLOW, {"content": ".env"}),
+        ], tool="mcp__filesystem__read_file")
+
+    def test_generic_scan_depth_cap(self):
+        deep = {"a": {"b": {"c": {"d": {"e": ".env"}}}}}
+        self.assert_decisions([(DENY, deep)], tool="mcp__x__y")
+        # deeper than any real payload nests; the one fail-open path
+        deeper = {"a": {"b": {"c": {"d": {"e": {"f": {"g": ".env"}}}}}}}
+        self.assert_decisions([(ALLOW, deeper)], tool="mcp__x__y")
 
 
-class TamperTest(GuardTestCase):
-    def test_deleting_the_guard_denied(self):
-        self.assert_claude_deny(self.bash("rm .agents/hooks/secrets_guard.py"))
+class FailClosed(DecisionTestCase):
+    """A payload that cannot be judged must raise, so main() denies."""
 
-    def test_rewriting_hook_config_denied(self):
-        self.assert_claude_deny(self.bash("sed -i '' 's/secrets_guard//' .claude/settings.json"))
+    def assert_raises_on(self, payload):
+        with self.assertRaises(Exception):
+            guard.deny_reason(payload, str(WORKSPACE))
 
-    def test_editing_the_guard_denied(self):
-        result = self.claude(
-            "Edit",
-            {"file_path": ".agents/hooks/secrets_guard.py", "old_string": "a", "new_string": "b"},
+    def test_non_string_command(self):
+        self.assert_raises_on({"tool_name": "Bash", "tool_input": {"command": None}})
+        self.assert_raises_on({"tool_name": "Bash", "tool_input": {"command": 7}})
+
+    def test_non_string_path(self):
+        self.assert_raises_on({"tool_name": "Read", "tool_input": {"file_path": 7}})
+
+    def test_non_dict_tool_input(self):
+        self.assert_raises_on({"tool_name": "Read", "tool_input": "not a dict"})
+        self.assert_raises_on({"tool_name": "Read", "tool_input": [1, 2]})
+
+    def test_tolerated_shapes_do_not_raise(self):
+        # a missing or null tool_input is a shape we can clear, not one we can't
+        self.assertIsNone(guard.deny_reason({"tool_name": "Read"}, str(WORKSPACE)))
+        self.assertIsNone(
+            guard.deny_reason({"tool_name": "Read", "tool_input": None}, str(WORKSPACE))
         )
-        self.assert_claude_deny(result)
-
-    def test_reading_hook_config_allowed(self):
-        # reading the config is fine; only rewriting it is refused
-        self.assert_claude_allow(self.bash("cat .claude/settings.json"))
 
 
-class CursorDialectTest(GuardTestCase):
-    def test_read_file_denied(self):
-        self.assert_cursor_deny(self.cursor("beforeReadFile", file_path=".dlt/secrets.toml"))
+# --- Tier 2: the process contract ------------------------------------------
 
-    def test_read_file_allowed(self):
-        self.assert_cursor_allow(self.cursor("beforeReadFile", file_path=".dlt/example.secrets.toml"))
 
-    def test_tab_file_read_denied(self):
-        self.assert_cursor_deny(self.cursor("beforeTabFileRead", file_path=".env"))
+def run_guard(stdin_text, cwd=None):
+    return subprocess.run(
+        [sys.executable, str(GUARD)],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+    )
 
-    def test_shell_denied(self):
-        self.assert_cursor_deny(self.cursor("beforeShellExecution", command="cat .env"))
 
-    def test_shell_allowed(self):
-        self.assert_cursor_allow(self.cursor("beforeShellExecution", command="ls"))
+class ProcessContract(unittest.TestCase):
+    """Stdin in, JSON out — the contract the three agents actually rely on."""
 
-    def test_mcp_execution_denied(self):
-        self.assert_cursor_deny(
-            self.cursor(
-                "beforeMCPExecution",
-                tool_name="read_file",
-                tool_input={"path": ".dlt/secrets.toml"},
-            )
+    def claude(self, tool_name, tool_input):
+        return run_guard(json.dumps({
+            "hook_event_name": "PreToolUse",
+            "cwd": str(WORKSPACE),
+            "tool_name": tool_name,
+            "tool_input": tool_input,
+        }))
+
+    def cursor(self, event, **fields):
+        return run_guard(json.dumps({
+            "hook_event_name": event, "cwd": str(WORKSPACE), **fields
+        }))
+
+    def assert_claude(self, result, reason=ALLOW):
+        """Claude/Codex: deny is JSON on stdout, allow is silence, never exit 2."""
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "", "guard crashed; a deny must be a decision")
+        if reason is ALLOW:
+            self.assertEqual(result.stdout, "")
+            return
+        decision = json.loads(result.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["hookEventName"], "PreToolUse")
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertEqual(decision["permissionDecisionReason"], reason)
+
+    def assert_cursor(self, result, reason=ALLOW):
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "", "guard crashed; a deny must be a decision")
+        out = json.loads(result.stdout)
+        if reason is ALLOW:
+            self.assertEqual(out, {"permission": "allow"})
+            return
+        self.assertEqual(out["permission"], "deny")
+        self.assertEqual(out["user_message"], reason)
+        self.assertEqual(out["agent_message"], reason)
+
+    def test_claude_deny_and_allow(self):
+        self.assert_claude(self.claude("Read", {"file_path": ".dlt/secrets.toml"}), DENY)
+        self.assert_claude(self.claude("Read", {"file_path": ".dlt/config.toml"}), ALLOW)
+        self.assert_claude(self.claude("Bash", {"command": "grep -r x .dlt/"}), DIRECTORY)
+        self.assert_claude(self.claude("Bash", {"command": "rm -rf .claude"}), TAMPER)
+
+    def test_cursor_file_events(self):
+        self.assert_cursor(self.cursor("beforeReadFile", file_path=".dlt/secrets.toml"), DENY)
+        self.assert_cursor(self.cursor("beforeReadFile", file_path=".dlt/example.secrets.toml"))
+        self.assert_cursor(self.cursor("beforeTabFileRead", file_path=".env"), DENY)
+        self.assert_cursor(self.cursor("beforeReadFile", file_path="notes.txt"), DENY)
+
+    def test_cursor_shell_and_mcp_events(self):
+        self.assert_cursor(self.cursor("beforeShellExecution", command="cat .env"), DENY)
+        self.assert_cursor(self.cursor("beforeShellExecution", command="ls"))
+        self.assert_cursor(
+            self.cursor("beforeShellExecution", command="rm .claude/settings.json"), TAMPER
+        )
+        self.assert_cursor(
+            self.cursor("beforeMCPExecution", tool_name="read_file",
+                        tool_input={"path": ".dlt/secrets.toml"}), DENY
+        )
+        self.assert_cursor(
+            self.cursor("beforeMCPExecution", tool_name="read_file",
+                        tool_input={"path": "README.md"})
         )
 
-    def test_pre_tool_use_denied(self):
-        # Cursor's "preToolUse" differs from Claude's "PreToolUse" only by case
-        self.assert_cursor_deny(
-            self.cursor("preToolUse", tool_name="Read", tool_input={"file_path": ".env"})
+    def test_event_name_case_decides_the_dialect(self):
+        """Cursor's `preToolUse` differs from Claude's `PreToolUse` only by case.
+
+        Lowercasing the comparison would route every Claude call into the
+        Cursor dialect, whose deny JSON Claude ignores — a guard that looks
+        installed and blocks nothing.
+        """
+        self.assert_cursor(
+            self.cursor("preToolUse", tool_name="Read", tool_input={"file_path": ".env"}), DENY
         )
+        self.assert_claude(self.claude("Read", {"file_path": ".env"}), DENY)
 
-    def test_claude_pre_tool_use_keeps_claude_dialect(self):
-        self.assert_claude_deny(self.claude("Read", {"file_path": ".env"}))
+    def test_an_unrecognized_event_routes_to_claude(self):
+        result = run_guard(json.dumps({
+            "hook_event_name": "PostToolUse", "cwd": str(WORKSPACE),
+            "tool_name": "Read", "tool_input": {"file_path": ".env"},
+        }))
+        self.assert_claude(result, DENY)
 
 
-class FailurePolicyTest(GuardTestCase):
-    def test_read_with_string_tool_input_denied(self):
-        result = self.claude("Read", "not a dict")
-        self.assert_claude_deny(result)
-        self.assertTrue(result.stderr)
+class FailurePolicy(unittest.TestCase):
+    """Fail open on input we cannot read; fail closed once we can."""
 
-    def test_cursor_shell_null_command_denied(self):
-        result = self.cursor("beforeShellExecution", command=None)
-        self.assert_cursor_deny(result)
-        self.assertTrue(result.stderr)
-
-    def assert_allow_loud(self, result):
+    def assert_allow_loudly(self, result):
+        """Unidentifiable input: allow, but never silently."""
         self.assertEqual(result.returncode, 1)
         self.assertEqual(json.loads(result.stdout), {"permission": "allow"})
         self.assertTrue(result.stderr)
 
-    def test_garbage_stdin_allows_loudly(self):
-        self.assert_allow_loud(run_guard("not json"))
-
-    def test_list_payload_allows_loudly(self):
-        self.assert_allow_loud(run_guard('["not", "an", "object"]'))
-
-
-class DenyMessageTest(GuardTestCase):
-    def test_names_only_always_available_tooling(self):
-        result = self.claude("Read", {"file_path": ".env"})
+    def assert_deny_loudly(self, result):
+        """A guarded operation we could not clear: deny, and report why."""
+        self.assertEqual(result.returncode, 0)
         reason = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertEqual(reason, DENY)
+        self.assertTrue(result.stderr)
+
+    def test_unparseable_stdin_allows_loudly(self):
+        for payload in ("not json", '["not", "an", "object"]', "null", "5", ""):
+            with self.subTest(payload=payload):
+                self.assert_allow_loudly(run_guard(payload))
+
+    def test_unjudgeable_payload_denies_loudly(self):
+        self.assert_deny_loudly(run_guard(json.dumps({
+            "hook_event_name": "PreToolUse", "cwd": str(WORKSPACE),
+            "tool_name": "Read", "tool_input": "not a dict",
+        })))
+        self.assert_deny_loudly(run_guard(json.dumps({
+            "hook_event_name": "PreToolUse", "cwd": str(WORKSPACE),
+            "tool_name": "Bash", "tool_input": {"command": None},
+        })))
+
+    def test_cursor_dialect_also_fails_closed(self):
+        result = run_guard(json.dumps({
+            "hook_event_name": "beforeShellExecution", "cwd": str(WORKSPACE), "command": None,
+        }))
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(json.loads(result.stdout)["permission"], "deny")
+        self.assertTrue(result.stderr)
+
+    def test_an_empty_object_is_judgeable_and_allowed(self):
+        result = run_guard("{}")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+
+    def test_missing_cwd_falls_back_to_the_process_directory(self):
+        """Without `cwd` the guard resolves against its own working directory."""
+        payload = json.dumps({
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Read", "tool_input": {"file_path": ".env"},
+        })
+        result = run_guard(payload, cwd=str(WORKSPACE))
+        self.assertEqual(result.stderr, "")
+        reason = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertEqual(reason, DENY)
+
+
+class DenyMessages(unittest.TestCase):
+    """The messages are the guard's whole user interface."""
+
+    def test_deny_names_only_always_available_tooling(self):
         # the CLI ships with dlt itself and works without the init toolkit
-        self.assertIn("dlthub ai secrets view-redacted", reason)
-        self.assertIn("dlthub ai secrets update-fragment", reason)
+        self.assertIn("dlthub ai secrets view-redacted", DENY)
+        self.assertIn("dlthub ai secrets update-fragment", DENY)
         # no hard dependency on a specific MCP server name or on a skill
-        self.assertNotIn("dlt-workspace-mcp", reason)
-        self.assertNotIn("setup-secrets", reason)
+        self.assertNotIn("dlt-workspace-mcp", DENY)
+        self.assertNotIn("setup-secrets", DENY)
+
+    def test_the_three_messages_are_distinct(self):
+        self.assertEqual(len({DENY, DIRECTORY, TAMPER}), 3)
 
 
 if __name__ == "__main__":
