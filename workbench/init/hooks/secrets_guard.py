@@ -110,6 +110,13 @@ _MUTATORS = {"rm", "mv", "cp", "sed", "tee", "truncate", "chmod", "dd", "ln", "s
 # Commands that only mutate with a flag: `find .claude -delete` deletes while
 # plain `find .claude` merely lists, so the verb alone cannot decide.
 _MUTATING_FLAGS = {"-delete", "--delete"}
+# Tools whose first positional argument is a PATTERN, not a path.
+_PATTERN_READERS = {"grep", "egrep", "fgrep", "rg", "ag", "ack"}
+# ...unless the pattern comes from a flag, in which case every positional is
+# a file and none of them may be skipped. Matched as a prefix because the
+# attached spellings (`-ePATTERN`, `--regexp=PATTERN`) are exactly the ones
+# where the first positional is the FILE.
+_PATTERN_FLAGS = ("-e", "-f", "--regexp", "--file")
 # Verbs that destroy or rename a whole directory. A guard *directory* is only
 # protected against these -- `cp`, `sed` and `tee` name it without disabling
 # anything, and treating them as tampering refused ordinary work.
@@ -342,6 +349,15 @@ def _lex(text: str) -> list[str]:
     return list(lexer)
 
 
+def _continues_next_line(text: str) -> bool:
+    """True if `text` ends in an unescaped backslash — a line continuation.
+
+    Counted rather than tested, because a trailing `\\\\` is an escaped
+    backslash and ends the line for real.
+    """
+    return (len(text) - len(text.rstrip("\\"))) % 2 == 1
+
+
 def _tokenize(command: str) -> list[str]:
     """Split a shell command into tokens, with "\\n" marking a line break.
 
@@ -364,7 +380,16 @@ def _tokenize(command: str) -> list[str]:
     tokens: list[str] = []
     pending = ""
     for line in command.splitlines():
-        pending = f"{pending}\n{line}" if pending else line
+        if not pending:
+            pending = line
+        elif _continues_next_line(pending):
+            # `\` at end of line: bash drops the backslash AND the newline,
+            # joining the two lines into one command. Without this the
+            # continuation took the open-quote path below and glued a literal
+            # newline onto the next word, hiding the path after it.
+            pending = pending[:-1] + line
+        else:
+            pending = f"{pending}\n{line}"
         try:
             lexed = _lex(pending)
         except ValueError:
@@ -430,6 +455,23 @@ def _glob_is_blocked(token: str, cwd: str) -> bool:
     # Last: what it actually expands onto right now.
     matches = glob.glob(_resolve(token, cwd))
     return any(_is_blocked_path(match, cwd) or _is_secret_dir(match, cwd) for match in matches)
+
+
+def _pattern_operand(segment: list[str]) -> int:
+    """Index of a grep-style PATTERN operand in `segment`, or -1 if none.
+
+    `grep secrets.toml src/` searches *for* the string and reads nothing, so
+    judging the pattern as a path denies a search that leaks nothing. The Grep
+    tool already skips its `pattern` field; this is the shell equivalent.
+    """
+    if not segment or _basename(segment[0]) not in _PATTERN_READERS:
+        return -1
+    if any(token.startswith(_PATTERN_FLAGS) for token in segment[1:]):
+        return -1  # -e/-f supplies the pattern; every positional is a file
+    for index, token in enumerate(segment[1:], start=1):
+        if not token.startswith("-"):
+            return index
+    return -1
 
 
 def _env_dumps(rest: list[str]) -> bool:
@@ -551,7 +593,10 @@ def _read_deny_reason(command: str, cwd: str) -> str | None:
         if _is_safe_secrets_cli(segment):
             continue  # the sanctioned redacted-access route
         reads_in_bulk = bool(_basenames(segment) & _BULK_READERS)
-        for token in segment:
+        pattern = _pattern_operand(segment)
+        for index, token in enumerate(segment):
+            if index == pattern:
+                continue  # a search string, not a file to open
             if any(char in token for char in _GLOB_CHARS):
                 # judged by pattern and by expansion only: a glob token's
                 # literal text is not a filename

@@ -33,6 +33,8 @@ which is already fully resolved.
 |---|---|---|
 | Punctuation is tokenized out | `cat<.env`, `cat .env\|head` | — |
 | A newline ends a command | `dlthub ai secrets list`⏎`cat .env` | `git commit -m "fix`⏎`.env loading"` (newline inside quotes) |
+| A trailing `\` continues it | `cat \`⏎`.env` | — |
+| A grep PATTERN is not a path | `grep api_key .env` | `grep secrets.toml src/` (searches *for* the string) |
 | Globs, three ways | `cat .dlt/*`, `cat .env*`, `cat .netr*` | `cat *.toml`, `cat src/*.py` |
 | Bulk readers on a secrets dir | `grep -r pw .dlt/`, `tar cf - .dlt` | `ls .dlt` (names, not contents) |
 | Inline interpreter code | `bash -c 'cat .env'`, `python3 -c "open('.env')"` | `git commit -m "fix .env loading"` |
@@ -155,9 +157,6 @@ Conservative by design; each of these is denied even though it leaks nothing:
   dump check is basename-based and position-agnostic; tightening it to `argv[0]`
   would open `xargs env`, `sudo env` and `time env`.
 - Any command mentioning `printenv`, including `echo printenv`.
-- `grep secrets.toml src/` — searching *for* the literal string. The `Grep`
-  tool has a prose-field exemption; a Bash `grep` pattern is indistinguishable
-  from a path argument.
 - `find .dlt -name '*.toml'`, which only lists names, because `find` is on the
   bulk-reader list. `ls .dlt` is allowed.
 - `cat *` in a directory that happens to contain a guarded file.

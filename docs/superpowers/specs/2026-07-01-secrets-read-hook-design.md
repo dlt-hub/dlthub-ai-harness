@@ -45,7 +45,9 @@ Matching is done on the **basename** of any path-like token, not the full path, 
 
 Shell commands are tokenized with `shlex` configured with `punctuation_chars=True`, not `shlex.split`. Plain `shlex.split` returns `cat<.env` and `cat .env|head` as single glued tokens whose basename matches nothing — both are valid bash that reads the file. On malformed quoting the fallback is a whitespace split with quote characters stripped.
 
-Lines are lexed one at a time and joined with an explicit separator token, because shlex treats a newline as ordinary whitespace — without this a multi-line command collapses into one segment and an exempt first line vouches for every line after it. A newline inside an unbalanced quote is not a separator (the line is rejoined with the next and retried), so `git commit -m "fix⏎.env loading"` stays a single token.
+Lines are lexed one at a time and joined with an explicit separator token, because shlex treats a newline as ordinary whitespace — without this a multi-line command collapses into one segment and an exempt first line vouches for every line after it. Two newlines are not separators: one inside an unbalanced quote (the line is rejoined and retried, so `git commit -m "fix⏎.env loading"` stays a single token), and one after a trailing backslash, which bash removes along with the backslash — `cat \⏎.env` is one command reading `.env`.
+
+A grep-style PATTERN operand is skipped, since `grep secrets.toml src/` searches *for* a string and opens nothing. The skip is suppressed when `-e`/`-f`/`--regexp`/`--file` supplies the pattern, because then every positional is a file — matched by prefix, since the attached spellings (`-ePATTERN`) are exactly the ones where the first positional is the file.
 
 Four further shell checks:
 
