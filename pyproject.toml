@@ -36,6 +36,8 @@ select = ["F", "E", "W", "T", "PLW1514"]
 [tool.ruff.lint.extend-per-file-ignores]
 "**" = ["E402"]
 "tools/**" = ["T201"]
+# the guard answers the agent by printing JSON on stdout; that IS its API
+"workbench/init/hooks/secrets_guard.py" = ["T201"]
 
 [tool.mypy]
 python_version = "3.10"
