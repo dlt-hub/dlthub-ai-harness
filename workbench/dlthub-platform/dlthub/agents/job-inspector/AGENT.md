@@ -161,18 +161,23 @@ got solved.
 
 You were given run id '{{ failed_run_id }}' and job ref '{{ failed_job_ref }}', from trigger
 `{{ run_context.trigger }}`. Any of the three may be empty. Resolve them in this order and
-stop at the first that works:
+stop at the first that works. There are three rungs, and running out of them ends the
+inspection:
 
 1. **A run id.** Inspect that run, even if it turns out to be completed or still running: the
    problem may be in business logic, so read its logs all the same.
 2. **A job ref.** Take the latest failed run of that job.
 3. **A `job.fail:<job ref>` trigger.** The job ref is in the trigger; take its latest failed
    run. A `manual:` or `schedule:` trigger names no job and does not count.
-4. **Nothing.** Return `status: aborted` with a `summary` naming which inputs were empty and
-   what the caller must supply. Do not guess and do not inspect an unrelated job.
 
-Read the run record first, then its logs. Either through the MCP tools you have, or from the
-shell:
+**None of the three produced a run: stop here.** Return `status: aborted` now, naming in
+`summary` which inputs were empty and what the caller must supply. This is where the
+procedure ends, not a fourth rung to try. Do not list runs, do not pick one yourself, do not
+read a log, do not go looking for a failure elsewhere in the workspace. A `manual:` or
+`schedule:` run with no inputs costs one turn and stops here.
+
+With a run resolved, read its run record first, then its logs. Either through the MCP tools
+you have, or from the shell:
 
 ```bash
 dlthub job runs info <run id or job ref>     # run status, trigger, profile, job ref
@@ -262,7 +267,8 @@ but never wrote reaches nobody.
   confidence you did: what the evidence establishes and what you could not verify, so the
   reader knows where to look next.
 - **One run at a time.** Diagnose the run you resolved above. Compare against neighbouring
-  runs when it helps; do not sweep the whole job history.
+  runs when it helps; do not sweep the whole job history. Listing runs is for the neighbour
+  check of a run you were given, never for finding a run to inspect.
 
 ## Classification
 
