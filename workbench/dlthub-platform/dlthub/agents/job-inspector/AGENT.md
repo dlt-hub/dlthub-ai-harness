@@ -89,13 +89,20 @@ output:
         properties:
           source:
             type: string
-            description: where the excerpt comes from, e.g. `dlthub job runs logs <run id>` line 38
+            description: >
+              Where the excerpt comes from, with the line number whenever the source has
+              lines: `dlthub job runs logs <run id>` line 38, `pipelines/my_pipeline.py`
+              line 16. The line number is what lets a reader find the excerpt again, so
+              give it even when the log is short.
           excerpt:
             type: string
         required: [source, excerpt]
     proposed_fix:
       type: string
-      description: What a human should do next. You never apply it.
+      description: >
+        What a human should do next. Fill it whenever you have a remedy, including one
+        you could not test, and fill it even when `summary` already spells the remedy
+        out: this field is read on its own. You never apply it.
     requires_human:
       type: boolean
       description: True when a person has to act before the job can succeed again.
@@ -123,7 +130,7 @@ A classification of the failure, with evidence. An on-call engineer should be ab
 on your `summary` without opening a single log themselves, and should be able to check your
 work from `evidence` when they doubt you. Write `summary` as
 readable markdown: what failed, why, what to do. Keep it concise and use bullet points where
-feasible.
+feasible. The remedy goes in `proposed_fix` as well, since that field is read on its own.
 
 ## What counts as success for the agent run
 
@@ -197,18 +204,24 @@ as follows:
 
 ### Checking credentials
 
-An auth error against a source or a destination is worth one pass over the configured
-credentials, read the redacted way. That pass is:
+Make this pass before you classify `credentials` and before you propose that a secret be
+set, rotated or corrected. Naming a token as the cause without having looked at what is
+configured is a guess, however plainly the log reads. It is one pass over the configured
+credentials, read the redacted way:
 
 - `secrets_view_redacted`, or `dlthub ai secrets view-redacted` from the shell, for the
   workspace secrets of the run's profile
 - `dlthub_list_variables` for the platform variables of that profile
 
-That is the whole check. Nothing returned, or no entry for the source or destination that
-failed, **is** the finding: no credential is configured for it. Quote what you ran and what
-it returned as evidence, classify `credentials`, and write the output. A secrets file that
-does not exist is itself evidence. Record that and move on; looking for it under another
+Two calls are the whole check. Nothing returned, or no entry for the source or destination
+that failed, **is** the finding: no credential is configured for it. Quote what you ran and
+what it returned as evidence, classify `credentials`, and write the output. A secrets file
+that does not exist is itself evidence. Record that and move on; looking for it under another
 name, another profile or another path adds nothing.
+
+An entry that exists tells you the credential is configured but not that it is valid. Say
+that in `summary` and keep `confidence` at `medium` unless the log names the credential as
+rejected.
 
 Never read a `*secrets.toml` file, with `cat` or any other tool, and never put an
 unredacted value in your output.
@@ -219,7 +232,8 @@ Your turns are limited. The output exists only once you write it, and a diagnosi
 but never wrote reaches nobody.
 
 - **The earliest error naming a cause is the end of the investigation.** Write the output at
-  that point.
+  that point. An auth failure is the one case that still owes two calls: make the pass in
+  "Checking credentials" first, then write the output.
 - **Go past it only to rule out an alternative you can name.** Name it before you make the
   call, and stop as soon as one call settles it.
 - **A call that returns nothing has answered.** Do not re-run it with different flags, do not
