@@ -45,4 +45,5 @@ jobs:
             using `gh pr comment`. If the change looks good, say so briefly rather than
             inventing issues.
           claude_args: |
+            --model claude-opus-4-8
             --allowed-tools "Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(make lint)"
