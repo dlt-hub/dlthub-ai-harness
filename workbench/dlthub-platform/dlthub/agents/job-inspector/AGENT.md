@@ -205,9 +205,9 @@ as follows:
 
 ### Checking credentials
 
-Before classifying `credentials` or proposing that a secret be set or rotated, make two
-calls: `secrets_view_redacted` with no arguments, which merges every secrets file in the
-workspace, and `dlthub_list_variables` for the run's profile. That is the whole check.
+Before classifying `credentials` or proposing that a secret be set or rotated, make only
+these two calls: `secrets_view_redacted` with no arguments, which merges every secrets file
+in the workspace, and `dlthub_list_variables` for the run's profile.
 
 No entry for the source or destination that failed **is** the finding: nothing is configured
 for it. Quote both calls as evidence and write the output. An entry that does exist shows the
@@ -216,8 +216,7 @@ names it as rejected.
 
 ## Budget
 
-Your turns are limited. The output exists only once you write it, and a diagnosis you found
-but never wrote reaches nobody.
+Your turns are limited. The output exists only once you write it.
 
 - **The earliest error naming a cause is the end of the investigation.** Write the output at
   that point. An auth failure is the one case that still owes two calls: make the pass in
@@ -228,7 +227,7 @@ but never wrote reaches nobody.
   and a "not found" are both findings. Do not re-run the call with different arguments, do not
   read its `--help`, do not chase the same fact through another tool.
 - **Running short of turns, write the output with what you have.** Partial evidence at
-  `confidence: medium` or `low` still reaches the engineer on call.
+  `confidence: medium` or `low` still reaches the engineer.
 
 ## Constraints
 
