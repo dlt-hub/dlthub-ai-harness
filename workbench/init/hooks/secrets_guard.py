@@ -658,15 +658,22 @@ def _shell_deny_reason(command: str, cwd: str) -> str | None:
 
 
 def _scan_values(value: object, cwd: str, depth: int = 0) -> str | None:
-    """Deny reason for any path-shaped string in an arbitrary tool payload.
+    """Deny reason for any path- or command-shaped string in an arbitrary
+    tool payload.
 
     The fallback for tools with no dedicated branch — MCP servers, vendor
-    payload drift, tools added after this script was written. _is_blocked_path
-    matches a whole basename, so prose that merely mentions `.env` does not
-    trip it. Returns the reason rather than a bool so a nested `command` keeps
-    its own message: telling an agent that `rm …/secrets_guard.py` was refused
-    because it should use `secrets view-redacted` is advice for a different
-    problem.
+    payload drift, tools added after this script was written. Every string is
+    run through `_shell_deny_reason`, a superset of a plain path check (a bare
+    path lexes as one segment and is judged the same way), rather than
+    special-cased to a field literally named `command` — a shell-capable tool
+    is exactly as likely to call that field `cmd`, `script`, or `exec`, and
+    keying the check to one spelling would defeat the fallback's whole reason
+    for existing the moment a real tool picks a different one.
+    `_is_blocked_path`/`_shell_deny_reason` match a whole basename or token,
+    so prose that merely mentions `.env` does not trip either. Returns the
+    reason rather than a bool so a nested command keeps its own message:
+    telling an agent that `rm …/secrets_guard.py` was refused because it
+    should use `secrets view-redacted` is advice for a different problem.
     """
     if depth > _MAX_SCAN_DEPTH:
         # deeper than any real tool payload nests; bounds cost per tool call.
@@ -674,7 +681,7 @@ def _scan_values(value: object, cwd: str, depth: int = 0) -> str | None:
         # string nested deeper than this is allowed through.
         return None
     if isinstance(value, str):
-        return DENY_MESSAGE if _is_blocked_path(value, cwd) else None
+        return _shell_deny_reason(value, cwd)
     if isinstance(value, list):
         for item in value:
             reason = _scan_values(item, cwd, depth + 1)
@@ -686,11 +693,7 @@ def _scan_values(value: object, cwd: str, depth: int = 0) -> str | None:
             lowered = key.lower() if isinstance(key, str) else ""
             if lowered in _PROSE_KEYS:
                 continue  # prose, not a path: skips the whole subtree
-            reason = (
-                _shell_deny_reason(item, cwd)
-                if lowered == "command" and isinstance(item, str)
-                else _scan_values(item, cwd, depth + 1)
-            )
+            reason = _scan_values(item, cwd, depth + 1)
             if reason:
                 return reason
     return None
