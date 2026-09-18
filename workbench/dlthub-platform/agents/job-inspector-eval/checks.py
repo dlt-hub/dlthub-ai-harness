@@ -740,85 +740,179 @@ def _cites_held_artifact(source: str) -> bool:
     return any(marker in text for marker in _HELD_ARTIFACTS)
 
 
+EXCERPT_AT_CITED = "at_cited"
+EXCERPT_MISPLACED = "misplaced"
+EXCERPT_UNCITED = "uncited"
+EXCERPT_MISSING = "missing"
+EXCERPT_UNVERIFIABLE = "unverifiable"
+
+
+def _matches(excerpt: str, haystack: str) -> bool:
+    """Whether an excerpt is in a piece of text, verbatim or at the token overlap ratio."""
+    return excerpt in haystack or token_overlap(excerpt, haystack) >= EXCERPT_MATCH_RATIO
+
+
+def _cited_region(ctx: EvalContext, first: int, last: int, height: int) -> str:
+    """The cited lines, widened by the tolerance and by the excerpt's own height."""
+    return normalise(
+        "\n".join(
+            ctx.log_line(n)
+            for n in range(first - SOURCE_LINE_TOLERANCE,
+                           last + SOURCE_LINE_TOLERANCE + height + 1)
+        )
+    )
+
+
+def _locate_in_log(ctx: EvalContext, excerpt: str) -> int:
+    """Line number where an excerpt starts in the failed run's log, 0 when it is not there.
+
+    A multi-line excerpt is anchored by its first non-empty line, because the lines after it
+    may have been wrapped or joined.
+    """
+    head = normalise(next((part for part in excerpt.splitlines() if part.strip()), ""))
+    if not head:
+        return 0
+    for line in ctx.failed_log:
+        if head in normalise(line.content):
+            return line.number
+    for line in ctx.failed_log:
+        if token_overlap(head, normalise(line.content)) >= EXCERPT_MATCH_RATIO:
+            return line.number
+    return 0
+
+
+def excerpt_placements(ctx: EvalContext) -> List[Dict[str, Any]]:
+    """Every evidence item against what the evaluator holds, one entry per item.
+
+    `status` is `at_cited`, `misplaced`, `uncited`, `missing` or `unverifiable`.
+    `evidence_excerpts_exist` reads the invented ones, `evidence_cited_at_line` the misplaced
+    ones, and `earliest_error_window` anchors on `found_line` rather than on the line cited.
+    """
+    record = json.dumps(ctx.failed_run or {}, default=str)
+    trace = json.dumps(ctx.pipeline_trace or {}, default=str)
+    whole_log = normalise("\n".join(line.content for line in ctx.failed_log))
+    fallback = normalise(record + " " + trace)
+
+    placements: List[Dict[str, Any]] = []
+    for position, item in enumerate(ctx.evidence):
+        raw = str(item.get("excerpt") or "")
+        excerpt = normalise(raw)
+        source = str(item.get("source") or "")
+        entry: Dict[str, Any] = {"index": position, "source": source, "excerpt": excerpt,
+                                 "found_line": 0}
+        if not excerpt:
+            placements.append({**entry, "status": EXCERPT_MISSING, "reason": "empty excerpt"})
+            continue
+        # the evaluator holds the log, the record and the trace; anything else is unchecked
+        if not _cites_held_artifact(source):
+            placements.append({**entry, "status": EXCERPT_UNVERIFIABLE})
+            continue
+        first, last = source_line_range(source)
+        if first:
+            cited = f"line {first}" if first == last else f"lines {first}-{last}"
+            entry["cited"] = cited
+            # the excerpt may run past the last line cited, so its height widens the window
+            if _matches(excerpt, _cited_region(ctx, first, last, raw.count("\n"))):
+                placements.append({**entry, "status": EXCERPT_AT_CITED, "found_line": first})
+                continue
+            # real but cited wrongly is a citation fault, not an invented one
+            if _matches(excerpt, whole_log):
+                placements.append({**entry, "status": EXCERPT_MISPLACED,
+                                   "found_line": _locate_in_log(ctx, raw)})
+                continue
+            placements.append({**entry, "status": EXCERPT_MISSING, "line": first,
+                               "reason": f"not found in the log at or near {cited}"})
+            continue
+        if _matches(excerpt, whole_log):
+            placements.append({**entry, "status": EXCERPT_UNCITED,
+                               "found_line": _locate_in_log(ctx, raw)})
+            continue
+        if _matches(excerpt, fallback):
+            placements.append({**entry, "status": EXCERPT_UNCITED})
+            continue
+        placements.append({
+            **entry, "status": EXCERPT_MISSING,
+            "reason": "not found in the log, the run record or the pipeline trace",
+        })
+    return placements
+
+
+def _with_status(placements: List[Dict[str, Any]], *states: str) -> List[Dict[str, Any]]:
+    return [entry for entry in placements if entry["status"] in states]
+
+
 @check("evidence_excerpts_exist")
 def evidence_excerpts_exist(ctx: EvalContext) -> CheckResult:
     """Every evidence excerpt is text the inspector could have read.
 
     TRUE  every excerpt matches the failed run's log, its run record or the pipeline trace
     FALSE at least one excerpt matches nothing; the reasoning quotes it
-    N/A   `evidence` is empty
+    N/A   `evidence` is empty, or every excerpt cites a source the evaluator does not hold
+
+    An excerpt that is in the log but not at the line cited counts as found here.
+    `evidence_cited_at_line` is the check that fails it.
     """
     if not ctx.evidence:
         return na("`evidence` is empty")
 
-    record = json.dumps(ctx.failed_run or {}, default=str)
-    trace = json.dumps(ctx.pipeline_trace or {}, default=str)
-    whole_log = normalise("\n".join(line.content for line in ctx.failed_log))
-    fallback = normalise(record + " " + trace)
+    placements = excerpt_placements(ctx)
+    missing = _with_status(placements, EXCERPT_MISSING)
+    unverifiable = _with_status(placements, EXCERPT_UNVERIFIABLE)
+    misplaced = _with_status(placements, EXCERPT_MISPLACED)
 
-    missing: List[Dict[str, Any]] = []
-    misplaced: List[Dict[str, Any]] = []
-    unverifiable: List[Dict[str, Any]] = []
-    for position, item in enumerate(ctx.evidence):
-        excerpt = normalise(str(item.get("excerpt") or ""))
-        source = str(item.get("source") or "")
-        if not excerpt:
-            missing.append({"index": position, "excerpt": "", "reason": "empty excerpt"})
-            continue
-        # the evaluator holds the log, the record and the trace; anything else is unchecked
-        if not _cites_held_artifact(source):
-            unverifiable.append({"index": position, "source": source})
-            continue
-        first, last = source_line_range(source)
-        if first:
-            # the excerpt may run past the last line cited, so its height widens the window
-            height = str(item.get("excerpt") or "").count("\n")
-            region = normalise(
-                "\n".join(
-                    ctx.log_line(n)
-                    for n in range(first - SOURCE_LINE_TOLERANCE,
-                                   last + SOURCE_LINE_TOLERANCE + height + 1)
-                )
-            )
-            if excerpt in region or token_overlap(excerpt, region) >= EXCERPT_MATCH_RATIO:
-                continue
-            cited = f"line {first}" if first == last else f"lines {first}-{last}"
-            # real but cited wrongly is a citation fault, not an invented one
-            if excerpt in whole_log or token_overlap(excerpt, whole_log) >= EXCERPT_MATCH_RATIO:
-                misplaced.append({"index": position, "excerpt": excerpt, "cited": cited})
-                continue
-            missing.append({"index": position, "excerpt": excerpt, "line": first,
-                            "reason": f"not found in the log at or near {cited}"})
-            continue
-        if excerpt in whole_log or excerpt in fallback:
-            continue
-        if max(token_overlap(excerpt, whole_log), token_overlap(excerpt, fallback)) >= (
-            EXCERPT_MATCH_RATIO
-        ):
-            continue
-        missing.append({"index": position, "excerpt": excerpt,
-                        "reason": "not found in the log, the run record or the pipeline trace"})
+    if missing:
+        first = missing[0]
+        return bad(
+            f"evidence[{first['index']}] quotes {first['excerpt']!r}, which was"
+            f" {first['reason']}",
+            missing=missing, unverifiable=unverifiable,
+        )
 
-    verifiable = len(ctx.evidence) - len(unverifiable)
-    if not missing:
-        if not verifiable:
-            return na(
-                "every excerpt cites something the evaluator does not hold: "
-                + "; ".join(sorted({str(item["source"]) for item in unverifiable}))
-            )
-        notes = []
-        if unverifiable:
-            notes.append(f"{len(unverifiable)} cite a source the evaluator does not hold and"
-                         " were not checked")
-        if misplaced:
-            notes.append(f"{len(misplaced)} are in the log but not at the line cited")
-        note = ("; " + "; ".join(notes)) if notes else ""
-        return ok(f"all {verifiable} checkable excerpt(s) were found in the log{note}",
-                  unverifiable=unverifiable, misplaced=misplaced)
-    first = missing[0]
+    verifiable = len(placements) - len(unverifiable)
+    if not verifiable:
+        return na(
+            "every excerpt cites something the evaluator does not hold: "
+            + "; ".join(sorted({str(item["source"]) for item in unverifiable}))
+        )
+    notes = []
+    if unverifiable:
+        notes.append(f"{len(unverifiable)} cite a source the evaluator does not hold and"
+                     " were not checked")
+    if misplaced:
+        notes.append(f"{len(misplaced)} are in the log but not at the line cited, which"
+                     " `evidence_cited_at_line` reports")
+    note = ("; " + "; ".join(notes)) if notes else ""
+    return ok(f"all {verifiable} checkable excerpt(s) were found in the log{note}",
+              unverifiable=unverifiable, misplaced=misplaced)
+
+
+@check("evidence_cited_at_line")
+def evidence_cited_at_line(ctx: EvalContext) -> CheckResult:
+    """Every excerpt sits at the line its source cites.
+
+    TRUE  every excerpt that cites a log line is at that line
+    FALSE one of them is in the log somewhere else; the reasoning names both lines
+    N/A   `evidence` is empty, or no excerpt cites a line of a log the evaluator holds
+
+    A wrong line number moves the anchor `earliest_error_first` searches before, so a
+    citation that points too early hides every error between it and the line the excerpt
+    really sits on.
+    """
+    if not ctx.evidence:
+        return na("`evidence` is empty")
+
+    placements = excerpt_placements(ctx)
+    located = _with_status(placements, EXCERPT_AT_CITED, EXCERPT_MISPLACED)
+    if not located:
+        return na("no evidence excerpt was found at a cited line of the log")
+    misplaced = _with_status(located, EXCERPT_MISPLACED)
+    if not misplaced:
+        return ok(f"all {len(located)} excerpt(s) citing a log line sit at the line cited")
+    first = misplaced[0]
+    where = f"line {first['found_line']}" if first["found_line"] else "another line"
     return bad(
-        f"evidence[{first['index']}] quotes {first['excerpt']!r}, which was {first['reason']}",
-        missing=missing, unverifiable=unverifiable,
+        f"evidence[{first['index']}] cites {first['cited']} but its excerpt sits at {where}",
+        misplaced=misplaced,
     )
 
 
@@ -1692,36 +1786,55 @@ def _is_error_line(line: str) -> bool:
 
 
 def earliest_error_window(ctx: EvalContext) -> Dict[str, Any]:
-    """Error-like lines before the line `evidence[0]` cites, each with context.
+    """Error-like lines before the line `evidence[0]` sits on, each with context.
 
     What `earliest_error_first` rests on: Python finds the candidates, the judge decides
     which of them is a genuine error rather than a retried warning or an expected message.
+
+    The anchor is where the excerpt was found, not the line the source cites. A citation
+    that points too early would otherwise hide every error between it and the real line,
+    and `evidence_cited_at_line` reports the wrong citation separately.
     """
     if not ctx.evidence:
         return {"located": False, "reason": "`evidence` is empty", "cited_line": 0,
-                "candidates": []}
+                "anchor_line": 0, "candidates": []}
+
+    placement = excerpt_placements(ctx)[0]
     cited = source_line_number(str(ctx.evidence[0].get("source") or ""))
-    if not cited:
-        excerpt = normalise(str(ctx.evidence[0].get("excerpt") or ""))
-        cited = next(
-            (line.number for line in ctx.failed_log if excerpt and excerpt in line.content),
-            0,
-        )
-    if not cited:
+    if placement["status"] == EXCERPT_UNVERIFIABLE:
+        # a line of a file the evaluator does not hold is no position in this log
+        return {
+            "located": False,
+            "reason": (f"`evidence[0]` cites {placement['source']!r}, which is not a log the"
+                       " evaluator holds, so its line number names no position in this log"),
+            "cited_line": cited,
+            "anchor_line": 0,
+            "candidates": [],
+        }
+    anchor = placement["found_line"] or cited
+    if not anchor:
         # without `located`, an empty `candidates` reads as "nothing earlier went wrong"
         return {
             "located": False,
             "reason": ("`evidence[0]` names no line number and its excerpt was not found in"
                        " the log, so there is no anchor to search before"),
             "cited_line": 0,
+            "anchor_line": 0,
             "candidates": [],
         }
     candidates = [
         {"line": line.number, "context": ctx.window(line.number, before=1, after=1)}
         for line in ctx.failed_log
-        if line.number < cited and _is_error_line(line.content)
+        if line.number < anchor and _is_error_line(line.content)
     ]
-    return {"located": True, "cited_line": cited, "candidates": candidates}
+    window = {"located": True, "cited_line": cited, "anchor_line": anchor,
+              "candidates": candidates}
+    if placement["status"] == EXCERPT_MISPLACED:
+        window["reason"] = (
+            f"`evidence[0]` cites {placement['cited']} but its excerpt sits at line"
+            f" {anchor}, so the search runs from there"
+        )
+    return window
 
 
 def evidence_windows(ctx: EvalContext) -> List[Dict[str, Any]]:
@@ -2322,7 +2435,8 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
 
     The deterministic entries are authoritative, so a judge that rewrote one loses. A check id
     the registry does not know is dropped. A judge check with no answer is reported `N/A` and
-    named in `summary`.
+    named in `summary`, and it makes the evaluation `failed` with `passed` false: a truncated
+    or empty judge response would otherwise read as a clean inspector run.
     """
     ctx = prep.ctx
     if ctx is None:
@@ -2379,14 +2493,14 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     if unanswered:
         summary += (
             f"\n\n{len(unanswered)} judge check(s) went unanswered and are reported `N/A`:"
-            f" {', '.join(unanswered)}."
+            f" {', '.join(unanswered)}. The evaluation is incomplete and does not pass."
         )
-    status = str(output.get("status") or "succeeded")
-    if unusable:
-        status = "failed"
     if prep.errors:
-        status = "failed"
         summary += "\n\nChecks that raised: " + "; ".join(prep.errors)
+
+    # an evaluation that lost checks says nothing about the inspector, so it never passes
+    incomplete = bool(unusable or unanswered or prep.errors)
+    status = "failed" if incomplete else str(output.get("status") or "succeeded")
 
     return {
         "status": status,
@@ -2394,7 +2508,7 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
         "inspector_run_id": prep.inspector_run_id,
         "failed_run_id": ctx.reported_run_id,
         "inspector_status": ctx.status or "aborted",
-        "passed": false_count == 0,
+        "passed": false_count == 0 and not incomplete,
         "pass_rate": (true_count / decided) if decided else 0.0,
         "checks": checks,
         "metrics": _metrics(ctx),

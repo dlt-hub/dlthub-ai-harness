@@ -581,13 +581,16 @@ def test_evidence_excerpts_exist_covers_a_cited_range_and_a_multiline_excerpt():
     assert run("evidence_excerpts_exist", output=spanning).outcome == C.TRUE
 
 
+MISPLACED_EVIDENCE = [{
+    "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(0)}",
+    "excerpt": "requests.exceptions.HTTPError: 401 Client Error: Unauthorized",
+}]
+"""A real log line, cited eight lines before the line it sits on."""
+
+
 def test_evidence_excerpts_exist_separates_a_misplaced_citation_from_an_invented_one():
-    """An excerpt in the log but cited at the wrong line is a citation fault, not a lie."""
-    misplaced = output(evidence=[{
-        "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(0)}",
-        "excerpt": "requests.exceptions.HTTPError: 401 Client Error: Unauthorized",
-    }])
-    result = run("evidence_excerpts_exist", output=misplaced)
+    """An excerpt in the log but cited at the wrong line was read, so it was not invented."""
+    result = run("evidence_excerpts_exist", output=output(evidence=MISPLACED_EVIDENCE))
     assert result.outcome == C.TRUE
     assert "not at the line cited" in result.reasoning
     assert result.metadata["misplaced"][0]["index"] == 0
@@ -597,3 +600,21 @@ def test_evidence_excerpts_exist_separates_a_misplaced_citation_from_an_invented
         "excerpt": "FATAL out of memory killing worker 4711",
     }])
     assert run("evidence_excerpts_exist", output=invented).outcome == C.FALSE
+
+
+def test_evidence_cited_at_line_fails_an_excerpt_that_sits_elsewhere_in_the_log():
+    """The citation is what `earliest_error_first` searches before, so a wrong one fails."""
+    assert run("evidence_cited_at_line").outcome == C.TRUE
+
+    result = run("evidence_cited_at_line", output=output(evidence=MISPLACED_EVIDENCE))
+    assert result.outcome == C.FALSE
+    assert f"line {line_no(0)}" in result.reasoning
+    assert f"line {line_no(8)}" in result.reasoning
+
+    assert run("evidence_cited_at_line", output=output(evidence=[])).outcome == C.NA
+    unlined = output(evidence=[{"source": f"dlthub job runs logs {FAILED_RUN_ID}",
+                                "excerpt": "INFO  extract started"}])
+    assert run("evidence_cited_at_line", output=unlined).outcome == C.NA
+    in_code = output(evidence=[{"source": "pipelines/github.py line 42",
+                                "excerpt": "raise HTTPError(response)"}])
+    assert run("evidence_cited_at_line", output=in_code).outcome == C.NA

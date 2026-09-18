@@ -215,6 +215,24 @@ def test_finalize_reports_an_unanswered_judge_check_as_not_applicable():
     assert "went unanswered" in final["summary"]
 
 
+def test_an_open_check_left_unanswered_fails_the_evaluation():
+    """An empty or truncated judge response would otherwise read as a clean inspector run."""
+    prep = _prep_with()
+    answers = [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
+               for id in C.judge_ids(prep.results)]
+
+    truncated = C.finalize(
+        {"status": "succeeded", "summary": "done", "checks": answers[:-1]}, prep
+    )
+    assert truncated["status"] == "failed"
+    assert truncated["passed"] is False
+    assert answers[-1]["id"] in truncated["summary"]
+
+    empty = C.finalize({"status": "succeeded", "summary": "done", "checks": []}, prep)
+    assert empty["status"] == "failed"
+    assert empty["passed"] is False
+
+
 def test_pass_rate_counts_only_decided_checks():
     prep = _prep_with()
     judge = {
@@ -235,6 +253,7 @@ def test_a_check_that_raised_turns_the_run_failed():
     prep.errors.append("evidence_excerpts_exist: KeyError: 'excerpt'")
     final = C.finalize({"status": "succeeded", "summary": "done", "checks": []}, prep)
     assert final["status"] == "failed"
+    assert final["passed"] is False
     assert "Checks that raised" in final["summary"]
 
 
@@ -264,6 +283,31 @@ def test_earliest_error_window_says_when_it_could_not_locate_the_cited_line():
     anchored = C.earliest_error_window(context())
     assert anchored["located"] is True
     assert anchored["cited_line"] == line_no(3)
+    assert anchored["anchor_line"] == line_no(3)
+
+
+def test_earliest_error_window_anchors_on_the_line_the_excerpt_sits_on():
+    """A citation pointing too early hides every error between it and the real line."""
+    misplaced = output(evidence=[{
+        "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(0)}",
+        "excerpt": "requests.exceptions.HTTPError: 401 Client Error: Unauthorized",
+    }])
+    window = C.earliest_error_window(context(output=misplaced))
+    assert window["located"] is True
+    assert window["cited_line"] == line_no(0)
+    assert window["anchor_line"] == line_no(8)
+    assert line_no(3) in [candidate["line"] for candidate in window["candidates"]]
+    assert "sits at line" in window["reason"]
+
+
+def test_earliest_error_window_has_no_anchor_in_a_file_the_evaluator_does_not_hold():
+    """A line of workspace code is no position in the run's log, so nothing can precede it."""
+    in_code = output(evidence=[{"source": "pipelines/github.py line 42",
+                                "excerpt": "raise HTTPError(response)"}])
+    window = C.earliest_error_window(context(output=in_code))
+    assert window["located"] is False
+    assert window["candidates"] == []
+    assert "not a log the evaluator holds" in window["reason"]
 
 
 def test_finalize_reads_a_checks_array_the_judge_serialised_as_a_string():
@@ -285,4 +329,5 @@ def test_finalize_fails_loudly_when_the_judge_answers_cannot_be_read():
     for broken in ("not json at all", {"id": "x"}, ["a", "b"]):
         final = C.finalize({"status": "succeeded", "summary": "done", "checks": broken}, prep)
         assert final["status"] == "failed", broken
+        assert final["passed"] is False, broken
         assert "could not be read" in final["summary"], broken

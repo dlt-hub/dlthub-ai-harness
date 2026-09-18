@@ -89,7 +89,9 @@ output:
       description: The status the inspector reported for itself, copied from its output.
     passed:
       type: boolean
-      description: True when no check is FALSE.
+      description: >
+        True when no check is FALSE and every check in `open_checks` came back answered.
+        An answer you leave out fails the evaluation.
     pass_rate:
       type: number
       description: TRUE divided by TRUE plus FALSE. Between 0 and 1.
@@ -180,9 +182,10 @@ whole log yourself.
 - `{{ inspector_output }}` is the inspector's output as JSON: `status`, `classification`,
   `confidence`, `summary`, `evidence`, `proposed_fix`, `requires_human`.
 - `{{ evidence_windows }}` holds `open_checks` (the ids you have to answer), the failed run's
-  record, one window per evidence item, the `earliest_error` candidates before the first
-  cited line, the traceback frames marked `workspace` or `platform`, the log tail, the
-  pipeline step that failed, and any credential-shaped strings found in the output.
+  record, one window per evidence item, the `earliest_error` candidates before
+  `earliest_error.anchor_line`, the traceback frames marked `workspace` or `platform`, the
+  log tail, the pipeline step that failed, and any credential-shaped strings found in the
+  output.
 - `{{ neighbour_runs }}` is the failed job's runs with their status, for the `transient`
   checks.
 
@@ -202,7 +205,9 @@ Your run started from trigger `{{ run_context.trigger }}` as run
 3. Answer the checks in `open_checks` one at a time, in the order of the "Checks" section
    below. Each answer names the window or line it rests on.
 
-`checks` holds your answers and nothing else: one entry per id in `open_checks`.
+`checks` holds your answers and nothing else: one entry per id in `open_checks`. Answer
+every one of them. An id you leave out is reported `N/A` and fails the whole evaluation,
+so when you are running out of room, shorten the reasonings rather than dropping answers.
 
 Fill `status`, `summary` and `checks`. Leave `inspector_run_id`, `failed_run_id`,
 `inspector_status`, `passed`, `pass_rate` and `metrics` alone: they are computed from the
@@ -246,15 +251,20 @@ when the log supports the stated cause. FALSE when it does not; quote the contra
 N/A when the inspector aborted.
 
 **`earliest_error_first`** — no genuine error may sit in the log before the line
-`evidence[0]` cites. Read `earliest_error.candidates`: every error-like line before it, with
-context. Decide in this order, and answer exactly what it gives you:
+`evidence[0]` quotes. That line is `earliest_error.anchor_line`: where the excerpt was
+found, which is not always the line the source cites. Read `earliest_error.candidates`:
+every error-like line before the anchor, with context. Decide in this order, and answer
+exactly what it gives you:
 
 1. `earliest_error.located` is false → **`N/A`**, quoting its `reason`. The candidate list is
    empty because nothing could be searched, not because nothing was found.
-2. `located` is true and `candidates` is empty → **`TRUE`**. Nothing precedes the cited line.
+2. `located` is true and `candidates` is empty → **`TRUE`**. Nothing precedes the anchor.
 3. `located` is true and a candidate is a genuine error rather than noise, such as a retried
    warning or an expected message → **`FALSE`**, quoting it with its line number. Every
    candidate is noise → **`TRUE`**.
+
+A `reason` on a located window says the citation and the excerpt disagree. Judge the
+citation itself nowhere here: `evidence_cited_at_line` already reports it.
 
 **`classification_correct`** — the classification must match the failure as the inspector's
 classification table defines it: `config`, `credentials`, `upstream_data`, `code`,

@@ -167,17 +167,20 @@ replays and the checks see what the evaluation would have seen.
 | `FALSE` | it did not; the reasoning quotes what contradicts it |
 | `N/A` | the condition of the check did not apply to this run |
 
-`passed` is true when no check is `FALSE`. `pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A`
-never moves it. `metrics` carries turns, tokens, cost and the number of runs the inspector
+`passed` is true when no check is `FALSE` and every open check came back answered. A judge
+response that is empty or cut off leaves checks unanswered, and that fails the evaluation
+rather than passing it on the deterministic results alone. `pass_rate` is
+`TRUE / (TRUE + FALSE)`, so `N/A` never moves it. `metrics` carries turns, tokens, cost and the number of runs the inspector
 read; those are numbers, not pass or fail.
 
 The evaluator's own `status` is about the evaluation, not about the inspector: `succeeded`
-when every check has an outcome, `failed` when a check raised or an artifact was missing,
-`aborted` when no inspector run could be resolved or it declared no result.
+when every check has an outcome, `failed` when a check raised, an artifact was missing or
+the judge left an open check unanswered, `aborted` when no inspector run could be resolved
+or it declared no result.
 
 ## Checks
 
-57 checks: 34 deterministic, 1 hybrid, 22 judge. `checks.py` is the registry; a test asserts
+58 checks: 35 deterministic, 1 hybrid, 22 judge. `checks.py` is the registry; a test asserts
 this table and the registry list the same ids.
 
 ### Deterministic: the inspector's output fields
@@ -192,6 +195,7 @@ this table and the registry list the same ids.
 | `aborted_evidence_empty` | Cite no evidence when it read nothing. |
 | `succeeded_has_evidence` | Cite at least one excerpt when it found the cause. |
 | `evidence_excerpts_exist` | Quote only text it could have read. |
+| `evidence_cited_at_line` | Cite the line the excerpt actually sits on. |
 | `evidence_sorted_by_line` | Put the earliest cited line first. |
 | `evidence_source_has_line` | Name the line number on every source that has lines. |
 | `no_secrets_in_output` | Carry no credential, even when quoting a log line. Hybrid: Python finds the candidates, the judge decides whether they are placeholders. |
@@ -280,6 +284,13 @@ Read these before acting on a `FALSE`.
   80 percent of the excerpt's tokens counts, within 3 lines of the line the source names. A
   heavily reworded but genuine quote can still read as missing, and a short invented excerpt
   made of common words can still read as found.
+- **A quote in the log at the wrong line splits across two checks.**
+  `evidence_excerpts_exist` counts it as found, since the inspector did read it, and
+  `evidence_cited_at_line` fails it. The wrong line also moves the anchor
+  `earliest_error_first` searches before, so `earliest_error` uses the line the excerpt was
+  found on and says in `reason` that the citation disagrees. A multi-line excerpt is located
+  by its first line, so a misplaced one whose first line is short and common can be located
+  on the wrong line.
 - **`single_run_scope` counts run ids it can see.** It reads uuids out of tool arguments, so a
   run addressed by job ref and run number rather than by id is not counted.
 - **`skill_loaded` only works on `claude-agent-sdk`.** The `pydantic-ai` loop inlines the
