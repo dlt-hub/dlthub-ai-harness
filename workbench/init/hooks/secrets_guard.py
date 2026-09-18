@@ -44,9 +44,16 @@ The deny channel is always the JSON on stdout, never the exit code: in both
 Claude Code and Cursor only exit 2 blocks; exit 1 is a non-blocking error and
 the action proceeds.
 
-This is a deterrent, not a sandbox. Indirection (`cat "$SECRETS"`, a script
-that opens the file itself) and unscoped recursive readers (`grep -r key .`)
-still get through — see README.md for the layers that do close those.
+This is a deterrent, not a sandbox: it catches the common, low-effort ways an
+agent might read a secret by mistake or by naive instruction-following, not a
+determined attempt to evade it. Shell syntax has no ceiling on cleverness —
+indirection (`cat "$SECRETS"`, a script that opens the file itself), unscoped
+recursive readers (`grep -r key .`), and word-splitting/expansion tricks
+(`cat$IFS.env`, brace expansion, a quoted `"$(...)"`) all still get through,
+and no amount of pattern-matching closes that gap for good. The actual
+boundary is OS-level enforcement this hook cannot be talked around — file
+permissions the agent's process can't override, or Claude Code's sandbox —
+see README.md's "Pair it with..." section.
 """
 
 import glob
