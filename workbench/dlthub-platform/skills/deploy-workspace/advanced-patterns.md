@@ -25,6 +25,95 @@ def transform(run_context: TJobRunContext):
         ...
 ```
 
+## Background agents
+
+An installed agent definition becomes a job by naming it:
+
+```python
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    trigger="job.fail:tag:ingest",       # narrower than the definition's default
+    model="sonnet",
+)
+```
+
+The job is named after the definition (`job_inspector`), and every decorator argument
+overrides the matching `defaults` in the `AGENT.md`.
+
+Decorate a function instead when code has to run around the loop. The evaluator for the
+inspector does that: it computes its deterministic checks before the loop and writes them
+over the model's output after it.
+
+```python
+import sys
+from typing import Annotated
+
+from dlt.hub import run
+
+sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
+from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+
+# `section` is explicit because `.success` and `.fail` are read at import time, before the
+# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    section="__deployment__",
+    trigger="job.fail:tag:ingest",
+)
+
+
+@run.agent(
+    agent="dlthub-platform:job-inspector-eval",
+    trigger=[inspector.success, inspector.fail],
+    model="sonnet",                    # the judge model, chosen by the workspace
+)
+async def job_inspector_eval(
+    run_context: run.TJobRunContext = None,
+    inspector_run_id: Annotated[
+        str,
+        run.Entity("job-run"),
+        run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
+    ] = "",
+    inspector_job_ref: Annotated[
+        str,
+        run.Entity("job"),
+        run.Doc("job ref of the inspector job; its latest run is evaluated without a run id"),
+    ] = "",
+    max_runs_read: Annotated[
+        int,
+        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
+    ] = DEFAULT_MAX_RUNS_READ,
+) -> dict:
+    prep = prepare(
+        run_context,
+        inspector_run_id=inspector_run_id,
+        inspector_job_ref=inspector_job_ref,
+        max_runs_read=max_runs_read,
+    )
+    if prep.aborted:
+        return prep.aborted_output     # nothing to judge, no model call
+    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
+    return finalize(output, prep)
+```
+
+A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.
+The scheduler sets `prev_run_id` on the follow-up run, which is how the evaluator finds the
+run that triggered it. Both are read at import time, before the manifest loader stamps the
+module on the factory, so a factory whose triggers are used in the same module passes
+`section=` itself; without it the manifest is rejected with `triggers referencing unknown
+jobs`.
+
+Three constraints on the function form, because the function overrides the `AGENT.md` it
+drives:
+
+- No docstring, or it replaces the body of the `AGENT.md`.
+- Return `dict`, not `TAgentOutput`, or it replaces the declared output schema.
+- Declare a parameter for every input a caller may set. Configured inputs reach a decorated
+  function through its signature only, and `dlthub deploy` warns about a declared input the
+  signature does not accept.
+
+Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
+
 ## Scheduler-driven intervals
 
 For incremental pipelines, declare the overall time range with `interval=`:

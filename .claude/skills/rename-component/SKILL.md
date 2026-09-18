@@ -20,7 +20,7 @@ Determine what `old-name` is:
 - **Skill**: exists in `components.skills` → directory at `workbench/<toolkit>/skills/<old-name>/`
 - **Command**: exists in `components.commands` → file at `workbench/<toolkit>/commands/<old-name>.md`
 - **Rule**: exists in `components.rules` → file at `workbench/<toolkit>/rules/<old-name>.md`
-- **Agent**: exists in `components.agents` → directory at `workbench/<toolkit>/dlthub/agents/<old-name>/`
+- **Agent**: exists in `components.agents` → directory at `workbench/<toolkit>/agents/<old-name>/`
 
 If `old-name` doesn't match any component, ERROR and stop.
 
@@ -29,7 +29,7 @@ If `old-name` doesn't match any component, ERROR and stop.
 - **Skill**: rename directory `skills/<old-name>/` → `skills/<new-name>/`, then update `name:` in SKILL.md frontmatter
 - **Command**: rename file `commands/<old-name>.md` → `commands/<new-name>.md`
 - **Rule**: rename file `rules/<old-name>.md` → `rules/<new-name>.md`
-- **Agent**: rename directory `dlthub/agents/<old-name>/` → `dlthub/agents/<new-name>/`, then update `name:` in AGENT.md frontmatter
+- **Agent**: rename directory `agents/<old-name>/` → `agents/<new-name>/`, then update `name:` in AGENT.md frontmatter
 
 ## 3. Update cross-references within the toolkit
 

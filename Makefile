@@ -1,10 +1,13 @@
-.PHONY: dev validate-toolkits lint lint-ruff lint-mypy format format-fix lint-install
+.PHONY: dev validate-toolkits test lint lint-ruff lint-mypy format format-fix lint-install
 
 dev:
-	uv sync --group lint --reinstall-package dlt
+	uv sync --group lint --group test --reinstall-package dlt
 
 validate-toolkits:
 	uv run python tools/validate_toolkits.py
+
+test:
+	uv run --group test pytest tests
 
 lint-ruff:
 	uv run ruff check tools
@@ -22,4 +25,4 @@ format-fix: format
 lint-install:
 	uv run python tools/lint_install.py
 
-lint: lint-ruff lint-mypy validate-toolkits lint-install
+lint: lint-ruff lint-mypy validate-toolkits lint-install test
