@@ -65,7 +65,7 @@ def fetcher(**overrides) -> StubFetcher:
     return StubFetcher(**kwargs)
 
 
-# --- resolution -------------------------------------------------------------------------
+# resolution
 
 
 def test_given_run_id_wins():
@@ -101,7 +101,7 @@ def test_nothing_resolves_to_a_reason():
     assert "no inspector run could be resolved" in reason
 
 
-# --- fetching ---------------------------------------------------------------------------
+# fetching
 
 
 def test_context_is_built_from_the_log_envelope_when_no_result_is_stored():
@@ -121,7 +121,7 @@ def test_stored_result_is_preferred_over_the_envelope():
     assert ctx.trace["turn_count"] == 9
 
 
-# --- prepare ----------------------------------------------------------------------------
+# prepare
 
 
 def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
@@ -163,7 +163,7 @@ def test_prepare_does_not_hand_the_judge_a_whole_log():
     assert len(windows["log_tail"]) <= 60
 
 
-# --- finalize ---------------------------------------------------------------------------
+# finalize
 
 
 def _prep_with(**overrides) -> C.EvalPrep:

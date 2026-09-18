@@ -33,7 +33,7 @@ RECORD_CALL = f'  dlthub_get_run (dlthub)  {{"run_id": "{FAILED_RUN_ID}"}}'
 LOG_CALL = f'  dlthub_get_run_logs (dlthub)  {{"run_id": "{FAILED_RUN_ID}"}}'
 
 
-# --- the inspector's output fields ------------------------------------------------------
+# the inspector's output fields
 
 
 def test_unknown_low_confidence():
@@ -134,7 +134,7 @@ def test_no_secrets_in_output():
     assert escalated.metadata["hits"][0]["field"] == "summary"
 
 
-# --- which run the inspector picked -----------------------------------------------------
+# which run the inspector picked
 
 
 def test_given_run_inspected():
@@ -190,7 +190,7 @@ def test_manual_without_inputs_aborts():
     assert run("manual_without_inputs_aborts").outcome == C.NA
 
 
-# --- what the inspector did -------------------------------------------------------------
+# what the inspector did
 
 
 def test_read_only_shell():
@@ -464,7 +464,7 @@ def test_no_secrets_in_output_skips_a_lookup_of_a_credential():
     assert run("no_secrets_in_output", output=literal).outcome == C.JUDGE
 
 
-# --- instructions added by the job-inspector budget and credential rules ----------------
+# instructions added by the job-inspector budget and credential rules
 
 
 def test_search_inside_workspace():

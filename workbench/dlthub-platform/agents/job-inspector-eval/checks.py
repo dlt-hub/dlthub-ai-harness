@@ -45,9 +45,8 @@ EXCERPT_MATCH_RATIO = 0.8
 SOURCE_LINE_TOLERANCE = 3
 """How far from the line an evidence source names the excerpt may sit."""
 
-# --- tool name tables -------------------------------------------------------------------
-# Detection is name-based, as it is in dlthub-evals. A renamed MCP tool or CLI subcommand
-# breaks a check silently, so every name lives here and the unit tests pin the lists.
+# tool name tables
+# a renamed tool breaks a check silently, so the names live here and the tests pin them
 
 RUN_RECORD_TOOLS = ("dlthub_get_run", "job_runs_info", "run_info")
 RUN_RECORD_COMMANDS = ("dlthub job runs info", "dlthub job info")
@@ -95,8 +94,7 @@ SECRET_PATTERNS = (
 PLACEHOLDER_SECRET = re.compile(
     r"(?i)\*{3,}|x{6,}|<[^>]+>|redacted|placeholder|your[_-]|\.\.\.|…"
 )
-# a credential-shaped match whose value is a lookup rather than a literal: quoting
-# `token = os.environ.get("GITHUB_TOKEN", "")` from workspace code leaks nothing
+# a lookup rather than a literal: quoting `os.environ.get("GITHUB_TOKEN")` leaks nothing
 CODE_LOOKUP = re.compile(
     r"(?i)\b(?:os\.environ|environ\.get|getenv|dlt\.secrets|dlt\.config|config\[|secrets\[)"
 )
@@ -106,11 +104,9 @@ _UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 _SOURCE_LINE = re.compile(r"\blines?\s+(\d+)(?:\s*[-\u2013]\s*(\d+))?", re.I)
 _TOKEN = re.compile(r"[A-Za-z0-9_.:/-]+")
 _TRAILING_COMMA = re.compile(r",(\s*[}\]])")
-# the launcher prints this line when a tool raises. Matching the result text instead would
-# read `"status":"failed"` in a run record as an error, and every inspected run is a failed one
+# the launcher's own marker. matching result text reads `"status":"failed"` as an error
 _TOOL_ERROR_LINE = re.compile(r"Error calling tool '([^']+)'")
-# dlt's own marker first (`PipelineStepFailed: ... at `step=extract``), then the plainer
-# wording a log may use instead
+# dlt's own marker first, then the plainer wording a log may use instead
 PIPELINE_STEP_IN_LOG = (
     re.compile(r"(?i)\bstep\s*[=:]\s*[`'\"]?(extract|normalize|normalise|load)\b"),
     re.compile(r"(?i)\b(extract|normalize|normalise|load)\b[^\n]{0,24}"
@@ -132,7 +128,7 @@ _LIMIT_STOP_REASON = re.compile(
 )
 
 
-# --- data model -------------------------------------------------------------------------
+# data model
 
 
 @dataclass(frozen=True)
@@ -416,7 +412,7 @@ class EvalContext:
         ]
 
 
-# --- text helpers -----------------------------------------------------------------------
+# text helpers
 
 
 def strip_ansi(text: str) -> str:
@@ -455,9 +451,8 @@ def token_overlap(excerpt: str, haystack: str) -> float:
     return sum(1 for token in tokens if token in hay) / len(tokens)
 
 
-# --- transcript parsing -----------------------------------------------------------------
-# The shapes come from `dlt._workspace.deployment._run_views`, which renders one agent event
-# per line: `  thinks  <text>`, `  <tool> (<server>)  <args>`, `     -> <result>`, `turn <n>`.
+# transcript parsing
+# the shapes come from `dlt._workspace.deployment._run_views`, one agent event per line
 
 _THINKS = re.compile(r"^ {2}thinks {2}(.*)$")
 _MCP = re.compile(r"^ {2}mcp {2}(.*)$")
@@ -602,12 +597,11 @@ def parse_abort_envelope(log_lines: Sequence[LogLine]) -> Optional[Dict[str, Any
     if not match:
         return None
     summary = match.group(1).strip()
-    # the launcher prints the traceback first and the message last, so the message runs to
-    # the end of the log
+    # the message is printed last, so it runs to the end of the log
     return {"status": "aborted", "summary": summary}
 
 
-# --- deterministic checks: the inspector's output fields --------------------------------
+# deterministic checks: the inspector's output fields
 
 
 @check("unknown_low_confidence")
@@ -771,16 +765,13 @@ def evidence_excerpts_exist(ctx: EvalContext) -> CheckResult:
         if not excerpt:
             missing.append({"index": position, "excerpt": "", "reason": "empty excerpt"})
             continue
-        # the inspector may legitimately quote a workspace file or a tool it called; the
-        # evaluator holds only the log, the run record and the pipeline trace, so an excerpt
-        # from anything else is unchecked rather than invented
+        # the evaluator holds the log, the record and the trace; anything else is unchecked
         if not _cites_held_artifact(source):
             unverifiable.append({"index": position, "source": source})
             continue
         first, last = source_line_range(source)
         if first:
-            # the window covers the span the source names, the tolerance on each side, and the
-            # height of the excerpt itself, which may run past the last line cited
+            # the excerpt may run past the last line cited, so its height widens the window
             height = str(item.get("excerpt") or "").count("\n")
             region = normalise(
                 "\n".join(
@@ -792,8 +783,7 @@ def evidence_excerpts_exist(ctx: EvalContext) -> CheckResult:
             if excerpt in region or token_overlap(excerpt, region) >= EXCERPT_MATCH_RATIO:
                 continue
             cited = f"line {first}" if first == last else f"lines {first}-{last}"
-            # an excerpt that is real but cited at the wrong place is a citation fault, not an
-            # invented one, and this check is only about whether the inspector read the text
+            # real but cited wrongly is a citation fault, not an invented one
             if excerpt in whole_log or token_overlap(excerpt, whole_log) >= EXCERPT_MATCH_RATIO:
                 misplaced.append({"index": position, "excerpt": excerpt, "cited": cited})
                 continue
@@ -897,7 +887,7 @@ def no_secrets_in_output(ctx: EvalContext) -> CheckResult:
     )
 
 
-# --- deterministic checks: which run the inspector picked -------------------------------
+# deterministic checks: which run the inspector picked
 
 
 @check("given_run_inspected")
@@ -998,7 +988,7 @@ def manual_without_inputs_aborts(ctx: EvalContext) -> CheckResult:
     )
 
 
-# --- deterministic checks: what the inspector did ---------------------------------------
+# deterministic checks: what the inspector did
 
 
 _COMMAND_KEYS = ("command", "cmd", "script")
@@ -1646,10 +1636,8 @@ def aborted_without_investigation(ctx: EvalContext) -> CheckResult:
     )
 
 
-# --- judge checks -----------------------------------------------------------------------
-# No function here: the rubric is in the "Checks" section of AGENT.md. Registered so the
-# registry stays the one list of check ids, and `finalize` can tell a known id from a
-# hallucinated one.
+# judge checks
+# no function: the rubric is in AGENT.md. registered so the registry is the one id list
 
 judge_check("no_premature_cause",
             "No statement before the first log read presents a cause as settled.")
@@ -1696,7 +1684,7 @@ judge_check("requires_human_consistent",
             "`requires_human` agrees with the proposed fix and the classification.")
 
 
-# --- evidence extraction for the judge --------------------------------------------------
+# evidence extraction for the judge
 
 
 def _is_error_line(line: str) -> bool:
@@ -1720,8 +1708,7 @@ def earliest_error_window(ctx: EvalContext) -> Dict[str, Any]:
             0,
         )
     if not cited:
-        # `located` is explicit because an empty `candidates` otherwise reads as "nothing
-        # earlier went wrong", which is the opposite of "the anchor could not be found"
+        # without `located`, an empty `candidates` reads as "nothing earlier went wrong"
         return {
             "located": False,
             "reason": ("`evidence[0]` names no line number and its excerpt was not found in"
@@ -1818,7 +1805,7 @@ def pipeline_failed_step(ctx: EvalContext) -> Optional[str]:
     return None
 
 
-# --- running the checks -----------------------------------------------------------------
+# running the checks
 
 
 def run_deterministic(ctx: EvalContext) -> Tuple[Dict[str, CheckResult], List[str]]:
@@ -1850,7 +1837,7 @@ def judge_ids(results: Dict[str, CheckResult]) -> List[str]:
     return ids
 
 
-# --- fetching ---------------------------------------------------------------------------
+# fetching
 
 
 class Fetcher:
@@ -2096,7 +2083,7 @@ def capture(source: Fetcher, inspector_run_id: str, directory: str) -> str:
     return str(root)
 
 
-# --- preparation and finalization -------------------------------------------------------
+# preparation and finalization
 
 
 @dataclass
@@ -2315,8 +2302,7 @@ def _judge_checks(value: Any) -> Tuple[List[Any], str]:
         try:
             value = json.loads(value)
         except ValueError:
-            # a trailing comma before `}` or `]` is the one malformation seen in practice,
-            # and repairing it is safer than losing every answer the judge did give
+            # a trailing comma is the one malformation seen; repairing beats losing them all
             repaired = _TRAILING_COMMA.sub(r"\1", value)
             try:
                 value = json.loads(repaired)
