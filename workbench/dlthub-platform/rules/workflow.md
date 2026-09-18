@@ -9,6 +9,8 @@
 
 ## Extend and harden
 3. **Debug deployment** (`debug-deployment`) — check job status, view logs, diagnose failures
+4. **Inspect failures unattended** (`job-inspector`) — background agent: runs after a job fails, reads the run record and the logs, classifies the failure and proposes a fix. Declare it with `run.agent("dlthub-platform:job-inspector", trigger=...)`. Keep `agent.verbosity` at 1, the default: at 0 the log drops tool arguments and thoughts, which step 5 reads
+5. **Evaluate the inspector** (`job-inspector-eval`) — background agent: runs after every inspector run and grades the diagnosis against the inspector's own instructions, `TRUE`, `FALSE` or `N/A` per instruction with a reasoning. It ships no default model, so pick the judge model on the job (`model="sonnet"`); see the agent's `README.md` for the deployment snippet and the recommendation per provider
 
 ## Handover to other toolkits
 
