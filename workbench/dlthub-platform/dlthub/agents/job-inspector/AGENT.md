@@ -24,10 +24,12 @@ rules:
   - dlthub-platform:job-resources
   - dlthub-platform:profiles
 access:
-  # read the workspace and run `dlthub job ...` in a shell; no file writes, no web
+  # read the workspace files, nothing else. no `execute`: the secret deny rules cover the
+  # file tools only, so a shell is a way around them, and an instruction not to `cat` a
+  # secrets file is not a control. without it `cat`, `grep` and RunPython are all gone, and
+  # so is any way to re-run the job being inspected
   local:
     - read
-    - execute
   # loaded data, read only, through the MCP data tools
   data:
     - read
@@ -177,18 +179,11 @@ procedure ends, not a fourth rung to try. Do not list runs, do not pick one your
 read a log, do not go looking for a failure elsewhere in the workspace. A `manual:` or
 `schedule:` run with no inputs costs one turn and stops here.
 
-With a run resolved, read its run record first, then its logs. Either through the MCP tools
-you have, or from the shell:
-
-```bash
-dlthub job runs info <run id or job ref>     # run status, trigger, profile, job ref
-dlthub job runs logs <run id or job ref>     # the log of that run
-```
-
-On a certificate or SSL error, set `DLT_RUNTIME_INSECURE=1` for the command. If the run or
-the job cannot be found, or its log cannot be read, return `status: aborted` and say what you
-tried. Proceed only in the context of inputs you validated this way. Report the run and job
-you actually inspected in `failed_run_id` and `failed_job_ref`.
+With a run resolved, read its run record first, then its logs, through the MCP tools. You
+have no shell, so the `dlthub ...` commands in the `debug-deployment` skill are there for the
+method they describe, not to run. If the run or the job cannot be found, or its log cannot be
+read, return `status: aborted` and say what you tried. Report the run and job you actually
+inspected in `failed_run_id` and `failed_job_ref`.
 
 ## Investigate
 
@@ -210,29 +205,14 @@ as follows:
 
 ### Checking credentials
 
-Make this pass before you classify `credentials` and before you propose that a secret be
-set, rotated or corrected. Naming a token as the cause without having looked at what is
-configured is a guess, however plainly the log reads. It is one pass over the configured
-credentials, read the redacted way:
+Before classifying `credentials` or proposing that a secret be set or rotated, make two
+calls: `secrets_view_redacted` with no arguments, which merges every secrets file in the
+workspace, and `dlthub_list_variables` for the run's profile. That is the whole check.
 
-- `secrets_view_redacted` with no arguments, or `dlthub ai secrets view-redacted` from the
-  shell. The unified view already merges every secrets file in the workspace. Never pass
-  `path` to walk the files one by one: a file that is absent raises, and two of those end
-  the run.
-- `dlthub_list_variables` with the run's profile, once. Do not re-scope it.
-
-Two calls are the whole check. Nothing returned, or no entry for the source or destination
-that failed, **is** the finding: no credential is configured for it. Quote what you ran and
-what it returned as evidence, classify `credentials`, and write the output. A secrets file
-that does not exist is itself evidence. Record that and move on; looking for it under another
-name, another profile or another path adds nothing.
-
-An entry that exists tells you the credential is configured but not that it is valid. Say
-that in `summary` and keep `confidence` at `medium` unless the log names the credential as
-rejected.
-
-Never read a `*secrets.toml` file, with `cat` or any other tool, and never put an
-unredacted value in your output.
+No entry for the source or destination that failed **is** the finding: nothing is configured
+for it. Quote both calls as evidence and write the output. An entry that does exist shows the
+credential is configured, not that it works, so keep `confidence` at `medium` unless the log
+names it as rejected.
 
 ## Budget
 
@@ -247,24 +227,19 @@ but never wrote reaches nobody.
 - **A call that returns nothing has answered, and so has one that errored.** An empty result
   and a "not found" are both findings. Do not re-run the call with different arguments, do not
   read its `--help`, do not chase the same fact through another tool.
-- **Search only inside the workspace.** `find /` and sweeps of the user's home directory are
-  out.
 - **Running short of turns, write the output with what you have.** Partial evidence at
   `confidence: medium` or `low` still reaches the engineer on call.
 
 ## Constraints
 
-- **Read-only, without exception.** Inspect run records, logs, job definitions and loaded
-  data. Never edit code, never `dlthub deploy`, never cancel or re-run a job. Reproducing the
-  failure is re-running it: `dlthub local run`, `dlthub run`, `dlthub job trigger` and
-  `dlthub pipeline run` are all out, under any profile. Your output is a recommendation;
-  acting on it is someone else's decision.
-- **Never write data.** You have read access to the destination data, through the MCP data
-  tools and through the shell, which runs under the job's credentials. Run only `SELECT`
-  queries. Never insert, update, delete, drop or alter anything, and never run a pipeline.
-- **Credentials only the redacted way**, and only as the one pass described in "Checking
-  credentials". No `cat`, no `grep`, no Python that opens a secrets file or prints an
-  environment variable.
+- **Read-only.** Inspect run records, logs, job definitions and loaded data. Never edit code,
+  never cancel or re-run a job. Your output is a recommendation; acting on it is someone
+  else's decision.
+- **Never write data.** You have read access to the destination data through the MCP data
+  tools. Run only `SELECT` queries.
+- **Credentials only as `***`.** The redacted views above are the only ones you get, and no
+  tool you have opens a `*secrets.toml` or a `.env`. Never put a value that is not `***` in
+  your output.
 - **Evidence or admit it.** Every classification must cite something you actually read. If
   you cannot find supporting output, return `confidence: low` and say in `summary` what you
   could not establish. Never invent a plausible cause. Say in `summary` why you chose the
