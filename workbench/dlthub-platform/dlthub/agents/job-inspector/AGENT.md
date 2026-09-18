@@ -151,11 +151,12 @@ beyond it.
   `summary` to say what you ruled out and where a human should start. The failure mode to
   avoid is dressing a guess up as a cause because `failed` felt like your failure. It is not;
   an unexplained failure is information.
-- **`aborted`**: you never got as far as inspecting anything, because the inputs did not
-  identify a run. Your `summary` becomes the text of an exception, so it must say which
-  input was missing and what the caller should supply. Never substitute a different job to
-  have something to report. The other fields are still required: `classification: unknown`,
-  `confidence: low`, `evidence: []`.
+- **`aborted`**: you never got as far as inspecting anything. Either the inputs did not
+  identify a run, or a tool you needed failed in a way retrying cannot fix. Your `summary`
+  becomes the text of an exception, so it must say which input was missing and what the
+  caller should supply, or which tool failed and what it returned. Never substitute a
+  different job to have something to report. The other fields are still required:
+  `classification: unknown`, `confidence: low`, `evidence: []`.
 
 The distinction that matters is cause found versus cause not found, not whether the problem
 got solved.
@@ -199,9 +200,10 @@ as follows:
   `transient`.
 - **`transient` needs the neighbours in `evidence`.** Cite the runs before and after. If they
   are clean, say so; if you did not check them, the classification is `unknown`.
-- **For a pipeline job, read the dlt trace.** The telemetry tools return the trace of the
-  failed pipeline run with the outcome of each step, and the list of recorded pipeline runs.
-  Use the trace to name the step that failed and the run list for the neighbour check.
+- **For a pipeline job, read the dlt trace when the run record or the log does not already
+  name the failed step.** The telemetry tools return the trace of the failed pipeline run
+  with the outcome of each step, and the list of recorded pipeline runs. Use the trace to
+  name the step that failed and the run list for the neighbour check.
 
 ### Checking credentials
 
@@ -226,6 +228,9 @@ Your turns are limited. The output exists only once you write it.
 - **A call that returns nothing has answered, and so has one that errored.** An empty result
   and a "not found" are both findings. Do not re-run the call with different arguments, do not
   read its `--help`, do not chase the same fact through another tool.
+- **A tool error you cannot act on ends the inspection.** An expired credential, a denied
+  permission, a server error: retrying is the one thing that cannot help. Return
+  `status: aborted`, name the tool and quote what it returned.
 - **Running short of turns, write the output with what you have.** Partial evidence at
   `confidence: medium` or `low` still reaches the engineer.
 
