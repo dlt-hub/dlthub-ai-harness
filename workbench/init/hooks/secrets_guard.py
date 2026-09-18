@@ -44,16 +44,11 @@ The deny channel is always the JSON on stdout, never the exit code: in both
 Claude Code and Cursor only exit 2 blocks; exit 1 is a non-blocking error and
 the action proceeds.
 
-This is a deterrent, not a sandbox: it catches the common, low-effort ways an
-agent might read a secret by mistake or by naive instruction-following, not a
-determined attempt to evade it. Shell syntax has no ceiling on cleverness —
-indirection (`cat "$SECRETS"`, a script that opens the file itself), unscoped
-recursive readers (`grep -r key .`), and word-splitting/expansion tricks
-(`cat$IFS.env`, brace expansion, a quoted `"$(...)"`) all still get through,
-and no amount of pattern-matching closes that gap for good. The actual
-boundary is OS-level enforcement this hook cannot be talked around — file
-permissions the agent's process can't override, or Claude Code's sandbox —
-see README.md's "Pair it with..." section.
+This is a deterrent, not a sandbox. Indirection (`cat "$SECRETS"`, a script
+that opens the file itself), unscoped recursive readers (`grep -r key .`),
+and shell word-splitting/expansion tricks all still get through — see
+README.md's "What still gets through" and "Pair it with..." sections for the
+full list and for the OS-level boundary to pair this with.
 """
 
 import glob
@@ -669,18 +664,10 @@ def _scan_values(value: object, cwd: str, depth: int = 0) -> str | None:
     tool payload.
 
     The fallback for tools with no dedicated branch — MCP servers, vendor
-    payload drift, tools added after this script was written. Every string is
-    run through `_shell_deny_reason`, a superset of a plain path check (a bare
-    path lexes as one segment and is judged the same way), rather than
-    special-cased to a field literally named `command` — a shell-capable tool
-    is exactly as likely to call that field `cmd`, `script`, or `exec`, and
-    keying the check to one spelling would defeat the fallback's whole reason
-    for existing the moment a real tool picks a different one.
-    `_is_blocked_path`/`_shell_deny_reason` match a whole basename or token,
-    so prose that merely mentions `.env` does not trip either. Returns the
-    reason rather than a bool so a nested command keeps its own message:
-    telling an agent that `rm …/secrets_guard.py` was refused because it
-    should use `secrets view-redacted` is advice for a different problem.
+    payload drift, tools added after this script was written. Every string
+    goes through `_shell_deny_reason`, a superset of a plain path check, not
+    just ones under a key named `command`. Returns the reason rather than a
+    bool so a nested command keeps its own message.
     """
     if depth > _MAX_SCAN_DEPTH:
         # deeper than any real tool payload nests; bounds cost per tool call.
