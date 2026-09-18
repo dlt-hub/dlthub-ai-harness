@@ -5,14 +5,10 @@
 copy anywhere. See `docs/superpowers/specs/2026-07-01-secrets-read-hook-design.md`
 for the design record.
 
-**This hook is a deterrent, not the security boundary.** It catches the
-common, low-effort ways an agent reads a secret by mistake or by naive
-instruction-following. Shell syntax has no ceiling on cleverness — see
-["What still gets through"](#what-still-gets-through) — and no amount of
-pattern-matching closes that for good. The actual boundary is OS-level
-enforcement this hook cannot be talked around: see
+**This hook is a deterrent, not the security boundary** — see
+["What still gets through"](#what-still-gets-through) and
 ["Pair it with permissions.deny or a sandbox"](#pair-it-with-permissionsdeny-or-a-sandbox)
-below.
+for the actual boundary.
 
 ## What it blocks — files
 
@@ -142,11 +138,9 @@ shape and would be silently ignored — a guard that looks installed and blocks
 nothing. Don't "normalize" that comparison.
 
 Tools with no dedicated branch (MCP servers, tools added after this script was
-written) fall through to a generic scan of every string in `tool_input`,
-skipping prose fields like `pattern`, `content`, and `query`. Each string is
-judged the same way a shell command is — as a blocked path and as a possible
-read or tamper attempt — so a shell-capable tool is caught whatever it calls
-its command field, not just one named `command`.
+written) fall through to a generic scan of every string in `tool_input` —
+each judged the same way a shell command is — skipping prose fields like
+`pattern`, `content`, and `query`.
 
 ### Failure policy
 
@@ -189,28 +183,21 @@ Documented on purpose, so nobody mistakes this for a sandbox:
   Claude's `Grep` (ripgrep) honors that; plain `grep -r` does not.
 - **Indirection**: `cat "$SECRETS"`, or a script that opens the file itself.
   (`cat $(echo .env)` *is* caught — the subshell is judged on its own — but
-  backticks are not tokenized, so `` cat `echo .env` `` is not.) Quoting the
-  substitution defeats the same check that catches it unquoted: `cat
-  "$(echo .env)"` lexes as one opaque word (correct shell-quoting semantics),
-  so the split that makes the bare form denyable never happens.
-- **Shell word-splitting and expansion**: nothing here replicates bash's own
-  expansion, so a guarded name assembled *at shell level* rather than typed
-  literally slips through — `cat$IFS.env` (IFS word-splitting), `{cat,.env}`
-  or `.dlt/{secrets,config}.toml` (brace expansion), and `cat $'\x2eenv'`
-  (ANSI-C hex-escaped quoting) all read the file without a `.env` or
-  `secrets.toml` token ever appearing. Closing this for good means parsing
-  real bash grammar instead of pattern-matching tokens, which is exactly the
-  kind of arms race this hook opts out of — see the top of this file.
+  backticks are not tokenized, so `` cat `echo .env` `` is not, and neither is
+  quoting it: `cat "$(echo .env)"` lexes as one word.)
+- **Shell word-splitting and expansion**: `cat$IFS.env` (IFS splitting),
+  `{cat,.env}` / `.dlt/{secrets,config}.toml` (brace expansion), and
+  `cat $'\x2eenv'` (ANSI-C quoting) all read the file with no `.env` or
+  `secrets.toml` token ever appearing — this hook doesn't replicate bash's
+  own expansion.
 - **A glob character laundering a name**: `cat .netrc?` is allowed, because a
   token containing `*`, `?` or `[` is judged as a pattern, never as a literal.
-- **Guard tampering through a generic MCP tool's write target**: a payload
-  carrying a shell-command-shaped string is tamper-checked regardless of
-  which field holds it, but one carrying a `path` *to write to* is only
-  checked against the secrets blocklist, not the guard-file list — the
-  dedicated write-tool branch checks tampering first, but the generic
-  fallback has no notion of "this field is a write target" to check it
-  against. Adding guard paths to the generic scan's blocklist would deny
-  legitimate reads of `.claude/settings.json` by tools with no write branch.
+- **Guard tampering through a generic MCP tool's write target**: shell-command
+  strings are tamper-checked regardless of field name, but a `path` meant to
+  be written is only checked against the secrets blocklist — the generic scan
+  has no notion of "this is a write target" the way the dedicated write-tool
+  branch does. Adding guard paths there would deny ordinary reads of
+  `.claude/settings.json`.
 - **Deeply nested payloads**: the generic scan stops after 6 levels.
 - **Unbounded glob cost**: an agent-supplied `~/*/*/*/*/*/*` makes `glob.glob`
   walk the tree, measured at seconds against a ~15 ms startup budget.
@@ -265,27 +252,15 @@ Python start per tool call — measured at ~15 ms.
 
 ## Pair it with permissions.deny or a sandbox
 
-This hook is portable and cheap, but it is a **deterrent**: every check above
-is pattern-matching on text, and text has no ceiling on how it can be shaped
-(see "What still gets through"). Nothing in this section is optional polish —
-without it, the hook *is* the security boundary, and it was never designed to
-be one.
+**The actual boundary is OS-level enforcement**, not this hook. Claude Code's
+[sandbox](https://code.claude.com/docs/en/sandboxing) restricts what a
+tool-call subprocess can touch at the kernel level, regardless of how a
+command is spelled. Without it (Codex, Cursor, older Claude Code), use
+filesystem permissions the agent's own process can't override instead.
 
-**The actual boundary is OS-level enforcement.** Enable Claude Code's
-[sandbox](https://code.claude.com/docs/en/sandboxing): it restricts what a
-tool-call subprocess can touch at the kernel level, so it doesn't matter how a
-command is spelled — `cat$IFS.env` and `cat .env` hit the same denied syscall.
-Where a sandbox isn't available (Codex, Cursor, or a Claude Code version
-without it), the equivalent is filesystem permissions the agent's own process
-can't override — e.g. secrets readable only by a separate process invoked
-through `dlthub ai secrets view-redacted`, not by the agent's shell user.
-
-On Claude Code there's also a **native, still-pattern-based-but-stronger**
-layer worth stacking underneath the sandbox: `permissions.deny` rules are
-evaluated regardless of what a PreToolUse hook returns, and they cover file
-commands Claude recognizes inside Bash and `<` / `>` redirection targets — a
-different recognizer than this hook's, so it closes some gaps that overlap
-rather than compound.
+On Claude Code, `permissions.deny` rules stack underneath the sandbox: they're
+evaluated regardless of what a PreToolUse hook returns, and cover file
+commands Claude recognizes inside Bash and `<` / `>` redirects.
 
 A plugin manifest can't ship permission rules, so this belongs in the
 CLI-generated `.claude/settings.json`, matching this hook's file list:
@@ -319,11 +294,8 @@ CLI-generated `.claude/settings.json`, matching this hook's file list:
 Trade-off worth knowing before adding it: **deny rules can't carry exceptions**,
 so `Read(**/.env.*)` also blocks `.env.example`. The hook keeps the
 example/template exemption; the deny rules don't. Decide per rule which matters
-more. And these rules cover the `Read` tool only — they're a stronger version
-of one slice of what the hook does, not a replacement for it: they have no
-equivalent of the hook's bulk-directory or shell-tampering checks, so the
-Bash-based reads earlier in this doc still rely on Claude's own file-command
-recognition inside Bash, not on this list.
+more. These rules cover `Read` only, not Bash reads or tampering — the hook
+still does that work.
 
 ## Testing
 

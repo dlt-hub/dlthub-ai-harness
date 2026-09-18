@@ -569,15 +569,8 @@ class ToolDecisions(DecisionTestCase):
             (ALLOW, {"content": ".env"}),
         ], tool="mcp__filesystem__read_file")
 
-    def test_generic_scan_is_not_keyed_to_the_literal_field_name_command(self):
-        """A shell-capable tool naming its field anything else must still be caught.
-
-        Regression: the fallback used to give full shell parsing only to a
-        field literally named `command`; anything else (`cmd`, `script`,
-        `exec`) fell back to a check for whether the *whole string* was one
-        blocked path, which a real command line never is. That defeated the
-        fallback's own purpose — catching tools with no dedicated branch.
-        """
+    def test_generic_scan_covers_any_field_name(self):
+        """A shell-capable tool naming its field anything but `command` is still caught."""
         self.assert_decisions([
             (DENY, {"cmd": "cat .env"}),
             (DENY, {"shell_command": "cat .dlt/secrets.toml"}),
