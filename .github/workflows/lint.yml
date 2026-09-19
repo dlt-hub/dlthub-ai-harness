@@ -25,3 +25,6 @@ jobs:
 
       - name: Validate and lint
         run: make lint
+
+      - name: Test
+        run: make test
