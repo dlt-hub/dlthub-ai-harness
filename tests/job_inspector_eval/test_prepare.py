@@ -331,3 +331,64 @@ def test_finalize_fails_loudly_when_the_judge_answers_cannot_be_read():
         assert final["status"] == "failed", broken
         assert final["passed"] is False, broken
         assert "could not be read" in final["summary"], broken
+
+
+def test_earliest_error_window_has_no_anchor_when_the_excerpt_is_not_in_the_log():
+    """An invented excerpt with a line number used to anchor the search on that line."""
+    invented = output(evidence=[{
+        "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(9)}",
+        "excerpt": "a phrase that appears nowhere in this log",
+    }])
+    window = C.earliest_error_window(context(output=invented))
+    assert window["located"] is False
+    assert window["anchor_line"] == 0
+    assert window["cited_line"] == line_no(9)
+    assert window["candidates"] == []
+
+
+def test_earliest_error_window_has_no_anchor_for_a_misplaced_excerpt_it_cannot_locate():
+    """A reworded excerpt matches the whole log on token overlap but sits on no single line."""
+    reworded = output(evidence=[{
+        "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(9)}",
+        "excerpt": "401 Unauthorized extract started",
+    }])
+    placement = C.excerpt_placements(context(output=reworded))[0]
+    assert placement["status"] == C.EXCERPT_MISPLACED and placement["found_line"] == 0
+
+    window = C.earliest_error_window(context(output=reworded))
+    assert window["located"] is False
+    assert window["candidates"] == []
+    assert "no anchor" in window["reason"]
+
+
+def test_prepare_reports_a_transcript_it_could_not_read():
+    """A parser that reads no call scores the same as an inspector that made none."""
+    payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
+               "result": output(), "trace": trace()}
+    unreadable = inspector_log(events=["  a shape the parser does not know"],
+                               result_json=json.dumps(payload, indent=2))
+    logs = {INSPECTOR_RUN_ID: unreadable, FAILED_RUN_ID: with_setup(FAILED_LOG)}
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher(logs=logs))
+    assert prep.ctx is not None and prep.ctx.transcript_unread is True
+    assert prep.problems and "no tool call" in prep.problems[0]
+
+    final = C.finalize({"status": "succeeded", "summary": "done", "checks": []}, prep)
+    assert final["status"] == "failed"
+    assert final["passed"] is False
+    assert "could not read everything" in final["summary"]
+
+
+def test_a_transcript_with_tool_calls_reports_no_problem():
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
+    assert prep.ctx is not None and prep.ctx.transcript_unread is False
+    assert prep.problems == []
+
+
+def test_an_evaluation_that_decided_nothing_does_not_pass():
+    """`passed` true next to a pass rate of 0.0 reads as a clean run that graded nothing."""
+    prep = _prep_with()
+    prep.results.clear()
+    final = C.finalize({"status": "succeeded", "summary": "done", "checks": []}, prep)
+    assert final["pass_rate"] == 0.0
+    assert final["passed"] is False
+    assert "No check was decided" in final["summary"]

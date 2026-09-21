@@ -90,8 +90,8 @@ output:
     passed:
       type: boolean
       description: >
-        True when no check is FALSE and every check in `open_checks` came back answered.
-        An answer you leave out fails the evaluation.
+        True when no check is FALSE, every check in `open_checks` came back answered, and at
+        least one check was decided. An answer you leave out fails the evaluation.
     pass_rate:
       type: number
       description: TRUE divided by TRUE plus FALSE. Between 0 and 1.
