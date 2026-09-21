@@ -15,12 +15,12 @@ Checks:
 - Commands have valid frontmatter (name, description), name matches filename
 - argument-hint uses [bracket] convention per Anthropic docs
 - Rules are catch-all (no frontmatter allowed)
-- Agents live in dlthub/agents/<name>/AGENT.md; name matches the folder; body is the system prompt
+- Agents live in agents/<name>/AGENT.md; name matches the folder; body is the system prompt
 - Agent `access` axes/verbs are known; the body's placeholders are declared inputs
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
-- workflow.md (`skill-name`) references point to real skill directories
+- workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
 - All workbench/ directories must be listed in marketplace
@@ -80,22 +80,23 @@ _WORKFLOW_REQUIRED_SECTIONS = ["core workflow"]
 _WORKFLOW_OPTIONAL_SECTIONS = ["extend and harden"]
 _WORKFLOW_HANDOVER_SECTION = "handover to other toolkits"
 
-# (`skill-name`) references in workflow
+# (`skill-name`) or (`agent-name`) references in workflow
 _WORKFLOW_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
 
 # **toolkit-name** references in handover section
 _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 
 # --- background agents (see BACKGROUND_AGENTS.md) ---
-# Agents are folders, like skills, under `dlthub/` so they never mix with a host's
-# native agents (`.claude/agents/`, `.codex/agents/`): `dlthub/agents/<name>/AGENT.md`.
+# Agents are folders, like skills: `agents/<name>/AGENT.md`, the path the installer reads.
+# They land under `dlthub/` in the *host* folder (`.claude/dlthub/agents/`) so they never mix
+# with a host's native agents (`.claude/agents/`, `.codex/agents/`).
 #
 # dlt owns the contract, so everything below comes from dlt rather than being restated
 # here: `load_agent_spec` is the same reader the runtime uses, and the vocabularies are
 # the types the runtime enforces. This file adds only what dlt cannot know — that a
 # workbench toolkit is a *source* tree, not an installed workspace.
 _AGENT_FILE = COMPONENT_MARKERS["agent"]
-_AGENTS_DIR = ("dlthub", "agents")
+_AGENTS_DIR = ("agents",)
 _AGENTS_PATH = "/".join(_AGENTS_DIR)
 _ENTITY_TYPES = get_args(THubEntityType)
 _STATUS_VALUES = list(get_args(TAgentJobStatus))
@@ -232,7 +233,7 @@ def validate_agents(
     errors: list[str],
     warnings: list[str],
 ) -> set[str]:
-    """Validate dlthub/agents/<name>/AGENT.md manifests. See BACKGROUND_AGENTS.md."""
+    """Validate agents/<name>/AGENT.md manifests. See BACKGROUND_AGENTS.md."""
     agent_names: set[str] = set()
     agents_dir = plugin_dir.joinpath(*_AGENTS_DIR)
     if not agents_dir.is_dir():
@@ -512,23 +513,29 @@ def _extract_sections(text: str) -> dict[str, str]:
 def validate_workflow(
     pname: str,
     plugin_dir: Path,
-    skill_names: set[str],
+    component_names: set[str],
     marketplace_names: set[str],
     errors: list[str],
     warnings: list[str],
 ) -> None:
-    """Validate workflow.md structure, skill refs, and handover refs."""
+    """Validate workflow.md structure, component refs, and handover refs.
+
+    A `(`name`)` reference names a skill or a background agent: a workflow step can be a
+    step the user runs and one that runs unattended after a job fails.
+    """
     workflow_path = plugin_dir / "rules" / "workflow.md"
     if not workflow_path.exists():
         return
 
     text = workflow_path.read_text()
 
-    # --- skill references (across entire file) ---
+    # --- component references (across entire file) ---
     workflow_refs = set(_WORKFLOW_SKILL_REF.findall(text))
     for ref in sorted(workflow_refs):
-        if ref not in skill_names:
-            errors.append(f"[{pname}] workflow.md references '{ref}' but no skill directory exists")
+        if ref not in component_names:
+            errors.append(
+                f"[{pname}] workflow.md references '{ref}' but no skill or agent directory exists"
+            )
 
     # --- section structure ---
     sections = _extract_sections(text)
@@ -665,10 +672,12 @@ def validate_toolkit_content(
                 )
 
     # --- agents (see BACKGROUND_AGENTS.md) ---
-    validate_agents(pname, plugin_dir, inventory, errors, warnings)
+    agent_names = validate_agents(pname, plugin_dir, inventory, errors, warnings)
 
     # --- workflow.md ---
-    validate_workflow(pname, plugin_dir, skill_names, marketplace_names, errors, warnings)
+    validate_workflow(
+        pname, plugin_dir, skill_names | agent_names, marketplace_names, errors, warnings
+    )
 
     return skill_names
 

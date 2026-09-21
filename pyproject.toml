@@ -22,6 +22,9 @@ lint = [
   "mypy>=1.8.0",
   "types-PyYAML>=6.0.12",
 ]
+test = [
+    "pytest>=9.1.1",
+]
 
 [tool.uv.sources]
 dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=7" }

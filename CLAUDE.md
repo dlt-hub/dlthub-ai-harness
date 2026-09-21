@@ -13,7 +13,7 @@ workbench/                                # All toolkits live here
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
-    dlthub/agents/<name>/AGENT.md  # Background agent manifests (optional)
+    agents/<name>/AGENT.md         # Background agent manifests (optional)
     .mcp.json                      # MCP servers (optional)
   init/                            # Shared rules, secrets handling, and workspace MCP
 tools/                             # Dev tooling
@@ -34,7 +34,7 @@ A toolkit is a Claude Code plugin. It may contain:
 - **Commands** (`commands/<name>.md`) — frontmatter required (`name`, `description`). Name must match filename. User-invoked via `/toolkit:command`.
 - **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
-- **Agents** (`dlthub/agents/<name>/AGENT.md`) — background agent manifests: a folder like a skill, markdown + YAML frontmatter, body is the system prompt. Name must match the folder. Declares `access`, `inputs`, `output` (which must carry `status` and `summary`) and `defaults`. Lives under `dlthub/` so it never mixes with a host's native agents. See `BACKGROUND_AGENTS.md` — it is the spec.
+- **Agents** (`agents/<name>/AGENT.md`) — background agent manifests: a folder like a skill, markdown + YAML frontmatter, body is the system prompt. Name must match the folder. Declares `access`, `inputs`, `output` (which must carry `status` and `summary`) and `defaults`. Installs to `.claude/dlthub/agents/<name>/`, under `dlthub/` so it never mixes with a host's native agents. See `BACKGROUND_AGENTS.md` — it is the spec.
 
 ### Toolkit Workflow (`rules/workflow.md`)
 Each toolkit has a **workflow** rule that shows how skills should be used together. It is always loaded so the agent knows the intended skill sequence.
