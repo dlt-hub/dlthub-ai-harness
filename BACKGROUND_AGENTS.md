@@ -105,18 +105,21 @@ access:
 | axis | verbs | what it buys |
 |---|---|---|
 | `local` | `read` | `Read`, `Glob`, `Grep`: the workspace files |
-| | `write` | `Write`, `Edit` |
+| | `write` | `Write`, `Edit` on the pydantic-ai loop; `Write`, `Edit`, `MultiEdit`, `NotebookEdit` on the claude-agent-sdk loop |
 | | `execute` | `Bash` (`PowerShell` on Windows), `RunPython`, in the workspace, in the job's own process tree |
 | | `network` | `WebFetch`, `WebSearch` |
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-`local` buys the same tool set on both loops, pydantic-ai and claude-agent-sdk, named after
-Claude Code's tools, so one declaration means one thing everywhere. Credential files
-(`*secrets.toml`, `.env`) are never readable, whatever `local` says. MCP tools declare what
-they require, and a tool the declaration does not cover is not offered to the model. The
-declaration is a request: the runtime grants what it can, and the trace of every run lists
-the tools that were wired.
+`local` verbs are named after Claude Code's tools, so one declaration means one thing on
+both loops, pydantic-ai and claude-agent-sdk. The set each verb wires differs: the
+claude-agent-sdk loop adds the CLI tools that extend a name, `MultiEdit` and `NotebookEdit`
+under `Edit`, `NotebookRead` under `Read`, `BashOutput` and `KillShell` under `Bash`, and it
+has no `RunPython`, so Python runs through the shell. Credential files (`*secrets.toml`,
+`.env`) are never readable, whatever `local` says. MCP tools declare what they require, and
+a tool the declaration does not cover is not offered to the model. The declaration is a
+request: the runtime grants what it can, and the trace of every run lists the tools that
+were wired.
 
 Write the policy the declaration enforces into the body as explanation: "you are read-only"
 in the prompt helps the model understand its role; the `access` block is what makes it so
