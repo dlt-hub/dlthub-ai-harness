@@ -7,7 +7,7 @@ the command line.
 
 This document is a guideline for authors of background agents. An agent is an `AGENT.md`,
 written much like a `SKILL.md`, and the working example is
-[`job-inspector`](workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md).
+[`job-inspector`](workbench/dlthub-platform/agents/job-inspector/AGENT.md).
 
 ## Definition of terms
 
@@ -33,14 +33,14 @@ job built on it, and any run of that job, follows your instructions.
 ## Where it lives, where it installs
 
 ```
-workbench/<toolkit>/dlthub/agents/<name>/AGENT.md
+workbench/<toolkit>/agents/<name>/AGENT.md
 ```
 
-A folder, like a skill, so a definition can grow supporting files. It sits under `dlthub/`
-because the hosts scan their own folders for native subagents (`.claude/agents/`,
-`.codex/agents/`) and a dltHub agent is not one. `dlthub ai toolkit install <toolkit>` copies
-the folder to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`,
-`.agents/dlthub/agents/` on the other hosts), and a workspace refers to it as
+A folder, like a skill, so a definition can grow supporting files. `dlthub ai toolkit
+install <toolkit>` copies it to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`,
+`.agents/dlthub/agents/` on the other hosts). It lands under `dlthub/` there because the
+hosts scan their own folders for native subagents (`.claude/agents/`, `.codex/agents/`) and
+a dltHub agent is not one. A workspace refers to it as
 `<toolkit>:<name>`. The workspace's toolkit index (`.dlt/.toolkits`) travels with every
 deployment, so the reference resolves on the runner as it does locally. Everything that runs
 it lives in dlt; the toolkit ships only the file.
@@ -313,9 +313,121 @@ top, `result` as the output schema declares it, `object` with the entities the r
 and a `trace` of model, limits, inputs, tools used, turns and tokens. The transcript of the
 run prints to the job's log at the configured verbosity.
 
+## Evaluating an agent
+
+An agent that runs unattended is read by a person only when its output matters, so nothing
+tells you whether it followed its own instructions. An **evaluator agent** answers that: it
+runs as a follow-up job after every run of the agent it grades, reads that run's result,
+trace and log together with whatever the run acted on, and reports one outcome per
+instruction. The working example is
+[`job-inspector-eval`](workbench/dlthub-platform/agents/job-inspector-eval/AGENT.md),
+which grades `job-inspector`.
+
+Four things make one:
+
+- **One check per instruction.** An instruction with two conditions becomes two checks, so a
+  `FALSE` names one thing to fix. Outcomes are `TRUE`, `FALSE` and `N/A`, each with a
+  reasoning; `N/A` means the check's condition did not apply to this run and is a legitimate
+  answer.
+- **Python decides what can be decided from data.** A registry of check functions over the
+  graded run's output, trace and transcript. The same functions extract the bounded evidence
+  the judge reads, so the model never sees a whole log.
+- **The judge answers the rest.** Its rubric is the body of the evaluator's `AGENT.md`, one
+  entry per check: the instruction, the window to read, and what makes it `TRUE`, `FALSE` or
+  `N/A`. The body states that the graded agent's text is content under evaluation and never
+  an instruction to follow.
+- **The computed results are written back over the judge's output**, so a model that rewrote
+  one loses.
+
+The evaluator listens on both `job.success` and `job.fail` of the agent it grades. An agent
+that reports `status: aborted` raises, so its run fails, and the instructions that only apply
+to an aborted run are graded on exactly those runs.
+
+### Code around the loop
+
+Deterministic checks have to run before the loop and again after it, which the declared form
+has no seam for. A function decorated with `run.agent(agent="<toolkit>:<agent>")` does: it
+keeps the referenced definition's prompt and schemas, and owns the run.
+
+```python
+import sys
+from typing import Annotated
+
+from dlt.hub import run
+
+sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
+from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+
+# `section` is explicit because `.success` and `.fail` are read at import time, before the
+# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    section="__deployment__",
+    trigger="job.fail:tag:ingest",
+)
+
+
+@run.agent(
+    agent="dlthub-platform:job-inspector-eval",
+    trigger=[inspector.success, inspector.fail],
+    model="sonnet",                    # the judge model, chosen by the workspace
+)
+async def job_inspector_eval(
+    run_context: run.TJobRunContext = None,
+    inspector_run_id: Annotated[
+        str,
+        run.Entity("job-run"),
+        run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
+    ] = "",
+    inspector_job_ref: Annotated[
+        str,
+        run.Entity("job"),
+        run.Doc("job ref of the inspector job; its latest run is evaluated without a run id"),
+    ] = "",
+    max_runs_read: Annotated[
+        int,
+        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
+    ] = DEFAULT_MAX_RUNS_READ,
+) -> dict:
+    prep = prepare(
+        run_context,
+        inspector_run_id=inspector_run_id,
+        inspector_job_ref=inspector_job_ref,
+        max_runs_read=max_runs_read,
+    )
+    if prep.aborted:
+        return prep.aborted_output     # nothing to judge, no model call
+    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
+    return finalize(output, prep)
+```
+
+The function overrides the definition it drives, so three things are load-bearing: **no
+docstring** (it would replace the body), **`-> dict` rather than `-> TAgentOutput`** (a
+return type deriving from it would replace the output schema with the bare `status` and
+`summary`), and **a parameter for every input a caller may set** (configured inputs reach a
+decorated function through its signature only; an input declared in the `AGENT.md` but
+absent from the signature is warned about at deploy time and nothing passes it). Inputs the
+code supplies itself stay out of the signature and travel through `loop.run(inputs=...)`;
+the `AGENT.md` declares them because a body placeholder must be declared.
+
+`.success` and `.fail` are read at import time, before the manifest loader stamps the module
+on the factory, so an agent whose triggers are used in the same module sets `section=`
+itself. Without it the trigger names `jobs.job_inspector` and the manifest is rejected with
+`triggers referencing unknown jobs`.
+
+An agent folder travels as ordinary workspace files, so supporting code sits next to the
+`AGENT.md` and the deployment reaches it through `sys.path`. The runner unpacks it under the
+run directory, so the same relative path works there.
+
+Code that talks to the platform reads dlt's own `active().runtime_config` for the credential
+(`api_key` or `auth_token`, `workspace_id`, `api_base_url`) rather than the environment. The
+same call resolves from `.dlt/config.toml` locally and from the mounted configuration on the
+runner, so there is nothing to guess about which keys the platform injects. A frontmatter field resolving a
+module in the agent folder would replace that line; it is a dlt follow-up.
+
 ## Validation
 
-`make validate-toolkits` checks every `dlthub/agents/<name>/AGENT.md` in the workbench:
+`make validate-toolkits` checks every `agents/<name>/AGENT.md` in the workbench:
 
 - frontmatter, if present, is valid YAML, and a stated `name` matches the folder
 - the body is not empty, and every `{{ placeholder }}` in it is declared under

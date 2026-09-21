@@ -65,7 +65,7 @@ def build_component_map(plugin_dir: Path) -> dict:
             components["rules"].append(rel)
 
     # agents are folders holding an AGENT.md, like skills hold a SKILL.md
-    agents_dir = plugin_dir / "dlthub" / "agents"
+    agents_dir = plugin_dir / "agents"
     if agents_dir.is_dir():
         for d in sorted(agents_dir.iterdir()):
             if (d / "AGENT.md").is_file():
