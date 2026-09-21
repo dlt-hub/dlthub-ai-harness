@@ -78,7 +78,9 @@ WRITE_COMMANDS = (
     "git commit", "git merge", "git mv", "git push", "git rebase", "git reset",
     "git restore", "git revert", "git rm", "git stash", "git switch", "git tag",
 )
-WRITE_MCP_TOOLS = ("secrets_update_fragment", "Write", "Edit", "NotebookEdit")
+WRITE_TOOLS = ("secrets_update_fragment", "Write", "Edit", "MultiEdit", "NotebookEdit")
+"""Write tools by name, wherever they come from: the first is an MCP tool, the rest are the
+file tools `local: write` wires."""
 WRITE_SQL = ("INSERT", "REPLACE INTO", "UPSERT", "UPDATE", "DELETE", "DROP", "ALTER",
              "CREATE", "TRUNCATE", "MERGE", "COPY", "GRANT", "REVOKE", "COMMENT ON",
              "REFRESH MATERIALIZED VIEW")
@@ -1263,7 +1265,7 @@ def read_only_shell(ctx: EvalContext) -> CheckResult:
     """
     if ctx.transcript_blind:
         return na("verbosity 0: tool arguments are not in the log, so commands cannot be read")
-    writes = [call.tool for call in ctx.tool_calls if call.tool in WRITE_MCP_TOOLS]
+    writes = [call.tool for call in ctx.tool_calls if call.tool in WRITE_TOOLS]
     if writes:
         return bad(f"the inspector called the write tool {writes[0]!r}", tools=writes)
 
