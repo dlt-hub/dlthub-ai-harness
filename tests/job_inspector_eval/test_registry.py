@@ -54,3 +54,19 @@ def test_the_counts_the_readme_states_are_the_counts_in_the_registry():
 def test_readme_documents_every_input_the_agent_declares():
     for name in ("inspector_run_id", "inspector_job_ref", "max_runs_read"):
         assert name in README
+
+
+TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
+                        "events_before_call", "runs_read", "transcript_blind", "ctx.events")
+
+
+def test_every_check_that_reads_the_transcript_declares_it():
+    """The flag holds back a check when the parser went blind, so it must match the code."""
+    import inspect
+
+    for entry in C.CHECKS.values():
+        if entry.fn is None:
+            continue
+        source = inspect.getsource(entry.fn)
+        reads = any(accessor in source for accessor in TRANSCRIPT_ACCESSORS)
+        assert entry.reads_transcript is reads, entry.id

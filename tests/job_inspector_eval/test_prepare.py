@@ -392,3 +392,21 @@ def test_an_evaluation_that_decided_nothing_does_not_pass():
     assert final["pass_rate"] == 0.0
     assert final["passed"] is False
     assert "No check was decided" in final["summary"]
+
+
+def test_a_transcript_it_could_not_read_decides_nothing_about_what_the_inspector_did():
+    """A blind parser used to score as an inspector that called nothing, and made it a pass."""
+    aborted = output(status="aborted", classification="", confidence="", evidence=[])
+    unreadable = context(output=aborted, inspector_log=inspector_log(
+        events=["  a shape the parser does not know"]))
+    assert unreadable.transcript_unread is True
+
+    results, errors = C.run_deterministic(unreadable)
+    assert errors == []
+    assert results["aborted_without_investigation"].outcome == C.NA
+    assert results["run_record_read"].outcome == C.NA
+    assert "no tool call" in results["run_record_read"].reasoning
+
+    readable = context()
+    assert readable.transcript_unread is False
+    assert C.run_deterministic(readable)[0]["run_record_read"].outcome == C.TRUE
