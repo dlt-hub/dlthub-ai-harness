@@ -237,3 +237,56 @@ class StubFetcher(C.Fetcher):
 @pytest.fixture
 def ctx() -> "C.EvalContext":
     return context()
+
+
+DEPLOYED_RUN_LOG = Path(__file__).parent / "fixtures" / "deployed_inspector_run.log"
+"""The `program` output of a real deployed inspector run, ids and workspace name replaced.
+
+Captured from run #3 of `job_inspector` on 2026-09-22, the shape that
+dlt-hub/dlthub-ai-workbench-internal#83 reported: every one of the 11 tool calls sits inside
+a spoken block, so a parser that reads `says` as running to the next blank line finds none.
+"""
+
+DEPLOYED_RUN_TOOLS = [
+    "Bash",
+    "dlthub_workspace_info",
+    "dlthub_list_runs",
+    "dlthub_get_run",
+    "dlthub_get_run_logs",
+    "dlthub_get_job",
+    "dlthub_telemetry_status",
+    "dlthub_list_pipeline_runs",
+    "dlthub_grep_run_logs",
+    "dlthub_get_pipeline_run_trace",
+    "Read",
+]
+"""The 11 calls that run made, in order. Its trace recorded 11; the evaluator read 0."""
+
+
+def deployed_run_log(result_json: Optional[str] = None) -> List["C.LogLine"]:
+    """The captured run as a whole job log: platform setup lines, then its own output."""
+    program = DEPLOYED_RUN_LOG.read_text(encoding="utf-8").splitlines()
+    if result_json is not None:
+        program += [
+            "Result  [dlthub-platform:job-inspector]",
+            "  status:     succeeded",
+            "  summary:    the pipeline could not reach the API",
+        ] + result_json.splitlines()
+    return with_setup(program)
+
+
+def deployed_run_trace(**overrides: Any) -> Dict[str, Any]:
+    """The trace that run reported: 11 uses over 5 turns, and the tool names behind them."""
+    base = trace(
+        turn_count=5,
+        total_tokens=80708,
+        tools_used=["Bash", "Read"],
+        mcp_tools_used=[name for name in DEPLOYED_RUN_TOOLS if name.startswith("dlthub_")],
+        inputs={
+            "failed_run_id": "",
+            "failed_job_ref": "",
+            "run_context": {"trigger": "job.fail:jobs.jaffle_shop.load_jaffle_bad_config"},
+        },
+    )
+    base.update(overrides)
+    return base

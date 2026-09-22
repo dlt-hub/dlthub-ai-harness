@@ -3,6 +3,7 @@
 import json
 
 from conftest import (
+    DEPLOYED_RUN_TOOLS,
     FAILED_LOG,
     SETUP_NOISE,
     line_no,
@@ -12,6 +13,8 @@ from conftest import (
     OLDER_RUN_ID,
     StubFetcher,
     context,
+    deployed_run_log,
+    deployed_run_trace,
     failed_run,
     inspector_log,
     output,
@@ -463,5 +466,72 @@ def test_finalize_reports_the_checks_the_pass_rate_left_out():
     assert final["na_count"] == outcomes.count("N/A")
     assert final["decided_count"] == outcomes.count("TRUE") + outcomes.count("FALSE")
     assert final["na_count"] + final["decided_count"] == len(final["checks"])
+    assert f"{final['na_count']} `N/A`" in final["summary"]
+    assert f"over the {final['decided_count']} decided" in final["summary"]
+
+
+def deployed_run_fetcher() -> StubFetcher:
+    """The platform as it stood for the run in dlt-hub/dlthub-ai-workbench-internal#83."""
+    job_ref = "jobs.jaffle_shop.load_jaffle_bad_config"
+    payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
+               "result": output(classification="config"), "trace": deployed_run_trace()}
+    return fetcher(
+        logs={
+            INSPECTOR_RUN_ID: deployed_run_log(result_json=json.dumps(payload, indent=2)),
+            FAILED_RUN_ID: with_setup(FAILED_LOG),
+        },
+        records={
+            INSPECTOR_RUN_ID: dict(INSPECTOR_RECORD, trigger=f"job.fail:{job_ref}"),
+            EVALUATOR_RUN_ID: EVALUATOR_RECORD,
+            FAILED_RUN_ID: failed_run(job_ref=job_ref),
+        },
+        runs_by_job={
+            job_ref: [
+                failed_run(job_ref=job_ref),
+                {"id": OLDER_RUN_ID, "number": 11, "status": "succeeded",
+                 "created_at": "2026-09-01T09:00:00Z"},
+            ],
+            "jobs.job_inspector": [INSPECTOR_RECORD],
+        },
+    )
+
+
+def test_prepare_scores_what_a_deployed_run_did():
+    """End to end over the captured run: its 11 calls reach the checks that read them.
+
+    The transcript parser read none of them, so `transcript_unread` held all 18 transcript
+    checks at `N/A` and a third of the evaluation measured nothing.
+    """
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
+    assert prep.ctx is not None
+    assert [call.tool for call in prep.ctx.tool_calls] == DEPLOYED_RUN_TOOLS
+    assert prep.ctx.transcript_unread is False
+    assert prep.ctx.transcript_blind is False
+    assert prep.problems == []
+    assert prep.errors == []
+
+    reads_transcript = [entry.id for entry in C.CHECKS.values() if entry.reads_transcript]
+    decided = {id for id in reads_transcript if prep.results[id].outcome != C.NA}
+    assert len(decided) == 12, "the other six state a condition that did not apply"
+    assert prep.results["run_record_read"].outcome == C.TRUE
+    assert prep.results["run_logs_read"].outcome == C.TRUE
+    assert prep.results["job_definition_read_for_config"].outcome == C.TRUE
+    # the order of the calls survives the parse, which is what this one rests on
+    assert prep.results["record_read_before_logs"].outcome == C.TRUE
+    assert prep.results["single_run_scope"].outcome == C.TRUE
+
+
+def test_a_deployed_run_reports_the_checks_it_left_undecided():
+    """`pass_rate` says nothing about how much of the inspector the evaluation looked at."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
+    judge = {"status": "succeeded", "summary": "graded it",
+             "checks": [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
+                        for id in C.judge_ids(prep.results)]}
+    final = C.finalize(judge, prep)
+
+    assert final["status"] == "succeeded"
+    assert final["passed"] is True
+    assert final["decided_count"] + final["na_count"] == len(final["checks"])
+    assert final["na_count"] > 0
     assert f"{final['na_count']} `N/A`" in final["summary"]
     assert f"over the {final['decided_count']} decided" in final["summary"]

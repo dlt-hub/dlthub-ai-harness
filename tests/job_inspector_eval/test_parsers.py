@@ -2,7 +2,15 @@
 
 import json
 
-from conftest import FAILED_RUN_ID, SETUP_NOISE, inspector_log, line_no, output
+from conftest import (
+    DEPLOYED_RUN_TOOLS,
+    FAILED_RUN_ID,
+    SETUP_NOISE,
+    deployed_run_log,
+    inspector_log,
+    line_no,
+    output,
+)
 
 import checks as C
 
@@ -237,3 +245,39 @@ def test_transcript_reads_every_call_of_a_deployed_run():
         "Bash", "dlthub_workspace_info", "dlthub_get_run"
     ]
     assert [e.call_index for e in events if e.kind == "tool_call"] == [0, 1, 2]
+
+
+def test_a_deployed_run_transcript_reads_every_tool_call():
+    """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
+
+    Every call sits directly under a `says` label, with the agent's own text above it and no
+    blank line between. The parser read 0 and the 18 checks on the transcript went `N/A`.
+    """
+    events = C.parse_transcript(deployed_run_log())
+    calls = [event for event in events if event.kind == "tool_call"]
+
+    assert [call.tool for call in calls] == DEPLOYED_RUN_TOOLS
+    assert [call.call_index for call in calls] == list(range(len(DEPLOYED_RUN_TOOLS)))
+    assert all(call.detail.startswith("{") for call in calls), "every call kept its arguments"
+    assert calls[0].server == "", "Bash is a builtin and carries no server"
+    assert calls[1].server == "dlt-workspace-mcp"
+
+
+def test_a_deployed_run_keeps_its_spoken_text_out_of_the_calls():
+    """The other half: a call must not be swallowed, and prose must not become one."""
+    events = C.parse_transcript(deployed_run_log())
+    spoken = [event.text for event in events if event.kind == "says"]
+
+    assert len(spoken) == 5, "the prompt and the four statements the run made"
+    assert not any(tool in text for text in spoken for tool in DEPLOYED_RUN_TOOLS), (
+        "a swallowed call would show up inside the text of the block above it"
+    )
+    assert spoken[1].endswith("inspect its record before reading logs.")
+
+
+def test_a_deployed_run_reads_the_same_without_the_trace():
+    """`known_tools` sharpens the verbosity-0 case; it must not be what makes this one work."""
+    with_trace = C.parse_transcript(deployed_run_log(), known_tools=DEPLOYED_RUN_TOOLS)
+    without = C.parse_transcript(deployed_run_log())
+    assert [e.tool for e in with_trace if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
+    assert [e.tool for e in without if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
