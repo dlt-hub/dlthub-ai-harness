@@ -2387,7 +2387,12 @@ class EvalPrep:
 
     @property
     def aborted_output(self) -> Dict[str, Any]:
-        """An `aborted` agent output, returned without starting the loop."""
+        """An `aborted` agent output, produced without starting the loop.
+
+        Carry it on `run.JobAbortedException` rather than returning it. dlt sends any
+        returned dict carrying `status` into `_finish`, which reads the loop's trace, and
+        on this path the loop never ran. See README.md, "The abort path raises".
+        """
         return {
             "status": "aborted",
             "summary": self.abort_reason,
@@ -2640,8 +2645,9 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     ctx = prep.ctx
     if ctx is None:
         raise RuntimeError(
-            "finalize was called on an aborted preparation; return `prep.aborted_output`"
-            " instead of starting the loop"
+            "finalize was called on an aborted preparation; raise"
+            " `run.JobAbortedException(prep.abort_reason, prep.aborted_output)` instead of"
+            " starting the loop"
         )
 
     returned, unusable = _judge_checks(output.get("checks"))

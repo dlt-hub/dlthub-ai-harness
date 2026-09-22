@@ -67,12 +67,14 @@ async def job_inspector_eval(
         max_runs_read=max_runs_read,
     )
     if prep.aborted:
-        return prep.aborted_output     # nothing to judge, no model call
+        # nothing to judge, no model call. Raising rather than returning: dlt reads
+        # `loop.trace` on any dict carrying `status`, and on this path the loop never ran
+        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
     output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
     return finalize(output, prep)
 ```
 
-Four things about that function are load-bearing:
+Five things about that function are load-bearing:
 
 - **No docstring.** A docstring becomes the system prompt and replaces the body of
   `AGENT.md`.
@@ -91,6 +93,13 @@ Four things about that function are load-bearing:
   so without them the manifest loses the descriptions and the entity types. `expose.object_input`
   is built from the first entity-typed input, and it is what lets the Web UI offer the
   evaluator from an inspector run's row.
+- **The abort path raises.** `_invoke_agent` sends any returned dict carrying `status` into
+  `_finish`, which reads `loop.trace`, and the loop never ran here, so returning
+  `prep.aborted_output` fails the run with `AgentTraceNotAvailable: Loop 'pydantic-ai' has no
+  trace: it has not completed a run` and the reason the evaluator aborted is lost. Raising
+  skips `_finish`. This is a workaround for
+  [#84](https://github.com/dlt-hub/dlthub-ai-workbench-internal/issues/84); drop it once dlt
+  tolerates a loop that never ran.
 
 Do not point the inspector at `job.fail:*` in a workspace that runs the evaluator. The
 selector expands onto every other job, the evaluator included, so a failing evaluation would
