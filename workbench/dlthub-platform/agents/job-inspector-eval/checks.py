@@ -509,6 +509,11 @@ _TOOL_CALL = re.compile(
 )
 """A tool name is an identifier. `dlthub local run` prints a banner of `  job_ref: ...` lines
 and a summary may carry fenced code, and neither is a tool call."""
+_SPOKEN_CONTINUATION = re.compile(r"^ {2}\S")
+"""A spoken block's own lines: exactly two spaces, then the text.
+
+A logged tool error sits at column 0, or under the logger's 20-space repeat indent.
+"""
 _SAYS_LABELS = ("says", "prompt", "system prompt")
 _NON_TOOL_PREFIXES = ("thinks", "mcp", "tools:", "skills:", "local", "status:", "summary:",
                       "loop:")
@@ -516,12 +521,63 @@ _RESULT_BANNER = re.compile(r"^Result {2}\[")
 """Where the transcript ends and the printed job result begins."""
 
 
-def parse_transcript(log_lines: Iterable[LogLine]) -> List[Event]:
+def _classify(
+    line: str, in_spoken: bool, known_tools: "frozenset[str]"
+) -> Optional[Dict[str, Any]]:
+    """The event a transcript line carries, or None when it carries none.
+
+    Spoken text and a tool call take the same two-space indent, so while `in_spoken` the
+    shape alone does not decide: `_call_in_spoken_block` has to agree.
+    """
+    if match := _THINKS.match(line):
+        return {"kind": "thinks", "text": match.group(1)}
+    if match := _TOOL_ERROR_LINE.search(line):
+        # `.search` matches mid-sentence, so spoken text may quote the phrase
+        if not (in_spoken and _SPOKEN_CONTINUATION.match(line)):
+            return {"kind": "tool_error", "tool": match.group(1)}
+    if match := _MCP.match(line):
+        return {"kind": "mcp", "text": match.group(1)}
+    if match := _TURN.match(line):
+        return {"kind": "turn", "text": match.group(1)}
+    if match := _TOOL_RESULT.match(line):
+        return {"kind": "tool_result", "detail": match.group(1)}
+    if match := _TOOL_CALL.match(line):
+        name, server, detail = match.group(1), match.group(2) or "", match.group(3) or ""
+        if name.startswith(_NON_TOOL_PREFIXES):
+            return None
+        if in_spoken and not _call_in_spoken_block(name, server, detail, known_tools):
+            return None
+        return {"kind": "tool_call", "tool": name, "server": server, "detail": detail}
+    return None
+
+
+def _call_in_spoken_block(
+    name: str, server: str, detail: str, known_tools: "frozenset[str]"
+) -> bool:
+    """Whether an indented line inside a spoken block is a tool call rather than prose.
+
+    The trace names every tool the run used, so a name it lists settles it. Failing that, a
+    server or a JSON argument marks a call. A bare word stays prose, because reading it as a
+    call puts the run ids a sentence quotes into `runs_read`.
+    """
+    if name in known_tools:
+        return True
+    return bool(server) or detail.startswith(("{", "["))
+
+
+def parse_transcript(
+    log_lines: Iterable[LogLine], known_tools: Iterable[str] = ()
+) -> List[Event]:
     """The inspector's transcript, as events, from its job log.
 
     Only the `program` phase is read. The platform's own phases print indented text the
     shapes below would misread: an image-build line like `  Copying blob sha256:...` matches
     the tool-call shape exactly.
+
+    A spoken block ends at the first line carrying another event. `says` labels indented
+    text, and the turn's tool calls follow at the same indent, so a block that ran to the
+    next blank line would take them with it. `known_tools` holds what the run trace records.
+    It is what separates a bare `  Bash` inside a block from a sentence of one word.
 
     Verbosity 0 drops thoughts and tool arguments but keeps the tool names, so the order of
     calls survives and only what a call targeted is lost.
@@ -530,72 +586,49 @@ def parse_transcript(log_lines: Iterable[LogLine]) -> List[Event]:
     index = 0
     call_index = 0
     pending_says: Optional[Event] = None
+    known = frozenset(str(name) for name in known_tools)
+
+    def flush() -> None:
+        nonlocal pending_says, index
+        if pending_says is not None:
+            events.append(pending_says)
+            index += 1
+            pending_says = None
 
     for entry in program_lines(list(log_lines)):
         number = entry.number
         line = strip_ansi(entry.content).rstrip()
 
-        if pending_says is not None:
-            if line.startswith("  ") and line.strip():
-                pending_says.text += (" " if pending_says.text else "") + line.strip()
-                continue
-            events.append(pending_says)
-            index += 1
-            pending_says = None
-
         if _RESULT_BANNER.match(line):
             break
         if not line.strip():
+            flush()
             continue
         if line.strip() in _SAYS_LABELS:
+            flush()
             pending_says = Event(index=index, kind="says", log_line=number)
             continue
-        if match := _THINKS.match(line):
-            events.append(
-                Event(index=index, kind="thinks", text=match.group(1), log_line=number)
-            )
-            index += 1
-            continue
-        if match := _TOOL_ERROR_LINE.search(line):
-            events.append(
-                Event(index=index, kind="tool_error", tool=match.group(1), log_line=number)
-            )
-            index += 1
-            continue
-        if match := _MCP.match(line):
-            events.append(Event(index=index, kind="mcp", text=match.group(1), log_line=number))
-            index += 1
-            continue
-        if match := _TURN.match(line):
-            events.append(Event(index=index, kind="turn", text=match.group(1), log_line=number))
-            index += 1
-            continue
-        if match := _TOOL_RESULT.match(line):
-            events.append(
-                Event(index=index, kind="tool_result", detail=match.group(1), log_line=number)
-            )
-            index += 1
-            continue
-        if match := _TOOL_CALL.match(line):
-            name = match.group(1)
-            if name.startswith(_NON_TOOL_PREFIXES):
-                continue
-            events.append(
-                Event(
-                    index=index,
-                    kind="tool_call",
-                    tool=name,
-                    server=match.group(2) or "",
-                    detail=match.group(3) or "",
-                    call_index=call_index,
-                    log_line=number,
-                )
-            )
-            index += 1
-            call_index += 1
 
-    if pending_says is not None:
-        events.append(pending_says)
+        fields = _classify(line, pending_says is not None, known)
+        if fields is None:
+            if pending_says is not None and line.startswith("  "):
+                pending_says.text += (" " if pending_says.text else "") + line.strip()
+            else:
+                flush()
+            continue
+
+        flush()
+        kind = str(fields.pop("kind"))
+        if kind == "tool_call":
+            events.append(
+                Event(index=index, kind=kind, call_index=call_index, log_line=number, **fields)
+            )
+            call_index += 1
+        else:
+            events.append(Event(index=index, kind=kind, log_line=number, **fields))
+        index += 1
+
+    flush()
     return events
 
 
@@ -2359,7 +2392,12 @@ class EvalPrep:
 
     @property
     def aborted_output(self) -> Dict[str, Any]:
-        """An `aborted` agent output, returned without starting the loop."""
+        """An `aborted` agent output, produced without starting the loop.
+
+        Carry it on `run.JobAbortedException` rather than returning it. dlt routes a returned
+        dict carrying `status` into `_finish`, which reads a loop trace this path never wrote.
+        See README.md, "The abort path raises".
+        """
         return {
             "status": "aborted",
             "summary": self.abort_reason,
@@ -2368,6 +2406,8 @@ class EvalPrep:
             "inspector_status": "aborted",
             "passed": False,
             "pass_rate": 0.0,
+            "decided_count": 0,
+            "na_count": 0,
             "checks": [],
             "metrics": {},
         }
@@ -2417,6 +2457,15 @@ def resolve_inspector_run(
     )
 
 
+def _trace_tool_names(trace: Optional[Dict[str, Any]]) -> List[str]:
+    """Every tool name the trace records, built-in, MCP and skill together."""
+    trace = trace or {}
+    names: List[str] = []
+    for key in ("tools_used", "mcp_tools_used", "skills_used"):
+        names += [str(name) for name in trace.get(key) or []]
+    return names
+
+
 def build_context(
     inspector_run_id: str, fetcher: Fetcher, max_runs_read: int = DEFAULT_MAX_RUNS_READ
 ) -> EvalContext:
@@ -2458,7 +2507,7 @@ def build_context(
         output=output or {},
         trace=trace,
         inspector_log=inspector_log,
-        events=parse_transcript(inspector_log),
+        events=parse_transcript(inspector_log, known_tools=_trace_tool_names(trace)),
         failed_run=failed_run,
         failed_log=failed_log,
         neighbours=neighbours,
@@ -2593,12 +2642,17 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     in `prep.problems`, which holds what the evaluator could not read. An evaluation that
     decided nothing at all does not pass either, so `passed` true and `pass_rate` 0.0 cannot
     be reported together.
+
+    `pass_rate` divides by the decided checks, so `decided_count` and `na_count` sit beside
+    it and the tally goes into `summary`. The rate alone reads the same over a third of the
+    checks as over all of them.
     """
     ctx = prep.ctx
     if ctx is None:
         raise RuntimeError(
-            "finalize was called on an aborted preparation; return `prep.aborted_output`"
-            " instead of starting the loop"
+            "finalize was called on an aborted preparation; raise"
+            " `run.JobAbortedException(prep.abort_reason, prep.aborted_output)` instead of"
+            " starting the loop"
         )
 
     returned, unusable = _judge_checks(output.get("checks"))
@@ -2638,9 +2692,16 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
 
     true_count = sum(1 for entry in checks if entry["outcome"] == TRUE)
     false_count = sum(1 for entry in checks if entry["outcome"] == FALSE)
+    na_count = sum(1 for entry in checks if entry["outcome"] == NA)
     decided = true_count + false_count
 
     summary = str(output.get("summary") or "")
+    # `pass_rate` divides by the decided checks, so the counts go next to it
+    summary += (
+        f"\n\n{len(checks)} checks: {true_count} TRUE, {false_count} FALSE, {na_count} `N/A`."
+        f" `pass_rate` {(true_count / decided) if decided else 0.0:.2f} over the"
+        f" {decided} decided."
+    )
     if unusable:
         summary += (
             f"\n\nThe judge's answers could not be read: {unusable}. Every judge check is"
@@ -2673,6 +2734,8 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
         "inspector_status": ctx.status or "aborted",
         "passed": false_count == 0 and decided > 0 and not incomplete,
         "pass_rate": (true_count / decided) if decided else 0.0,
+        "decided_count": decided,
+        "na_count": na_count,
         "checks": checks,
         "metrics": _metrics(ctx),
     }

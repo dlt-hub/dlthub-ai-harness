@@ -2,7 +2,15 @@
 
 import json
 
-from conftest import FAILED_RUN_ID, SETUP_NOISE, inspector_log, line_no, output
+from conftest import (
+    DEPLOYED_RUN_TOOLS,
+    FAILED_RUN_ID,
+    SETUP_NOISE,
+    deployed_run_log,
+    inspector_log,
+    line_no,
+    output,
+)
 
 import checks as C
 
@@ -175,3 +183,137 @@ def test_source_line_range():
     assert C.source_line_range("`dlthub job runs logs abc` lines 10-16") == (10, 16)
     assert C.source_line_range("failing_jobs.py lines 9 - 16") == (9, 16)
     assert C.source_line_range("the run record") == (0, 0)
+
+
+def test_a_tool_call_right_after_a_spoken_block_is_read_as_a_call():
+    """The launcher prints a `says` label, its indented text, then that turn's calls.
+
+    The calls take the same indent as the text, so a block that ran to the next blank line
+    would take them with it.
+    """
+    log = inspector_log(events=[
+        "  says",
+        "  I will resolve the failed run, then read its record before the logs.",
+        f'  Bash  {{"command":"uv run dlthub job runs info {FAILED_RUN_ID}"}}',
+        f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+        '     \u2192 {"status": "failed"}',
+    ])
+    events = C.parse_transcript(log)
+    assert [e.tool for e in events if e.kind == "tool_call"] == ["Bash", "dlthub_get_run"]
+    said = [e for e in events if e.kind == "says"][-1]
+    assert said.text == "I will resolve the failed run, then read its record before the logs."
+
+
+def test_a_spoken_block_keeps_prose_that_looks_like_a_call():
+    """A sentence quoting a run id would otherwise land in `runs_read` as a call argument."""
+    log = inspector_log(events=[
+        "  says",
+        f"  Rotate  the token, then re-run {FAILED_RUN_ID}.",
+    ])
+    events = C.parse_transcript(log)
+    assert [e for e in events if e.kind == "tool_call"] == []
+    assert FAILED_RUN_ID in [e for e in events if e.kind == "says"][-1].text
+
+
+def test_the_trace_names_a_bare_tool_call_inside_a_spoken_block():
+    """Verbosity 0 prints no argument, so only the trace tells `  Bash` from a first word."""
+    log = inspector_log(events=["  says", "  Reading the record now.", "  Bash"])
+    assert [e.tool for e in C.parse_transcript(log) if e.kind == "tool_call"] == []
+    events = C.parse_transcript(log, known_tools=["Bash", "dlthub_get_run"])
+    assert [e.tool for e in events if e.kind == "tool_call"] == ["Bash"]
+
+
+def test_transcript_reads_every_call_of_a_deployed_run():
+    """The shape a platform run writes: turn banners, spoken blocks and calls interleaved."""
+    log = inspector_log(events=[
+        "  mcp  dlt-workspace-mcp connected",
+        "",
+        "turn 1                                                                    ",
+        "  says",
+        "  I will verify the workspace first.",
+        '  Bash  {"command":"uv run dlthub --non-interactive ai status"}',
+        '  dlthub_workspace_info (dlt-workspace-mcp)  {"members":0}',
+        "",
+        "turn 2                                                                    ",
+        '     \u2192 {"name": "agent-hackathon"}',
+        "  says",
+        "  The trigger resolves to the latest failed run; reading its record.",
+        f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+    ])
+    events = C.parse_transcript(log)
+    assert [e.tool for e in events if e.kind == "tool_call"] == [
+        "Bash", "dlthub_workspace_info", "dlthub_get_run"
+    ]
+    assert [e.call_index for e in events if e.kind == "tool_call"] == [0, 1, 2]
+
+
+def test_a_deployed_run_transcript_reads_every_tool_call():
+    """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
+
+    Every call sits under a `says` label, one blank line further down than the block ends.
+    The parser read 0 of them and the 18 checks on the transcript went `N/A`.
+    """
+    events = C.parse_transcript(deployed_run_log())
+    calls = [event for event in events if event.kind == "tool_call"]
+
+    assert [call.tool for call in calls] == DEPLOYED_RUN_TOOLS
+    assert [call.call_index for call in calls] == list(range(len(DEPLOYED_RUN_TOOLS)))
+    assert all(call.detail.startswith("{") for call in calls), "every call kept its arguments"
+    assert calls[0].server == "", "Bash is a builtin and carries no server"
+    assert calls[1].server == "dlt-workspace-mcp"
+
+
+def test_a_deployed_run_keeps_its_spoken_text_out_of_the_calls():
+    """The converse of the check above: prose must not become a call."""
+    events = C.parse_transcript(deployed_run_log())
+    spoken = [event.text for event in events if event.kind == "says"]
+
+    assert len(spoken) == 5, "the prompt and the four statements the run made"
+    assert not any(tool in text for text in spoken for tool in DEPLOYED_RUN_TOOLS), (
+        "a swallowed call would show up inside the text of the block above it"
+    )
+    assert spoken[1].endswith("inspect its record before reading logs.")
+
+
+def test_a_deployed_run_reads_the_same_without_the_trace():
+    """`known_tools` settles the verbosity-0 case. This one parses without it."""
+    with_trace = C.parse_transcript(deployed_run_log(), known_tools=DEPLOYED_RUN_TOOLS)
+    without = C.parse_transcript(deployed_run_log())
+    assert [e.tool for e in with_trace if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
+    assert [e.tool for e in without if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
+
+
+def test_a_logged_tool_error_is_read_in_both_forms_the_launcher_prints():
+    """The logger stamps the first line and indents the repeat. Both are real errors."""
+    log = inspector_log(events=[
+        "[09/17/26 14:43:40] Error calling tool 'dlthub_list_runs'                       ",
+        "                    Error calling tool 'dlthub_list_jobs'                       ",
+    ])
+    errors = [e.tool for e in C.parse_transcript(log) if e.kind == "tool_error"]
+    assert errors == ["dlthub_list_runs", "dlthub_list_jobs"]
+
+
+def test_a_spoken_block_quoting_a_tool_error_is_not_one():
+    """`_TOOL_ERROR_LINE` matches anywhere on the line, and spoken text may mention it."""
+    log = inspector_log(events=[
+        "  says",
+        "  The first attempt hit Error calling tool 'dlthub_list_runs' so I changed the filter.",
+        f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+    ])
+    events = C.parse_transcript(log)
+    assert [e for e in events if e.kind == "tool_error"] == []
+    assert [e.tool for e in events if e.kind == "tool_call"] == ["dlthub_get_run"]
+    said = [e for e in events if e.kind == "says"][-1]
+    assert said.text.endswith("so I changed the filter.")
+
+
+def test_a_logged_tool_error_still_ends_a_spoken_block():
+    """A logged error takes the logger's indent, never the block's two spaces."""
+    log = inspector_log(events=[
+        "  says",
+        "  Reading the run list now.",
+        "                    Error calling tool 'dlthub_list_runs'                       ",
+    ])
+    events = C.parse_transcript(log)
+    assert [e.tool for e in events if e.kind == "tool_error"] == ["dlthub_list_runs"]
+    assert [e for e in events if e.kind == "says"][-1].text == "Reading the run list now."

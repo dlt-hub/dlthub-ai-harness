@@ -38,7 +38,7 @@
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
       "description": "Deploy dlthub workspace and pipelines to the dltHub platform",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "data",
       "tags": ["dlthub", "deploy", "platform"]
     },
