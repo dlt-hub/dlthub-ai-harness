@@ -281,3 +281,39 @@ def test_a_deployed_run_reads_the_same_without_the_trace():
     without = C.parse_transcript(deployed_run_log())
     assert [e.tool for e in with_trace if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
     assert [e.tool for e in without if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
+
+
+def test_a_logged_tool_error_is_read_in_both_forms_the_launcher_prints():
+    """The logger stamps the first line and indents the repeat, and both are real errors."""
+    log = inspector_log(events=[
+        "[09/17/26 14:43:40] Error calling tool 'dlthub_list_runs'                       ",
+        "                    Error calling tool 'dlthub_list_jobs'                       ",
+    ])
+    errors = [e.tool for e in C.parse_transcript(log) if e.kind == "tool_error"]
+    assert errors == ["dlthub_list_runs", "dlthub_list_jobs"]
+
+
+def test_a_spoken_block_quoting_a_tool_error_is_not_one():
+    """`_TOOL_ERROR_LINE` matches anywhere on the line, and spoken text may mention it."""
+    log = inspector_log(events=[
+        "  says",
+        "  The first attempt hit Error calling tool 'dlthub_list_runs' so I changed the filter.",
+        f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+    ])
+    events = C.parse_transcript(log)
+    assert [e for e in events if e.kind == "tool_error"] == []
+    assert [e.tool for e in events if e.kind == "tool_call"] == ["dlthub_get_run"]
+    said = [e for e in events if e.kind == "says"][-1]
+    assert said.text.endswith("so I changed the filter.")
+
+
+def test_a_logged_tool_error_still_ends_a_spoken_block():
+    """The launcher never indents a logged error by two, so it is an event, not prose."""
+    log = inspector_log(events=[
+        "  says",
+        "  Reading the run list now.",
+        "                    Error calling tool 'dlthub_list_runs'                       ",
+    ])
+    events = C.parse_transcript(log)
+    assert [e.tool for e in events if e.kind == "tool_error"] == ["dlthub_list_runs"]
+    assert [e for e in events if e.kind == "says"][-1].text == "Reading the run list now."

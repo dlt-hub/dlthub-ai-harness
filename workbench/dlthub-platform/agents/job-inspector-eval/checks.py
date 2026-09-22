@@ -509,6 +509,12 @@ _TOOL_CALL = re.compile(
 )
 """A tool name is an identifier. `dlthub local run` prints a banner of `  job_ref: ...` lines
 and a summary may carry fenced code, and neither is a tool call."""
+_SPOKEN_CONTINUATION = re.compile(r"^ {2}\S")
+"""How `_indented` prefixes a line of a spoken block: exactly two spaces, then the text.
+
+The launcher logs a tool error at column 0, or under the logger's own indent when it repeats
+a timestamp. Neither is two spaces, so this tells a logged error from a sentence quoting one.
+"""
 _SAYS_LABELS = ("says", "prompt", "system prompt")
 _NON_TOOL_PREFIXES = ("thinks", "mcp", "tools:", "skills:", "local", "status:", "summary:",
                       "loop:")
@@ -528,7 +534,10 @@ def _classify(
     if match := _THINKS.match(line):
         return {"kind": "thinks", "text": match.group(1)}
     if match := _TOOL_ERROR_LINE.search(line):
-        return {"kind": "tool_error", "tool": match.group(1)}
+        # the pattern matches anywhere on the line, so inside a spoken block a sentence
+        # mentioning the phrase would otherwise end the block and invent a tool error
+        if not (in_spoken and _SPOKEN_CONTINUATION.match(line)):
+            return {"kind": "tool_error", "tool": match.group(1)}
     if match := _MCP.match(line):
         return {"kind": "mcp", "text": match.group(1)}
     if match := _TURN.match(line):
