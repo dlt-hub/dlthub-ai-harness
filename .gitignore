@@ -218,3 +218,7 @@ evals/data-exploration/analyze-questions/config.json
 evals/data-exploration/analyze-questions/trigger-eval.json
 evals/data-exploration/connect-and-profile/config.json
 evals/data-exploration/connect-and-profile/trigger-eval.json
+
+# captured run logs the tests parse. `*.log` above would drop them, and a fixture that is
+# not committed still passes locally, so the suite goes green and CI cannot import it
+!tests/**/fixtures/**
