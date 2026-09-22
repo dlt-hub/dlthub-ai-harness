@@ -151,7 +151,10 @@ defaults:
     - job.fail:job_inspector
   limits:
     max_turns: 25
-    max_tokens: 600000
+    # a judge that asks for extra log windows costs roughly the inspector's tokens per turn,
+    # so 25 turns need this much. At 600,000 a run that used its turns died on the limit with
+    # nothing to report: observed 658,952 against a judge input of about 6,000 tokens
+    max_tokens: 1000000
   loop_run_args:
     retries: 1
 ---

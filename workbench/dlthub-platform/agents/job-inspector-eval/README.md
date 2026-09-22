@@ -40,7 +40,8 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="sonnet",                    # the judge model, chosen by the workspace
+    # no `model=`: the workspace picks the judge through `agent.*` configuration, so this
+    # runs on whichever endpoint the workspace has a key for. See "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -109,14 +110,50 @@ model is enough: the judge reads bounded windows and the deterministic results, 
 check is a narrow question with a three-value answer. The evaluator runs after every
 inspector run, so its cost adds to every failure.
 
+Nothing in the definition or in `checks.py` names a provider. The judge answers with the
+declared output schema, and `finalize` reads it back, on any endpoint the pydantic-ai loop
+supports. Pin the model on the job or in configuration, never in `AGENT.md`.
+
 | Provider | Recommended alias | Model | Step up when needed |
 |---|---|---|---|
 | Anthropic | `sonnet` | `anthropic:claude-sonnet-5` | `opus` |
 | OpenAI | `gpt-mini` | `openai:gpt-5.4-mini` | `gpt` (`gpt-5.5`) |
+| Azure OpenAI | none | `azure:<your deployment>` | a larger deployment |
 | Google | `gemini` | `google:gemini-3.5-flash` | `gemini-pro` |
 
 Move to the provider's top model only for a check that gives wrong outcomes after its rubric
 was fixed, and set it on the job rather than in the definition.
+
+`loop: claude-agent-sdk` takes Anthropic models only. The evaluator does not set a loop, so
+it runs on pydantic-ai and reaches every provider in the table. Naming that loop in a
+workspace whose key is Azure or Google breaks the run.
+
+### Configuring the endpoint
+
+`agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run
+takes all four from the workspace or all four from the runtime, never one from each. Setting
+`api_key` alone leaves `model` unset, and the run then falls back to the agent's own default
+model against your key, which is the mismatch that produces `401 API key is invalid`.
+
+As workspace variables, which arrive on the runner as environment and override
+`.dlt/secrets.toml`:
+
+```bash
+printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
+```
+
+Anthropic and OpenAI need the model and the key. Azure needs all four, because it addresses a
+deployment on your own endpoint rather than a shared one:
+
+| Variable | Anthropic | Azure OpenAI |
+|---|---|---|
+| `AGENT__MODEL` | `anthropic:claude-sonnet-5` | `azure:<deployment name>` |
+| `AGENT__API_KEY` | the Anthropic key | the Azure key |
+| `AGENT__API_URL` | unset | `https://<resource>.openai.azure.com` |
+| `AGENT__API_VERSION` | unset | the api-version your deployment serves |
+
+Azure is the only provider pydantic-ai gives `api_version`. On the rest it is ignored with a
+warning, so leave it unset.
 
 ## Running it by hand
 
@@ -327,6 +364,12 @@ Read these before acting on a `FALSE`.
   inspector's own `context: read` MCP tools, which answer `This environment has no platform
   credential (RUNTIME__API_KEY or RUNTIME__AUTH_TOKEN)`. Until the runner injects one, the
   evaluator runs only where a credential is configured.
+- **What the transcript holds depends on the model, not only on the loop.** A model that
+  emits text in the same assistant message as its tool calls prints a `says` block with the
+  calls directly under it; one that answers with calls alone prints them under the turn
+  banner. Both parse, and `known_tools` from the trace is what tells a bare `  Bash` inside a
+  spoken block from a sentence that starts with one word. A model that narrates is also the
+  only one that decides `no_explicit_cause_before_log` and `no_premature_cause`.
 - **Thoughts may not appear at all.** On a pydantic-ai run with Sonnet the transcript carried
   33 tool calls and no `thinks` events, so `no_explicit_cause_before_log` and
   `no_premature_cause` report `N/A`. They decide something only on a loop and model that emit
