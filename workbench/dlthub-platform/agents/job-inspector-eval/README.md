@@ -171,8 +171,11 @@ replays and the checks see what the evaluation would have seen.
 least one check was decided. A judge response that is empty or cut off leaves checks
 unanswered, and that fails the evaluation rather than passing it on the deterministic
 results alone. A run where every check reported `N/A` decided nothing, so it does not pass
-either. `pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A` never moves it. `metrics` carries turns, tokens, cost and the number of runs the inspector
-read; those are numbers, not pass or fail.
+either. `pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A` never moves it. `decided_count` is
+that denominator and `na_count` the checks left out of it, both reported beside the rate and
+tallied in `summary`: a rate over a third of the checks and a rate over all of them read the
+same otherwise, and the first one flatters the inspector. `metrics` carries turns, tokens,
+cost and the number of runs the inspector read; those are numbers, not pass or fail.
 
 The evaluator's own `status` is about the evaluation, not about the inspector: `succeeded`
 when every check has an outcome, `failed` when a check raised, an artifact was missing, the

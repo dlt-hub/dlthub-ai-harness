@@ -410,3 +410,58 @@ def test_a_transcript_it_could_not_read_decides_nothing_about_what_the_inspector
     readable = context()
     assert readable.transcript_unread is False
     assert C.run_deterministic(readable)[0]["run_record_read"].outcome == C.TRUE
+
+
+def test_prepare_reads_the_tool_calls_a_deployed_run_printed():
+    """A spoken block runs into the calls of its turn, and every call has to survive it."""
+    payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
+               "result": output(), "trace": trace()}
+    spoken = inspector_log(
+        events=[
+            "  says",
+            "  I will read the run record before the logs.",
+            f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+            f'  dlthub_get_run_logs (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+        ],
+        result_json=json.dumps(payload, indent=2),
+    )
+    logs = {INSPECTOR_RUN_ID: spoken, FAILED_RUN_ID: with_setup(FAILED_LOG)}
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher(logs=logs))
+    assert prep.ctx is not None
+    assert [call.tool for call in prep.ctx.tool_calls] == [
+        "dlthub_get_run", "dlthub_get_run_logs"
+    ]
+    assert prep.ctx.transcript_unread is False
+    assert prep.problems == []
+    assert prep.results["run_record_read"].outcome == C.TRUE
+
+
+def test_prepare_hands_the_parser_the_tool_names_the_trace_records():
+    """Verbosity 0 prints a bare name, and inside a spoken block only the trace settles it."""
+    payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
+               "result": output(), "trace": trace()}
+    blind = inspector_log(
+        events=["  says", "  Reading the record.", "  dlthub_get_run (dlt-workspace-mcp)",
+                "  Bash"],
+        result_json=json.dumps(payload, indent=2),
+    )
+    logs = {INSPECTOR_RUN_ID: blind, FAILED_RUN_ID: with_setup(FAILED_LOG)}
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher(logs=logs))
+    assert prep.ctx is not None
+    assert [call.tool for call in prep.ctx.tool_calls] == ["dlthub_get_run", "Bash"]
+
+
+def test_finalize_reports_the_checks_the_pass_rate_left_out():
+    """A rate over a third of the checks reads like a rate over all of them without the tally."""
+    prep = _prep_with()
+    judge = {"status": "succeeded", "summary": "done",
+             "checks": [{"id": id, "kind": "judge", "outcome": "N/A", "reasoning": "no condition"}
+                        for id in C.judge_ids(prep.results)]}
+    final = C.finalize(judge, prep)
+
+    outcomes = [entry["outcome"] for entry in final["checks"]]
+    assert final["na_count"] == outcomes.count("N/A")
+    assert final["decided_count"] == outcomes.count("TRUE") + outcomes.count("FALSE")
+    assert final["na_count"] + final["decided_count"] == len(final["checks"])
+    assert f"{final['na_count']} `N/A`" in final["summary"]
+    assert f"over the {final['decided_count']} decided" in final["summary"]

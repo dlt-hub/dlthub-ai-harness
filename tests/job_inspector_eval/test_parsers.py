@@ -175,3 +175,65 @@ def test_source_line_range():
     assert C.source_line_range("`dlthub job runs logs abc` lines 10-16") == (10, 16)
     assert C.source_line_range("failing_jobs.py lines 9 - 16") == (9, 16)
     assert C.source_line_range("the run record") == (0, 0)
+
+
+def test_a_tool_call_right_after_a_spoken_block_is_read_as_a_call():
+    """The launcher prints a `says` label, its indented text, then the calls of that turn.
+
+    Nothing separates the text from the calls, so a parser appending every indented line to
+    the spoken block swallows the whole turn's tool use.
+    """
+    log = inspector_log(events=[
+        "  says",
+        "  I will resolve the failed run, then read its record before the logs.",
+        f'  Bash  {{"command":"uv run dlthub job runs info {FAILED_RUN_ID}"}}',
+        f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+        '     \u2192 {"status": "failed"}',
+    ])
+    events = C.parse_transcript(log)
+    assert [e.tool for e in events if e.kind == "tool_call"] == ["Bash", "dlthub_get_run"]
+    said = [e for e in events if e.kind == "says"][-1]
+    assert said.text == "I will resolve the failed run, then read its record before the logs."
+
+
+def test_a_spoken_block_keeps_prose_that_looks_like_a_call():
+    """A sentence quoting a run id would otherwise land in `runs_read` as a call argument."""
+    log = inspector_log(events=[
+        "  says",
+        f"  Rotate  the token, then re-run {FAILED_RUN_ID}.",
+    ])
+    events = C.parse_transcript(log)
+    assert [e for e in events if e.kind == "tool_call"] == []
+    assert FAILED_RUN_ID in [e for e in events if e.kind == "says"][-1].text
+
+
+def test_the_trace_names_a_bare_tool_call_inside_a_spoken_block():
+    """Verbosity 0 prints no argument, so only the trace tells `  Bash` from a first word."""
+    log = inspector_log(events=["  says", "  Reading the record now.", "  Bash"])
+    assert [e.tool for e in C.parse_transcript(log) if e.kind == "tool_call"] == []
+    events = C.parse_transcript(log, known_tools=["Bash", "dlthub_get_run"])
+    assert [e.tool for e in events if e.kind == "tool_call"] == ["Bash"]
+
+
+def test_transcript_reads_every_call_of_a_deployed_run():
+    """The shape a platform run writes: turn banners, spoken blocks and calls interleaved."""
+    log = inspector_log(events=[
+        "  mcp  dlt-workspace-mcp connected",
+        "",
+        "turn 1                                                                    ",
+        "  says",
+        "  I will verify the workspace first.",
+        '  Bash  {"command":"uv run dlthub --non-interactive ai status"}',
+        '  dlthub_workspace_info (dlt-workspace-mcp)  {"members":0}',
+        "",
+        "turn 2                                                                    ",
+        '     \u2192 {"name": "agent-hackathon"}',
+        "  says",
+        "  The trigger resolves to the latest failed run; reading its record.",
+        f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
+    ])
+    events = C.parse_transcript(log)
+    assert [e.tool for e in events if e.kind == "tool_call"] == [
+        "Bash", "dlthub_workspace_info", "dlthub_get_run"
+    ]
+    assert [e.call_index for e in events if e.kind == "tool_call"] == [0, 1, 2]

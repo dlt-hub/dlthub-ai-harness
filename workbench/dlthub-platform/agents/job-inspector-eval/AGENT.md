@@ -94,7 +94,15 @@ output:
         least one check was decided. An answer you leave out fails the evaluation.
     pass_rate:
       type: number
-      description: TRUE divided by TRUE plus FALSE. Between 0 and 1.
+      description: >
+        TRUE divided by TRUE plus FALSE. Between 0 and 1. Read it with `decided_count` and
+        `na_count`: a rate over a third of the checks reads like a rate over all of them.
+    decided_count:
+      type: integer
+      description: Checks that came back TRUE or FALSE. The denominator of `pass_rate`.
+    na_count:
+      type: integer
+      description: Checks that came back `N/A`, so measured nothing.
     checks:
       type: array
       description: >
@@ -210,8 +218,8 @@ every one of them. An id you leave out is reported `N/A` and fails the whole eva
 so when you are running out of room, shorten the reasonings rather than dropping answers.
 
 Fill `status`, `summary` and `checks`. Leave `inspector_run_id`, `failed_run_id`,
-`inspector_status`, `passed`, `pass_rate` and `metrics` alone: they are computed from the
-data after you finish, and anything you write there is discarded.
+`inspector_status`, `passed`, `pass_rate`, `decided_count`, `na_count` and `metrics` alone:
+they are computed from the data after you finish, and anything you write there is discarded.
 
 ## Rules
 
