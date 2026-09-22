@@ -40,8 +40,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    # no `model=`: the workspace picks the judge through `agent.*` configuration, so this
-    # runs on whichever endpoint the workspace has a key for. See "Judge model"
+    # no `model=`: the workspace picks the judge through `agent.*`. See "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -67,8 +66,8 @@ async def job_inspector_eval(
         max_runs_read=max_runs_read,
     )
     if prep.aborted:
-        # nothing to judge, no model call. Raising rather than returning: dlt reads
-        # `loop.trace` on any dict carrying `status`, and on this path the loop never ran
+        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
+        # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
     output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
     return finalize(output, prep)
@@ -93,12 +92,12 @@ Five things about that function are load-bearing:
   so without them the manifest loses the descriptions and the entity types. `expose.object_input`
   is built from the first entity-typed input, and it is what lets the Web UI offer the
   evaluator from an inspector run's row.
-- **The abort path raises.** `_invoke_agent` sends any returned dict carrying `status` into
-  `_finish`, which reads `loop.trace`, and the loop never ran here, so returning
+- **The abort path raises.** `_invoke_agent` routes any returned dict carrying `status` into
+  `_finish`, which reads `loop.trace`. This path never started the loop, so returning
   `prep.aborted_output` fails the run with `AgentTraceNotAvailable: Loop 'pydantic-ai' has no
-  trace: it has not completed a run` and the reason the evaluator aborted is lost. Raising
-  skips `_finish`. This is a workaround for
-  [#84](https://github.com/dlt-hub/dlthub-ai-workbench-internal/issues/84); drop it once dlt
+  trace: it has not completed a run`, and the abort reason is lost. Raising skips `_finish`.
+  Workaround for
+  [#84](https://github.com/dlt-hub/dlthub-ai-workbench-internal/issues/84), to drop once dlt
   tolerates a loop that never ran.
 
 Do not point the inspector at `job.fail:*` in a workspace that runs the evaluator. The
@@ -119,9 +118,9 @@ model is enough: the judge reads bounded windows and the deterministic results, 
 check is a narrow question with a three-value answer. The evaluator runs after every
 inspector run, so its cost adds to every failure.
 
-Nothing in the definition or in `checks.py` names a provider. The judge answers with the
-declared output schema, and `finalize` reads it back, on any endpoint the pydantic-ai loop
-supports. Pin the model on the job or in configuration, never in `AGENT.md`.
+The judge answers with the declared output schema and `finalize` reads it back, on any
+endpoint the pydantic-ai loop supports. The definition and `checks.py` are provider-agnostic.
+Pin the model on the job or in configuration, never in `AGENT.md`.
 
 | Provider | Recommended alias | Model | Step up when needed |
 |---|---|---|---|
@@ -133,26 +132,26 @@ supports. Pin the model on the job or in configuration, never in `AGENT.md`.
 Move to the provider's top model only for a check that gives wrong outcomes after its rubric
 was fixed, and set it on the job rather than in the definition.
 
-`loop: claude-agent-sdk` takes Anthropic models only. The evaluator does not set a loop, so
-it runs on pydantic-ai and reaches every provider in the table. Naming that loop in a
-workspace whose key is Azure or Google breaks the run.
+`loop: claude-agent-sdk` takes Anthropic models only. The evaluator sets no loop, so it runs
+on pydantic-ai and reaches every provider in the table. Naming that loop in a workspace whose
+key is Azure or Google breaks the run.
 
 ### Configuring the endpoint
 
 `agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run
 takes all four from the workspace or all four from the runtime, never one from each. Setting
-`api_key` alone leaves `model` unset, and the run then falls back to the agent's own default
-model against your key, which is the mismatch that produces `401 API key is invalid`.
+`api_key` alone leaves `model` unset, so the run sends the agent's default model to your
+endpoint and gets `401 API key is invalid`.
 
-As workspace variables, which arrive on the runner as environment and override
+Set them as workspace variables. They arrive on the runner as environment and override
 `.dlt/secrets.toml`:
 
 ```bash
 printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
 ```
 
-Anthropic and OpenAI need the model and the key. Azure needs all four, because it addresses a
-deployment on your own endpoint rather than a shared one:
+Anthropic and OpenAI need the model and the key. Azure needs all four, because it addresses
+a deployment on your own endpoint rather than a shared one:
 
 | Variable | Anthropic | Azure OpenAI |
 |---|---|---|
@@ -218,10 +217,10 @@ least one check was decided. A judge response that is empty or cut off leaves ch
 unanswered, and that fails the evaluation rather than passing it on the deterministic
 results alone. A run where every check reported `N/A` decided nothing, so it does not pass
 either. `pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A` never moves it. `decided_count` is
-that denominator and `na_count` the checks left out of it, both reported beside the rate and
-tallied in `summary`: a rate over a third of the checks and a rate over all of them read the
-same otherwise, and the first one flatters the inspector. `metrics` carries turns, tokens,
-cost and the number of runs the inspector read; those are numbers, not pass or fail.
+that denominator, `na_count` the checks left out of it. Both sit beside the rate and are
+tallied in `summary`, because the rate alone reads the same over a third of the checks as
+over all of them. `metrics` carries turns, tokens, cost and the number of runs the inspector
+read; those are numbers, not pass or fail.
 
 The evaluator's own `status` is about the evaluation, not about the inspector: `succeeded`
 when every check has an outcome, `failed` when a check raised, an artifact was missing, the
@@ -373,12 +372,12 @@ Read these before acting on a `FALSE`.
   inspector's own `context: read` MCP tools, which answer `This environment has no platform
   credential (RUNTIME__API_KEY or RUNTIME__AUTH_TOKEN)`. Until the runner injects one, the
   evaluator runs only where a credential is configured.
-- **What the transcript holds depends on the model, not only on the loop.** A model that
-  emits text in the same assistant message as its tool calls prints a `says` block with the
-  calls directly under it; one that answers with calls alone prints them under the turn
-  banner. Both parse, and `known_tools` from the trace is what tells a bare `  Bash` inside a
-  spoken block from a sentence that starts with one word. A model that narrates is also the
-  only one that decides `no_explicit_cause_before_log` and `no_premature_cause`.
+- **The transcript's shape follows the model, not only the loop.** A model that emits text
+  in the same assistant message as its tool calls prints a `says` block with the calls under
+  it. One that answers with calls alone prints them under the turn banner. Both parse.
+  `known_tools` from the trace separates a bare `  Bash` inside a block from a one-word
+  sentence. Only a model that narrates decides `no_explicit_cause_before_log` and
+  `no_premature_cause`.
 - **Thoughts may not appear at all.** On a pydantic-ai run with Sonnet the transcript carried
   33 tool calls and no `thinks` events, so `no_explicit_cause_before_log` and
   `no_premature_cause` report `N/A`. They decide something only on a loop and model that emit

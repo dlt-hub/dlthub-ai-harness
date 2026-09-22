@@ -510,10 +510,9 @@ _TOOL_CALL = re.compile(
 """A tool name is an identifier. `dlthub local run` prints a banner of `  job_ref: ...` lines
 and a summary may carry fenced code, and neither is a tool call."""
 _SPOKEN_CONTINUATION = re.compile(r"^ {2}\S")
-"""How `_indented` prefixes a line of a spoken block: exactly two spaces, then the text.
+"""A spoken block's own lines: exactly two spaces, then the text.
 
-The launcher logs a tool error at column 0, or under the logger's own indent when it repeats
-a timestamp. Neither is two spaces, so this tells a logged error from a sentence quoting one.
+A logged tool error sits at column 0, or under the logger's 20-space repeat indent.
 """
 _SAYS_LABELS = ("says", "prompt", "system prompt")
 _NON_TOOL_PREFIXES = ("thinks", "mcp", "tools:", "skills:", "local", "status:", "summary:",
@@ -525,17 +524,15 @@ _RESULT_BANNER = re.compile(r"^Result {2}\[")
 def _classify(
     line: str, in_spoken: bool, known_tools: "frozenset[str]"
 ) -> Optional[Dict[str, Any]]:
-    """The event a transcript line carries, or None when the line is not one.
+    """The event a transcript line carries, or None when it carries none.
 
-    `in_spoken` says a spoken block is open. The launcher indents what the agent said exactly
-    as it indents a call, so inside one the shape decides nothing on its own and
-    `_call_in_spoken_block` has to agree.
+    Spoken text and a tool call take the same two-space indent, so while `in_spoken` the
+    shape alone does not decide: `_call_in_spoken_block` has to agree.
     """
     if match := _THINKS.match(line):
         return {"kind": "thinks", "text": match.group(1)}
     if match := _TOOL_ERROR_LINE.search(line):
-        # the pattern matches anywhere on the line, so inside a spoken block a sentence
-        # mentioning the phrase would otherwise end the block and invent a tool error
+        # `.search` matches mid-sentence, so spoken text may quote the phrase
         if not (in_spoken and _SPOKEN_CONTINUATION.match(line)):
             return {"kind": "tool_error", "tool": match.group(1)}
     if match := _MCP.match(line):
@@ -559,9 +556,9 @@ def _call_in_spoken_block(
 ) -> bool:
     """Whether an indented line inside a spoken block is a tool call rather than prose.
 
-    The trace names every tool the run used, so a name it lists settles it. Without a trace,
-    a server or a JSON argument is what a sentence does not carry. A plain word stays prose:
-    reading it as a call would put the run ids a sentence quotes into `runs_read`.
+    The trace names every tool the run used, so a name it lists settles it. Failing that, a
+    server or a JSON argument marks a call. A bare word stays prose, because reading it as a
+    call puts the run ids a sentence quotes into `runs_read`.
     """
     if name in known_tools:
         return True
@@ -577,11 +574,10 @@ def parse_transcript(
     shapes below would misread: an image-build line like `  Copying blob sha256:...` matches
     the tool-call shape exactly.
 
-    A spoken block runs until a line carrying another event: `says` is a label over indented
-    text, and the tool calls that follow it are indented the same way, with no blank line
-    between. Appending every indented line to the block swallows them and the transcript
-    reports no tool use at all. `known_tools` is what the run trace records, and it is what
-    tells a bare `  Bash` inside a block from a sentence starting with one word.
+    A spoken block ends at the first line carrying another event. `says` labels indented
+    text, and the turn's tool calls follow at the same indent, so a block that ran to the
+    next blank line would take them with it. `known_tools` holds what the run trace records.
+    It is what separates a bare `  Bash` inside a block from a sentence of one word.
 
     Verbosity 0 drops thoughts and tool arguments but keeps the tool names, so the order of
     calls survives and only what a call targeted is lost.
@@ -2398,9 +2394,9 @@ class EvalPrep:
     def aborted_output(self) -> Dict[str, Any]:
         """An `aborted` agent output, produced without starting the loop.
 
-        Carry it on `run.JobAbortedException` rather than returning it. dlt sends any
-        returned dict carrying `status` into `_finish`, which reads the loop's trace, and
-        on this path the loop never ran. See README.md, "The abort path raises".
+        Carry it on `run.JobAbortedException` rather than returning it. dlt routes a returned
+        dict carrying `status` into `_finish`, which reads a loop trace this path never wrote.
+        See README.md, "The abort path raises".
         """
         return {
             "status": "aborted",
@@ -2647,9 +2643,9 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     decided nothing at all does not pass either, so `passed` true and `pass_rate` 0.0 cannot
     be reported together.
 
-    `pass_rate` divides by the decided checks, so `decided_count` and `na_count` are reported
-    beside it and the tally goes into `summary`. A rate over a third of the checks and a rate
-    over all of them look the same otherwise, and the first one flatters the inspector.
+    `pass_rate` divides by the decided checks, so `decided_count` and `na_count` sit beside
+    it and the tally goes into `summary`. The rate alone reads the same over a third of the
+    checks as over all of them.
     """
     ctx = prep.ctx
     if ctx is None:
@@ -2700,8 +2696,7 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     decided = true_count + false_count
 
     summary = str(output.get("summary") or "")
-    # the tally next to the rate: `pass_rate` divides by the decided checks, so without the
-    # `N/A` count a run that measured a third of the inspector reads like a clean one
+    # `pass_rate` divides by the decided checks, so the counts go next to it
     summary += (
         f"\n\n{len(checks)} checks: {true_count} TRUE, {false_count} FALSE, {na_count} `N/A`."
         f" `pass_rate` {(true_count / decided) if decided else 0.0:.2f} over the"

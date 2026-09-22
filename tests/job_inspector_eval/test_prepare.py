@@ -416,7 +416,7 @@ def test_a_transcript_it_could_not_read_decides_nothing_about_what_the_inspector
 
 
 def test_prepare_reads_the_tool_calls_a_deployed_run_printed():
-    """A spoken block runs into the calls of its turn, and every call has to survive it."""
+    """A spoken block runs into the calls of its turn. Every call has to survive it."""
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(), "trace": trace()}
     spoken = inspector_log(
@@ -455,7 +455,7 @@ def test_prepare_hands_the_parser_the_tool_names_the_trace_records():
 
 
 def test_finalize_reports_the_checks_the_pass_rate_left_out():
-    """A rate over a third of the checks reads like a rate over all of them without the tally."""
+    """Without the tally, a rate over a third of the checks reads like one over all."""
     prep = _prep_with()
     judge = {"status": "succeeded", "summary": "done",
              "checks": [{"id": id, "kind": "judge", "outcome": "N/A", "reasoning": "no condition"}
@@ -499,8 +499,8 @@ def deployed_run_fetcher() -> StubFetcher:
 def test_prepare_scores_what_a_deployed_run_did():
     """End to end over the captured run: its 11 calls reach the checks that read them.
 
-    The transcript parser read none of them, so `transcript_unread` held all 18 transcript
-    checks at `N/A` and a third of the evaluation measured nothing.
+    The parser read none of them before, so `transcript_unread` held all 18 transcript checks
+    at `N/A` and a third of the evaluation measured nothing.
     """
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
     assert prep.ctx is not None
@@ -522,7 +522,7 @@ def test_prepare_scores_what_a_deployed_run_did():
 
 
 def test_a_deployed_run_reports_the_checks_it_left_undecided():
-    """`pass_rate` says nothing about how much of the inspector the evaluation looked at."""
+    """`pass_rate` alone says nothing about how much of the inspector was looked at."""
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
     judge = {"status": "succeeded", "summary": "graded it",
              "checks": [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}

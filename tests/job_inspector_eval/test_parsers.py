@@ -186,10 +186,10 @@ def test_source_line_range():
 
 
 def test_a_tool_call_right_after_a_spoken_block_is_read_as_a_call():
-    """The launcher prints a `says` label, its indented text, then the calls of that turn.
+    """The launcher prints a `says` label, its indented text, then that turn's calls.
 
-    Nothing separates the text from the calls, so a parser appending every indented line to
-    the spoken block swallows the whole turn's tool use.
+    The calls take the same indent as the text, so a block that ran to the next blank line
+    would take them with it.
     """
     log = inspector_log(events=[
         "  says",
@@ -250,8 +250,8 @@ def test_transcript_reads_every_call_of_a_deployed_run():
 def test_a_deployed_run_transcript_reads_every_tool_call():
     """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
 
-    Every call sits directly under a `says` label, with the agent's own text above it and no
-    blank line between. The parser read 0 and the 18 checks on the transcript went `N/A`.
+    Every call sits under a `says` label, one blank line further down than the block ends.
+    The parser read 0 of them and the 18 checks on the transcript went `N/A`.
     """
     events = C.parse_transcript(deployed_run_log())
     calls = [event for event in events if event.kind == "tool_call"]
@@ -264,7 +264,7 @@ def test_a_deployed_run_transcript_reads_every_tool_call():
 
 
 def test_a_deployed_run_keeps_its_spoken_text_out_of_the_calls():
-    """The other half: a call must not be swallowed, and prose must not become one."""
+    """The converse of the check above: prose must not become a call."""
     events = C.parse_transcript(deployed_run_log())
     spoken = [event.text for event in events if event.kind == "says"]
 
@@ -276,7 +276,7 @@ def test_a_deployed_run_keeps_its_spoken_text_out_of_the_calls():
 
 
 def test_a_deployed_run_reads_the_same_without_the_trace():
-    """`known_tools` sharpens the verbosity-0 case; it must not be what makes this one work."""
+    """`known_tools` settles the verbosity-0 case. This one parses without it."""
     with_trace = C.parse_transcript(deployed_run_log(), known_tools=DEPLOYED_RUN_TOOLS)
     without = C.parse_transcript(deployed_run_log())
     assert [e.tool for e in with_trace if e.kind == "tool_call"] == DEPLOYED_RUN_TOOLS
@@ -284,7 +284,7 @@ def test_a_deployed_run_reads_the_same_without_the_trace():
 
 
 def test_a_logged_tool_error_is_read_in_both_forms_the_launcher_prints():
-    """The logger stamps the first line and indents the repeat, and both are real errors."""
+    """The logger stamps the first line and indents the repeat. Both are real errors."""
     log = inspector_log(events=[
         "[09/17/26 14:43:40] Error calling tool 'dlthub_list_runs'                       ",
         "                    Error calling tool 'dlthub_list_jobs'                       ",
@@ -308,7 +308,7 @@ def test_a_spoken_block_quoting_a_tool_error_is_not_one():
 
 
 def test_a_logged_tool_error_still_ends_a_spoken_block():
-    """The launcher never indents a logged error by two, so it is an event, not prose."""
+    """A logged error takes the logger's indent, never the block's two spaces."""
     log = inspector_log(events=[
         "  says",
         "  Reading the run list now.",

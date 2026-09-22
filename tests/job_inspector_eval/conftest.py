@@ -242,9 +242,8 @@ def ctx() -> "C.EvalContext":
 DEPLOYED_RUN_LOG = Path(__file__).parent / "fixtures" / "deployed_inspector_run.log"
 """The `program` output of a real deployed inspector run, ids and workspace name replaced.
 
-Captured from run #3 of `job_inspector` on 2026-09-22, the shape that
-dlt-hub/dlthub-ai-workbench-internal#83 reported: every one of the 11 tool calls sits inside
-a spoken block, so a parser that reads `says` as running to the next blank line finds none.
+Run #3 of `job_inspector`, 2026-09-22. All 11 tool calls sit inside a spoken block, which is
+the shape dlt-hub/dlthub-ai-workbench-internal#83 reported.
 """
 
 DEPLOYED_RUN_TOOLS = [
@@ -260,7 +259,7 @@ DEPLOYED_RUN_TOOLS = [
     "dlthub_get_pipeline_run_trace",
     "Read",
 ]
-"""The 11 calls that run made, in order. Its trace recorded 11; the evaluator read 0."""
+"""The 11 calls that run made, in order. Its trace recorded 11, the evaluator read 0."""
 
 
 def deployed_run_log(result_json: Optional[str] = None) -> List["C.LogLine"]:
@@ -276,7 +275,7 @@ def deployed_run_log(result_json: Optional[str] = None) -> List["C.LogLine"]:
 
 
 def deployed_run_trace(**overrides: Any) -> Dict[str, Any]:
-    """The trace that run reported: 11 uses over 5 turns, and the tool names behind them."""
+    """The trace that run reported: 11 uses over 5 turns, and the names behind them."""
     base = trace(
         turn_count=5,
         total_tokens=80708,
