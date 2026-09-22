@@ -1,15 +1,15 @@
 name: Claude Code Review
 
 on:
-  pull_request:
-    branches: [master]
-    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to review
+        required: true
+        type: string
 
 jobs:
   claude-review:
-    # Skip PRs opened by bots to avoid noisy / self-review loops.
-    if: >-
-      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,7 +28,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_PLATFORM_KEY }}
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR NUMBER: ${{ inputs.pr_number }}
 
             Review this pull request. This repository is the dltHub AI Workbench: a
             collection of toolkits (markdown workflows + Python tools) that give AI coding
