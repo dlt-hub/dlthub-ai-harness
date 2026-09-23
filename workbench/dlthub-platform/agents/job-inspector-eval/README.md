@@ -40,7 +40,8 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    # no `model=`: the workspace picks the judge through `agent.*`. See "Judge model"
+    # no `model=`: the workspace picks the judge through `AGENT__MODEL`, which every
+    # provider accepts. See "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -120,7 +121,9 @@ inspector run, so its cost adds to every failure.
 
 The judge answers with the declared output schema and `finalize` reads it back, on any
 endpoint the pydantic-ai loop supports. The definition and `checks.py` are provider-agnostic.
-Pin the model on the job or in configuration, never in `AGENT.md`.
+Set the model through the `AGENT__MODEL` workspace variable, never in `AGENT.md`. A
+`model=` on the job takes an alias or a `provider:model` id, and the aliases below cover
+Anthropic, OpenAI and Google, so an Azure-backed workspace configures the deployment id.
 
 | Provider | Recommended alias | Model | Step up when needed |
 |---|---|---|---|
@@ -130,7 +133,7 @@ Pin the model on the job or in configuration, never in `AGENT.md`.
 | Google | `gemini` | `google:gemini-3.5-flash` | `gemini-pro` |
 
 Move to the provider's top model only for a check that gives wrong outcomes after its rubric
-was fixed, and set it on the job rather than in the definition.
+was fixed, and set it in configuration rather than in the definition.
 
 `loop: claude-agent-sdk` takes Anthropic models only. The evaluator sets no loop, so it runs
 on pydantic-ai and reaches every provider in the table. Naming that loop in a workspace whose

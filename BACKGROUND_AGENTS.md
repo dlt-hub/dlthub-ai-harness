@@ -235,7 +235,10 @@ time, never onto the job that declares it. A job event never stands in for a man
 run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was
 given, which is one more reason the body must say what to do with empty input. `model` is an
 alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`, `gpt-mini`, `gpt-nano`, `gemini`,
-`gemini-pro`) or a `provider:model` id. `limits.max_tokens` is counted by dlt after every
+`gemini-pro`) or a `provider:model` id. The aliases resolve on Anthropic, OpenAI and Google;
+an Azure workspace addresses a deployment on its own endpoint, so it names
+`azure:<deployment>` through the `AGENT__MODEL` workspace variable, which overrides whatever
+`defaults.model` holds. Leave `model` out of a definition that has to run on any provider. `limits.max_tokens` is counted by dlt after every
 turn, so it means the same on every loop. `loop_run_args` are handed to the framework:
 `retries` is how often pydantic-ai lets the model correct a failing tool call; keys a loop does
 not know are listed in the trace as ignored.
@@ -373,7 +376,8 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="sonnet",                    # the judge model, chosen by the workspace
+    # no `model=`: the workspace picks the judge through `AGENT__MODEL`, and an Azure
+    # deployment has no alias `model="sonnet"` could name
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,

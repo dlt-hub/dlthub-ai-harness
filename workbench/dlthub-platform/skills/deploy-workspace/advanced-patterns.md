@@ -65,7 +65,8 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="sonnet",                    # the judge model, chosen by the workspace
+    # no `model=`: the workspace picks the judge through `AGENT__MODEL`, and an Azure
+    # deployment has no alias `model="sonnet"` could name
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -111,6 +112,12 @@ drives:
 - Declare a parameter for every input a caller may set. Configured inputs reach a decorated
   function through its signature only, and `dlthub deploy` warns about a declared input the
   signature does not accept.
+
+The evaluator ships no default model, so the workspace picks the judge. Set `AGENT__MODEL`
+as a workspace variable with a `provider:model` id, which every provider accepts. The short
+aliases (`sonnet`, `gpt-mini`, `gemini`) cover Anthropic, OpenAI and Google; an Azure
+deployment is named as `azure:<deployment>` and needs `AGENT__API_URL` and
+`AGENT__API_VERSION` beside the key. The agent's `README.md` has the table per provider.
 
 Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
 
