@@ -14,9 +14,13 @@ skills:
   - dlthub-platform:debug-deployment
 rules:
   - dlthub-platform:job-resources
+  # `agent_profile_not_prod` grades the profile the inspector ran on, so the judge needs the
+  # rule that says which profile an agent job takes
+  - dlthub-platform:profiles
 access:
   # runs, logs, job definitions and telemetry. No shell, no files: the preparation step
-  # fetched everything and the judge reads what it was handed
+  # fetched everything and the judge reads what it was handed. No `data` axis either: the
+  # judge grades a diagnosis, and the inspector it grades reaches no destination data
   context:
     - read
 # every input is a job configuration key: `-c inspector_run_id=...`. The last four are filled
@@ -233,7 +237,9 @@ they are computed from the data after you finish, and anything you write there i
 - On every `FALSE`, quote the line or sentence that contradicts the instruction.
 - Ask for one more window through the log tools only when the supplied windows leave a check
   undecidable, and say in the reasoning that you did.
-- Do not start, cancel or re-run anything. You have no shell and no file tools.
+- Do not start, cancel or re-run anything. You have no shell, no file tools and no data
+  tools. The inspector you grade has none either, so a data tool in its transcript is a
+  finding rather than normal work.
 - Answer exactly the ids in `open_checks`. An id outside that list is dropped, and repeating
   a deterministic result wastes output you need for your own reasoning.
 

@@ -111,6 +111,12 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
+`data` is opt-in. Start an agent without the axis and add it once a task is shown to need
+the rows. The agents this repo ships declare `local` and `context` only: a diagnosis is
+built from run records, logs, job definitions and telemetry. A grant the agent never
+exercises costs the workspace its data exposure and buys nothing, and a reader of the
+manifest should be able to see that someone decided on data access.
+
 `local` verbs are named after Claude Code's tools, so one declaration means one thing on
 both loops, pydantic-ai and claude-agent-sdk. The set each verb wires differs: the
 claude-agent-sdk loop adds the CLI tools that extend a name, `MultiEdit` and `NotebookEdit`
@@ -293,6 +299,7 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the default
     model="opus",
+    require={"profile": "access"},       # read-only credentials; see "Profile"
     instructions="focus on the loader step",
 )
 ```
@@ -302,6 +309,42 @@ of every run. The job is named after the definition (`job_inspector`). Instead o
 `<toolkit>:<name>` reference the workspace may point at a folder holding an `AGENT.md` by its
 workspace-relative path. A function decorated with `run.agent` can also be a definition on its
 own, or drive an installed one; see the dlt documentation for that form.
+
+### Profile
+
+**An agent job never runs on `prod`.** Pin the read-only profile on every one of them:
+
+```python
+require={"profile": "access"}
+```
+
+A batch job that declares no profile gets `prod`, which injects the production credentials
+into the job's environment. An agent is a model deciding its own tool calls, so the
+credentials it holds are the blast radius of a prompt injection in a log line it reads.
+`access` is the read-only profile the runtime already uses for interactive jobs (see the
+`dlthub-platform:profiles` rule). Declare it alongside the `access` block: the block decides
+which tools the model is offered, the profile decides which credentials the job process
+holds.
+
+The pin governs profile-scoped credentials: `prod.secrets.toml`, `prod.config.toml`, and a
+variable set with `dlthub variable set --profile prod`. A variable set with `--workspace`
+has no profile and reaches the job whatever it runs on, so a secret that must stay away from
+an agent belongs in a profile scope rather than the workspace scope. `dlthub variable list`
+prints the scope of each one in its `Profile` column.
+
+Work that needs production write credentials belongs in a pipeline or a plain job, which a
+person wrote and reviewed, and an agent proposes it rather than performing it.
+
+Nothing at deploy time enforces this. Manifest validation rejects a local-only profile
+(`dev`, `tests`) and otherwise takes the name as given: `prod` passes, and so does a typo
+like `acess`, which then surfaces as missing credentials at run time. The rule holds because
+authors apply it, and `job-inspector-eval` catches a break after the fact with the
+`agent_profile_not_prod` check, which reads the profile off the run record.
+
+The profile has to be `configured` in the workspace; workspace info lists which ones are. On
+`dlthub local run` the declaration is a warning rather than a switch: the run uses the active
+profile and reports the mismatch, so check the active profile before running an agent job by
+hand.
 
 A run happens when the trigger fires, or by hand:
 

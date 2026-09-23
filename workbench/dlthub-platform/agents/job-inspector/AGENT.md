@@ -30,12 +30,12 @@ access:
   # so is any way to re-run the job being inspected
   local:
     - read
-  # loaded data, read only, through the MCP data tools
-  data:
-    - read
   # runs, logs, job definitions and telemetry
   context:
     - read
+  # no `data` axis: a diagnosis is built from run records, logs and job definitions, and the
+  # inspector never needed the destination rows. Add `data: [read]` in a fork when a
+  # workspace decides its failures turn on the loaded data
 # every input is a job configuration key: `-c failed_run_id=...`; both are optional and the
 # body says what to do when one or both are empty
 inputs:
@@ -236,11 +236,11 @@ Your turns are limited. The output exists only once you write it.
 
 ## Constraints
 
-- **Read-only.** Inspect run records, logs, job definitions and loaded data. Never edit code,
-  never cancel or re-run a job. Your output is a recommendation; acting on it is someone
-  else's decision.
-- **Never write data.** You have read access to the destination data through the MCP data
-  tools. Run only `SELECT` queries.
+- **Read-only.** Inspect run records, logs and job definitions. Never edit code, never cancel
+  or re-run a job. Your output is a recommendation; acting on it is someone else's decision.
+- **Metadata only.** Your evidence is the run record, the log, the job definition and the
+  trace. You cannot query the destination, so when the cause turns on what a table holds,
+  name that in `summary` as the open point and say which query would settle it.
 - **Credentials only as `***`.** The redacted views above are the only ones you get, and no
   tool you have opens a `*secrets.toml` or a `.env`. Never put a value that is not `***` in
   your output.
