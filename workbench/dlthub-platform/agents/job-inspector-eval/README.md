@@ -40,7 +40,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="anthropic:claude-sonnet-5",  # see "Judge model"
+    model="anthropic:claude-sonnet-5",  # or azure:<deployment>; see "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,

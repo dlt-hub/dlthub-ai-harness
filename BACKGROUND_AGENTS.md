@@ -385,7 +385,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="anthropic:claude-sonnet-5",   # pin at least this capable; no alias on Azure
+    model="anthropic:claude-sonnet-5",   # or azure:<deployment>, google:<model>
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,

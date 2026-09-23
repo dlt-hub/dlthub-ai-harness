@@ -33,7 +33,7 @@ An installed agent definition becomes a job by naming it:
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the definition's default
-    model="anthropic:claude-sonnet-5",   # the definition pins none
+    model="anthropic:claude-sonnet-5",   # or azure:<deployment>; the definition pins none
 )
 ```
 
@@ -65,7 +65,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="anthropic:claude-sonnet-5",
+    model="anthropic:claude-sonnet-5",   # or azure:<deployment>
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
