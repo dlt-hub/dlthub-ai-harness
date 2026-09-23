@@ -112,7 +112,8 @@ output:
 defaults:
   trigger:
     - job.fail:*
-  # no `model`: a definition names no provider. the capability bar is in README.md
+  # pin `model` when you deploy: at least as capable as Claude Sonnet 5. the shipped
+  # template sets none, so it names no provider a workspace has to have
   limits:
     max_turns: 30
     max_tokens: 1000000

@@ -94,7 +94,7 @@ Run after any change to skills, rules, commands, or marketplace.json:
 ```
 make validate-toolkits
 ```
-Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule format, command files, agent manifests (access, inputs, output contract, refs, no `defaults.model`, a README naming the model), workflow.md references.
+Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule format, command files, agent manifests (access, inputs, output contract, refs, no `defaults.model`), workflow.md references.
 
 ### Maintenance skills
 - `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, rule, or agent and update all cross-references within the toolkit.

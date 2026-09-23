@@ -233,36 +233,28 @@ defaults:
 time, never onto the job that declares it. A job event never stands in for a manual run: a
 run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was
 given, which is one more reason the body must say what to do with empty input.
-`limits.max_tokens` is counted by dlt after every turn, so it means the same on every loop. `loop_run_args` are handed to the framework:
-`retries` is how often pydantic-ai lets the model correct a failing tool call; keys a loop does
-not know are listed in the trace as ignored.
+`limits.max_tokens` is counted by dlt after every turn, so it means the same on every loop.
+`loop_run_args` are handed to the framework: `retries` is how often pydantic-ai lets the model
+correct a failing tool call; keys a loop does not know are listed in the trace as ignored.
 
 Precedence, lowest first: loop default, `defaults` here, the agent job's arguments,
 configuration at run time. A runtime value always wins, so put here what should hold when
 nobody says otherwise, and nothing that must hold.
 
-### The model belongs to the workspace
+### The model
 
-dlt accepts `model` in `defaults`, as an alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`,
-`gpt-mini`, `gpt-nano`, `gemini`, `gemini-pro`) or a `provider:model` id. A definition leaves
-it out. An alias names a provider, and a toolkit is installed into workspaces whose key
-belongs to another one: the aliases resolve on Anthropic, OpenAI and Google, while an Azure
-workspace addresses a deployment on its own endpoint and has no alias at all. A definition
-that ships `model: sonnet` hands those workspaces a default their key does not open.
-`make validate-toolkits` rejects a `defaults.model`.
+`model` is an alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`, `gpt-mini`, `gpt-nano`,
+`gemini`, `gemini-pro`) or a `provider:model` id. The workspace deploying the agent pins it,
+on the job or through `AGENT__MODEL`. A definition shipped in a workbench toolkit does not:
+an alias resolves on Anthropic, OpenAI and Google, and an Azure workspace addresses a
+deployment on its own endpoint and has no alias, so a shipped `model: sonnet` is a default
+those workspaces cannot open. `make validate-toolkits` rejects one.
 
-What the definition owes the reader instead is a capability bar: the class of model the
-instructions were written for, stated in the agent's `README.md` as "a model at least as
-capable as Claude Sonnet 5", with a table naming a model per provider that meets it and the
-step up for the cases that need one. The workspace then sets `AGENT__MODEL` with a
-`provider:model` id, which every provider takes, or an alias where the provider has one.
-[`job-inspector/README.md`](workbench/dlthub-platform/agents/job-inspector/README.md) is the
-worked example. Raise the bar in prose when the task needs a stronger model; a definition
-that names one still names a provider.
+Say in the `AGENT.md` what to pin instead: the class of model the instructions were written
+for, as "at least as capable as Claude Sonnet 5".
 
-`loop: claude-agent-sdk` is the same decision by another name: it takes Anthropic models
-only, so a definition that sets it runs nowhere else. Leave the loop to the workspace too
-unless the agent depends on something only Claude Code gives it.
+`loop: claude-agent-sdk` is the same decision by another name, since it takes Anthropic
+models only. Leave it to the workspace unless the agent needs Claude Code.
 
 ## The body
 
@@ -312,7 +304,7 @@ from dlt.hub import run
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the default
-    model="opus",                        # the job may name a provider; the definition may not
+    model="opus",
     instructions="focus on the loader step",
 )
 ```
@@ -393,7 +385,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    # no `model=`: the workspace picks the judge through `AGENT__MODEL`
+    model="anthropic:claude-sonnet-5",   # pin at least this capable; no alias on Azure
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -461,7 +453,6 @@ module in the agent folder would replace that line; it is a dlt follow-up.
   values; a contradicting declaration is an error, a missing one a warning
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency
 - `defaults` and `defaults.limits` keys are known, and `defaults` sets no `model`
-- the agent folder has a `README.md` with a section naming the model the agent needs
 
 dlthub validates again when the deployment manifest is generated: the body is required, the
 name falls back to the folder, `access` is checked, an unknown `entity_type` is refused, a
@@ -478,8 +469,6 @@ that does not resolve in the workspace is skipped with a warning.
   own; an entity the agent may resolve itself is an output property too.
 - The body defines succeeded, failed and aborted for this agent, gives the first steps, and
   defines every enum.
-- `defaults` holds a sensible trigger and limits and no `model`; nothing in it is a
-  requirement.
-- `README.md` next to the `AGENT.md` states the capability bar and a model per provider that
-  meets it.
+- `defaults` holds a sensible trigger and limits and no `model`; the `AGENT.md` says what
+  model to pin. Nothing in `defaults` is a requirement.
 - `make validate-toolkits` passes.
