@@ -23,6 +23,8 @@ Checks:
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
+- workflow.md references every skill and agent its toolkit ships
+- The router skill's agent index matches the agents the toolkits ship
 - All workbench/ directories must be listed in marketplace
 """
 
@@ -65,6 +67,11 @@ _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
 # An index row: "<intent text> → <toolkit> | <install> | <entry skill>".
 # Capture the toolkit name (the token right after the arrow, before the pipe).
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
+
+# The router carries the second index: background agents, which the intent index omits.
+_ROUTER_SKILL = "workbench/init/skills/dlthub-router/SKILL.md"
+# A router agent row: "<capability> → <toolkit>:<agent> | <install> | <declare>".
+_ROUTER_AGENT_ENTRY = re.compile(r"→\s*([a-z][\w-]*:[a-z][\w-]*)\s*\|")
 
 # Expected plugin.json author and license values
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
@@ -723,6 +730,53 @@ def validate_index_drift(
             )
 
 
+def validate_capability_coverage(
+    root: Path,
+    inventory: dict[str, dict],
+    errors: list[str],
+) -> None:
+    """Check every shipped skill and agent is indexed somewhere the router leads to.
+
+    The chain is router -> toolkit -> workflow.md -> skill or agent. This checks two of its
+    links: the router's agent index against the shipped agents, both directions, and each
+    workflow toolkit's `workflow.md` against the skills and agents of that toolkit. The
+    toolkit link is `validate_index_drift`.
+
+    Rules need no entry: they load with the toolkit and are always in context.
+    """
+    router = root / _ROUTER_SKILL
+    if not router.exists():
+        errors.append(f"router skill not found: {_ROUTER_SKILL}")
+        return
+
+    routed = {
+        m.group(1)
+        for line in router.read_text().splitlines()
+        # data rows carry an install command; this skips the column header
+        if "ai toolkit" in line and (m := _ROUTER_AGENT_ENTRY.search(line))
+    }
+    shipped = {
+        f"{name}:{agent}"
+        for name, components in inventory.items()
+        for agent in components["agents"]
+    }
+    for ref in sorted(shipped - routed):
+        errors.append(f"[init] dlthub-router agent index is missing '{ref}'")
+    for ref in sorted(routed - shipped):
+        errors.append(f"[init] dlthub-router agent index lists '{ref}' which no toolkit ships")
+
+    for name, components in sorted(inventory.items()):
+        if name in _NON_WORKFLOW_TOOLKITS:
+            continue
+        workflow = root / AI_DIR / name / "rules" / "workflow.md"
+        if not workflow.exists():
+            errors.append(f"[{name}] missing rules/workflow.md, so nothing indexes its skills")
+            continue
+        refs = set(_WORKFLOW_SKILL_REF.findall(workflow.read_text()))
+        for missing in sorted((components["skills"] | components["agents"]) - refs):
+            errors.append(f"[{name}] workflow.md does not reference '{missing}'")
+
+
 def validate(
     root: Path, only: str | None = None
 ) -> tuple[list[str], list[str], dict[str, set[str]]]:
@@ -821,6 +875,7 @@ def validate(
                     )
 
         validate_index_drift(root, marketplace_names, errors)
+        validate_capability_coverage(root, inventory, errors)
 
     return errors, warnings, all_skills
 

@@ -46,6 +46,14 @@
     }
   },
   {
+    "query": "can something look at my failed jobs automatically and tell me what broke? I don't want to read logs every morning",
+    "should_trigger": true
+  },
+  {
+    "query": "I'd like an agent running in the background that diagnoses deployment failures for me",
+    "should_trigger": true
+  },
+  {
     "query": "the pipeline loaded 500 rows into the customers table but some email columns are null, can you check the schema?",
     "should_trigger": false
   },

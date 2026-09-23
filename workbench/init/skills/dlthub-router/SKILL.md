@@ -1,6 +1,6 @@
 ---
 name: dlthub-router
-description: "The entry point for building anything with dlthub. Use this skill to route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'how do I build a pipeline', 'I want to pull data from a REST API', 'ingest from a SQL database', 'load CSVs from S3', 'make reports / dashboards', 'transform / model my data', 'add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', or seems unsure what to do next after setup. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when the toolkit matching the user's intent is already installed — go straight to its entry skill instead; only route/install when the matching toolkit is missing. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
+description: "The entry point for building anything with dlthub. Use this skill to route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'how do I build a pipeline', 'I want to pull data from a REST API', 'ingest from a SQL database', 'load CSVs from S3', 'make reports / dashboards', 'transform / model my data', 'add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', 'can something diagnose my failed jobs automatically', 'run an agent in the background', or seems unsure what to do next after setup. It also indexes the background agents the toolkits ship. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when the toolkit matching the user's intent is already installed — go straight to its entry skill instead; only route/install when the matching toolkit is missing. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
 ---
 
 # dlthub-router
@@ -47,6 +47,22 @@ The `dlt-workspace-mcp` server is already running (installed with `init`) and to
 3. The new skills become natively registered (`/`-invocable, always-loaded workflow rule) on the next natural session start — no need to restart now.
 
 > Exception: if a future toolkit ever ships its **own** MCP server (none do today), that server only starts on restart — suggest a restart **only** in that case, and use CLI fallbacks until then.
+
+## Background agents
+
+A **background agent** ships with a toolkit and runs on a trigger: after a job fails, on a schedule, or from the web UI. A workspace declares it once with `run.agent("<toolkit>:<name>", ...)`, and the platform runs it from then on, outside any conversation.
+
+Route here when the user wants work to happen on its own after an event ("diagnose failures for me", "tell me why the nightly job broke"). Install the toolkit as in Step 1, then follow its workflow rule for the deployment snippet.
+
+```
+capability                                                        → agent                              | install                                                     | declare
+diagnose a failed job run, classify it and propose a fix          → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:*")
+grade an inspector diagnosis against the inspector's instructions → dlthub-platform:job-inspector-eval  | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector-eval", trigger=[inspector.success, inspector.fail])
+```
+
+* `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
+* `job-inspector-eval` ships no default model, so set the judge model on the job or through `agent.*`. Its `README.md` carries the full snippet.
+* Keep `agent.verbosity` at 1, the default. At 0 the job log drops the tool arguments and thoughts the evaluator reads.
 
 <!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. Tracked in dlt-hub/dlthub-ai-workbench-internal#72. -->
 
