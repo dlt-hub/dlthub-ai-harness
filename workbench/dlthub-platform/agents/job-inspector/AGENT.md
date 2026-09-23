@@ -112,7 +112,7 @@ output:
 defaults:
   trigger:
     - job.fail:*
-  model: sonnet
+  # no `model`: a definition names no provider. the capability bar is in README.md
   limits:
     max_turns: 30
     max_tokens: 1000000

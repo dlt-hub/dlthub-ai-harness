@@ -33,7 +33,6 @@ An installed agent definition becomes a job by naming it:
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the definition's default
-    model="sonnet",
 )
 ```
 
@@ -65,8 +64,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    # no `model=`: the workspace picks the judge through `AGENT__MODEL`, and an Azure
-    # deployment has no alias `model="sonnet"` could name
+    # no `model=`: the workspace picks the judge through `AGENT__MODEL`
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -113,11 +111,13 @@ drives:
   function through its signature only, and `dlthub deploy` warns about a declared input the
   signature does not accept.
 
-The evaluator ships no default model, so the workspace picks the judge. Set `AGENT__MODEL`
-as a workspace variable with a `provider:model` id, which every provider accepts. The short
-aliases (`sonnet`, `gpt-mini`, `gemini`) cover Anthropic, OpenAI and Google; an Azure
-deployment is named as `azure:<deployment>` and needs `AGENT__API_URL` and
-`AGENT__API_VERSION` beside the key. The agent's `README.md` has the table per provider.
+A dltHub agent definition names no model, so the workspace picks one for every agent job it
+declares. Set `AGENT__MODEL` as a workspace variable with a `provider:model` id, which every
+provider takes; an alias like `sonnet` or `gemini` works where the provider has one, and an
+Azure deployment is named as `azure:<deployment>` and needs `AGENT__API_URL` and
+`AGENT__API_VERSION` beside the key. The inspector and its evaluator both want a model at
+least as capable as Claude Sonnet 5; each agent's `README.md` names the model per provider
+and when to step up.
 
 Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
 

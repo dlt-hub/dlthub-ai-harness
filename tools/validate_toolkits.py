@@ -20,6 +20,7 @@ Checks:
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
+- Agent `defaults` sets no `model`, and a README next to the AGENT.md names the model needed
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
@@ -36,7 +37,6 @@ import yaml
 from dlt._workspace.deployment.agent.exceptions import InvalidAgentSpec
 from dlt._workspace.deployment.agent.manifest import load_agent_spec
 from dlt._workspace.deployment.agent.typing import (
-    AGENT_MODEL_ALIASES,
     TAgentDefaults,
     TAgentJobStatus,
     TAgentLimits,
@@ -96,6 +96,8 @@ _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 # the types the runtime enforces. This file adds only what dlt cannot know — that a
 # workbench toolkit is a *source* tree, not an installed workspace.
 _AGENT_FILE = COMPONENT_MARKERS["agent"]
+# the definition names no model, so the README next to it is where the bar is stated
+_AGENT_README = "README.md"
 _AGENTS_DIR = ("agents",)
 _AGENTS_PATH = "/".join(_AGENTS_DIR)
 _ENTITY_TYPES = get_args(THubEntityType)
@@ -285,8 +287,29 @@ def validate_agents(
         _validate_entity_types(pname, rel, fm, errors, warnings)
         _validate_output(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
+        _validate_agent_readme(pname, entry, warnings)
 
     return agent_names
+
+
+def _validate_agent_readme(pname: str, entry: Path, warnings: list[str]) -> None:
+    """A shipped agent recommends a model in prose, since the definition sets none."""
+    readme = entry / _AGENT_README
+    rel = f"{_AGENTS_PATH}/{entry.name}/{_AGENT_README}"
+    if not readme.is_file():
+        warnings.append(
+            f"[{pname}] {rel} not found; a shipped agent states the model it needs there"
+            " (see BACKGROUND_AGENTS.md)"
+        )
+        return
+    headings = [
+        line for line in readme.read_text(encoding="utf-8").splitlines() if line.startswith("#")
+    ]
+    if not any("model" in line.lower() for line in headings):
+        warnings.append(
+            f"[{pname}] {rel} has no section naming the model; state the capability bar"
+            " and a model per provider that meets it (see BACKGROUND_AGENTS.md)"
+        )
 
 
 def _validate_agent_body(
@@ -470,12 +493,13 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
-    model = node.get("model")
-    # a `provider:model` id is passed through; only a bare word claims to be an alias
-    if isinstance(model, str) and ":" not in model and model not in AGENT_MODEL_ALIASES:
+    # an alias names a provider, and a toolkit is installed into workspaces keyed to
+    # another one; Azure has no alias at all. the capability bar goes in the README.
+    if node.get("model") is not None:
         errors.append(
-            f"[{pname}] {rel} defaults.model {model!r} is not an alias; expected one of"
-            f" {', '.join(sorted(AGENT_MODEL_ALIASES))}, or a 'provider:model' id"
+            f"[{pname}] {rel} defaults.model {node['model']!r} pins a provider on every"
+            " workspace that installs the toolkit; leave it out and state the model the"
+            " agent needs in its README (see BACKGROUND_AGENTS.md)"
         )
 
     limits = node.get("limits") or {}

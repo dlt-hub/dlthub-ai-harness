@@ -149,6 +149,7 @@ defaults:
   trigger:
     - job.success:job_inspector
     - job.fail:job_inspector
+  # no `model`: a definition names no provider. the capability bar is in README.md
   limits:
     max_turns: 25
     # 25 turns of extra log windows cost about this much. at 600,000 a run that used its

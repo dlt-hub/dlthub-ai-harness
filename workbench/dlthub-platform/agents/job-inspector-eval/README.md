@@ -40,8 +40,7 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    # no `model=`: the workspace picks the judge through `AGENT__MODEL`, which every
-    # provider accepts. See "Judge model"
+    # no `model=`: the workspace picks the judge through `AGENT__MODEL`. See "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -114,23 +113,24 @@ the `AGENT.md` would replace it; that is filed as a dlt follow-up.
 
 ## Judge model
 
-The definition ships no `model` default, so choosing one is a visible decision. A mid-tier
-model is enough: the judge reads bounded windows and the deterministic results, and every
-check is a narrow question with a three-value answer. The evaluator runs after every
-inspector run, so its cost adds to every failure.
+The definition sets no `model`, so it runs on whatever the workspace configures, on any
+endpoint the pydantic-ai loop supports. A model at least as capable as Claude Sonnet 5 is
+enough, and the mid-tier of each provider meets that bar: the judge reads bounded windows
+and the deterministic results, and every check is a narrow question with a three-value
+answer. The evaluator runs after every inspector run, so its cost adds to every failure.
 
-The judge answers with the declared output schema and `finalize` reads it back, on any
-endpoint the pydantic-ai loop supports. The definition and `checks.py` are provider-agnostic.
-Set the model through the `AGENT__MODEL` workspace variable, never in `AGENT.md`. A
-`model=` on the job takes an alias or a `provider:model` id, and the aliases below cover
-Anthropic, OpenAI and Google, so an Azure-backed workspace configures the deployment id.
-
-| Provider | Recommended alias | Model | Step up when needed |
+| Provider | Model meeting the bar | Alias | Step up when needed |
 |---|---|---|---|
-| Anthropic | `sonnet` | `anthropic:claude-sonnet-5` | `opus` |
-| OpenAI | `gpt-mini` | `openai:gpt-5.4-mini` | `gpt` (`gpt-5.5`) |
-| Azure OpenAI | none | `azure:<your deployment>` | a larger deployment |
-| Google | `gemini` | `google:gemini-3.5-flash` | `gemini-pro` |
+| Anthropic | `anthropic:claude-sonnet-5` | `sonnet` | `opus` |
+| OpenAI | `openai:gpt-5.4-mini` | `gpt-mini` | `gpt` (`gpt-5.5`) |
+| Azure OpenAI | `azure:<your deployment>` | none | a larger deployment |
+| Google | `google:gemini-3.5-flash` | `gemini` | `gemini-pro` |
+
+Set it through the `AGENT__MODEL` workspace variable, which takes a `provider:model` id on
+any provider. An alias works where the provider has one, and Azure has none, because it
+addresses a deployment on your own endpoint. The judge answers with the declared output
+schema and `finalize` reads it back on any of them; the definition and `checks.py` name no
+provider.
 
 Move to the provider's top model only for a check that gives wrong outcomes after its rubric
 was fixed, and set it in configuration rather than in the definition.
