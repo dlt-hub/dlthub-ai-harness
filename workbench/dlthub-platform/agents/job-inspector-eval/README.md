@@ -362,7 +362,7 @@ Read these before acting on a `FALSE`.
   skill text into the system prompt and records no load event, so the check reports `N/A`.
 - **The runner must supply a platform credential, and on the dev control plane it does not
   yet.** `prepare` reads `active().runtime_config` for `api_key` or `auth_token`. A run on
-  `api.dlthub.dev` is given `RUNTIME__WORKSPACE_ID`, `RUNTIME__RUN_ID` and
+  the development control plane is given `RUNTIME__WORKSPACE_ID`, `RUNTIME__RUN_ID` and
   `RUNTIME__DLTHUB_DSN` and neither credential, so `prepare` raises. The same gap stops the
   inspector's own `context: read` MCP tools, which answer `This environment has no platform
   credential (RUNTIME__API_KEY or RUNTIME__AUTH_TOKEN)`. Until the runner injects one, the
