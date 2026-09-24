@@ -1,0 +1,29 @@
+{
+  "number": 1,
+  "id": "1f86d76f-deca-46c3-88fc-000069cd9fb6",
+  "job_ref": "jobs.jaffle_shop.load_jaffle_bad_incremental",
+  "status": "failed",
+  "trigger": "tag:jaffle",
+  "profile": "prod",
+  "started_at": "2026-09-24 10:49:59.607332+00:00",
+  "ended_at": "2026-09-24 10:50:09.882799+00:00",
+  "duration_seconds": 10.275467,
+  "timeout_seconds": 7200,
+  "interval_start": "2026-09-24 10:49:58.373919+00:00",
+  "interval_end": "2026-09-24 10:49:58.373919+00:00",
+  "pipelines": [
+    {
+      "pipeline_name": "jaffle_bad_incremental",
+      "transaction_id": "000074b5126c5c2cefa5d10ba2aa3fcf",
+      "destination": null,
+      "dataset": null,
+      "status": "failed",
+      "total_rows": 0,
+      "duration_seconds": 1.421,
+      "started_at": "2026-09-24 10:50:05.750821+00:00",
+      "ended_at": "2026-09-24 10:50:07.172148+00:00"
+    }
+  ],
+  "prev_run_id": null,
+  "created_at": "2026-09-24 10:49:58.358928+00:00"
+}

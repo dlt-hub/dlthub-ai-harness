@@ -1,0 +1,29 @@
+{
+  "number": 9,
+  "id": "efe275b8-4fac-459e-8def-00008c5c9613",
+  "job_ref": "jobs.__deployment__.analytics_marts",
+  "status": "failed",
+  "trigger": "tag:analytics",
+  "profile": "prod",
+  "started_at": "2026-09-24 10:30:50.381980+00:00",
+  "ended_at": "2026-09-24 10:31:00.100949+00:00",
+  "duration_seconds": 9.718969,
+  "timeout_seconds": 7200,
+  "interval_start": "2026-09-24 10:30:49.350233+00:00",
+  "interval_end": "2026-09-24 10:30:49.350233+00:00",
+  "pipelines": [
+    {
+      "pipeline_name": "analytics",
+      "transaction_id": "000035e7ed9c68d7a1d7e37bfcd9b7d2",
+      "destination": null,
+      "dataset": null,
+      "status": "failed",
+      "total_rows": 0,
+      "duration_seconds": 1.624,
+      "started_at": "2026-09-24 10:30:56.365977+00:00",
+      "ended_at": "2026-09-24 10:30:57.990191+00:00"
+    }
+  ],
+  "prev_run_id": null,
+  "created_at": "2026-09-24 10:30:49.336344+00:00"
+}

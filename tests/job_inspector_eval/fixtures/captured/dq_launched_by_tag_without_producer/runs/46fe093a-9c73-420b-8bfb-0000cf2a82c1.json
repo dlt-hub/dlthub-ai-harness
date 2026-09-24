@@ -1,0 +1,17 @@
+{
+  "number": 1,
+  "id": "46fe093a-9c73-420b-8bfb-0000cf2a82c1",
+  "job_ref": "jobs.__deployment__.ads_platform_dq",
+  "status": "failed",
+  "trigger": "tag:ads",
+  "profile": "prod",
+  "started_at": "2026-09-24 10:50:01.032917+00:00",
+  "ended_at": "2026-09-24 10:50:07.604026+00:00",
+  "duration_seconds": 6.571109,
+  "timeout_seconds": 7200,
+  "interval_start": "2026-09-24 10:50:00.180084+00:00",
+  "interval_end": "2026-09-24 10:50:00.180084+00:00",
+  "pipelines": [],
+  "prev_run_id": null,
+  "created_at": "2026-09-24 10:50:00.164171+00:00"
+}

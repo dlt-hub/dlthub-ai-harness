@@ -1,0 +1,185 @@
+{
+  "result": {
+    "status": "succeeded",
+    "summary": "## Diagnosis\n- Run 12 failed before any pipeline step because the `prod` configuration does not define a concrete type for the named destination `warehouse`; `utils/dq.py` passes that name to `dlt.pipeline`, which cannot resolve it.\n- The direct cause is: \u201cDestination 'warehouse' was first attempted to be resolved as a named destination with a configured type. However, no destination type was configured.\u201d (`dlthub job runs logs 885361b3-4db7-40db-88b4-0000e3accbca`, line 59).\n\n## Recommendation\n- Ask your coding agent to determine which backend the ingestion job uses for the named `warehouse` destination, then set `[destination.warehouse] destination_type=\"<that backend>\"` in configuration effective for the `prod` profile and redeploy; do not assume the log\u2019s illustrative `duckdb` value is correct.\n\n## Confidence\n- The actual backend type for `warehouse` is not present in the inspected run log, deployed job definition, or readable workspace files, so the exact `destination_type` value remains to be verified. Confidence is high in the missing-setting diagnosis because the exception states it directly and the workspace code confirms that `warehouse` is passed as a named destination.",
+    "evidence": [
+      {
+        "source": "dlthub job runs logs 885361b3-4db7-40db-88b4-0000e3accbca line 59",
+        "excerpt": "dlt.common.destination.exceptions.UnknownDestinationModule: Destination 'warehouse' was first attempted to be resolved as a named destination with a configured type. However, no destination type was configured.",
+        "provenance": "run_log"
+      },
+      {
+        "source": "utils/dq.py lines 69-73",
+        "excerpt": "pipeline = dlt.pipeline(\n        pipeline_name=source_pipeline_name,\n        destination=destination,\n        dataset_name=dataset_name,\n    )",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "__deployment__.py lines 294-297",
+        "excerpt": "run_dq_checks(\n        \"jaffle_shop\",\n        destination=\"warehouse\",\n        dataset_name=\"jaffle_shop\",",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "stored run 885361b3-4db7-40db-88b4-0000e3accbca",
+        "excerpt": "\"status\":\"failed\",\"trigger\":\"tag:jaffle_shop\",\"profile\":\"prod\",\"pipelines\":[]",
+        "provenance": "run_record"
+      },
+      {
+        "source": "deployed job jobs.__deployment__.jaffle_shop_dq definition",
+        "excerpt": "\"entry_point\":{\"function\":\"jaffle_shop_dq\",\"job_type\":\"batch\",\"launcher\":\"dlt._workspace.deployment.launchers.job\",\"module\":\"__deployment__\"}",
+        "provenance": "job_definition"
+      }
+    ],
+    "confidence": "high",
+    "fix_change": "",
+    "fix_target": "prod configuration key destination.warehouse.destination_type",
+    "open_points": [
+      "The concrete backend type for the named destination `warehouse` was not established by the run log, deployed job definition, or readable workspace files; verify it from the effective prod configuration for the jaffle_shop ingestion job before setting `destination.warehouse.destination_type`."
+    ],
+    "proposed_fix": "In the configuration effective for the `prod` profile, define the named destination `warehouse` by adding `[destination.warehouse]` with `destination_type=\"<actual backend used by the jaffle_shop ingestion job>\"`, then redeploy. First inspect the ingestion job's effective destination configuration to establish the backend; the available evidence does not justify using the exception's illustrative `duckdb` value.",
+    "failed_run_id": "885361b3-4db7-40db-88b4-0000e3accbca",
+    "classification": "config",
+    "failed_job_ref": "jobs.__deployment__.jaffle_shop_dq",
+    "requires_human": true
+  },
+  "trace": {
+    "agent": "dlthub-platform:job-inspector",
+    "agent_file": ".claude/dlthub/agents/job-inspector/AGENT.md",
+    "loop_type": "pydantic-ai",
+    "model": "azure:gpt",
+    "limits": {
+      "max_turns": 30,
+      "max_tokens": 1000000
+    },
+    "loop_run_args": {
+      "retries": 2
+    },
+    "inputs": {
+      "run_context": {
+        "run_id": "b601ca2c-4ccb-42bf-89f6-00006b25df06",
+        "trigger": "job.fail:jobs.__deployment__.jaffle_shop_dq",
+        "refresh": false,
+        "run_args": {
+          "port": 8080
+        },
+        "interval_start": "2026-09-24T10:08:12.107051+00:00",
+        "interval_end": "2026-09-24T10:08:12.107051+00:00"
+      },
+      "port": 8080
+    },
+    "access": {
+      "local": [
+        "read"
+      ],
+      "context": [
+        "read"
+      ]
+    },
+    "local_tools": {
+      "Read": "read",
+      "Glob": "read",
+      "Grep": "read"
+    },
+    "mcp_features": [
+      "jobs",
+      "logs",
+      "telemetry",
+      "workspace",
+      "pipeline",
+      "secrets",
+      "config"
+    ],
+    "native_skills": [],
+    "inlined_skills": [
+      "dlthub-platform:debug-deployment"
+    ],
+    "unresolved_placeholders": [
+      "failed_run_id",
+      "failed_job_ref"
+    ],
+    "turn_count": 6,
+    "input_tokens": 106021,
+    "output_tokens": 1979,
+    "total_tokens": 108000,
+    "turns": [
+      {
+        "tools": [
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13443,
+        "output_tokens": 105
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 16921,
+        "output_tokens": 112
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run_logs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 17212,
+        "output_tokens": 79
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          },
+          {
+            "name": "Read",
+            "kind": "builtin"
+          },
+          {
+            "name": "dlthub_get_job",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 18469,
+        "output_tokens": 194
+      },
+      {
+        "tools": [
+          {
+            "name": "Grep",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 19763,
+        "output_tokens": 129
+      },
+      {
+        "tools": [],
+        "input_tokens": 20213,
+        "output_tokens": 1360
+      }
+    ],
+    "tools_used": [
+      "Read",
+      "Grep"
+    ],
+    "skills_used": [],
+    "mcp_tools_used": [
+      "dlthub_list_runs",
+      "dlthub_get_run",
+      "dlthub_get_run_logs",
+      "dlthub_get_job"
+    ],
+    "instructions": "Go ahead"
+  }
+}
