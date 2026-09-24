@@ -314,6 +314,8 @@ from dlt.hub import run
 
 inspector = run.agent(
     "dlthub-platform:job-inspector",
+    # access comes from the definition: local: [read], context: [read]. an `access=`
+    # argument on a referenced agent is dropped; see below
     trigger="job.fail:tag:ingest",       # narrower than the default
     require={"profile": "access"},       # see "Profile"
     instructions="focus on the loader step",
