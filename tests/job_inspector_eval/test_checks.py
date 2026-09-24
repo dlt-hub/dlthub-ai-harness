@@ -311,7 +311,7 @@ def test_agent_profile_not_prod():
     assert result.outcome == C.FALSE
     assert "access" in result.reasoning
 
-    # the record carries no profile at all
+    # no `profile` field on the inspector run record: cannot determine whether it ran on prod
     assert run("agent_profile_not_prod").outcome == C.NA
 
 
