@@ -105,17 +105,37 @@ DEFAULT_EVENTS = [
     "  thinks  Now the log, earliest error first.",
     f'  dlthub_get_run_logs (dlthub)  {{"run_id": "{FAILED_RUN_ID}"}}',
     "     → 10 lines",
+    '  dlthub_get_job (dlthub)  {"job_ref": "pipelines.github_events"}',
+    "     → batch job, trigger schedule:0 * * * *",
+    "  thinks  The traceback names pipelines/github.py line 42; reading it.",
+    '  Read  {"file_path": "/workspace/pipelines/github.py"}',
+    "     → 60 lines",
     "",
     "says",
     "  The job failed on a 401 from the GitHub API.",
 ]
+
+DEFAULT_SUMMARY = """## Diagnosis
+- The `github_events` job failed in extract: the GitHub API rejected the token.
+- Run log line 8: `ERROR  401 Unauthorized calling https://api.github.com/events`.
+
+## Recommendation
+- Rotate the GitHub token.
+- Set the new token as the `GITHUB_TOKEN` workspace variable.
+- Re-run `pipelines.github_events`.
+
+## Confidence
+- The token entry exists in the redacted view; whether it is expired was not verified.
+- Confidence is high: the earliest error names the rejection directly.
+"""
+"""A summary in the shape the inspector's "Summary format" section requires."""
 
 
 def output(**overrides: Any) -> Dict[str, Any]:
     """A credible inspector output, with the fields a test cares about overridden."""
     base: Dict[str, Any] = {
         "status": "succeeded",
-        "summary": "The `github_events` job failed: the GitHub token was rejected with 401.",
+        "summary": DEFAULT_SUMMARY,
         "failed_run_id": FAILED_RUN_ID,
         "failed_job_ref": "pipelines.github_events",
         "classification": "credentials",
@@ -124,9 +144,18 @@ def output(**overrides: Any) -> Dict[str, Any]:
             {
                 "source": f"`dlthub job runs logs {FAILED_RUN_ID}` line {line_no(3)}",
                 "excerpt": "ERROR  401 Unauthorized calling https://api.github.com/events",
+                "provenance": "run_log",
             }
         ],
-        "proposed_fix": "Rotate the GitHub token and set it as a workspace variable.",
+        "proposed_fix": "Rotate the GitHub token and set it as the `GITHUB_TOKEN` workspace"
+                        " variable, then re-run `pipelines.github_events`.",
+        "fix_target": "GITHUB_TOKEN workspace variable",
+        "fix_change": "a rotated token, set with `dlthub variable set GITHUB_TOKEN --secret"
+                      " --workspace`",
+        "open_points": [
+            "The token entry exists in the redacted view; whether it is expired was not"
+            " verified."
+        ],
         "requires_human": True,
     }
     base.update(overrides)
@@ -145,8 +174,8 @@ def trace(**overrides: Any) -> Dict[str, Any]:
         "turn_count": 3,
         "total_tokens": 12000,
         "skills_used": ["dlthub-platform:debug-deployment"],
-        "tools_used": ["Bash"],
-        "mcp_tools_used": ["dlthub_get_run", "dlthub_get_run_logs"],
+        "tools_used": ["Bash", "Read"],
+        "mcp_tools_used": ["dlthub_get_run", "dlthub_get_run_logs", "dlthub_get_job"],
     }
     base.update(overrides)
     return base
@@ -174,7 +203,7 @@ def context(**overrides: Any) -> "C.EvalContext":
         "inspector_run": {
             "id": INSPECTOR_RUN_ID,
             "job_ref": "jobs.job_inspector",
-            "status": "succeeded",
+            "status": "completed",
             "created_at": "2026-09-01T10:05:00Z",
             "trigger": "job.fail:pipelines.github_events",
         },

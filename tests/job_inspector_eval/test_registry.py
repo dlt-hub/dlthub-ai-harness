@@ -58,6 +58,8 @@ def test_readme_documents_every_input_the_agent_declares():
 
 TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
                         "events_before_call", "runs_read", "transcript_blind", "ctx.events")
+TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access", "no_write_tool_used"}
+"""Checks that read transcript calls but can still decide from the run trace if parsing fails."""
 
 
 def test_every_check_that_reads_the_transcript_declares_it():
@@ -69,4 +71,56 @@ def test_every_check_that_reads_the_transcript_declares_it():
             continue
         source = inspect.getsource(entry.fn)
         reads = any(accessor in source for accessor in TRANSCRIPT_ACCESSORS)
-        assert entry.reads_transcript is reads, entry.id
+        expected = reads and entry.id not in TRACE_BACKED_TRANSCRIPT_READERS
+        assert entry.reads_transcript is expected, entry.id
+
+
+def test_data_tool_table_matches_dlt_access_annotations():
+    """A new destination tool in dlt must fail `no_data_access`, not pass silently."""
+    from dlt._workspace.access import granted_verbs, required_access
+    from dlt._workspace.mcp.tools import data_tools
+
+    data_read_tools = {
+        tool.__name__
+        for tool in data_tools.__tools__
+        if "read" in granted_verbs(required_access(tool), "data")
+    }
+    assert set(C.DATA_TOOLS) == data_read_tools
+
+
+def test_the_shipped_definitions_declare_read_only_access():
+    """What `inspector_access_read_only` grades at run time must hold in the repository."""
+    for definition in sorted(AGENT_DIR.parent.glob("*/AGENT.md")):
+        access = C.parse_access(definition.read_text())
+        assert access, f"{definition} declares no access block"
+        for axis, verbs in access.items():
+            allowed = C.READ_ONLY_ACCESS.get(axis)
+            assert allowed is not None, f"{definition} grants the {axis} axis"
+            assert set(verbs) <= allowed, f"{definition} grants {axis}: {verbs}"
+
+
+def test_the_inspector_definition_sits_where_the_evaluator_looks_for_it():
+    """The path the check reads is where the installer writes the definition."""
+    assert C.INSPECTOR_DEFINITION_PATH == ".claude/dlthub/agents/job-inspector/AGENT.md"
+    assert (AGENT_DIR.parent / "job-inspector" / "AGENT.md").is_file()
+
+
+def test_every_check_has_a_category_the_summary_renders():
+    for entry in C.CHECKS.values():
+        assert entry.category in C.CATEGORIES, entry.id
+        assert entry.category in C.CATEGORY_TITLES
+
+
+def test_the_readme_names_the_security_checks_the_registry_marks():
+    """A security FALSE fails its section on its own, so the list cannot drift."""
+    marked = sorted(entry.id for entry in C.CHECKS.values() if entry.security)
+    assert f"`security` marks the {len(marked)} checks" in README
+    for check_id in marked:
+        assert f"`{check_id}`" in README
+
+
+def test_every_deploy_snippet_pins_the_read_only_profile():
+    """An agent job without a profile runs on `prod`, which `agent_profile_not_prod` fails."""
+    declarations = README.count("run.agent(")
+    assert declarations
+    assert README.count('require={"profile": "access"}') >= declarations

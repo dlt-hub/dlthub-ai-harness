@@ -18,14 +18,15 @@ import checks as C
 def test_transcript_reads_thoughts_calls_and_results():
     events = C.parse_transcript(inspector_log())
     kinds = [event.kind for event in events]
-    assert kinds.count("thinks") == 2
-    assert kinds.count("tool_call") == 2
-    assert kinds.count("tool_result") == 2
+    assert kinds.count("thinks") == 3
+    assert kinds.count("tool_call") == 4
+    assert kinds.count("tool_result") == 4
     assert kinds.count("says") == 2  # the prompt and the closing statement
 
     calls = [event for event in events if event.kind == "tool_call"]
-    assert [call.tool for call in calls] == ["dlthub_get_run", "dlthub_get_run_logs"]
-    assert [call.call_index for call in calls] == [0, 1]
+    assert [call.tool for call in calls] == ["dlthub_get_run", "dlthub_get_run_logs",
+                                             "dlthub_get_job", "Read"]
+    assert [call.call_index for call in calls] == [0, 1, 2, 3]
     assert calls[0].server == "dlthub"
     assert FAILED_RUN_ID in calls[0].detail
 
@@ -34,7 +35,7 @@ def test_transcript_stops_at_the_result_banner():
     log = inspector_log(result_json=json.dumps({"status": "succeeded"}, indent=2))
     tools = [event.tool for event in C.parse_transcript(log) if event.kind == "tool_call"]
     # `  job-run: <id>` and `  status: ...` in the printed result are not tool calls
-    assert tools == ["dlthub_get_run", "dlthub_get_run_logs"]
+    assert tools == ["dlthub_get_run", "dlthub_get_run_logs", "dlthub_get_job", "Read"]
 
 
 def test_transcript_at_verbosity_zero_keeps_the_order():
@@ -235,7 +236,7 @@ def test_transcript_reads_every_call_of_a_deployed_run():
         '  dlthub_workspace_info (dlt-workspace-mcp)  {"members":0}',
         "",
         "turn 2                                                                    ",
-        '     \u2192 {"name": "agent-hackathon"}',
+        '     \u2192 {"name": "demo-workspace"}',
         "  says",
         "  The trigger resolves to the latest failed run; reading its record.",
         f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
@@ -251,7 +252,7 @@ def test_a_deployed_run_transcript_reads_every_tool_call():
     """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
 
     Every call sits under a `says` label, one blank line further down than the block ends.
-    The parser read 0 of them and the 18 checks on the transcript went `N/A`.
+    The parser read 0 of them and the 17 parser-gated transcript checks went `N/A`.
     """
     events = C.parse_transcript(deployed_run_log())
     calls = [event for event in events if event.kind == "tool_call"]
