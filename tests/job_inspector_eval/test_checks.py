@@ -671,7 +671,10 @@ def test_aborted_field_checks_treat_an_absent_field_as_unknown():
 def test_evidence_excerpts_exist_covers_a_cited_range_and_a_multiline_excerpt():
     """Seen on a real run: `lines 10-16` with a two-line excerpt read as invented."""
     spanning = output(evidence=[{
-        "source": f"dlthub job runs logs {FAILED_RUN_ID} (traceback) lines {line_no(5)}-{line_no(8)}",
+        "source": (
+            f"dlthub job runs logs {FAILED_RUN_ID} (traceback) "
+            f"lines {line_no(5)}-{line_no(8)}"
+        ),
         "excerpt": 'File "/workspace/pipelines/github.py", line 42, in load\n'
                    "    raise HTTPError(response)",
     }])

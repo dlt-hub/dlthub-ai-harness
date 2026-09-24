@@ -330,9 +330,11 @@ Read these before acting on a `FALSE`.
   could not read looks exactly like an inspector that called nothing: `aborted_without_
   investigation` reads it as good behaviour and every check that wants a call to have been
   made reads it as a fault. The run trace lists the tools the runtime recorded, so a trace
-  with tool use and a transcript with no tool call is a parser fault. The 18 checks that
+  with tool use and a transcript with no tool call is a parser fault. The 17 checks that
   carry `reads_transcript` are then held at `N/A`, `prepare` records the fault in
-  `problems`, and the evaluation comes back `failed` with `passed` false.
+  `problems`, and the evaluation comes back `failed` with `passed` false. `no_data_access`
+  is the exception: it reads tool names from the run trace when the transcript parser goes
+  blind.
 - **Write detection is keyword-based, and a keyword is not always a write.**
   `read_only_shell` names the git write subcommands one by one, so `git log` reads. SQL is
   not parsed at all any more: the inspector is granted no `data` axis, so `no_data_access`

@@ -58,6 +58,8 @@ def test_readme_documents_every_input_the_agent_declares():
 
 TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
                         "events_before_call", "runs_read", "transcript_blind", "ctx.events")
+TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access"}
+"""Checks that read transcript calls but can still decide from the run trace if parsing fails."""
 
 
 def test_every_check_that_reads_the_transcript_declares_it():
@@ -69,4 +71,5 @@ def test_every_check_that_reads_the_transcript_declares_it():
             continue
         source = inspect.getsource(entry.fn)
         reads = any(accessor in source for accessor in TRANSCRIPT_ACCESSORS)
-        assert entry.reads_transcript is reads, entry.id
+        expected = reads and entry.id not in TRACE_BACKED_TRANSCRIPT_READERS
+        assert entry.reads_transcript is expected, entry.id
