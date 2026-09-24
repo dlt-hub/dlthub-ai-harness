@@ -34,7 +34,7 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the definition's default
     model="sonnet",
-    require={"profile": "access"},       # read-only credentials
+    require={"profile": "access"},
 )
 ```
 

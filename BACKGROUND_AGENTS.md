@@ -299,7 +299,7 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the default
     model="opus",
-    require={"profile": "access"},       # read-only credentials; see "Profile"
+    require={"profile": "access"},       # see "Profile"
     instructions="focus on the loader step",
 )
 ```

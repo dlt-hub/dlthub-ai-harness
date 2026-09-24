@@ -14,13 +14,11 @@ skills:
   - dlthub-platform:debug-deployment
 rules:
   - dlthub-platform:job-resources
-  # `agent_profile_not_prod` grades the profile the inspector ran on, so the judge needs the
-  # rule that says which profile an agent job takes
+  # `agent_profile_not_prod` grades which profile the inspector ran on
   - dlthub-platform:profiles
 access:
   # runs, logs, job definitions and telemetry. No shell, no files: the preparation step
-  # fetched everything and the judge reads what it was handed. No `data` axis either: the
-  # judge grades a diagnosis, and the inspector it grades reaches no destination data
+  # fetched everything and the judge reads what it was handed
   context:
     - read
 # every input is a job configuration key: `-c inspector_run_id=...`. The last four are filled

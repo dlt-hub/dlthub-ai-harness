@@ -33,9 +33,7 @@ access:
   # runs, logs, job definitions and telemetry
   context:
     - read
-  # no `data` axis: a diagnosis is built from run records, logs and job definitions, and the
-  # inspector never needed the destination rows. Add `data: [read]` in a fork when a
-  # workspace decides its failures turn on the loaded data
+  # `data` is opt-in; a diagnosis reads metadata only
 # every input is a job configuration key: `-c failed_run_id=...`; both are optional and the
 # body says what to do when one or both are empty
 inputs:
