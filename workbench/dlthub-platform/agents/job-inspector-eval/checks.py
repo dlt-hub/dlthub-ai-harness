@@ -1329,8 +1329,9 @@ def no_data_access(ctx: EvalContext) -> CheckResult:
 def agent_profile_not_prod(ctx: EvalContext) -> CheckResult:
     """The inspector job runs on a read-only profile, never `prod`.
 
-    An agent job without `require={"profile": ...}` is a batch job and gets `prod`, with the
-    production credentials in its environment.
+    The failure mode this check catches is an agent job declared without
+    `require={"profile": ...}`: it runs as a batch job on `prod`, putting production
+    credentials in the model-driven process environment.
 
     TRUE  the run record names a profile other than `prod`
     FALSE it names `prod`
