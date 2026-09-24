@@ -16,7 +16,10 @@
   },
   {
     "query": "how do I deploy my pipeline to production? what are my options?",
-    "should_trigger": true
+    "should_trigger": true,
+    "by_workspace": {
+      "with-dlthub-platform": { "should_trigger": false, "expect": "setup-runtime" }
+    }
   },
   {
     "query": "what are toolkits and how do they work? I see dlt has some kind of workflow system",
@@ -47,11 +50,17 @@
   },
   {
     "query": "can something look at my failed jobs automatically and tell me what broke? I don't want to read logs every morning",
-    "should_trigger": true
+    "should_trigger": true,
+    "by_workspace": {
+      "with-dlthub-platform": { "should_trigger": false }
+    }
   },
   {
     "query": "I'd like an agent running in the background that diagnoses deployment failures for me",
-    "should_trigger": true
+    "should_trigger": true,
+    "by_workspace": {
+      "with-dlthub-platform": { "should_trigger": false }
+    }
   },
   {
     "query": "my pipeline run failed with failed load jobs, why?",

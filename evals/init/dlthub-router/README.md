@@ -48,6 +48,19 @@ uv run python tools/run_trigger_eval.py evals/init/dlthub-router --agent cursor 
 
 On **Cursor**, `dlthub-router` installs as a skill and triggers via a `readToolCall` on `.cursor/skills/dlthub-router/SKILL.md`. On **Codex** the router is N/A for automated measurement (see above) — routing is served by the always-loaded `AGENTS.md`; confirm it manually by checking the final answer names the right toolkit.
 
-### Negative cases (100% precision in automated eval)
+## Measured run, 2026-09-24
 
-All 10 should-not-trigger queries correctly did NOT trigger in `run_eval.py` (0/3 trigger rate each). The description's negative guard works.
+`run_trigger_eval.py --agent claude`, one run per query, 24 queries per workspace:
+
+| workspace | passed | precision | recall |
+|---|---|---|---|
+| init-only | 23/24 | 0.929 | 1.0 |
+| with-rest-api | 21/24 | 0.9 | 0.818 |
+| with-dlthub-platform | 23/24 | 0.9 | 1.0 |
+
+Two failures survive:
+
+- `can you help me with my python project? I need to parse some CSV files and upload them to S3` triggers in all three workspaces and should not. It fails on `master` too.
+- `my deployed job failed last night, what went wrong?` does not trigger in `with-rest-api`, where dlthub-platform is absent and the router should install it. It routes correctly in `with-dlthub-platform`, to `debug-deployment` at rate 1.0.
+
+The description is close to the length where matching degrades: at 1267 chars, `init-only` recall fell to 0.154 and ten cold-start queries stopped triggering. At 1176 it is back to 1.0. Measure after any edit to it.
