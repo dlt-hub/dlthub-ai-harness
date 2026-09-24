@@ -111,11 +111,10 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-`data` is opt-in. Start an agent without the axis and add it once a task is shown to need
-the rows. The agents this repo ships declare `local` and `context` only: a diagnosis is
-built from run records, logs, job definitions and telemetry. A grant the agent never
-exercises costs the workspace its data exposure and buys nothing, and a reader of the
-manifest should be able to see that someone decided on data access.
+The agents this repo ships do not grant `data`. A background diagnosis is built from run
+records, logs, job definitions and telemetry, not destination rows. A `data` grant exposes
+workspace data to a model-driven process and is outside the job-inspector/evaluator safety
+model.
 
 `local` verbs are named after Claude Code's tools, so one declaration means one thing on
 both loops, pydantic-ai and claude-agent-sdk. The set each verb wires differs: the

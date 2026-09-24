@@ -33,7 +33,7 @@ access:
   # runs, logs, job definitions and telemetry
   context:
     - read
-  # `data` is opt-in; a diagnosis reads metadata only
+  # no `data`: a diagnosis reads metadata only
 # every input is a job configuration key: `-c failed_run_id=...`; both are optional and the
 # body says what to do when one or both are empty
 inputs:
