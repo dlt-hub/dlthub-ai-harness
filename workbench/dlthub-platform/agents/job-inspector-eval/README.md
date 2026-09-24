@@ -40,7 +40,6 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="anthropic:claude-sonnet-5",  # or azure:<deployment>; see "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -113,9 +112,8 @@ the `AGENT.md` would replace it; that is filed as a dlt follow-up.
 
 ## Judge model
 
-The definition names no model, so the deployment pins one: `model=` on the job, or the
-`AGENT__MODEL` workspace variable, which overrides the job when both are set. Both take a
-`provider:model` id on any provider, and an alias where the provider has one. A model at least as capable as Claude Sonnet 5 is enough:
+The definition names no model, so the workspace sets one, in the `AGENT__MODEL` variable. It
+takes a `provider:model` id on any provider, and an alias where the provider has one. A model at least as capable as Claude Sonnet 5 is enough:
 the judge reads bounded windows and the deterministic results, and every check is a narrow
 question with a three-value answer. It runs after every inspector run, so its cost adds to
 every failure.

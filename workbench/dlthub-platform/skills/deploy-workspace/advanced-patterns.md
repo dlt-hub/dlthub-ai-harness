@@ -33,7 +33,6 @@ An installed agent definition becomes a job by naming it:
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the definition's default
-    model="anthropic:claude-sonnet-5",   # or azure:<deployment>; the definition pins none
 )
 ```
 
@@ -65,7 +64,6 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="anthropic:claude-sonnet-5",   # or azure:<deployment>
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -117,13 +115,20 @@ drives:
   `loop.trace` on any returned dict carrying `status`, so returning one there fails the run
   with `AgentTraceNotAvailable` and loses the abort reason.
 
-A shipped agent definition names no model, so pin one: `model=` on the job, or
-`AGENT__MODEL` as a workspace variable for all of them. `AGENT__MODEL` overrides a `model=`
-on the job, so a workspace that sets it decides for every agent job whatever the code says.
-Both take a `provider:model` id on any provider, and an alias (`sonnet`, `gpt-mini`,
-`gemini`) where the provider has one. Azure takes `azure:<deployment>` with `AGENT__API_URL`
-and `AGENT__API_VERSION` beside the key. The inspector and its evaluator both want a model at
-least as capable as Claude Sonnet 5.
+A shipped agent definition names no model, so set one for the workspace:
+
+```bash
+dlthub variable set AGENT__MODEL --value 'anthropic:claude-sonnet-5' --plain --workspace
+```
+
+Every agent job in the workspace reads it. It takes a `provider:model` id on any provider,
+and an alias (`sonnet`, `gpt-mini`, `gemini`) where the provider has one. Azure takes
+`azure:<deployment>` with `AGENT__API_URL` and `AGENT__API_VERSION` beside the key. The
+inspector and its evaluator both want a model at least as capable as Claude Sonnet 5.
+
+`run.agent` takes `model=` too, and configuration outranks it, so a model in the deployment
+code is beaten by `AGENT__MODEL` wherever the variable is set. Keep the decision in the
+variable.
 
 Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
 

@@ -112,8 +112,8 @@ output:
 defaults:
   trigger:
     - job.fail:*
-  # pin `model` when you deploy: at least as capable as Claude Sonnet 5. the shipped
-  # template sets none, so it names no provider a workspace has to have
+  # no `model` here: set `AGENT__MODEL` in your workspace, at least as capable as Claude
+  # Sonnet 5. a template that named a provider would hand every installer that provider
   limits:
     max_turns: 30
     max_tokens: 1000000

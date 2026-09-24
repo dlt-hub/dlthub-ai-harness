@@ -244,13 +244,15 @@ nobody says otherwise, and nothing that must hold.
 ### The model
 
 `model` is an alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`, `gpt-mini`, `gpt-nano`,
-`gemini`, `gemini-pro`) or a `provider:model` id. The workspace deploying the agent pins it,
-on the job or through `AGENT__MODEL`, and `AGENT__MODEL` wins where both are set: it is
-configuration, which outranks a job argument. A definition shipped in a workbench toolkit
-pins nothing:
-an alias resolves on Anthropic, OpenAI and Google, and an Azure workspace addresses a
-deployment on its own endpoint and has no alias, so a shipped `model: sonnet` is a default
-those workspaces cannot open. `make validate-toolkits` rejects one.
+`gemini`, `gemini-pro`) or a `provider:model` id. The workspace deploying the agent sets it
+in one place, the `AGENT__MODEL` variable, which every agent job in that workspace reads.
+`run.agent` also takes `model=`, and configuration outranks it, so a value in the deployment
+code is silently beaten by the variable; leave it out and the two cannot disagree.
+
+A definition shipped in a workbench toolkit names no model at all. An alias resolves on
+Anthropic, OpenAI and Google, and an Azure workspace addresses a deployment on its own
+endpoint and has no alias, so a shipped `model: sonnet` is a default those workspaces cannot
+open. `make validate-toolkits` rejects one.
 
 Say in the `AGENT.md` what to pin instead: the class of model the instructions were written
 for, as "at least as capable as Claude Sonnet 5".
@@ -306,13 +308,12 @@ from dlt.hub import run
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the default
-    model="opus",
     instructions="focus on the loader step",
 )
 ```
 
-Every decorator argument overrides the matching `defaults`; `instructions` is the user turn
-of every run. The job is named after the definition (`job_inspector`). Instead of a
+Every decorator argument overrides the matching `defaults`, and configuration overrides both;
+`instructions` is the user turn of every run. The job is named after the definition (`job_inspector`). Instead of a
 `<toolkit>:<name>` reference the workspace may point at a folder holding an `AGENT.md` by its
 workspace-relative path. A function decorated with `run.agent` can also be a definition on its
 own, or drive an installed one; see the dlt documentation for that form.
@@ -387,7 +388,6 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="anthropic:claude-sonnet-5",   # or azure:<deployment>, google:<model>
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
