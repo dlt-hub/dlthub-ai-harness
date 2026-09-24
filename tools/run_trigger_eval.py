@@ -428,6 +428,7 @@ def run_eval_on_workspace(
         ws_override = item.get("by_workspace", {}).get(ws_id, {})
         should_trigger = ws_override.get("should_trigger", item["should_trigger"])
         expect_skill = ws_override.get("expect")
+        forbid_skill = ws_override.get("forbid")
 
         # Count triggers for our skill
         our_triggers = sum(1 for s in triggered_skills if s == skill_name)
@@ -462,6 +463,16 @@ def run_eval_on_workspace(
             expect_hits = sum(1 for s in triggered_skills if s == expect_skill)
             entry["expect_skill"] = expect_skill
             entry["expect_rate"] = round(expect_hits / len(triggered_skills), 3)
+
+        # The other direction, for a handoff that cannot be named: a background agent is
+        # not a skill, so `expect: job-inspector` can never match. Name the skill that
+        # would mean wrong routing instead. Firing it fails the query.
+        if not should_trigger and forbid_skill:
+            forbid_hits = sum(1 for s in triggered_skills if s == forbid_skill)
+            entry["forbid_skill"] = forbid_skill
+            entry["forbid_rate"] = round(forbid_hits / len(triggered_skills), 3)
+            if forbid_hits:
+                entry["pass"] = False
 
         results.append(entry)
 

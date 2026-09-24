@@ -48,6 +48,23 @@ uv run python tools/run_trigger_eval.py evals/init/dlthub-router --agent cursor 
 
 On **Cursor**, `dlthub-router` installs as a skill and triggers via a `readToolCall` on `.cursor/skills/dlthub-router/SKILL.md`. On **Codex** the router is N/A for automated measurement (see above) — routing is served by the always-loaded `AGENTS.md`; confirm it manually by checking the final answer names the right toolkit.
 
-### Negative cases (100% precision in automated eval)
+## Measured run, 2026-09-24
 
-All 10 should-not-trigger queries correctly did NOT trigger in `run_eval.py` (0/3 trigger rate each). The description's negative guard works.
+`run_trigger_eval.py --agent claude --runs-per-query 3`, 24 queries per workspace, router description at 1167 chars:
+
+| workspace | passed | precision | recall |
+|---|---|---|---|
+| init-only | 22/24 | 0.923 | 0.923 |
+| with-rest-api | 23/24 | 0.909 | 1.0 |
+| with-dlthub-platform | 22/24 | 0.889 | 0.889 |
+
+Known misses:
+
+- `can you help me with my python project? I need to parse some CSV files and upload them to S3` triggers in all three workspaces and should not. It fails on `master` too. An explicit `Do NOT use for general python help` guard was tried and reverted: it cut the false positive to 0.0 in `with-dlthub-platform` but took that workspace's recall from 0.889 to 0.333, because paying for it meant shortening the clause that tells the router to fire when no toolkit matches.
+- `my deployed job failed last night, what went wrong?` does not trigger in `init-only`. It fires at 0.67 in `with-rest-api` and correctly defers to `debug-deployment` at rate 1.0 in `with-dlthub-platform`.
+
+## Description length
+
+The description is 1167 chars, over the 1024 Codex cap that drops it as a skill there (dlt-hub/dlthub-ai-workbench-internal#75). `validate_toolkits.py` warns above that cap.
+
+Trigger rate does not fall off monotonically with length, so treat the cap as a portability limit rather than a quality one. Measured points, all on this skill: 1122 and 1167 and 1176 behave; 1267 took `init-only` recall to 0.154 with ten cold-start queries silent; 1140 took `with-dlthub-platform` to 0.333. Wording moves the number more than length does. Re-measure after any edit to the description.
