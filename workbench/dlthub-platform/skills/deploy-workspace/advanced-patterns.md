@@ -33,7 +33,6 @@ An installed agent definition becomes a job by naming it:
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the definition's default
-    model="sonnet",
 )
 ```
 
@@ -65,7 +64,6 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="sonnet",                    # the judge model, chosen by the workspace
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -91,7 +89,9 @@ async def job_inspector_eval(
         max_runs_read=max_runs_read,
     )
     if prep.aborted:
-        return prep.aborted_output     # nothing to judge, no model call
+        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
+        # and this path never started the loop
+        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
     output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
     return finalize(output, prep)
 ```
@@ -103,7 +103,7 @@ module on the factory, so a factory whose triggers are used in the same module p
 `section=` itself; without it the manifest is rejected with `triggers referencing unknown
 jobs`.
 
-Three constraints on the function form, because the function overrides the `AGENT.md` it
+Four constraints on the function form, because the function overrides the `AGENT.md` it
 drives:
 
 - No docstring, or it replaces the body of the `AGENT.md`.
@@ -111,6 +111,24 @@ drives:
 - Declare a parameter for every input a caller may set. Configured inputs reach a decorated
   function through its signature only, and `dlthub deploy` warns about a declared input the
   signature does not accept.
+- Raise `run.JobAbortedException` on a path that never started the loop. dlt reads
+  `loop.trace` on any returned dict carrying `status`, so returning one there fails the run
+  with `AgentTraceNotAvailable` and loses the abort reason.
+
+A shipped agent definition names no model, so set one for the workspace:
+
+```bash
+dlthub variable set AGENT__MODEL --value 'anthropic:claude-sonnet-5' --plain --workspace
+```
+
+Every agent job in the workspace reads it. It takes a `provider:model` id on any provider,
+and an alias (`sonnet`, `gpt-mini`, `gemini`) where the provider has one. Azure takes
+`azure:<deployment>` with `AGENT__API_URL` and `AGENT__API_VERSION` beside the key. The
+inspector and its evaluator both want a model at least as capable as Claude Sonnet 5.
+
+`run.agent` takes `model=` too, and configuration outranks it, so a model in the deployment
+code is beaten by `AGENT__MODEL` wherever the variable is set. Keep the decision in the
+variable.
 
 Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
 

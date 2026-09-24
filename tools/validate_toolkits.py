@@ -21,6 +21,7 @@ Checks:
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
+- Agent `defaults` sets no `model`; the workspace deploying the agent pins it
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
@@ -39,7 +40,6 @@ import yaml
 from dlt._workspace.deployment.agent.exceptions import InvalidAgentSpec
 from dlt._workspace.deployment.agent.manifest import load_agent_spec
 from dlt._workspace.deployment.agent.typing import (
-    AGENT_MODEL_ALIASES,
     TAgentDefaults,
     TAgentJobStatus,
     TAgentLimits,
@@ -482,12 +482,13 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
-    model = node.get("model")
-    # a `provider:model` id is passed through; only a bare word claims to be an alias
-    if isinstance(model, str) and ":" not in model and model not in AGENT_MODEL_ALIASES:
+    # a shipped definition names no provider: the aliases resolve on Anthropic, OpenAI
+    # and Google, and an Azure workspace has none. the deployment pins the model.
+    if node.get("model") is not None:
         errors.append(
-            f"[{pname}] {rel} defaults.model {model!r} is not an alias; expected one of"
-            f" {', '.join(sorted(AGENT_MODEL_ALIASES))}, or a 'provider:model' id"
+            f"[{pname}] {rel} defaults.model {node['model']!r} pins a provider on every"
+            " workspace that installs the toolkit; leave it out and say in the AGENT.md"
+            " what to pin (see BACKGROUND_AGENTS.md)"
         )
 
     limits = node.get("limits") or {}

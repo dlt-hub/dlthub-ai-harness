@@ -68,7 +68,7 @@ grade an inspector diagnosis against the inspector's instructions → dlthub-pla
 ```
 
 * `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
-* `job-inspector-eval` ships no default model, so set the judge model on the job or through `agent.*`. Its `README.md` carries the full snippet.
+* Neither agent names a model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5. The evaluator's `README.md` carries the full snippet and the model per provider.
 * Keep `agent.verbosity` at 1, the default. At 0 the job log drops the tool arguments and thoughts the evaluator reads.
 
 <!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. Tracked in dlt-hub/dlthub-ai-workbench-internal#72. -->
