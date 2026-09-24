@@ -360,13 +360,6 @@ Read these before acting on a `FALSE`.
   run addressed by job ref and run number rather than by id is not counted.
 - **`skill_loaded` only works on `claude-agent-sdk`.** The `pydantic-ai` loop inlines the
   skill text into the system prompt and records no load event, so the check reports `N/A`.
-- **The runner must supply a platform credential, and on the runtime it does not
-  yet.** `prepare` reads `active().runtime_config` for `api_key` or `auth_token`. A run on
-  `***REMOVED***` is given `RUNTIME__WORKSPACE_ID`, `RUNTIME__RUN_ID` and
-  `RUNTIME__DLTHUB_DSN` and neither credential, so `prepare` raises. The same gap stops the
-  inspector's own `context: read` MCP tools, which answer `This environment has no platform
-  credential (RUNTIME__API_KEY or RUNTIME__AUTH_TOKEN)`. Until the runner injects one, the
-  evaluator runs only where a credential is configured.
 - **The transcript's shape follows the model, not only the loop.** A model that emits text
   in the same assistant message as its tool calls prints a `says` block with the calls under
   it. One that answers with calls alone prints them under the turn banner. Both parse.
