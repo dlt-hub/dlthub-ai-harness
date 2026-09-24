@@ -1,6 +1,6 @@
 ---
 name: dlthub-router
-description: "The entry point for building anything with dlthub. Use this skill to route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'how do I build a pipeline', 'I want to pull data from a REST API', 'ingest from a SQL database', 'load CSVs from S3', 'make reports / dashboards', 'transform / model my data', 'add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', 'can something diagnose my failed jobs automatically', 'run an agent in the background', or seems unsure what to do next after setup. It also indexes the background agents the toolkits ship. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when the toolkit matching the user's intent is already installed — go straight to its entry skill instead; only route/install when the matching toolkit is missing. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
+description: "The entry point for building anything with dlthub. Use this skill to route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'how do I build a pipeline', 'I want to pull data from a REST API', 'ingest from a SQL database', 'load CSVs from S3', 'make reports / dashboards', 'transform / model my data', 'add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', 'diagnose my failed platform job runs automatically', 'run an agent in the background', or seems unsure what to do next after setup. It also indexes the background agents the toolkits ship. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when the toolkit matching the user's intent is already installed — go straight to its entry skill instead; only route/install when the matching toolkit is missing. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
 ---
 
 # dlthub-router
@@ -54,9 +54,16 @@ A **background agent** ships with a toolkit and runs on a trigger: after a job f
 
 Route here when the user wants work to happen on its own after an event ("diagnose failures for me", "tell me why the nightly job broke"). Install the toolkit as in Step 1, then follow its workflow rule for the deployment snippet.
 
+**"my job failed" routes four ways.** Pick by where it ran, and by whether the user wants this failure handled or all future ones:
+
+* A local pipeline or transformation run, fix it now → that toolkit's own debug skill, `debug-pipeline` or `debug-transformation`. A dlt **load job** in a failed load package belongs here, on the user's machine.
+* A deployed **platform job run** failed, look at it now → `debug-deployment` in **dlthub-platform**.
+* Every future failure of a deployed job, unattended → `job-inspector`, below.
+* Nothing deployed yet → deploy first. The agent triggers on platform job runs, so it has nothing to watch until then.
+
 ```
 capability                                                        → agent                              | install                                                     | declare
-diagnose a failed job run, classify it and propose a fix          → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:*")
+diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:*")
 grade an inspector diagnosis against the inspector's instructions → dlthub-platform:job-inspector-eval  | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector-eval", trigger=[inspector.success, inspector.fail])
 ```
 

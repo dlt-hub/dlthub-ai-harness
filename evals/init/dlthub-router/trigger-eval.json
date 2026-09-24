@@ -54,6 +54,20 @@
     "should_trigger": true
   },
   {
+    "query": "my pipeline run failed with failed load jobs, why?",
+    "should_trigger": false,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "debug-pipeline" }
+    }
+  },
+  {
+    "query": "my deployed job failed last night, what went wrong?",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-dlthub-platform": { "should_trigger": false, "expect": "debug-deployment" }
+    }
+  },
+  {
     "query": "the pipeline loaded 500 rows into the customers table but some email columns are null, can you check the schema?",
     "should_trigger": false
   },

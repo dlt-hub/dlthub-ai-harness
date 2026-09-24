@@ -5,6 +5,9 @@
     },
     "with-rest-api": {
       "toolkits": ["rest-api-pipeline"]
+    },
+    "with-dlthub-platform": {
+      "toolkits": ["dlthub-platform"]
     }
   }
 }
