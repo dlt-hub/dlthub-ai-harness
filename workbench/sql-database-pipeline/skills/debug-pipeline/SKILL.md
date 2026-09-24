@@ -1,6 +1,6 @@
 ---
 name: debug-pipeline
-description: Debug and inspect a dlt SQL database pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, and diagnose errors like connection failures, missing credentials, driver issues, or failed jobs.
+description: Debug and inspect a dlt SQL database pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, and diagnose errors like connection failures, missing credentials, driver issues, or failed load jobs.
 argument-hint: "[pipeline-name] [issue]"
 ---
 

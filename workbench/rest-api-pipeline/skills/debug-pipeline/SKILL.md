@@ -1,6 +1,6 @@
 ---
 name: debug-pipeline
-description: Debug and inspect a dlt pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, data, and diagnose errors like missing credentials or failed jobs.
+description: Debug and inspect a dlt pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, data, and diagnose errors like missing credentials or failed load jobs.
 argument-hint: "[pipeline-name] [issue]"
 ---
 
