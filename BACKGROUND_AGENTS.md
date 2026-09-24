@@ -317,13 +317,9 @@ own, or drive an installed one; see the dlt documentation for that form.
 require={"profile": "access"}
 ```
 
-A batch job that declares no profile gets `prod`, which injects the production credentials
-into the job's environment. An agent is a model deciding its own tool calls, so the
-credentials it holds are the blast radius of a prompt injection in a log line it reads.
-`access` is the read-only profile the runtime already uses for interactive jobs (see the
-`dlthub-platform:profiles` rule). Declare it alongside the `access` block: the block decides
-which tools the model is offered, the profile decides which credentials the job process
-holds.
+Without this pin, an agent job is a batch job on `prod` and gets production credentials in
+its environment. Declare the profile alongside the `access` block: `access` decides which
+tools the model is offered; the profile decides which credentials the job process holds.
 
 The pin governs profile-scoped credentials: `prod.secrets.toml`, `prod.config.toml`, and a
 variable set with `dlthub variable set --profile prod`. A variable set with `--workspace`
