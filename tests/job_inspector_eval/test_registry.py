@@ -73,3 +73,16 @@ def test_every_check_that_reads_the_transcript_declares_it():
         reads = any(accessor in source for accessor in TRANSCRIPT_ACCESSORS)
         expected = reads and entry.id not in TRACE_BACKED_TRANSCRIPT_READERS
         assert entry.reads_transcript is expected, entry.id
+
+
+def test_data_tool_table_matches_dlt_access_annotations():
+    """A new destination tool in dlt must fail `no_data_access`, not pass silently."""
+    from dlt._workspace.access import granted_verbs, required_access
+    from dlt._workspace.mcp.tools import data_tools
+
+    data_read_tools = {
+        tool.__name__
+        for tool in data_tools.__tools__
+        if "read" in granted_verbs(required_access(tool), "data")
+    }
+    assert set(C.DATA_TOOLS) == data_read_tools
