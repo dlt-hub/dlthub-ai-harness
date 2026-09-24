@@ -111,10 +111,12 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-The agents this repo ships do not grant `data`. A background diagnosis is built from run
-records, logs, job definitions and telemetry, not destination rows. A `data` grant exposes
-workspace data to a model-driven process and is outside the job-inspector/evaluator safety
-model.
+The agents this repo ships grant `local: read` and `context: read`, and no `data`. The
+workspace source is evidence: the inspector reads the file a traceback names, and the
+evaluator reads the inspector's definition and the job's source next to the transcript it
+grades. A background diagnosis is built from run records, logs, job definitions, telemetry
+and source. A `data` grant exposes workspace data to a model-driven process and is outside
+the job-inspector/evaluator safety model.
 
 `local` verbs are named after Claude Code's tools, so one declaration means one thing on
 both loops, pydantic-ai and claude-agent-sdk. The set each verb wires differs: the
@@ -323,6 +325,12 @@ Every decorator argument overrides the matching `defaults`, and configuration ov
 `<toolkit>:<name>` reference the workspace may point at a folder holding an `AGENT.md` by its
 workspace-relative path. A function decorated with `run.agent` can also be a definition on its
 own, or drive an installed one; see the dlt documentation for that form.
+
+`access`, `tools`, `skills` and `rules` are not defaults. A referenced agent keeps the
+definition's lists and the decorator drops its arguments for them. A decorated function
+driving a referenced agent replaces the definition's list with the argument, so
+`access={"local": ["read"]}` on such a function removes `context: read`. Pass every axis the
+agent needs, or leave the block to the definition.
 
 ### Profile
 

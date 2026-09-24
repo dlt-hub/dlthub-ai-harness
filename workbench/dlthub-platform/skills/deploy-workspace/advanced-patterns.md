@@ -38,7 +38,9 @@ inspector = run.agent(
 ```
 
 The job is named after the definition (`job_inspector`), and every decorator argument
-overrides the matching `defaults` in the `AGENT.md`.
+overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `skills` and
+`rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
+for them, and on a decorated function the argument replaces the list, every axis included.
 
 **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
 them. Without it the job runs as a batch job on `prod` and the production credentials land

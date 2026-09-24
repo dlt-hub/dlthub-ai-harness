@@ -74,12 +74,18 @@ async def job_inspector_eval(
     return finalize(output, prep)
 ```
 
-Seven things about that declaration are load-bearing:
+Eight things about that declaration are load-bearing:
 
 - **`require={"profile": "access"}` on both jobs.** An agent job that declares no profile
   runs as a batch job on `prod`, which injects the production credentials into its
   environment. No agent job runs on `prod`, so both take the read-only profile. See
   "Profile" in [`BACKGROUND_AGENTS.md`](../../../../BACKGROUND_AGENTS.md).
+- **The `access` block comes from the definitions.** Both grant `local: read` and
+  `context: read`: the inspector reads the file a traceback names, and the judge reads the
+  inspector's definition and the job's source next to the transcript. On the referenced
+  inspector an `access=` argument is dropped and the definition's block stands. On the
+  decorated evaluator it replaces the block, so `access={"local": ["read"]}` takes the
+  context tools away; pass both axes when overriding.
 - **No docstring.** A docstring becomes the system prompt and replaces the body of
   `AGENT.md`.
 - **`-> dict`, not `-> run.TAgentOutput`.** A return type deriving from `TAgentOutput`
