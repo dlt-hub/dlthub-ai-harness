@@ -43,6 +43,8 @@ The answer is usually in the log. Read it whole once, then work through it:
 
 - **Start at the earliest error.** Logs cascade, so the final traceback is usually a consequence of something further up. Find the first line that is genuinely wrong and work from there.
 - **Tell the job's code apart from the platform's.** A traceback inside the workspace's own modules is a bug in the job. A traceback inside the runner, or in a call to the control plane after the job's work printed its completion, comes from the platform.
+- **Follow the traceback into the file.** A frame that names a workspace file and line points at the resource definition: the cursor path, merge key, selector or write disposition is declared there, and the field the source records carry is visible next to it. Open the file before naming the fix, so the fix names the setting and the value rather than the shape of the change.
+- **Follow a missing input back to its producer.** A missing table, an empty load or a downstream quality failure says the job that produces the data did not deliver. Read that job's latest run before concluding; the run in front of you only reports the symptom.
 - **Check the neighbouring runs before calling a failure intermittent.** Recurrence is the test. `dlthub job runs list <name_or_selector>` shows the runs before and after this one. If they are clean, the failure is a one-off. If you did not look, you do not know.
 - **Read the job definition when config looks suspect.** Profile, trigger, dependency groups and the arguments the job takes are all in it: see "Debug job definitions" above and the `job-resources` rule.
 
