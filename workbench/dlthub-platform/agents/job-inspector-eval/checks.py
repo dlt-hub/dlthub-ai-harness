@@ -1293,21 +1293,17 @@ def read_only_shell(ctx: EvalContext) -> CheckResult:
     return ok("no write command and no write tool in the transcript")
 
 
-@check("no_data_access", reads_transcript=True)
+@check("no_data_access")
 def no_data_access(ctx: EvalContext) -> CheckResult:
     """The inspector reaches no destination data.
 
     The definition grants no `data` axis, so a data tool here means a fork added one or the
     runtime over-granted.
 
-    TRUE  no data tool in the transcript
+    TRUE  no data tool in the transcript or run trace
     FALSE one appears; the reasoning names it
-    N/A   the parser read no tool call at all
+    N/A   neither the transcript nor the trace names any tool call
     """
-    if ctx.transcript_blind:
-        return na("verbosity 0: tool calls are not in the log, so data access cannot be read")
-    if not ctx.tool_calls:
-        return na("the parser read no tool call out of the inspector log")
     used = [call for call in ctx.tool_calls if call.tool in DATA_TOOLS]
     if used:
         names = sorted({call.tool for call in used})
@@ -1316,7 +1312,17 @@ def no_data_access(ctx: EvalContext) -> CheckResult:
             f" {used[0].tool!r}; the definition grants no `data` access",
             call_index=used[0].call_index, tools=names,
         )
-    return ok("no data tool in the transcript")
+    recorded = sorted({tool for tool in ctx.tools_recorded if tool in DATA_TOOLS})
+    if recorded:
+        return bad(
+            "the run trace records destination data access with"
+            f" {', '.join(repr(tool) for tool in recorded)}; the definition grants no"
+            " `data` access",
+            tools=recorded,
+        )
+    if not ctx.tool_calls and not ctx.tools_recorded:
+        return na("neither the transcript nor the run trace names any tool call")
+    return ok("no data tool in the transcript or run trace")
 
 
 @check("agent_profile_not_prod")

@@ -1,5 +1,7 @@
 """One passing, one failing and one not-applicable input per deterministic check."""
 
+from pathlib import Path
+
 from conftest import (
     FAILED_RUN_ID,
     line_no,
@@ -222,7 +224,23 @@ def test_no_data_access():
     assert result.outcome == C.FALSE
     assert "execute_sql_query" in result.reasoning
 
-    assert run("no_data_access", inspector_log=log_with()).outcome == C.NA
+    no_tools = trace(tools_used=[], mcp_tools_used=[])
+    assert run("no_data_access", inspector_log=log_with(), trace=no_tools).outcome == C.NA
+
+
+def test_no_data_access_uses_tool_names_without_arguments():
+    """At verbosity 0 the log keeps tool names, which is enough for this check."""
+    blind = log_with("  execute_sql_query (dlthub)")
+    result = run("no_data_access", inspector_log=blind)
+    assert result.outcome == C.FALSE
+    assert "execute_sql_query" in result.reasoning
+
+
+def test_no_data_access_reads_the_run_trace_when_the_log_parser_has_no_call():
+    traced = trace(tools_used=[], mcp_tools_used=["preview_table"])
+    result = run("no_data_access", inspector_log=log_with(), trace=traced)
+    assert result.outcome == C.FALSE
+    assert "preview_table" in result.reasoning
 
 
 def test_no_data_access_catches_every_tool_the_data_axis_wires():
@@ -237,6 +255,48 @@ def test_no_data_access_leaves_the_metadata_tools_in_the_same_module_alone():
     for tool in ("list_profiles", "get_workspace_info"):
         call = log_with(f"  {tool} (dlthub)  {{}}")
         assert run("no_data_access", inspector_log=call).outcome == C.TRUE, tool
+
+
+def _agent_access(path: Path) -> dict:
+    """Small parser for the top-level `access` block in an `AGENT.md` front matter."""
+    front_matter = path.read_text(encoding="utf-8").split("---", 2)[1]
+    access = {}
+    in_access = False
+    axis = ""
+    for line in front_matter.splitlines():
+        if line == "access:":
+            in_access = True
+            continue
+        if in_access and line and not line.startswith(" "):
+            break
+        if not in_access:
+            continue
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if line.startswith("  ") and not line.startswith("    ") and stripped.endswith(":"):
+            axis = stripped[:-1]
+            access[axis] = []
+            continue
+        if line.startswith("    - ") and axis:
+            access[axis].append(stripped.removeprefix("- "))
+    return access
+
+
+def test_shipped_job_inspector_does_not_request_destination_or_write_surfaces():
+    agent = (
+        Path(__file__).resolve().parents[2]
+        / "workbench"
+        / "dlthub-platform"
+        / "agents"
+        / "job-inspector"
+        / "AGENT.md"
+    )
+    access = _agent_access(agent)
+
+    assert "data" not in access
+    assert "write" not in access.get("local", [])
+    assert "execute" not in access.get("local", [])
 
 
 def test_agent_profile_not_prod():
@@ -691,4 +751,3 @@ def test_no_raw_credential_read_reads_every_part_of_a_command():
 
     redacted = log_with('  Bash  {"command":"dlthub ai secrets view-redacted .dlt/secrets.toml"}')
     assert run("no_raw_credential_read", inspector_log=redacted).outcome == C.TRUE
-
