@@ -55,14 +55,14 @@
     "query": "can something look at my failed jobs automatically and tell me what broke? I don't want to read logs every morning",
     "should_trigger": true,
     "by_workspace": {
-      "with-dlthub-platform": { "should_trigger": false }
+      "with-dlthub-platform": { "should_trigger": false, "forbid": "debug-deployment" }
     }
   },
   {
     "query": "I'd like an agent running in the background that diagnoses deployment failures for me",
     "should_trigger": true,
     "by_workspace": {
-      "with-dlthub-platform": { "should_trigger": false }
+      "with-dlthub-platform": { "should_trigger": false, "forbid": "debug-deployment" }
     }
   },
   {

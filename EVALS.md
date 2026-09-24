@@ -98,6 +98,20 @@ Array of queries with expected trigger behavior:
 ]
 ```
 
+`by_workspace` overrides the expectation per workspace, since a query's right outcome depends on which toolkits are installed:
+
+```json
+{
+  "query": "how do I build a pipeline from an API?",
+  "should_trigger": true,
+  "by_workspace": {
+    "with-rest-api": { "should_trigger": false, "expect": "find-source" }
+  }
+}
+```
+
+`expect` records how often the named skill picked the query up. `forbid` is the other direction and fails the query when the named skill fires, for a handoff whose target is not a skill: a background agent never counts as a trigger, so name the skill that would mean wrong routing.
+
 ## Tools
 
 ### Create eval setup

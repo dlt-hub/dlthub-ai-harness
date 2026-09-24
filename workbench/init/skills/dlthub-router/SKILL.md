@@ -52,7 +52,7 @@ The `dlt-workspace-mcp` server is already running (installed with `init`) and to
 
 A **background agent** ships with a toolkit and runs on a trigger: after a job fails, on a schedule, or from the web UI. A workspace declares it once with `run.agent("<toolkit>:<name>", ...)`, and the platform runs it from then on, outside any conversation.
 
-Route here when the user wants work to happen on its own after an event ("diagnose failures for me", "tell me why the nightly job broke"). Install the toolkit as in Step 1, then follow its workflow rule for the deployment snippet.
+Route here when the user wants work to happen on its own after an event ("whenever a job fails, diagnose it for me", "I don't want to read logs every morning"). Install the toolkit as in Step 1, then follow its workflow rule for the deployment snippet.
 
 **"my job failed" routes four ways.** Pick by where it ran, and by whether the user wants this failure handled or all future ones:
 
