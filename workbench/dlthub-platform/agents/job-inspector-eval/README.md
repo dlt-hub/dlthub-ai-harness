@@ -336,9 +336,9 @@ Read these before acting on a `FALSE`.
   is the exception: it reads tool names from the run trace when the transcript parser goes
   blind.
 - **Write detection is keyword-based, and a keyword is not always a write.**
-  `read_only_shell` names the git write subcommands one by one, so `git log` reads. SQL is
-  not parsed at all any more: the inspector is granted no `data` axis, so `no_data_access`
-  reports the tool name itself and never inspects the statement. A fork that grants
+  `read_only_shell` names the git write subcommands one by one, so `git log` reads. The
+  inspector is granted no `data` axis, so `no_data_access` reports the destination tool name
+  itself and never inspects any SQL statement. A fork that grants
   `data: [read]` gets `SELECT`-only enforcement from the runtime, and a fork that grants
   both `data` and `local: execute` can reach the destination through a shell client that no
   check reads.
