@@ -111,6 +111,13 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
+The agents this repo ships grant `local: read` and `context: read`, and no `data`. The
+workspace source is evidence: the inspector reads the file a traceback names, and the
+evaluator reads the inspector's definition and the job's source next to the transcript it
+grades. A background diagnosis is built from run records, logs, job definitions, telemetry
+and source. A `data` grant exposes workspace data to a model-driven process and is outside
+the job-inspector/evaluator safety model.
+
 `local` verbs are named after Claude Code's tools, so one declaration means one thing on
 both loops, pydantic-ai and claude-agent-sdk. The set each verb wires differs: the
 claude-agent-sdk loop adds the CLI tools that extend a name, `MultiEdit` and `NotebookEdit`
@@ -217,6 +224,46 @@ The agent run's `status` decides what the job does: `succeeded` and `failed` com
 run; `aborted` raises with `summary` as the message and the run fails, after the result and
 trace were delivered.
 
+#### The shape of `summary`
+
+The platform renders `summary` as markdown on the run page, and it is the only field a
+reader sees without opening the result. Every agent writes it the same way:
+
+- **Markdown headings over short bullets, and nothing else.** No text before the first
+  heading, no text outside a bullet, no question or bracketed note next to a heading.
+- **The same headings on every run of one agent**, in the same order, named for what that
+  agent reports. `job-inspector` writes `Diagnosis`, `Recommendation` and `Confidence`;
+  `job-inspector-eval` writes `Scope`, `Findings`, `Instruction following`, `Quality`,
+  `Recommendation` and `Evaluation results`. Declare the set in the body and hold to it, so
+  a reader who has read one run can scan the next.
+- **One or two plain sentences per bullet, one fact each.** Two verbs joined by `and` or
+  `then` are two bullets.
+- **A markdown table only as the last thing in the last section**, when the agent reports
+  rows. A table anywhere else breaks the scan.
+- **Every run id and job ref is a link**, wherever it falls: a bullet, a sentence the code
+  wrote, a table cell. `[`<id>`](<web ui base>/w/<workspace id>/runs/<id>)` for a run,
+  `/jobs/<job ref>` for a job. A reader who meets an id follows it.
+- **A `Scope` section first when the run covered more than one thing**, listing what the run
+  acted on. An agent that grades another agent names the run it graded, not the failure that
+  agent looked at.
+  `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints a
+  run link. Fold a long list into a `<details>` element so the reader who wants it opens it
+  and the findings stay at the top. Write that element as one line with no blank line
+  inside it, list and links included: a blank line ends an HTML block in markdown, which
+  leaves the element empty and its list rendered after it, open. Markdown is not parsed
+  inside the block, so the list is `<ul><li>` and the links are `<a href>`.
+- **Close every code span, and never escape a backtick with a backslash.** An unbalanced
+  span swallows the rest of the line in the UI, and `\`` renders as itself. A quoted line
+  that holds backticks loses them inside the quote.
+- **No verdict label at the top.** State what was found. `passed` and the other output
+  fields carry the verdict, and a label repeats what the bullets already say.
+
+Prose is what a model reaches for, so say the shape in the body and check it. `job-inspector`
+has the rules under "Summary format" and `job-inspector-eval` grades them with
+`summary_has_required_sections`, `summary_sections_are_bullets`, `summary_code_spans_balanced`
+and `summary_within_length`. An agent that assembles its summary in Python around the loop
+splits what the model wrote into bullets rather than trusting it.
+
 ### `defaults`
 
 Settings the agent job may set differently and a run may override again:
@@ -230,7 +277,9 @@ defaults:
 
 `trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
 `job.success:...`; `job.fail:*` watches every job in the workspace and expands at manifest
-time, never onto the job that declares it. A job event never stands in for a manual run: a
+time, never onto the job that declares it. In a workspace that also runs an evaluator agent
+it expands onto the evaluator's job, so a failed evaluation is inspected and the inspection
+starts the evaluator again: name the jobs to watch or tag them. A job event never stands in for a manual run: a
 run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was
 given, which is one more reason the body must say what to do with empty input.
 `limits.max_tokens` is counted by dlt after every turn, so it means the same on every loop.
@@ -307,7 +356,10 @@ from dlt.hub import run
 
 inspector = run.agent(
     "dlthub-platform:job-inspector",
+    # access comes from the definition: local: [read], context: [read]. an `access=`
+    # argument on a referenced agent is dropped; see below
     trigger="job.fail:tag:ingest",       # narrower than the default
+    require={"profile": "access"},       # see "Profile"
     instructions="focus on the loader step",
 )
 ```
@@ -317,6 +369,44 @@ Every decorator argument overrides the matching `defaults`, and configuration ov
 `<toolkit>:<name>` reference the workspace may point at a folder holding an `AGENT.md` by its
 workspace-relative path. A function decorated with `run.agent` can also be a definition on its
 own, or drive an installed one; see the dlt documentation for that form.
+
+`access`, `tools`, `skills` and `rules` are not defaults. A referenced agent keeps the
+definition's lists and the decorator drops its arguments for them. A decorated function
+driving a referenced agent replaces the definition's list with the argument, so
+`access={"local": ["read"]}` on such a function removes `context: read`. Pass every axis the
+agent needs, or leave the block to the definition.
+
+### Profile
+
+**An agent job never runs on `prod`.** Pin the read-only profile on every one of them:
+
+```python
+require={"profile": "access"}
+```
+
+Without this pin, an agent job is a batch job on `prod` and gets production credentials in
+its environment. Declare the profile alongside the `access` block: `access` decides which
+tools the model is offered; the profile decides which credentials the job process holds.
+
+The pin governs profile-scoped credentials: `prod.secrets.toml`, `prod.config.toml`, and a
+variable set with `dlthub variable set --profile prod`. A variable set with `--workspace`
+has no profile and reaches the job whatever it runs on, so a secret that must stay away from
+an agent belongs in a profile scope rather than the workspace scope. `dlthub variable list`
+prints the scope of each one in its `Profile` column.
+
+Work that needs production write credentials belongs in a pipeline or a plain job, which a
+person wrote and reviewed, and an agent proposes it rather than performing it.
+
+Nothing at deploy time enforces this. Manifest validation rejects a local-only profile
+(`dev`, `tests`) and otherwise takes the name as given: `prod` passes, and so does a typo
+like `acess`, which then surfaces as missing credentials at run time. The rule holds because
+authors apply it, and `job-inspector-eval` catches a break after the fact with the
+`agent_profile_not_prod` check, which reads the profile off the run record.
+
+The profile has to be `configured` in the workspace; workspace info lists which ones are. On
+`dlthub local run` the declaration is a warning rather than a switch: the run uses the active
+profile and reports the mismatch, so check the active profile before running an agent job by
+hand.
 
 A run happens when the trigger fires, or by hand:
 
@@ -457,6 +547,8 @@ module in the agent folder would replace that line; it is a dlt follow-up.
   `inputs.properties` or reachable under `run_context`
 - `access` axes and verbs are known
 - no `inputs.prompt`
+- `summary` is headings over short bullets, the same headings on every run, with a table
+  only at the end of the last section (§ the shape of `summary`)
 - `output` declares `status` and `summary`, described and required, with the standard
   values; a contradicting declaration is an error, a missing one a warning
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency
