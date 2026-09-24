@@ -50,17 +50,21 @@ On **Cursor**, `dlthub-router` installs as a skill and triggers via a `readToolC
 
 ## Measured run, 2026-09-24
 
-`run_trigger_eval.py --agent claude`, one run per query, 24 queries per workspace:
+`run_trigger_eval.py --agent claude --runs-per-query 3`, 24 queries per workspace, router description at 1167 chars:
 
 | workspace | passed | precision | recall |
 |---|---|---|---|
-| init-only | 23/24 | 0.929 | 1.0 |
-| with-rest-api | 21/24 | 0.9 | 0.818 |
-| with-dlthub-platform | 23/24 | 0.9 | 1.0 |
+| init-only | 22/24 | 0.923 | 0.923 |
+| with-rest-api | 23/24 | 0.909 | 1.0 |
+| with-dlthub-platform | 22/24 | 0.889 | 0.889 |
 
-Two failures survive:
+Known misses:
 
-- `can you help me with my python project? I need to parse some CSV files and upload them to S3` triggers in all three workspaces and should not. It fails on `master` too.
-- `my deployed job failed last night, what went wrong?` does not trigger in `with-rest-api`, where dlthub-platform is absent and the router should install it. It routes correctly in `with-dlthub-platform`, to `debug-deployment` at rate 1.0.
+- `can you help me with my python project? I need to parse some CSV files and upload them to S3` triggers in all three workspaces and should not. It fails on `master` too. An explicit `Do NOT use for general python help` guard was tried and reverted: it cut the false positive to 0.0 in `with-dlthub-platform` but took that workspace's recall from 0.889 to 0.333, because paying for it meant shortening the clause that tells the router to fire when no toolkit matches.
+- `my deployed job failed last night, what went wrong?` does not trigger in `init-only`. It fires at 0.67 in `with-rest-api` and correctly defers to `debug-deployment` at rate 1.0 in `with-dlthub-platform`.
 
-The description is close to the length where matching degrades: at 1267 chars, `init-only` recall fell to 0.154 and ten cold-start queries stopped triggering. At 1176 it is back to 1.0. Measure after any edit to it.
+## Description length
+
+The description is 1167 chars, over the 1024 Codex cap that drops it as a skill there (dlt-hub/dlthub-ai-workbench-internal#75). `validate_toolkits.py` warns above that cap.
+
+Trigger rate does not fall off monotonically with length, so treat the cap as a portability limit rather than a quality one. Measured points, all on this skill: 1122 and 1167 and 1176 behave; 1267 took `init-only` recall to 0.154 with ten cold-start queries silent; 1140 took `with-dlthub-platform` to 0.333. Wording moves the number more than length does. Re-measure after any edit to the description.

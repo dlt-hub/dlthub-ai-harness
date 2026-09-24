@@ -27,7 +27,10 @@
   },
   {
     "query": "I'm new to dlt, where do I start? I have a bunch of REST APIs I need to ingest data from",
-    "should_trigger": true
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "find-source" }
+    }
   },
   {
     "query": "I finished setting up my workspace, what can I do now?",

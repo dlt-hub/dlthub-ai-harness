@@ -11,6 +11,7 @@ Checks:
 - plugin.json exists and name matches marketplace entry
 - plugin.json author.name is "dltHub, Inc." and license URL is correct
 - Skills have valid SKILL.md with frontmatter (name, description)
+- Skill descriptions stay within 1024 chars (warning)
 - Skill frontmatter name matches directory name
 - Commands have valid frontmatter (name, description), name matches filename
 - argument-hint uses [bracket] convention per Anthropic docs
@@ -72,6 +73,10 @@ _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 _ROUTER_SKILL = "workbench/init/skills/dlthub-router/SKILL.md"
 # A router agent row: "<capability> → <toolkit>:<agent> | <install> | <declare>".
 _ROUTER_AGENT_ENTRY = re.compile(r"→\s*([a-z][\w-]*:[a-z][\w-]*)\s*\|")
+
+# A description is the whole trigger surface. Codex drops a skill whose description passes
+# this, and a long one dilutes matching on the others; see the dlthub-router eval README.
+MAX_DESCRIPTION_CHARS = 1024
 
 # Expected plugin.json author and license values
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
@@ -608,6 +613,11 @@ def validate_toolkit_content(
             if not fm_desc:
                 warnings.append(
                     f"[{pname}] {skill_dir.name}/SKILL.md missing 'description' in frontmatter"
+                )
+            elif len(fm_desc) > MAX_DESCRIPTION_CHARS:
+                warnings.append(
+                    f"[{pname}] {skill_dir.name}/SKILL.md description is {len(fm_desc)} chars, "
+                    f"over the {MAX_DESCRIPTION_CHARS} cap"
                 )
 
             # argument-hint: must be quoted and use [bracket] tokens

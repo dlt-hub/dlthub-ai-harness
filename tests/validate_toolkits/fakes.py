@@ -39,12 +39,16 @@ def toolkit(
     agents: tuple[str, ...] = (),
     workflow_refs: tuple[str, ...] | None = None,
     workflow: bool = True,
+    skill_description: str = "d",
 ) -> None:
     """A minimal toolkit tree. `workflow_refs` defaults to every skill and agent."""
     tk = root / V.AI_DIR / name
     write(tk / ".claude-plugin" / "toolkit.json", '{"dependencies": []}')
     for skill in skills:
-        write(tk / "skills" / skill / "SKILL.md", f"---\nname: {skill}\ndescription: d\n---\n")
+        write(
+            tk / "skills" / skill / "SKILL.md",
+            f"---\nname: {skill}\ndescription: {skill_description}\n---\n",
+        )
     for agent in agents:
         write(tk / "agents" / agent / V._AGENT_FILE, f"---\nname: {agent}\n---\n\nprompt\n")
     if workflow:
