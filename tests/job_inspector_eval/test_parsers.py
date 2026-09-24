@@ -236,7 +236,7 @@ def test_transcript_reads_every_call_of_a_deployed_run():
         '  dlthub_workspace_info (dlt-workspace-mcp)  {"members":0}',
         "",
         "turn 2                                                                    ",
-        '     \u2192 {"name": "agent-hackathon"}',
+        '     \u2192 {"name": "demo-workspace"}',
         "  says",
         "  The trigger resolves to the latest failed run; reading its record.",
         f'  dlthub_get_run (dlt-workspace-mcp)  {{"run_id":"{FAILED_RUN_ID}"}}',
