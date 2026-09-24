@@ -42,7 +42,6 @@ inspector = run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
     require={"profile": "access"},
-    # no `model=`: the workspace picks the judge through `agent.*`. See "Judge model"
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -119,24 +118,20 @@ the `AGENT.md` would replace it; that is filed as a dlt follow-up.
 
 ## Judge model
 
-The definition ships no `model` default, so choosing one is a visible decision. A mid-tier
-model is enough: the judge reads bounded windows and the deterministic results, and every
-check is a narrow question with a three-value answer. The evaluator runs after every
-inspector run, so its cost adds to every failure.
+The definition names no model, so the workspace sets one, in the `AGENT__MODEL` variable. It
+takes a `provider:model` id on any provider, and an alias where the provider has one. A model at least as capable as Claude Sonnet 5 is enough:
+the judge reads bounded windows and the deterministic results, and every check is a narrow
+question with a three-value answer. It runs after every inspector run, so its cost adds to
+every failure.
 
-The judge answers with the declared output schema and `finalize` reads it back, on any
-endpoint the pydantic-ai loop supports. The definition and `checks.py` are provider-agnostic.
-Pin the model on the job or in configuration, never in `AGENT.md`.
-
-| Provider | Recommended alias | Model | Step up when needed |
+| Provider | Model meeting the bar | Alias | Step up when needed |
 |---|---|---|---|
-| Anthropic | `sonnet` | `anthropic:claude-sonnet-5` | `opus` |
-| OpenAI | `gpt-mini` | `openai:gpt-5.4-mini` | `gpt` (`gpt-5.5`) |
-| Azure OpenAI | none | `azure:<your deployment>` | a larger deployment |
-| Google | `gemini` | `google:gemini-3.5-flash` | `gemini-pro` |
+| Anthropic | `anthropic:claude-sonnet-5` | `sonnet` | `opus` |
+| OpenAI | `openai:gpt-5.4-mini` | `gpt-mini` | `gpt` (`gpt-5.5`) |
+| Azure OpenAI | `azure:<your deployment>` | none | a larger deployment |
+| Google | `google:gemini-3.5-flash` | `gemini` | `gemini-pro` |
 
-Move to the provider's top model only for a check that gives wrong outcomes after its rubric
-was fixed, and set it on the job rather than in the definition.
+Step up only for a check that gives wrong outcomes after its rubric was fixed.
 
 `loop: claude-agent-sdk` takes Anthropic models only. The evaluator sets no loop, so it runs
 on pydantic-ai and reaches every provider in the table. Naming that loop in a workspace whose

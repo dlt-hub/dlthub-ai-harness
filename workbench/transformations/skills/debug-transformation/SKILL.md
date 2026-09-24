@@ -5,7 +5,7 @@ description: Debug dlthub transformation failures. Use when a transformation fai
 
 # Debug transformation
 
-Diagnose and fix dlthub transformation failures. Two main failure classes: **SQL dialect incompatibility** (transformation works on dev destination, fails on production) and **pipeline state errors** (stale packages, schema drift, failed jobs).
+Diagnose and fix dlthub transformation failures. Two main failure classes: **SQL dialect incompatibility** (transformation works on dev destination, fails on production) and **pipeline state errors** (stale packages, schema drift, failed load jobs).
 
 ## When to use this skill
 

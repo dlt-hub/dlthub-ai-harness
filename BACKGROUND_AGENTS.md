@@ -229,7 +229,6 @@ Settings the agent job may set differently and a run may override again:
 ```yaml
 defaults:
   trigger: [job.fail:*]                 # trigger strings, selectors allowed
-  model: sonnet                         # alias, or provider:model
   limits: {max_turns: 30, max_tokens: 1000000}
   loop_run_args: {retries: 1}           # framework-specific; unknown keys are reported, not fatal
 ```
@@ -238,16 +237,33 @@ defaults:
 `job.success:...`; `job.fail:*` watches every job in the workspace and expands at manifest
 time, never onto the job that declares it. A job event never stands in for a manual run: a
 run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was
-given, which is one more reason the body must say what to do with empty input. `model` is an
-alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`, `gpt-mini`, `gpt-nano`, `gemini`,
-`gemini-pro`) or a `provider:model` id. `limits.max_tokens` is counted by dlt after every
-turn, so it means the same on every loop. `loop_run_args` are handed to the framework:
-`retries` is how often pydantic-ai lets the model correct a failing tool call; keys a loop does
-not know are listed in the trace as ignored.
+given, which is one more reason the body must say what to do with empty input.
+`limits.max_tokens` is counted by dlt after every turn, so it means the same on every loop.
+`loop_run_args` are handed to the framework: `retries` is how often pydantic-ai lets the model
+correct a failing tool call; keys a loop does not know are listed in the trace as ignored.
 
 Precedence, lowest first: loop default, `defaults` here, the agent job's arguments,
 configuration at run time. A runtime value always wins, so put here what should hold when
 nobody says otherwise, and nothing that must hold.
+
+### The model
+
+`model` is an alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`, `gpt-mini`, `gpt-nano`,
+`gemini`, `gemini-pro`) or a `provider:model` id. The workspace deploying the agent sets it
+in one place, the `AGENT__MODEL` variable, which every agent job in that workspace reads.
+`run.agent` also takes `model=`, and configuration outranks it, so a value in the deployment
+code is silently beaten by the variable; leave it out and the two cannot disagree.
+
+A definition shipped in a workbench toolkit names no model at all. An alias resolves on
+Anthropic, OpenAI and Google, and an Azure workspace addresses a deployment on its own
+endpoint and has no alias, so a shipped `model: sonnet` is a default those workspaces cannot
+open. `make validate-toolkits` rejects one.
+
+Say in the `AGENT.md` what to pin instead: the class of model the instructions were written
+for, as "at least as capable as Claude Sonnet 5".
+
+`loop: claude-agent-sdk` is the same decision by another name, since it takes Anthropic
+models only. Leave it to the workspace unless the agent needs Claude Code.
 
 ## The body
 
@@ -297,14 +313,13 @@ from dlt.hub import run
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the default
-    model="opus",
     require={"profile": "access"},       # see "Profile"
     instructions="focus on the loader step",
 )
 ```
 
-Every decorator argument overrides the matching `defaults`; `instructions` is the user turn
-of every run. The job is named after the definition (`job_inspector`). Instead of a
+Every decorator argument overrides the matching `defaults`, and configuration overrides both;
+`instructions` is the user turn of every run. The job is named after the definition (`job_inspector`). Instead of a
 `<toolkit>:<name>` reference the workspace may point at a folder holding an `AGENT.md` by its
 workspace-relative path. A function decorated with `run.agent` can also be a definition on its
 own, or drive an installed one; see the dlt documentation for that form.
@@ -411,7 +426,6 @@ inspector = run.agent(
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
-    model="sonnet",                    # the judge model, chosen by the workspace
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -437,7 +451,9 @@ async def job_inspector_eval(
         max_runs_read=max_runs_read,
     )
     if prep.aborted:
-        return prep.aborted_output     # nothing to judge, no model call
+        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
+        # and this path never started the loop
+        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
     output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
     return finalize(output, prep)
 ```
@@ -450,6 +466,10 @@ decorated function through its signature only; an input declared in the `AGENT.m
 absent from the signature is warned about at deploy time and nothing passes it). Inputs the
 code supplies itself stay out of the signature and travel through `loop.run(inputs=...)`;
 the `AGENT.md` declares them because a body placeholder must be declared.
+
+A path that never started the loop raises rather than returns. dlt reads `loop.trace` on any
+returned dict carrying `status`, so returning one from the abort branch fails the run with
+`AgentTraceNotAvailable` and loses the abort reason.
 
 `.success` and `.fail` are read at import time, before the manifest loader stamps the module
 on the factory, so an agent whose triggers are used in the same module sets `section=`
@@ -478,7 +498,7 @@ module in the agent folder would replace that line; it is a dlt follow-up.
 - `output` declares `status` and `summary`, described and required, with the standard
   values; a contradicting declaration is an error, a missing one a warning
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency
-- `defaults` and `defaults.limits` keys are known
+- `defaults` and `defaults.limits` keys are known, and `defaults` sets no `model`
 
 dlthub validates again when the deployment manifest is generated: the body is required, the
 name falls back to the folder, `access` is checked, an unknown `entity_type` is refused, a
@@ -495,5 +515,6 @@ that does not resolve in the workspace is skipped with a warning.
   own; an entity the agent may resolve itself is an output property too.
 - The body defines succeeded, failed and aborted for this agent, gives the first steps, and
   defines every enum.
-- `defaults` holds a sensible trigger, model and limits; nothing in it is a requirement.
+- `defaults` holds a sensible trigger and limits and no `model`; the `AGENT.md` says what
+  model to pin. Nothing in `defaults` is a requirement.
 - `make validate-toolkits` passes.

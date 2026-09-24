@@ -11,6 +11,7 @@ Checks:
 - plugin.json exists and name matches marketplace entry
 - plugin.json author.name is "dltHub, Inc." and license URL is correct
 - Skills have valid SKILL.md with frontmatter (name, description)
+- Skill descriptions stay within 1024 chars (warning)
 - Skill frontmatter name matches directory name
 - Commands have valid frontmatter (name, description), name matches filename
 - argument-hint uses [bracket] convention per Anthropic docs
@@ -20,9 +21,12 @@ Checks:
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
+- Agent `defaults` sets no `model`; the workspace deploying the agent pins it
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
+- workflow.md references every skill and agent its toolkit ships
+- The router skill's agent index matches the agents the toolkits ship
 - All workbench/ directories must be listed in marketplace
 """
 
@@ -36,7 +40,6 @@ import yaml
 from dlt._workspace.deployment.agent.exceptions import InvalidAgentSpec
 from dlt._workspace.deployment.agent.manifest import load_agent_spec
 from dlt._workspace.deployment.agent.typing import (
-    AGENT_MODEL_ALIASES,
     TAgentDefaults,
     TAgentJobStatus,
     TAgentLimits,
@@ -65,6 +68,15 @@ _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
 # An index row: "<intent text> → <toolkit> | <install> | <entry skill>".
 # Capture the toolkit name (the token right after the arrow, before the pipe).
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
+
+# The router carries the second index: background agents, which the intent index omits.
+_ROUTER_SKILL = "workbench/init/skills/dlthub-router/SKILL.md"
+# A router agent row: "<capability> → <toolkit>:<agent> | <install> | <declare>".
+_ROUTER_AGENT_ENTRY = re.compile(r"→\s*([a-z][\w-]*:[a-z][\w-]*)\s*\|")
+
+# A description is the whole trigger surface. Codex drops a skill whose description passes
+# this, and a long one dilutes matching on the others; see the dlthub-router eval README.
+MAX_DESCRIPTION_CHARS = 1024
 
 # Expected plugin.json author and license values
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
@@ -470,12 +482,13 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
-    model = node.get("model")
-    # a `provider:model` id is passed through; only a bare word claims to be an alias
-    if isinstance(model, str) and ":" not in model and model not in AGENT_MODEL_ALIASES:
+    # a shipped definition names no provider: the aliases resolve on Anthropic, OpenAI
+    # and Google, and an Azure workspace has none. the deployment pins the model.
+    if node.get("model") is not None:
         errors.append(
-            f"[{pname}] {rel} defaults.model {model!r} is not an alias; expected one of"
-            f" {', '.join(sorted(AGENT_MODEL_ALIASES))}, or a 'provider:model' id"
+            f"[{pname}] {rel} defaults.model {node['model']!r} pins a provider on every"
+            " workspace that installs the toolkit; leave it out and say in the AGENT.md"
+            " what to pin (see BACKGROUND_AGENTS.md)"
         )
 
     limits = node.get("limits") or {}
@@ -602,6 +615,11 @@ def validate_toolkit_content(
                 warnings.append(
                     f"[{pname}] {skill_dir.name}/SKILL.md missing 'description' in frontmatter"
                 )
+            elif len(fm_desc) > MAX_DESCRIPTION_CHARS:
+                warnings.append(
+                    f"[{pname}] {skill_dir.name}/SKILL.md description is {len(fm_desc)} chars, "
+                    f"over the {MAX_DESCRIPTION_CHARS} cap"
+                )
 
             # argument-hint: must be quoted and use [bracket] tokens
             hint = fm.get("argument-hint", "")
@@ -723,6 +741,53 @@ def validate_index_drift(
             )
 
 
+def validate_capability_coverage(
+    root: Path,
+    inventory: dict[str, dict],
+    errors: list[str],
+) -> None:
+    """Check every shipped skill and agent is indexed somewhere the router leads to.
+
+    The chain is router -> toolkit -> workflow.md -> skill or agent. This checks two of its
+    links: the router's agent index against the shipped agents, both directions, and each
+    workflow toolkit's `workflow.md` against the skills and agents of that toolkit. The
+    toolkit link is `validate_index_drift`.
+
+    Rules need no entry: they load with the toolkit and are always in context.
+    """
+    router = root / _ROUTER_SKILL
+    if not router.exists():
+        errors.append(f"router skill not found: {_ROUTER_SKILL}")
+        return
+
+    routed = {
+        m.group(1)
+        for line in router.read_text().splitlines()
+        # data rows carry an install command; this skips the column header
+        if "ai toolkit" in line and (m := _ROUTER_AGENT_ENTRY.search(line))
+    }
+    shipped = {
+        f"{name}:{agent}"
+        for name, components in inventory.items()
+        for agent in components["agents"]
+    }
+    for ref in sorted(shipped - routed):
+        errors.append(f"[init] dlthub-router agent index is missing '{ref}'")
+    for ref in sorted(routed - shipped):
+        errors.append(f"[init] dlthub-router agent index lists '{ref}' which no toolkit ships")
+
+    for name, components in sorted(inventory.items()):
+        if name in _NON_WORKFLOW_TOOLKITS:
+            continue
+        workflow = root / AI_DIR / name / "rules" / "workflow.md"
+        if not workflow.exists():
+            errors.append(f"[{name}] missing rules/workflow.md, so nothing indexes its skills")
+            continue
+        refs = set(_WORKFLOW_SKILL_REF.findall(workflow.read_text()))
+        for missing in sorted((components["skills"] | components["agents"]) - refs):
+            errors.append(f"[{name}] workflow.md does not reference '{missing}'")
+
+
 def validate(
     root: Path, only: str | None = None
 ) -> tuple[list[str], list[str], dict[str, set[str]]]:
@@ -821,6 +886,7 @@ def validate(
                     )
 
         validate_index_drift(root, marketplace_names, errors)
+        validate_capability_coverage(root, inventory, errors)
 
     return errors, warnings, all_skills
 
