@@ -2,7 +2,7 @@
 
 ### Context
 
-We want to leverage product principles to enable fast product and design decisions and consistently work towards our vision of a developer- and agent-friendly libraries and platform. We also use the product principles for our external positioning (see [dltHub Product Messaging Alignment](https://www.notion.so/dltHub-Product-Messaging-Alignment-3199fb8e23cf80ffa36ddad8e77cfaa7?pvs=21)). Some of the examples mentioned below are still a part of our vision or roadmap.
+We want to leverage product principles to enable fast product and design decisions and consistently work towards our vision of a developer- and agent-friendly libraries and platform. We also use the product principles for our external positioning. Some of the examples mentioned below are still a part of our vision or roadmap.
 
 ### **1. Transparent, declarative, and context-aware by design**
 
