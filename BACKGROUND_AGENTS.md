@@ -245,7 +245,9 @@ nobody says otherwise, and nothing that must hold.
 
 `model` is an alias (`sonnet`, `opus`, `haiku`, `fable`, `gpt`, `gpt-mini`, `gpt-nano`,
 `gemini`, `gemini-pro`) or a `provider:model` id. The workspace deploying the agent pins it,
-on the job or through `AGENT__MODEL`. A definition shipped in a workbench toolkit does not:
+on the job or through `AGENT__MODEL`, and `AGENT__MODEL` wins where both are set: it is
+configuration, which outranks a job argument. A definition shipped in a workbench toolkit
+pins nothing:
 an alias resolves on Anthropic, OpenAI and Google, and an Azure workspace addresses a
 deployment on its own endpoint and has no alias, so a shipped `model: sonnet` is a default
 those workspaces cannot open. `make validate-toolkits` rejects one.

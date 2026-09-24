@@ -118,10 +118,12 @@ drives:
   with `AgentTraceNotAvailable` and loses the abort reason.
 
 A shipped agent definition names no model, so pin one: `model=` on the job, or
-`AGENT__MODEL` as a workspace variable for all of them. Both take a `provider:model` id on
-any provider, and an alias (`sonnet`, `gpt-mini`, `gemini`) where the provider has one. Azure
-takes `azure:<deployment>` with `AGENT__API_URL` and `AGENT__API_VERSION` beside the key. The
-inspector and its evaluator both want a model at least as capable as Claude Sonnet 5.
+`AGENT__MODEL` as a workspace variable for all of them. `AGENT__MODEL` overrides a `model=`
+on the job, so a workspace that sets it decides for every agent job whatever the code says.
+Both take a `provider:model` id on any provider, and an alias (`sonnet`, `gpt-mini`,
+`gemini`) where the provider has one. Azure takes `azure:<deployment>` with `AGENT__API_URL`
+and `AGENT__API_VERSION` beside the key. The inspector and its evaluator both want a model at
+least as capable as Claude Sonnet 5.
 
 Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
 
