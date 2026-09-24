@@ -411,7 +411,9 @@ async def job_inspector_eval(
         max_runs_read=max_runs_read,
     )
     if prep.aborted:
-        return prep.aborted_output     # nothing to judge, no model call
+        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
+        # and this path never started the loop
+        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
     output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
     return finalize(output, prep)
 ```
@@ -424,6 +426,10 @@ decorated function through its signature only; an input declared in the `AGENT.m
 absent from the signature is warned about at deploy time and nothing passes it). Inputs the
 code supplies itself stay out of the signature and travel through `loop.run(inputs=...)`;
 the `AGENT.md` declares them because a body placeholder must be declared.
+
+A path that never started the loop raises rather than returns. dlt reads `loop.trace` on any
+returned dict carrying `status`, so returning one from the abort branch fails the run with
+`AgentTraceNotAvailable` and loses the abort reason.
 
 `.success` and `.fail` are read at import time, before the manifest loader stamps the module
 on the factory, so an agent whose triggers are used in the same module sets `section=`
