@@ -1,7 +1,7 @@
 Starting job __deployment__:job_inspector (trigger: job.fail:jobs.jaffle_shop.load_jaffle_bad_config)
 2026-09-22 09:11:04,083|[WARNING]|14|47018979593088|example-workspace|loop.py|render_system_prompt:181|Agent 'job-inspector' system prompt has unresolved placeholders: failed_job_ref, failed_run_id
 
-── dlthub-platform:job-inspector ── azure:gpt-5.6-sol · max 30 turns · 1,000,000 tokens ──
+── dlthub-platform:job-inspector ── azure:gpt-eval · max 30 turns · 1,000,000 tokens ──
 
 prompt
   Go ahead

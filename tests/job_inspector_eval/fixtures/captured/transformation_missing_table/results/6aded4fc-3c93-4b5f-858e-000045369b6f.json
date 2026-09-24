@@ -1,0 +1,141 @@
+{
+  "result": {
+    "status": "succeeded",
+    "summary": "### Failed: analytics marts could not extract `fact_marketing_spend`\n\n- Run **#7** failed after **12.36 seconds**; pipeline `analytics` failed during **extract** and loaded **0 rows**.\n- `transformations/analytics.py:103` requested source table `daily_ad_metrics`, but the selected dataset exposed only `_dlt_version` and `_dlt_loads`.\n- This is a workspace **code** failure: the transformation assumes an unavailable input table. The BigQuery Storage dependency warning is non-fatal and precedes the traceback but did not cause the run to fail.\n- Next: correct the source dataset/table mapping or ensure the upstream job creates `daily_ad_metrics`, then rerun the job.",
+    "evidence": [
+      {
+        "source": "dlthub job runs logs 038641d2-6807-4315-87e1-0000c23c0e00 lines 15-19",
+        "excerpt": "File \"/tmp/dlt_run_1bd14381/run/transformations/analytics.py\", line 103, in fact_marketing_spend ... .table(\"daily_ad_metrics\") ... ValueError: Table `daily_ad_metrics` not found. Available table(s): ['_dlt_version', '_dlt_loads']"
+      },
+      {
+        "source": "dlthub job runs logs 038641d2-6807-4315-87e1-0000c23c0e00 lines 105-111",
+        "excerpt": "Pipeline execution failed at `step=extract` ... In processing pipe `fact_marketing_spend` ... Table `daily_ad_metrics` not found."
+      },
+      {
+        "source": "dlthub job runs info 038641d2-6807-4315-87e1-0000c23c0e00",
+        "excerpt": "status: failed; duration_seconds: 12.36389; pipeline analytics status: failed; total_rows: 0"
+      },
+      {
+        "source": "dlthub job runs logs 038641d2-6807-4315-87e1-0000c23c0e00 lines 7-8",
+        "excerpt": "UserWarning: Cannot create BigQuery Storage client, the dependency google-cloud-bigquery-storage is not installed. (Warning only; execution continued into workspace code.)"
+      }
+    ],
+    "confidence": "high",
+    "proposed_fix": "Inspect the dataset selected by `source_datasets` in `analytics_marts` and update `transformations/analytics.py` so `fact_marketing_spend` reads the dataset where `daily_ad_metrics` is actually produced. If that table is required, ensure its upstream ingestion job creates it before this dependent job runs; otherwise guard or remove the resource when the table is absent. The optional `google-cloud-bigquery-storage` package is not required to resolve this failure.",
+    "failed_run_id": "038641d2-6807-4315-87e1-0000c23c0e00",
+    "classification": "code",
+    "failed_job_ref": "jobs.__deployment__.analytics_marts",
+    "requires_human": true
+  },
+  "trace": {
+    "agent": "dlthub-platform:job-inspector",
+    "agent_file": ".claude/dlthub/agents/job-inspector/AGENT.md",
+    "loop_type": "pydantic-ai",
+    "model": "azure:gpt",
+    "limits": {
+      "max_turns": 30,
+      "max_tokens": 1000000
+    },
+    "loop_run_args": {
+      "retries": 2
+    },
+    "inputs": {
+      "run_context": {
+        "run_id": "6aded4fc-3c93-4b5f-858e-000045369b6f",
+        "trigger": "job.fail:jobs.__deployment__.analytics_marts",
+        "refresh": false,
+        "run_args": {
+          "port": 8080
+        },
+        "interval_start": "2026-09-22T14:13:22.363839+00:00",
+        "interval_end": "2026-09-22T14:13:22.363839+00:00"
+      },
+      "port": 8080
+    },
+    "access": {
+      "local": [
+        "read"
+      ],
+      "data": [
+        "read"
+      ],
+      "context": [
+        "read"
+      ]
+    },
+    "local_tools": {
+      "Read": "read",
+      "Glob": "read",
+      "Grep": "read"
+    },
+    "mcp_features": [
+      "jobs",
+      "logs",
+      "telemetry",
+      "workspace",
+      "pipeline",
+      "secrets",
+      "config"
+    ],
+    "native_skills": [],
+    "inlined_skills": [
+      "dlthub-platform:debug-deployment"
+    ],
+    "unresolved_placeholders": [
+      "failed_run_id",
+      "failed_job_ref"
+    ],
+    "turn_count": 4,
+    "input_tokens": 55366,
+    "output_tokens": 1119,
+    "total_tokens": 56485,
+    "turns": [
+      {
+        "tools": [
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 12893,
+        "output_tokens": 102
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13283,
+        "output_tokens": 109
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run_logs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13682,
+        "output_tokens": 91
+      },
+      {
+        "tools": [],
+        "input_tokens": 15508,
+        "output_tokens": 817
+      }
+    ],
+    "tools_used": [],
+    "skills_used": [],
+    "mcp_tools_used": [
+      "dlthub_list_runs",
+      "dlthub_get_run",
+      "dlthub_get_run_logs"
+    ],
+    "instructions": "Go ahead"
+  }
+}

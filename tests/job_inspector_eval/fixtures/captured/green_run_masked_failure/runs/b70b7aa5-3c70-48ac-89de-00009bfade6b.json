@@ -1,0 +1,40 @@
+{
+  "number": 6,
+  "id": "b70b7aa5-3c70-48ac-89de-00009bfade6b",
+  "job_ref": "jobs.__deployment__.jaffle_shop_dq",
+  "status": "completed",
+  "trigger": "job.success:jobs.__deployment__.jaffle_shop",
+  "profile": "prod",
+  "started_at": "2026-09-22 14:01:00.141563+00:00",
+  "ended_at": "2026-09-22 14:01:42.733415+00:00",
+  "duration_seconds": 42.591852,
+  "timeout_seconds": 7200,
+  "interval_start": "2026-09-22 14:00:59.014483+00:00",
+  "interval_end": "2026-09-22 14:00:59.014483+00:00",
+  "pipelines": [
+    {
+      "pipeline_name": "dq_markers",
+      "transaction_id": "0000f34f7b10604fb51e853f5b068388",
+      "destination": "warehouse",
+      "dataset": "dq_markers",
+      "status": "succeeded",
+      "total_rows": 1,
+      "duration_seconds": 10.094,
+      "started_at": "2026-09-22 14:01:30.807087+00:00",
+      "ended_at": "2026-09-22 14:01:40.901606+00:00"
+    },
+    {
+      "pipeline_name": "_dlt_dq_jaffle_shop",
+      "transaction_id": "0000abec792631cbdf04b56dc85931eb",
+      "destination": "warehouse",
+      "dataset": "jaffle_shop",
+      "status": "succeeded",
+      "total_rows": 3,
+      "duration_seconds": 15.076,
+      "started_at": "2026-09-22 14:01:14.733536+00:00",
+      "ended_at": "2026-09-22 14:01:29.810093+00:00"
+    }
+  ],
+  "prev_run_id": "ed77baa3-2d1a-4ac5-8100-00006113bbd3",
+  "created_at": "2026-09-22 14:00:58.968522+00:00"
+}

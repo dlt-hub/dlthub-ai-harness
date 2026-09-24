@@ -1,0 +1,222 @@
+[
+  {
+    "number": 8,
+    "id": "691bd0f7-b5c7-426a-8f11-00005d3f3045",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "tag:analytics",
+    "profile": "prod",
+    "started_at": "2026-09-24 10:08:01.988123+00:00",
+    "ended_at": "2026-09-24 10:08:09.045624+00:00",
+    "duration_seconds": 7.057501,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-24 10:08:00.763645+00:00",
+    "interval_end": "2026-09-24 10:08:00.763645+00:00",
+    "pipelines": [],
+    "prev_run_id": null,
+    "created_at": "2026-09-24 10:08:00.747507+00:00"
+  },
+  {
+    "number": 7,
+    "id": "038641d2-6807-4315-87e1-0000c23c0e00",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.product_events_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 14:13:07.644292+00:00",
+    "ended_at": "2026-09-22 14:13:20.008182+00:00",
+    "duration_seconds": 12.36389,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 14:13:05.885613+00:00",
+    "interval_end": "2026-09-22 14:13:05.885613+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "0000571c6e7904c12b18bb5fafd8735e",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 4.397,
+        "started_at": "2026-09-22 14:13:13.204012+00:00",
+        "ended_at": "2026-09-22 14:13:17.601494+00:00"
+      }
+    ],
+    "prev_run_id": "b0813ff4-643d-4cb3-87fa-00007985c9bf",
+    "created_at": "2026-09-22 14:13:05.845472+00:00"
+  },
+  {
+    "number": 6,
+    "id": "e6b7ff82-fcb8-4403-8e54-0000673fd8f2",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.stripe_billing_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 14:07:51.364178+00:00",
+    "ended_at": "2026-09-22 14:08:02.738037+00:00",
+    "duration_seconds": 11.373859,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 14:07:50.141652+00:00",
+    "interval_end": "2026-09-22 14:07:50.141652+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "0000b8e9fdcf24f0264f01267c2da814",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 3.338,
+        "started_at": "2026-09-22 14:07:57.297320+00:00",
+        "ended_at": "2026-09-22 14:08:00.635731+00:00"
+      }
+    ],
+    "prev_run_id": "dec3fac7-9081-4caa-8f57-0000b0ccb66b",
+    "created_at": "2026-09-22 14:07:50.021975+00:00"
+  },
+  {
+    "number": 5,
+    "id": "9608b6f6-ad55-4f2e-8dbf-0000100fe376",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.jaffle_shop_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 14:01:47.484534+00:00",
+    "ended_at": "2026-09-22 14:01:57.638835+00:00",
+    "duration_seconds": 10.154301,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 14:01:45.232006+00:00",
+    "interval_end": "2026-09-22 14:01:45.232006+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "0000e332790cf0f824a49d71721b34ac",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 2.298,
+        "started_at": "2026-09-22 14:01:53.050264+00:00",
+        "ended_at": "2026-09-22 14:01:55.348461+00:00"
+      }
+    ],
+    "prev_run_id": "b70b7aa5-3c70-48ac-89de-00009bfade6b",
+    "created_at": "2026-09-22 14:01:45.177382+00:00"
+  },
+  {
+    "number": 4,
+    "id": "4c6da971-7575-409a-81a7-000062e14571",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.jaffle_shop_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 13:56:55.748077+00:00",
+    "ended_at": "2026-09-22 13:57:07.020370+00:00",
+    "duration_seconds": 11.272293,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 13:56:53.851560+00:00",
+    "interval_end": "2026-09-22 13:56:53.851560+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "00005e3fe89f08443f70c55796dab2f4",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 2.611,
+        "started_at": "2026-09-22 13:57:02.083054+00:00",
+        "ended_at": "2026-09-22 13:57:04.694127+00:00"
+      }
+    ],
+    "prev_run_id": "8c6938af-120d-4a09-89b4-0000c221fd0d",
+    "created_at": "2026-09-22 13:56:53.818544+00:00"
+  },
+  {
+    "number": 3,
+    "id": "ac5d3a3e-deeb-4793-856a-00002098aeb7",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.jaffle_shop_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 13:47:22.636838+00:00",
+    "ended_at": "2026-09-22 13:47:33.583154+00:00",
+    "duration_seconds": 10.946316,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 13:47:20.771055+00:00",
+    "interval_end": "2026-09-22 13:47:20.771055+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "0000af6ac831420a0c95e98abed18af6",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 2.631,
+        "started_at": "2026-09-22 13:47:28.543522+00:00",
+        "ended_at": "2026-09-22 13:47:31.175490+00:00"
+      }
+    ],
+    "prev_run_id": "9c9be517-d3ac-4c99-8884-0000f7e9ca00",
+    "created_at": "2026-09-22 13:47:20.725114+00:00"
+  },
+  {
+    "number": 2,
+    "id": "b692d8e0-c7f5-4a67-8e77-000003bc42f3",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.jaffle_shop_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 13:40:41.550379+00:00",
+    "ended_at": "2026-09-22 13:40:52.411187+00:00",
+    "duration_seconds": 10.860808,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 13:40:40.433087+00:00",
+    "interval_end": "2026-09-22 13:40:40.433087+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "00004a3e41c3f71e3a8ce586ff23f83c",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 2.741,
+        "started_at": "2026-09-22 13:40:47.725111+00:00",
+        "ended_at": "2026-09-22 13:40:50.467102+00:00"
+      }
+    ],
+    "prev_run_id": "02c93abe-cf1b-41b1-8c3f-00000d20ece3",
+    "created_at": "2026-09-22 13:40:40.398675+00:00"
+  },
+  {
+    "number": 1,
+    "id": "cb8a30a1-5324-4b88-8d7a-000087a8c0ee",
+    "job_ref": "jobs.__deployment__.analytics_marts",
+    "status": "failed",
+    "trigger": "job.success:jobs.__deployment__.jaffle_shop_dq",
+    "profile": "prod",
+    "started_at": "2026-09-22 13:37:37.201073+00:00",
+    "ended_at": "2026-09-22 13:37:48.707143+00:00",
+    "duration_seconds": 11.50607,
+    "timeout_seconds": 7200,
+    "interval_start": "2026-09-22 13:37:36.247691+00:00",
+    "interval_end": "2026-09-22 13:37:36.247691+00:00",
+    "pipelines": [
+      {
+        "pipeline_name": "analytics",
+        "transaction_id": "0000006d77415c943af6e5299e454553",
+        "destination": null,
+        "dataset": null,
+        "status": "failed",
+        "total_rows": 0,
+        "duration_seconds": 2.845,
+        "started_at": "2026-09-22 13:37:43.512880+00:00",
+        "ended_at": "2026-09-22 13:37:46.358469+00:00"
+      }
+    ],
+    "prev_run_id": "86f51ec6-3ca6-4d8b-823f-0000cb2c0963",
+    "created_at": "2026-09-22 13:37:36.210631+00:00"
+  }
+]

@@ -1,0 +1,812 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "program",
+    "content": "Starting job __deployment__:job_inspector (trigger: job.fail:jobs.jaffle_shop.load_jaffle_bad_incremental)"
+  },
+  {
+    "number": 5,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "2026-09-24 10:50:20,243|[WARNING]|14|47944299420544|demo-agents|loop.py|render_system_prompt:181|Agent 'job-inspector' system prompt has unresolved placeholders: failed_job_ref, failed_run_id"
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "\u2500\u2500 dlthub-platform:job-inspector \u2500\u2500 azure:gpt-eval \u00b7 max 30 turns \u00b7 1,000,000 tokens \u2500\u2500"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "prompt"
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "  Go ahead"
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "Starting dlt MCP server with features: config, jobs, logs, pipeline, secrets, telemetry, workspace"
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "Access granted to the caller: local:read,context:read"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "  mcp  dlt-workspace-mcp connected"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "turn 1                                                                    "
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "  I\u2019ll resolve the latest failed run for the job named in the failure trigger, then inspect its stored record and logs."
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": "  dlthub_list_runs (dlt-workspace-mcp)  {\"job\":\"jobs.jaffle_shop.load_jaffle_bad_incremental\",\"limit\":20,\"offset\":0}"
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": "turn 2                                                                    "
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "     \u2192 [{\"number\":1,\"id\":\"1f86d76f-deca-46c3-88fc-000069cd9fb6\",\"job_ref\":\"jobs.jaffle_shop.load_jaffle_bad_incremental\",\"status\":\"failed\",\"trigger\":\"tag:jaffle\",\"profile\":\"prod\",\"started_at\":\"2026-09-24T10:\u2026"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "turn 3                                                                    "
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "  The trigger resolved to failed run `1f86d76f-deca-46c3-88fc-000069cd9fb6`; I\u2019ll now read its full run record before opening the log."
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "  dlthub_get_run (dlt-workspace-mcp)  {\"run_id\":\"1f86d76f-deca-46c3-88fc-000069cd9fb6\"}"
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "turn 4                                                                    "
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "     \u2192 {\"number\":1,\"id\":\"1f86d76f-deca-46c3-88fc-000069cd9fb6\",\"job_ref\":\"jobs.jaffle_shop.load_jaffle_bad_incremental\",\"status\":\"failed\",\"trigger\":\"tag:jaffle\",\"profile\":\"prod\",\"started_at\":\"2026-09-24T10:4\u2026"
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "turn 5                                                                    "
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "  The run record confirms the `jaffle_bad_incremental` pipeline failed with zero rows; I\u2019ll read the complete stored log to identify the earliest causal error."
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "  dlthub_get_run_logs (dlt-workspace-mcp)  {\"run_id\":\"1f86d76f-deca-46c3-88fc-000069cd9fb6\",\"max_lines\":5000}"
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "turn 6                                                                    "
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "     \u2192 {\"run_id\":\"1f86d76f-deca-46c3-88fc-000069cd9fb6\",\"lines\":[\"preparing bootstrap\",\"getting run package\",\"parsing run package\",\"extracting user code and configuration\",\"launching user code\",\"Starting job\u2026"
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 43,
+    "phase": "program",
+    "content": "turn 7                                                                    "
+  },
+  {
+    "number": 44,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 45,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 46,
+    "phase": "program",
+    "content": "  The earliest causal error is a missing incremental cursor field on resource `orders_bad_incremental`; I\u2019ll open its workspace definition to establish the configured cursor and the actual record fields before classifying."
+  },
+  {
+    "number": 47,
+    "phase": "program",
+    "content": "  Read  {\"path\":\"jaffle_shop/bad_incremental.py\",\"offset\":1,\"limit\":100}"
+  },
+  {
+    "number": 48,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 49,
+    "phase": "program",
+    "content": "turn 8                                                                    "
+  },
+  {
+    "number": 50,
+    "phase": "program",
+    "content": "     \u2192 \"\"\"BROKEN #3 \u2014 wrong incremental cursor. Fails once extraction starts. The orders endpoint accepts `start_date` / `end_date`, and each order carries an `ordered_at` timestamp. This job configures the \u2026"
+  },
+  {
+    "number": 51,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 52,
+    "phase": "program",
+    "content": "turn 9                                                                    "
+  },
+  {
+    "number": 53,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 54,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 55,
+    "phase": "program",
+    "content": "  The workspace file confirms `cursor_path` is set to nonexistent `updated_at` while orders carry `ordered_at`; I\u2019ll verify the deployed job definition, then conclude."
+  },
+  {
+    "number": 56,
+    "phase": "program",
+    "content": "  dlthub_get_job (dlt-workspace-mcp)  {\"job_ref\":\"jobs.jaffle_shop.load_jaffle_bad_incremental\"}"
+  },
+  {
+    "number": 57,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 58,
+    "phase": "program",
+    "content": "turn 10                                                                   "
+  },
+  {
+    "number": 59,
+    "phase": "program",
+    "content": "     \u2192 {\"job_ref\":\"jobs.jaffle_shop.load_jaffle_bad_incremental\",\"id\":\"7cbf53e7-9eee-4d77-8b42-00009bd81118\",\"name\":\"Jaffle \u2014 BROKEN incremental cursor (jaffle_bad_incremental)\",\"job_type\":\"batch\",\"paused\":f\u2026"
+  },
+  {
+    "number": 60,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 61,
+    "phase": "program",
+    "content": "turn 11                                                                   "
+  },
+  {
+    "number": 62,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 63,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 64,
+    "phase": "program",
+    "content": "  I\u2019ll make one targeted check for a factual `ordered_at` field in workspace code or fixtures so the exact replacement value does not rest only on a comment."
+  },
+  {
+    "number": 65,
+    "phase": "program",
+    "content": "  Grep  {\"pattern\":\"[\\\"']ordered_at[\\\"']\\\\s*:\",\"glob\":\"**/*.{py,json,jsonl}\"}"
+  },
+  {
+    "number": 66,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 67,
+    "phase": "program",
+    "content": "turn 12                                                                   "
+  },
+  {
+    "number": 68,
+    "phase": "program",
+    "content": "     \u2192 (no line matches '[\"\\']ordered_at[\"\\']\\\\s*:')"
+  },
+  {
+    "number": 69,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 70,
+    "phase": "program",
+    "content": "turn 13                                                                   "
+  },
+  {
+    "number": 71,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 72,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 73,
+    "phase": "program",
+    "content": "  The exact replacement field is not present as a fixture literal, so I\u2019ll locate all workspace references to `ordered_at` and report any remaining verification limit explicitly."
+  },
+  {
+    "number": 74,
+    "phase": "program",
+    "content": "  Grep  {\"pattern\":\"ordered_at\",\"glob\":\"**/*\"}"
+  },
+  {
+    "number": 75,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 76,
+    "phase": "program",
+    "content": "turn 14                                                                   "
+  },
+  {
+    "number": 77,
+    "phase": "program",
+    "content": "     \u2192 .claude/dlthub/agents/job-inspector/AGENT.md:128: `cursor_path=\"ordered_at\"` or `write_disposition=\"replace\"`. Empty when the .claude/dlthub/agents/job-inspector/AGENT.md:292:line 31 to `\"ordered_at\"`\u2026"
+  },
+  {
+    "number": 78,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 79,
+    "phase": "program",
+    "content": "turn 15                                                                   "
+  },
+  {
+    "number": 80,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 81,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 82,
+    "phase": "program",
+    "content": "  The cause is established; I\u2019ll capture the exact source line numbers for the configuration and recommended change before returning the inspection result."
+  },
+  {
+    "number": 83,
+    "phase": "program",
+    "content": "  Read  {\"path\":\"jaffle_shop/bad_incremental.py\",\"offset\":34,\"limit\":12}"
+  },
+  {
+    "number": 84,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 85,
+    "phase": "program",
+    "content": "turn 16                                                                   "
+  },
+  {
+    "number": 86,
+    "phase": "program",
+    "content": "     \u2192 \"path\": \"orders\", \"params\": { \"page_size\": PAGE_SIZE, \"start_date\": { \"type\": \"incremental\", # BUG: orders have `ordered_at`, not `updated_at` \"cursor_path\": \"updated_at\", \"initial_value\": \"2017-01-01\u2026"
+  },
+  {
+    "number": 87,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 88,
+    "phase": "program",
+    "content": "turn 17                                                                   "
+  },
+  {
+    "number": 89,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 90,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 91,
+    "phase": "program",
+    "content": "  ## Diagnosis"
+  },
+  {
+    "number": 92,
+    "phase": "program",
+    "content": "  - The `jaffle_bad_incremental` pipeline failed during extraction because resource `orders_bad_incremental` configures an incremental cursor path, `updated_at`, that is absent from the extracted order records."
+  },
+  {
+    "number": 93,
+    "phase": "program",
+    "content": "  - Run log line 54: ``IncrementalCursorPathMissing: In processing pipe `orders_bad_incremental`: Cursor element with JSON path `updated_at` was not found in extracted data item.``"
+  },
+  {
+    "number": 94,
+    "phase": "program",
+    "content": "  "
+  },
+  {
+    "number": 95,
+    "phase": "program",
+    "content": "  ## Recommendation"
+  },
+  {
+    "number": 96,
+    "phase": "program",
+    "content": "  - In `jaffle_shop/bad_incremental.py` line 40, replace `cursor_path: \"updated_at\"` with `cursor_path: \"ordered_at\"`, then deploy the corrected job. Before deployment, confirm against an actual orders response or authoritative API schema that every record contains `ordered_at` because that field name is documented only in workspace comments available to this inspection."
+  },
+  {
+    "number": 97,
+    "phase": "program",
+    "content": "  "
+  },
+  {
+    "number": 98,
+    "phase": "program",
+    "content": "  ## Confidence"
+  },
+  {
+    "number": 99,
+    "phase": "program",
+    "content": "  - High confidence in the root cause: the earliest exception directly identifies the missing cursor, and workspace code confirms that exact cursor configuration."
+  },
+  {
+    "number": 100,
+    "phase": "program",
+    "content": "  - The proposed `ordered_at` replacement is stated repeatedly in the workspace file but was not corroborated by a source record, fixture, or API schema; verify it before deployment."
+  },
+  {
+    "number": 101,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 102,
+    "phase": "program",
+    "content": "turn 18                                                                   "
+  },
+  {
+    "number": 103,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 104,
+    "phase": "program",
+    "content": "\u2500\u2500 succeeded \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 9 turns \u00b7 147,710 tokens \u2500\u2500"
+  },
+  {
+    "number": 105,
+    "phase": "program",
+    "content": "  tools: Read, Grep \u00b7 mcp tools: dlthub_list_runs, dlthub_get_run, dlthub_get_run_logs, dlthub_get_job"
+  },
+  {
+    "number": 106,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 107,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 108,
+    "phase": "program",
+    "content": "Result  [job.background_agent.dlthub-platform:job-inspector]"
+  },
+  {
+    "number": 109,
+    "phase": "program",
+    "content": "  status:     succeeded"
+  },
+  {
+    "number": 110,
+    "phase": "program",
+    "content": "  summary:    ## Diagnosis"
+  },
+  {
+    "number": 111,
+    "phase": "program",
+    "content": "- The `jaffle_bad_incremental` pipeline failed during extraction because resource `orders_bad_incremental` configures an incremental cursor path, `updated_at`, that is absent from the extracted order records."
+  },
+  {
+    "number": 112,
+    "phase": "program",
+    "content": "- Run log line 54: ``IncrementalCursorPathMissing: In processing pipe `orders_bad_incremental`: Cursor element with JSON path `updated_at` was not found in extracted data item.``"
+  },
+  {
+    "number": 113,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 114,
+    "phase": "program",
+    "content": "## Recommendation"
+  },
+  {
+    "number": 115,
+    "phase": "program",
+    "content": "- In `jaffle_shop/bad_incremental.py` line 40, replace `cursor_path: \"updated_at\"` with `cursor_path: \"ordered_at\"`, then deploy the corrected job. Before deployment, confirm against an actual orders response or authoritative API schema that every record contains `ordered_at` because that field name is documented only in workspace comments available to this inspection."
+  },
+  {
+    "number": 116,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 117,
+    "phase": "program",
+    "content": "## Confidence"
+  },
+  {
+    "number": 118,
+    "phase": "program",
+    "content": "- High confidence in the root cause: the earliest exception directly identifies the missing cursor, and workspace code confirms that exact cursor configuration."
+  },
+  {
+    "number": 119,
+    "phase": "program",
+    "content": "- The proposed `ordered_at` replacement is stated repeatedly in the workspace file but was not corroborated by a source record, fixture, or API schema; verify it before deployment."
+  },
+  {
+    "number": 120,
+    "phase": "program",
+    "content": "  job-run: job-run/1f86d76f-deca-46c3-88fc-000069cd9fb6"
+  },
+  {
+    "number": 121,
+    "phase": "program",
+    "content": "  job: job/jobs.jaffle_shop.load_jaffle_bad_incremental"
+  },
+  {
+    "number": 122,
+    "phase": "program",
+    "content": "  loop:       pydantic-ai on azure:gpt-eval, 9 turns, 147710 tokens"
+  },
+  {
+    "number": 123,
+    "phase": "program",
+    "content": "  local tools: Read (read), Glob (read), Grep (read)"
+  },
+  {
+    "number": 124,
+    "phase": "program",
+    "content": "{"
+  },
+  {
+    "number": 125,
+    "phase": "program",
+    "content": "  \"status\": \"succeeded\","
+  },
+  {
+    "number": 126,
+    "phase": "program",
+    "content": "  \"summary\": \"## Diagnosis\\n- The `jaffle_bad_incremental` pipeline failed during extraction because resource `orders_bad_incremental` configures an incremental cursor path, `updated_at`, that is absent from the extracted order records.\\n- Run log line 54: ``IncrementalCursorPathMissing: In processing pipe `orders_bad_incremental`: Cursor element with JSON path `updated_at` was not found in extracted data item.``\\n\\n## Recommendation\\n- In `jaffle_shop/bad_incremental.py` line 40, replace `cursor_path: \\\"updated_at\\\"` with `cursor_path: \\\"ordered_at\\\"`, then deploy the corrected job. Before deployment, confirm against an actual orders response or authoritative API schema that every record contains `ordered_at` because that field name is documented only in workspace comments available to this inspection.\\n\\n## Confidence\\n- High confidence in the root cause: the earliest exception directly identifies the missing cursor, and workspace code confirms that exact cursor configuration.\\n- The proposed `ordered_at` replacement is stated repeatedly in the workspace file but was not corroborated by a source record, fixture, or API schema; verify it before deployment.\","
+  },
+  {
+    "number": 127,
+    "phase": "program",
+    "content": "  \"failed_run_id\": \"1f86d76f-deca-46c3-88fc-000069cd9fb6\","
+  },
+  {
+    "number": 128,
+    "phase": "program",
+    "content": "  \"failed_job_ref\": \"jobs.jaffle_shop.load_jaffle_bad_incremental\","
+  },
+  {
+    "number": 129,
+    "phase": "program",
+    "content": "  \"classification\": \"config\","
+  },
+  {
+    "number": 130,
+    "phase": "program",
+    "content": "  \"confidence\": \"high\","
+  },
+  {
+    "number": 131,
+    "phase": "program",
+    "content": "  \"evidence\": ["
+  },
+  {
+    "number": 132,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 133,
+    "phase": "program",
+    "content": "      \"source\": \"dlthub job runs logs 1f86d76f-deca-46c3-88fc-000069cd9fb6 line 54\","
+  },
+  {
+    "number": 134,
+    "phase": "program",
+    "content": "      \"excerpt\": \"dlt.extract.incremental.exceptions.IncrementalCursorPathMissing: In processing pipe `orders_bad_incremental`: Cursor element with JSON path `updated_at` was not found in extracted data item. All data items must contain this path. Use the same names of fields as in your JSON document because they can be different from the names you see in database.\","
+  },
+  {
+    "number": 135,
+    "phase": "program",
+    "content": "      \"provenance\": \"run_log\""
+  },
+  {
+    "number": 136,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 137,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 138,
+    "phase": "program",
+    "content": "      \"source\": \"jaffle_shop/bad_incremental.py line 40\","
+  },
+  {
+    "number": 139,
+    "phase": "program",
+    "content": "      \"excerpt\": \"                                \\\"cursor_path\\\": \\\"updated_at\\\",\","
+  },
+  {
+    "number": 140,
+    "phase": "program",
+    "content": "      \"provenance\": \"workspace_file\""
+  },
+  {
+    "number": 141,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 142,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 143,
+    "phase": "program",
+    "content": "      \"source\": \"jaffle_shop/bad_incremental.py line 39\","
+  },
+  {
+    "number": 144,
+    "phase": "program",
+    "content": "      \"excerpt\": \"                                # BUG: orders have `ordered_at`, not `updated_at`\","
+  },
+  {
+    "number": 145,
+    "phase": "program",
+    "content": "      \"provenance\": \"repository_comment\""
+  },
+  {
+    "number": 146,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 147,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 148,
+    "phase": "program",
+    "content": "      \"source\": \"dlthub job runs info 1f86d76f-deca-46c3-88fc-000069cd9fb6 pipeline record\","
+  },
+  {
+    "number": 149,
+    "phase": "program",
+    "content": "      \"excerpt\": \"{\\\"pipeline_name\\\":\\\"jaffle_bad_incremental\\\",\\\"status\\\":\\\"failed\\\",\\\"total_rows\\\":0}\","
+  },
+  {
+    "number": 150,
+    "phase": "program",
+    "content": "      \"provenance\": \"run_record\""
+  },
+  {
+    "number": 151,
+    "phase": "program",
+    "content": "    }"
+  },
+  {
+    "number": 152,
+    "phase": "program",
+    "content": "  ],"
+  },
+  {
+    "number": 153,
+    "phase": "program",
+    "content": "  \"proposed_fix\": \"In `jaffle_shop/bad_incremental.py` line 40, change the `orders_bad_incremental` resource setting from `cursor_path: \\\"updated_at\\\"` to `cursor_path: \\\"ordered_at\\\"`, after confirming from an actual orders response or authoritative API schema that every order contains `ordered_at`; then deploy the corrected job.\","
+  },
+  {
+    "number": 154,
+    "phase": "program",
+    "content": "  \"fix_target\": \"jaffle_shop/bad_incremental.py line 40, `orders_bad_incremental` cursor_path\","
+  },
+  {
+    "number": 155,
+    "phase": "program",
+    "content": "  \"fix_change\": \"Change `cursor_path: \\\"updated_at\\\"` to `cursor_path: \\\"ordered_at\\\"`.\","
+  },
+  {
+    "number": 156,
+    "phase": "program",
+    "content": "  \"open_points\": ["
+  },
+  {
+    "number": 157,
+    "phase": "program",
+    "content": "    \"No source payload, fixture, or authoritative API schema was available to corroborate the workspace comments stating that the correct field is `ordered_at`; verify that every order record contains it before deployment.\""
+  },
+  {
+    "number": 158,
+    "phase": "program",
+    "content": "  ],"
+  },
+  {
+    "number": 159,
+    "phase": "program",
+    "content": "  \"requires_human\": true"
+  },
+  {
+    "number": 160,
+    "phase": "program",
+    "content": "}"
+  },
+  {
+    "number": 161,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]

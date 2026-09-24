@@ -1,0 +1,567 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "program",
+    "content": "Starting job __deployment__:analytics_marts (trigger: job.success:jobs.__deployment__.product_events_dq)"
+  },
+  {
+    "number": 5,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py:626: UserWarning: Cannot create BigQuery Storage client, the dependency google-cloud-bigquery-storage is not installed."
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": "  warnings.warn("
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/extract/pipe_iterator.py\", line 274, in _get_source_item"
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "    pipe_item = next(gen)"
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlthub/transformations/resource.py\", line 361, in transformation_function"
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "    for item in iterable_items:"
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "                ^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_1bd14381/run/transformations/analytics.py\", line 103, in fact_marketing_spend"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": "    .table(\"daily_ad_metrics\")"
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "     ~~~~~^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/dataset/dataset.py\", line 317, in table"
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "    raise ValueError(f\"Table `{table_name}` not found. Available table(s): {self.tables}\")"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "ValueError: Table `daily_ad_metrics` not found. Available table(s): ['_dlt_version', '_dlt_loads']"
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": "The above exception was the direct cause of the following exception:"
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 507, in extract"
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "    self._extract_source("
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "        extract_step,"
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^"
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": "        refresh=refresh or self.refresh,"
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 1661, in _extract_source"
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": "    load_id = extract.extract("
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "        source, max_parallel_items, workers, load_package_state_update=load_package_state_update"
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/extract/extract.py\", line 608, in extract"
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": "    self._extract_single_source("
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "        load_id,"
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": "        ^^^^^^^^"
+  },
+  {
+    "number": 43,
+    "phase": "program",
+    "content": "    ...<2 lines>..."
+  },
+  {
+    "number": 44,
+    "phase": "program",
+    "content": "        workers=workers,"
+  },
+  {
+    "number": 45,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 46,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 47,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 48,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/extract/extract.py\", line 525, in _extract_single_source"
+  },
+  {
+    "number": 49,
+    "phase": "program",
+    "content": "    for pipe_item in pipes:"
+  },
+  {
+    "number": 50,
+    "phase": "program",
+    "content": "                     ^^^^^"
+  },
+  {
+    "number": 51,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/extract/pipe_iterator.py\", line 158, in __next__"
+  },
+  {
+    "number": 52,
+    "phase": "program",
+    "content": "    pipe_item = self._get_source_item()"
+  },
+  {
+    "number": 53,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/extract/pipe_iterator.py\", line 304, in _get_source_item"
+  },
+  {
+    "number": 54,
+    "phase": "program",
+    "content": "    raise ResourceExtractionError(pipe.name, gen, str(ex), \"generator\") from ex"
+  },
+  {
+    "number": 55,
+    "phase": "program",
+    "content": "dlt.extract.exceptions.ResourceExtractionError: In processing pipe `fact_marketing_spend`: extraction of resource `fact_marketing_spend` in `generator` `fact_marketing_spend` caused an exception: Table `daily_ad_metrics` not found. Available table(s): ['_dlt_version', '_dlt_loads']"
+  },
+  {
+    "number": 56,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 57,
+    "phase": "program",
+    "content": "The above exception was the direct cause of the following exception:"
+  },
+  {
+    "number": 58,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 59,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 60,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 198, in _run_module_as_main"
+  },
+  {
+    "number": 61,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 88, in _run_code"
+  },
+  {
+    "number": 62,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 309, in <module>"
+  },
+  {
+    "number": 63,
+    "phase": "program",
+    "content": "    result = run("
+  },
+  {
+    "number": 64,
+    "phase": "program",
+    "content": "        entry_point=args.entry_point,"
+  },
+  {
+    "number": 65,
+    "phase": "program",
+    "content": "        run_id=args.run_id,"
+  },
+  {
+    "number": 66,
+    "phase": "program",
+    "content": "        trigger=args.trigger,"
+  },
+  {
+    "number": 67,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 68,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 295, in run"
+  },
+  {
+    "number": 69,
+    "phase": "program",
+    "content": "    result = _call()"
+  },
+  {
+    "number": 70,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 262, in _call"
+  },
+  {
+    "number": 71,
+    "phase": "program",
+    "content": "    called = invoke(job, ctx) if invoke else job(**kwargs)"
+  },
+  {
+    "number": 72,
+    "phase": "program",
+    "content": "                                             ~~~^^^^^^^^^^"
+  },
+  {
+    "number": 73,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 221, in __call__"
+  },
+  {
+    "number": 74,
+    "phase": "program",
+    "content": "    rv: TJobResult = self._deco_f(*args, **kwargs)"
+  },
+  {
+    "number": 75,
+    "phase": "program",
+    "content": "                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 76,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 245, in _call"
+  },
+  {
+    "number": 77,
+    "phase": "program",
+    "content": "    return conf_f(*args, **kwargs)"
+  },
+  {
+    "number": 78,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_1bd14381/run/__deployment__.py\", line 372, in analytics_marts"
+  },
+  {
+    "number": 79,
+    "phase": "program",
+    "content": "    analytics_pipeline.run(analytics_marts_source(source_datasets))"
+  },
+  {
+    "number": 80,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 81,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 237, in _wrap"
+  },
+  {
+    "number": 82,
+    "phase": "program",
+    "content": "    step_info = f(self, *args, **kwargs)"
+  },
+  {
+    "number": 83,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 285, in _wrap"
+  },
+  {
+    "number": 84,
+    "phase": "program",
+    "content": "    return f(self, *args, **kwargs)"
+  },
+  {
+    "number": 85,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 815, in run"
+  },
+  {
+    "number": 86,
+    "phase": "program",
+    "content": "    self.extract("
+  },
+  {
+    "number": 87,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^"
+  },
+  {
+    "number": 88,
+    "phase": "program",
+    "content": "        data,"
+  },
+  {
+    "number": 89,
+    "phase": "program",
+    "content": "        ^^^^^"
+  },
+  {
+    "number": 90,
+    "phase": "program",
+    "content": "    ...<8 lines>..."
+  },
+  {
+    "number": 91,
+    "phase": "program",
+    "content": "        loader_file_format=loader_file_format,"
+  },
+  {
+    "number": 92,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 93,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 94,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 95,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 237, in _wrap"
+  },
+  {
+    "number": 96,
+    "phase": "program",
+    "content": "    step_info = f(self, *args, **kwargs)"
+  },
+  {
+    "number": 97,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 176, in _wrap"
+  },
+  {
+    "number": 98,
+    "phase": "program",
+    "content": "    return f(self, *args, **kwargs)"
+  },
+  {
+    "number": 99,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 190, in _wrap"
+  },
+  {
+    "number": 100,
+    "phase": "program",
+    "content": "    rv = f(self, *args, **kwargs)"
+  },
+  {
+    "number": 101,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 285, in _wrap"
+  },
+  {
+    "number": 102,
+    "phase": "program",
+    "content": "    return f(self, *args, **kwargs)"
+  },
+  {
+    "number": 103,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 530, in extract"
+  },
+  {
+    "number": 104,
+    "phase": "program",
+    "content": "    raise PipelineStepFailed("
+  },
+  {
+    "number": 105,
+    "phase": "program",
+    "content": "    ...<5 lines>..."
+  },
+  {
+    "number": 106,
+    "phase": "program",
+    "content": "    ) from exc"
+  },
+  {
+    "number": 107,
+    "phase": "program",
+    "content": "dlt.pipeline.exceptions.PipelineStepFailed: Pipeline execution failed at `step=extract` when processing package with `load_id=1587287431.976767` with exception:"
+  },
+  {
+    "number": 108,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 109,
+    "phase": "program",
+    "content": "<class 'dlt.extract.exceptions.ResourceExtractionError'>"
+  },
+  {
+    "number": 110,
+    "phase": "program",
+    "content": "In processing pipe `fact_marketing_spend`: extraction of resource `fact_marketing_spend` in `generator` `fact_marketing_spend` caused an exception: Table `daily_ad_metrics` not found. Available table(s): ['_dlt_version', '_dlt_loads']"
+  },
+  {
+    "number": 111,
+    "phase": "program",
+    "content": "Runner failed with exit code: 1"
+  },
+  {
+    "number": 112,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]

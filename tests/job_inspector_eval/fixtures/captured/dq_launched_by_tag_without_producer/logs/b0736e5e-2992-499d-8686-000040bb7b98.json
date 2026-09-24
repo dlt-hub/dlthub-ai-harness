@@ -1,0 +1,797 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "program",
+    "content": "Starting job __deployment__:job_inspector (trigger: job.fail:jobs.__deployment__.ads_platform_dq)"
+  },
+  {
+    "number": 5,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "2026-09-24 10:50:18,329|[WARNING]|14|47724790213504|demo-agents|loop.py|render_system_prompt:181|Agent 'job-inspector' system prompt has unresolved placeholders: failed_job_ref, failed_run_id"
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "\u2500\u2500 dlthub-platform:job-inspector \u2500\u2500 azure:gpt-eval \u00b7 max 30 turns \u00b7 1,000,000 tokens \u2500\u2500"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "prompt"
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "  Go ahead"
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "Starting dlt MCP server with features: config, jobs, logs, pipeline, secrets, telemetry, workspace"
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "Access granted to the caller: local:read,context:read"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "  mcp  dlt-workspace-mcp connected"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "turn 1                                                                    "
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "  I\u2019ll resolve the latest failed run for the job named by the failure trigger, then inspect its stored record and logs for the earliest root cause."
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": "  dlthub_list_runs (dlt-workspace-mcp)  {\"job\":\"jobs.__deployment__.ads_platform_dq\",\"limit\":20,\"offset\":0}"
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": "turn 2                                                                    "
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "     \u2192 [{\"number\":1,\"id\":\"46fe093a-9c73-420b-8bfb-0000cf2a82c1\",\"job_ref\":\"jobs.__deployment__.ads_platform_dq\",\"status\":\"failed\",\"trigger\":\"tag:ads\",\"profile\":\"prod\",\"started_at\":\"2026-09-24T10:50:01.032917\u2026"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "turn 3                                                                    "
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "  The trigger resolved to failed run `46fe093a-9c73-420b-8bfb-0000cf2a82c1`; I\u2019ll now read its full run record before opening the log."
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "  dlthub_get_run (dlt-workspace-mcp)  {\"run_id\":\"46fe093a-9c73-420b-8bfb-0000cf2a82c1\"}"
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "turn 4                                                                    "
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "     \u2192 {\"number\":1,\"id\":\"46fe093a-9c73-420b-8bfb-0000cf2a82c1\",\"job_ref\":\"jobs.__deployment__.ads_platform_dq\",\"status\":\"failed\",\"trigger\":\"tag:ads\",\"profile\":\"prod\",\"started_at\":\"2026-09-24T10:50:01.032917Z\u2026"
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "turn 5                                                                    "
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "  The run failed before registering a pipeline, so the stored log is the primary source for locating the first genuine error."
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "  dlthub_get_run_logs (dlt-workspace-mcp)  {\"run_id\":\"46fe093a-9c73-420b-8bfb-0000cf2a82c1\",\"max_lines\":5000}"
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "turn 6                                                                    "
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "     \u2192 {\"run_id\":\"46fe093a-9c73-420b-8bfb-0000cf2a82c1\",\"lines\":[\"preparing bootstrap\",\"getting run package\",\"parsing run package\",\"extracting user code and configuration\",\"Starting job __deployment__:ads_pl\u2026"
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 43,
+    "phase": "program",
+    "content": "turn 7                                                                    "
+  },
+  {
+    "number": 44,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 45,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 46,
+    "phase": "program",
+    "content": "  The earliest fatal error is a `SchemaNotFoundError` reached from workspace code in `utils/dq.py`; I\u2019ll inspect that function, its deployment call site, and the job definition to determine why the schema was unavailable."
+  },
+  {
+    "number": 47,
+    "phase": "program",
+    "content": "  Read  {\"path\":\"utils/dq.py\",\"offset\":1,\"limit\":130}"
+  },
+  {
+    "number": 48,
+    "phase": "program",
+    "content": "  Read  {\"path\":\"__deployment__.py\",\"offset\":175,\"limit\":65}"
+  },
+  {
+    "number": 49,
+    "phase": "program",
+    "content": "  dlthub_get_job (dlt-workspace-mcp)  {\"job_ref\":\"jobs.__deployment__.ads_platform_dq\"}"
+  },
+  {
+    "number": 50,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 51,
+    "phase": "program",
+    "content": "turn 8                                                                    "
+  },
+  {
+    "number": 52,
+    "phase": "program",
+    "content": "     \u2192 \"\"\"Data-quality helpers, executed as their own dltHub jobs. `run_dq_checks` is called from each `@run.pipeline` DQ job in `__deployment__.py`. It attaches to the destination dataset produced by the co\u2026"
+  },
+  {
+    "number": 53,
+    "phase": "program",
+    "content": "     \u2192 def salesforce_dq(): \"\"\"Run data-quality checks on the salesforce ingestion.\"\"\" from dlthub import data_quality as dq from utils.dq import primary_key, run_dq_checks run_dq_checks( \"salesforce\", desti\u2026"
+  },
+  {
+    "number": 54,
+    "phase": "program",
+    "content": "     \u2192 {\"job_ref\":\"jobs.__deployment__.ads_platform_dq\",\"id\":\"29e6000a-93e0-48a6-8d98-000030c7d97d\",\"name\":\"Ads platform \u00b7 Data Quality (ads_platform_dq)\",\"job_type\":\"batch\",\"paused\":false,\"archived\":false,\"\u2026"
+  },
+  {
+    "number": 55,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 56,
+    "phase": "program",
+    "content": "turn 9                                                                    "
+  },
+  {
+    "number": 57,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 58,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 59,
+    "phase": "program",
+    "content": "  Because the missing schema belongs to the ingestion pipeline, I\u2019ll inspect the named producer\u2019s latest run to distinguish a DQ attachment bug from absent upstream output."
+  },
+  {
+    "number": 60,
+    "phase": "program",
+    "content": "  dlthub_list_runs (dlt-workspace-mcp)  {\"job\":\"jobs.__deployment__.ads_platform\",\"limit\":20,\"offset\":0}"
+  },
+  {
+    "number": 61,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 62,
+    "phase": "program",
+    "content": "turn 10                                                                   "
+  },
+  {
+    "number": 63,
+    "phase": "program",
+    "content": "     \u2192 []"
+  },
+  {
+    "number": 64,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 65,
+    "phase": "program",
+    "content": "turn 11                                                                   "
+  },
+  {
+    "number": 66,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 67,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 68,
+    "phase": "program",
+    "content": "  No producer run exists, while the failed DQ run was launched by `tag:ads` rather than its declared success dependency; I\u2019ll confirm the producer\u2019s deployed triggers before finalizing the trigger misconfiguration diagnosis."
+  },
+  {
+    "number": 69,
+    "phase": "program",
+    "content": "  dlthub_get_job (dlt-workspace-mcp)  {\"job_ref\":\"jobs.__deployment__.ads_platform\"}"
+  },
+  {
+    "number": 70,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 71,
+    "phase": "program",
+    "content": "turn 12                                                                   "
+  },
+  {
+    "number": 72,
+    "phase": "program",
+    "content": "     \u2192 {\"job_ref\":\"jobs.__deployment__.ads_platform\",\"id\":\"3a062258-720a-492e-86cd-0000889bed14\",\"name\":\"Ads platform \u2192 Snowflake (ads_platform)\",\"job_type\":\"batch\",\"paused\":true,\"archived\":false,\"version\":1\u2026"
+  },
+  {
+    "number": 73,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 74,
+    "phase": "program",
+    "content": "turn 13                                                                   "
+  },
+  {
+    "number": 75,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 76,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 77,
+    "phase": "program",
+    "content": "  The evidence establishes a direct tag-trigger configuration fault: the DQ job ran without its paused producer ever having created the schema, despite being declared as a producer-success dependent job."
+  },
+  {
+    "number": 78,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 79,
+    "phase": "program",
+    "content": "says"
+  },
+  {
+    "number": 80,
+    "phase": "program",
+    "content": "  ## Diagnosis"
+  },
+  {
+    "number": 81,
+    "phase": "program",
+    "content": "  - `ads_platform_dq` was launched directly by the shared `tag:ads` trigger even though its intended trigger is `job.success:jobs.__deployment__.ads_platform`; the producer is paused and has no recorded runs, so no `ads_platform` schema existed for the DQ helper to attach to."
+  },
+  {
+    "number": 82,
+    "phase": "program",
+    "content": "  - The first fatal line is `dlt.common.storages.exceptions.SchemaNotFoundError: Schema `None` in `/tmp/dlt_run_2a5ab38a/run/.dlt/state/prod/pipelines/ads_platform/schemas` could not be found.` from run log line 48. Workspace code `utils/dq.py` line 76 accesses `pipeline.default_schema` immediately after synchronization, which fails when the producer has never initialized that schema."
+  },
+  {
+    "number": 83,
+    "phase": "program",
+    "content": "  ## Recommendation"
+  },
+  {
+    "number": 84,
+    "phase": "program",
+    "content": "  - In `__deployment__.py` line 199, remove `ads` from the `ads_platform_dq` exposed tags, leaving `tags=[\"data_quality\"]`, so `tag:ads` cannot bypass the declared producer-success trigger."
+  },
+  {
+    "number": 85,
+    "phase": "program",
+    "content": "  - Unpause and run `jobs.__deployment__.ads_platform`; after it succeeds and creates the `ads_platform` schema, allow its existing `job.success:jobs.__deployment__.ads_platform` trigger to launch the DQ job."
+  },
+  {
+    "number": 86,
+    "phase": "program",
+    "content": "  ## Confidence"
+  },
+  {
+    "number": 87,
+    "phase": "program",
+    "content": "  - Confidence is high because the run record proves the direct `tag:ads` launch, the fatal log names the absent schema, the workspace code shows the failing schema access, and the deployed producer definition is paused with no recorded runs."
+  },
+  {
+    "number": 88,
+    "phase": "program",
+    "content": "  - The proposed trigger change and recovery sequence were not deployed or tested because this inspection is read-only."
+  },
+  {
+    "number": 89,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 90,
+    "phase": "program",
+    "content": "turn 14                                                                   "
+  },
+  {
+    "number": 91,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 92,
+    "phase": "program",
+    "content": "\u2500\u2500 succeeded \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 7 turns \u00b7 111,520 tokens \u2500\u2500"
+  },
+  {
+    "number": 93,
+    "phase": "program",
+    "content": "  tools: Read \u00b7 mcp tools: dlthub_list_runs, dlthub_get_run, dlthub_get_run_logs, dlthub_get_job"
+  },
+  {
+    "number": 94,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 95,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 96,
+    "phase": "program",
+    "content": "Result  [job.background_agent.dlthub-platform:job-inspector]"
+  },
+  {
+    "number": 97,
+    "phase": "program",
+    "content": "  status:     succeeded"
+  },
+  {
+    "number": 98,
+    "phase": "program",
+    "content": "  summary:    ## Diagnosis"
+  },
+  {
+    "number": 99,
+    "phase": "program",
+    "content": "- `ads_platform_dq` was launched directly by the shared `tag:ads` trigger even though its intended trigger is `job.success:jobs.__deployment__.ads_platform`; the producer is paused and has no recorded runs, so no `ads_platform` schema existed for the DQ helper to attach to."
+  },
+  {
+    "number": 100,
+    "phase": "program",
+    "content": "- The first fatal line is `dlt.common.storages.exceptions.SchemaNotFoundError: Schema `None` in `/tmp/dlt_run_2a5ab38a/run/.dlt/state/prod/pipelines/ads_platform/schemas` could not be found.` from run log line 48. Workspace code `utils/dq.py` line 76 accesses `pipeline.default_schema` immediately after synchronization, which fails when the producer has never initialized that schema."
+  },
+  {
+    "number": 101,
+    "phase": "program",
+    "content": "## Recommendation"
+  },
+  {
+    "number": 102,
+    "phase": "program",
+    "content": "- In `__deployment__.py` line 199, remove `ads` from the `ads_platform_dq` exposed tags, leaving `tags=[\"data_quality\"]`, so `tag:ads` cannot bypass the declared producer-success trigger."
+  },
+  {
+    "number": 103,
+    "phase": "program",
+    "content": "- Unpause and run `jobs.__deployment__.ads_platform`; after it succeeds and creates the `ads_platform` schema, allow its existing `job.success:jobs.__deployment__.ads_platform` trigger to launch the DQ job."
+  },
+  {
+    "number": 104,
+    "phase": "program",
+    "content": "## Confidence"
+  },
+  {
+    "number": 105,
+    "phase": "program",
+    "content": "- Confidence is high because the run record proves the direct `tag:ads` launch, the fatal log names the absent schema, the workspace code shows the failing schema access, and the deployed producer definition is paused with no recorded runs."
+  },
+  {
+    "number": 106,
+    "phase": "program",
+    "content": "- The proposed trigger change and recovery sequence were not deployed or tested because this inspection is read-only."
+  },
+  {
+    "number": 107,
+    "phase": "program",
+    "content": "  job-run: job-run/46fe093a-9c73-420b-8bfb-0000cf2a82c1"
+  },
+  {
+    "number": 108,
+    "phase": "program",
+    "content": "  job: job/jobs.__deployment__.ads_platform_dq"
+  },
+  {
+    "number": 109,
+    "phase": "program",
+    "content": "  loop:       pydantic-ai on azure:gpt-eval, 7 turns, 111520 tokens"
+  },
+  {
+    "number": 110,
+    "phase": "program",
+    "content": "  local tools: Read (read), Glob (read), Grep (read)"
+  },
+  {
+    "number": 111,
+    "phase": "program",
+    "content": "{"
+  },
+  {
+    "number": 112,
+    "phase": "program",
+    "content": "  \"status\": \"succeeded\","
+  },
+  {
+    "number": 113,
+    "phase": "program",
+    "content": "  \"summary\": \"## Diagnosis\\n- `ads_platform_dq` was launched directly by the shared `tag:ads` trigger even though its intended trigger is `job.success:jobs.__deployment__.ads_platform`; the producer is paused and has no recorded runs, so no `ads_platform` schema existed for the DQ helper to attach to.\\n- The first fatal line is `dlt.common.storages.exceptions.SchemaNotFoundError: Schema `None` in `/tmp/dlt_run_2a5ab38a/run/.dlt/state/prod/pipelines/ads_platform/schemas` could not be found.` from run log line 48. Workspace code `utils/dq.py` line 76 accesses `pipeline.default_schema` immediately after synchronization, which fails when the producer has never initialized that schema.\\n## Recommendation\\n- In `__deployment__.py` line 199, remove `ads` from the `ads_platform_dq` exposed tags, leaving `tags=[\\\"data_quality\\\"]`, so `tag:ads` cannot bypass the declared producer-success trigger.\\n- Unpause and run `jobs.__deployment__.ads_platform`; after it succeeds and creates the `ads_platform` schema, allow its existing `job.success:jobs.__deployment__.ads_platform` trigger to launch the DQ job.\\n## Confidence\\n- Confidence is high because the run record proves the direct `tag:ads` launch, the fatal log names the absent schema, the workspace code shows the failing schema access, and the deployed producer definition is paused with no recorded runs.\\n- The proposed trigger change and recovery sequence were not deployed or tested because this inspection is read-only.\","
+  },
+  {
+    "number": 114,
+    "phase": "program",
+    "content": "  \"failed_run_id\": \"46fe093a-9c73-420b-8bfb-0000cf2a82c1\","
+  },
+  {
+    "number": 115,
+    "phase": "program",
+    "content": "  \"failed_job_ref\": \"jobs.__deployment__.ads_platform_dq\","
+  },
+  {
+    "number": 116,
+    "phase": "program",
+    "content": "  \"classification\": \"config\","
+  },
+  {
+    "number": 117,
+    "phase": "program",
+    "content": "  \"confidence\": \"high\","
+  },
+  {
+    "number": 118,
+    "phase": "program",
+    "content": "  \"evidence\": ["
+  },
+  {
+    "number": 119,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 120,
+    "phase": "program",
+    "content": "      \"source\": \"dlthub job runs logs 46fe093a-9c73-420b-8bfb-0000cf2a82c1 line 48\","
+  },
+  {
+    "number": 121,
+    "phase": "program",
+    "content": "      \"excerpt\": \"dlt.common.storages.exceptions.SchemaNotFoundError: Schema `None` in `/tmp/dlt_run_2a5ab38a/run/.dlt/state/prod/pipelines/ads_platform/schemas` could not be found.\","
+  },
+  {
+    "number": 122,
+    "phase": "program",
+    "content": "      \"provenance\": \"run_log\""
+  },
+  {
+    "number": 123,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 124,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 125,
+    "phase": "program",
+    "content": "      \"source\": \"stored run 46fe093a-9c73-420b-8bfb-0000cf2a82c1\","
+  },
+  {
+    "number": 126,
+    "phase": "program",
+    "content": "      \"excerpt\": \"\\\"status\\\":\\\"failed\\\",\\\"trigger\\\":\\\"tag:ads\\\",\\\"profile\\\":\\\"prod\\\",\\\"pipelines\\\":[]\","
+  },
+  {
+    "number": 127,
+    "phase": "program",
+    "content": "      \"provenance\": \"run_record\""
+  },
+  {
+    "number": 128,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 129,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 130,
+    "phase": "program",
+    "content": "      \"source\": \"utils/dq.py line 76\","
+  },
+  {
+    "number": 131,
+    "phase": "program",
+    "content": "      \"excerpt\": \"existing_tables = set(pipeline.default_schema.data_table_names())\","
+  },
+  {
+    "number": 132,
+    "phase": "program",
+    "content": "      \"provenance\": \"workspace_file\""
+  },
+  {
+    "number": 133,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 134,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 135,
+    "phase": "program",
+    "content": "      \"source\": \"__deployment__.py lines 197-201\","
+  },
+  {
+    "number": 136,
+    "phase": "program",
+    "content": "      \"excerpt\": \"@run.pipeline(\\n    \\\"ads_platform_dq\\\",\\n    expose={\\\"display_name\\\": \\\"Ads platform \u00b7 Data Quality\\\", \\\"tags\\\": [\\\"ads\\\", \\\"data_quality\\\"]},\\n    trigger=run.trigger.job_success(\\\"__deployment__.ads_platform\\\"),\\n)\","
+  },
+  {
+    "number": 137,
+    "phase": "program",
+    "content": "      \"provenance\": \"workspace_file\""
+  },
+  {
+    "number": 138,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 139,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 140,
+    "phase": "program",
+    "content": "      \"source\": \"deployed definition for jobs.__deployment__.ads_platform_dq\","
+  },
+  {
+    "number": 141,
+    "phase": "program",
+    "content": "      \"excerpt\": \"\\\"triggers\\\": [\\\"job.success:jobs.__deployment__.ads_platform\\\", \\\"tag:ads\\\", \\\"tag:data_quality\\\", \\\"manual:jobs.__deployment__.ads_platform_dq\\\", \\\"pipeline_name:ads_platform_dq\\\"]\","
+  },
+  {
+    "number": 142,
+    "phase": "program",
+    "content": "      \"provenance\": \"job_definition\""
+  },
+  {
+    "number": 143,
+    "phase": "program",
+    "content": "    },"
+  },
+  {
+    "number": 144,
+    "phase": "program",
+    "content": "    {"
+  },
+  {
+    "number": 145,
+    "phase": "program",
+    "content": "      \"source\": \"deployed definition for jobs.__deployment__.ads_platform\","
+  },
+  {
+    "number": 146,
+    "phase": "program",
+    "content": "      \"excerpt\": \"\\\"paused\\\":true\","
+  },
+  {
+    "number": 147,
+    "phase": "program",
+    "content": "      \"provenance\": \"job_definition\""
+  },
+  {
+    "number": 148,
+    "phase": "program",
+    "content": "    }"
+  },
+  {
+    "number": 149,
+    "phase": "program",
+    "content": "  ],"
+  },
+  {
+    "number": 150,
+    "phase": "program",
+    "content": "  \"proposed_fix\": \"In `__deployment__.py` line 199, change the `ads_platform_dq` exposure to `tags=[\\\"data_quality\\\"]` so `tag:ads` launches only the ingestion side and DQ remains gated by `job.success:jobs.__deployment__.ads_platform`. Then unpause and run `jobs.__deployment__.ads_platform`; its successful completion should trigger DQ after the schema exists.\","
+  },
+  {
+    "number": 151,
+    "phase": "program",
+    "content": "  \"fix_target\": \"__deployment__.py line 199 and jobs.__deployment__.ads_platform pause state\","
+  },
+  {
+    "number": 152,
+    "phase": "program",
+    "content": "  \"fix_change\": \"Change `tags=[\\\"ads\\\", \\\"data_quality\\\"]` to `tags=[\\\"data_quality\\\"]`; unpause the producer and run it successfully before DQ.\","
+  },
+  {
+    "number": 153,
+    "phase": "program",
+    "content": "  \"open_points\": ["
+  },
+  {
+    "number": 154,
+    "phase": "program",
+    "content": "    \"The proposed tag change and producer-first recovery sequence were not deployed or tested because the inspection is read-only.\""
+  },
+  {
+    "number": 155,
+    "phase": "program",
+    "content": "  ],"
+  },
+  {
+    "number": 156,
+    "phase": "program",
+    "content": "  \"requires_human\": true"
+  },
+  {
+    "number": 157,
+    "phase": "program",
+    "content": "}"
+  },
+  {
+    "number": 158,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]
