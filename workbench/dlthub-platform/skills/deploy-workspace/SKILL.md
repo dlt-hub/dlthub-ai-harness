@@ -26,7 +26,7 @@ Review each script being deployed and fix patterns that are safe locally but har
 
 ## Step 2: Deploy, launch, debug
 
-Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns.md](advanced-patterns.md)
+Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns.md](advanced-patterns.md) | [runtime-settings.md](runtime-settings.md)
 
 ### Step 2a. Deploy a workspace
 **SKIP** for simple workspaces without deployment manifest
@@ -118,7 +118,8 @@ See [scheduling-triggers.md](scheduling-triggers.md) for the full trigger types 
 
 ## Step 4: Advanced trigger and scheduling options
 
-See [advanced-patterns.md](advanced-patterns.md) for full examples of each pattern:
+See [advanced-patterns.md](advanced-patterns.md) for full examples of each pattern, and
+[runtime-settings.md](runtime-settings.md) for dependency groups, timeouts, instance size and timezone:
 
 - **Followup jobs** -- chain pipelines with `trigger=ingest_job.success`. The transform runs automatically after ingest succeeds. Use when you have non-incremental pipelines that should run in sequence.
 - **Scheduler-driven intervals** -- for incremental pipelines, declare `interval={"start": "2026-01-01T00:00:00Z"}` and read `run_context["interval_start"]` / `interval_end` from the scheduler. Runtime handles continuity and refresh resets.
