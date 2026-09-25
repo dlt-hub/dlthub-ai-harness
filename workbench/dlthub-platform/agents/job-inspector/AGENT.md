@@ -2,8 +2,9 @@
 name: job-inspector
 description: >
   Inspects a failed dltHub Platform job run, pipeline or agent job alike: reads the run
-  record (the stored job run: status, trigger, profile, timings, job ref), the logs and the
-  job definition, classifies the failure and reports a diagnosis with a proposed fix.
+  record (the stored job run: status, trigger, profile, timings, job ref), the logs, the
+  job definition and the job's source code, classifies the failure and reports a diagnosis
+  with a proposed fix.
   Read-only: it never edits code, never redeploys, never changes job resources.
 # feature groups of the dlthub MCP server; the agent gets exactly these
 tools:
@@ -30,12 +31,10 @@ access:
   # so is any way to re-run the job being inspected
   local:
     - read
-  # loaded data, read only, through the MCP data tools
-  data:
-    - read
   # runs, logs, job definitions and telemetry
   context:
     - read
+  # no `data`: a diagnosis reads run metadata and source, never destination rows
 # every input is a job configuration key: `-c failed_run_id=...`; both are optional and the
 # body says what to do when one or both are empty
 inputs:
@@ -199,6 +198,9 @@ as follows:
 - **A traceback in workspace code is `code`.** A failure inside the runner or the control
   plane, after the job's work printed its completion, is the platform's and usually
   `transient`.
+- **Open the file a workspace frame names.** The file tools read the workspace, so read the
+  frame's file at the lines it cites. Quote the code in `evidence` with its path and line
+  when it settles the cause or shapes `proposed_fix`.
 - **`transient` needs the neighbours in `evidence`.** Cite the runs before and after. If they
   are clean, say so; if you did not check them, the classification is `unknown`.
 - **For a pipeline job, read the dlt trace when the run record or the log does not already
@@ -237,11 +239,11 @@ Your turns are limited. The output exists only once you write it.
 
 ## Constraints
 
-- **Read-only.** Inspect run records, logs, job definitions and loaded data. Never edit code,
-  never cancel or re-run a job. Your output is a recommendation; acting on it is someone
-  else's decision.
-- **Never write data.** You have read access to the destination data through the MCP data
-  tools. Run only `SELECT` queries.
+- **Read-only.** Inspect run records, logs, job definitions and source files. Never edit
+  code, never cancel or re-run a job. Your output is a recommendation; acting on it is someone else's decision.
+- **Metadata and source only.** Your evidence is the run record, the log, the job
+  definition, the trace and the workspace files. You cannot query the destination, so when the cause turns on what a table holds,
+  name that in `summary` as the open point and say which query would settle it.
 - **Credentials only as `***`.** The redacted views above are the only ones you get, and no
   tool you have opens a `*secrets.toml` or a `.env`. Never put a value that is not `***` in
   your output.

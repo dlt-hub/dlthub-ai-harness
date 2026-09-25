@@ -499,7 +499,7 @@ def deployed_run_fetcher() -> StubFetcher:
 def test_prepare_scores_what_a_deployed_run_did():
     """End to end over the captured run: its 11 calls reach the checks that read them.
 
-    The parser read none of them before, so `transcript_unread` held all 18 transcript checks
+    The parser read none of them before, so `transcript_unread` held all 17 transcript checks
     at `N/A` and a third of the evaluation measured nothing.
     """
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
@@ -512,7 +512,7 @@ def test_prepare_scores_what_a_deployed_run_did():
 
     reads_transcript = [entry.id for entry in C.CHECKS.values() if entry.reads_transcript]
     decided = {id for id in reads_transcript if prep.results[id].outcome != C.NA}
-    assert len(decided) == 12, "the other six state a condition that did not apply"
+    assert len(decided) == 11, "the other six state a condition that did not apply"
     assert prep.results["run_record_read"].outcome == C.TRUE
     assert prep.results["run_logs_read"].outcome == C.TRUE
     assert prep.results["job_definition_read_for_config"].outcome == C.TRUE

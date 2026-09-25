@@ -14,9 +14,14 @@ skills:
   - dlthub-platform:debug-deployment
 rules:
   - dlthub-platform:job-resources
+  # `agent_profile_not_prod` grades which profile the inspector ran on
+  - dlthub-platform:profiles
 access:
-  # runs, logs, job definitions and telemetry. No shell, no files: the preparation step
-  # fetched everything and the judge reads what it was handed
+  # the workspace files: the inspector's own AGENT.md, the failed job's source and the
+  # deployment module. no `execute`: the secret deny rules cover the file tools only
+  local:
+    - read
+  # runs, logs, job definitions and telemetry
   context:
     - read
 # every input is a job configuration key: `-c inspector_run_id=...`. The last four are filled
@@ -202,6 +207,14 @@ whole log yourself.
 When `{{ deterministic_checks }}` or `{{ inspector_output }}` is empty while an inspector run
 was resolved, report `status: failed` and say so.
 
+The workspace files are open to you through the file tools. The inspector's definition is
+`.claude/dlthub/agents/job-inspector/AGENT.md`. The deployment module, `__deployment__.py`,
+declares the failed job and imports the code it runs, and a `workspace` traceback frame names
+its file and line. Read the definition when a check turns on the wording of an instruction.
+Read the job's source when `code_vs_platform` turns on what a frame points at, or when
+`fix_field_filled` turns on whether the proposed fix names something the code holds. Cite
+the path and line in the reasoning.
+
 Your run started from trigger `{{ run_context.trigger }}` as run
 `{{ run_context.run_id }}`.
 
@@ -233,7 +246,9 @@ they are computed from the data after you finish, and anything you write there i
 - On every `FALSE`, quote the line or sentence that contradicts the instruction.
 - Ask for one more window through the log tools only when the supplied windows leave a check
   undecidable, and say in the reasoning that you did.
-- Do not start, cancel or re-run anything. You have no shell and no file tools.
+- Do not start, cancel or re-run anything. You have the file tools and the context tools,
+  and no shell and no data tools. The inspector you grade has the same, so a file read in
+  its transcript is normal work and a data tool is a finding.
 - Answer exactly the ids in `open_checks`. An id outside that list is dropped, and repeating
   a deterministic result wastes output you need for your own reasoning.
 

@@ -251,7 +251,7 @@ def test_a_deployed_run_transcript_reads_every_tool_call():
     """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
 
     Every call sits under a `says` label, one blank line further down than the block ends.
-    The parser read 0 of them and the 18 checks on the transcript went `N/A`.
+    The parser read 0 of them and the 17 parser-gated transcript checks went `N/A`.
     """
     events = C.parse_transcript(deployed_run_log())
     calls = [event for event in events if event.kind == "tool_call"]

@@ -33,11 +33,20 @@ An installed agent definition becomes a job by naming it:
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     trigger="job.fail:tag:ingest",       # narrower than the definition's default
+    require={"profile": "access"},
 )
 ```
 
 The job is named after the definition (`job_inspector`), and every decorator argument
-overrides the matching `defaults` in the `AGENT.md`.
+overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `skills` and
+`rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
+for them, and on a decorated function the argument replaces the list, every axis included.
+
+**An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
+them. Without it the job runs as a batch job on `prod` and the production credentials land
+in its environment. The agent's `access` block decides which tools the model is offered; the
+profile decides which credentials the job process holds, so declare both. Work that needs
+production write credentials belongs in a pipeline or a plain job that a person wrote.
 
 Decorate a function instead when code has to run around the loop. The evaluator for the
 inspector does that: it computes its deterministic checks before the loop and writes them
@@ -58,12 +67,14 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     section="__deployment__",
     trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
 )
 
 
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
+    require={"profile": "access"},
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
