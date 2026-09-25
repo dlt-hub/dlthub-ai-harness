@@ -3161,8 +3161,11 @@ judge_check("transient_evidence_cites_neighbours",
             ))
 judge_check("pipeline_step_named",
             "For a pipeline job, the summary names the step that failed.",
+            # the run record lists the pipelines the job ran; the trace is fetched separately
+            # and is often absent on a run that failed early
             precondition=lambda ctx: (
-                None if ctx.pipeline_trace else "the failed job ran no pipeline"
+                None if (ctx.failed_run or {}).get("pipelines")
+                else "the failed job ran no pipeline"
             ))
 judge_check("failed_summary_rules_out",
             "A `failed` inspection says which causes it ruled out.",

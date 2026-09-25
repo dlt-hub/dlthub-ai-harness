@@ -672,3 +672,19 @@ def test_every_precondition_reads_only_what_prepare_already_holds():
         assert entry.kind == C.JUDGE, entry.id
         reason = entry.precondition(ctx)
         assert reason is None or isinstance(reason, str)
+
+
+def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
+    """The trace is often missing on a run that failed early; the run record still lists
+    the pipeline, so `pipeline_step_named` stays the judge's to answer."""
+    ran_a_pipeline = context(pipeline_trace=None,
+                             failed_run=failed_run(pipelines=[{"pipeline_name": "orders"}]))
+    results: dict = {}
+    C.run_preconditions(ran_a_pipeline, results)
+    assert "pipeline_step_named" not in results
+    assert "pipeline_step_named" in C.judge_ids(results)
+
+    no_pipeline = context(pipeline_trace=None)
+    results = {}
+    C.run_preconditions(no_pipeline, results)
+    assert results["pipeline_step_named"].outcome == C.NA
