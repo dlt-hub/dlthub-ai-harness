@@ -97,7 +97,8 @@ output:
               Where the excerpt comes from, with the line number whenever the source has
               lines: `dlthub job runs logs <run id>` line 38, `pipelines/my_pipeline.py`
               line 16. The line number is what lets a reader find the excerpt again, so
-              give it even when the log is short.
+              give it even when the log is short, and give the line the excerpt is on
+              rather than a traceback frame or a context line near it.
           excerpt:
             type: string
             description: The text as it stands in the source. Never paraphrase it.
@@ -204,6 +205,11 @@ Inputs: run id '{{ failed_run_id }}', job ref '{{ failed_job_ref }}', trigger
 Read the log as "Read a failure log" in the `debug-deployment` skill describes. Then:
 
 - **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line.
+- **Cite the line the excerpt is on.** Search the whole log for the excerpt as you will
+  quote it, and take the line number from that match. A traceback frame, a context line
+  around the match or the line a tool happened to return is a different line, and citing it
+  sends the reader to text that does not hold the excerpt. Before you return the result,
+  read each `evidence[].source` line once more and check the excerpt is on it.
 - **Read the job's declaration before you classify**: `dlthub_get_job` for the deployed
   definition, `Read` or `Grep` on the job name in the deployment module. It gives the
   pipeline, destination, dataset, dependencies, pause state, tags and triggers, and every
