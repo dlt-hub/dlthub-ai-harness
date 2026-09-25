@@ -209,6 +209,8 @@ whole log yourself.
   and any credential-shaped strings in the output.
 - `{{ neighbour_runs }}` is the failed job's runs with their status, for the `transient`
   checks.
+- `{{ rubrics }}` is the rubric for each id in `open_checks`, and no others: a check whose
+  condition this run does not meet was answered by Python and never reaches you.
 
 Report `status: failed` when `{{ deterministic_checks }}` or `{{ inspector_output }}` is empty
 while an inspector run was resolved, and say so.
