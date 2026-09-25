@@ -52,3 +52,12 @@ def test_a_hand_written_placeholder_survives_the_scrubber():
     generated = "7f3a91c4-2b6d-4e18-9a05-c1d8e2f40b73"
     assert scrub_capture.scrub(generated, {}) != generated
     assert scrub_capture.residuals(generated) == [generated]
+
+
+def test_a_scrubbed_load_id_is_still_in_the_load_id_match_band():
+    """`--verify` must be able to recognize every load id the scrubber writes."""
+    raw = "load_id=1695312345.123456"
+    scrubbed = scrub_capture.scrub(raw, {})
+    assert scrubbed != raw
+    assert scrubbed.startswith("load_id=16")
+    assert scrub_capture.residuals(scrubbed) == []

@@ -9,7 +9,13 @@ Two layers, one output:
 - `checks.py` computes everything that can be computed from data. It also extracts the
   bounded evidence the judge reads, so the judge never sees a whole log.
 - `AGENT.md` holds the judge: an LLM answers the checks that need judgement, from the
-  windows `checks.py` prepared.
+  windows `checks.py` prepared. Its Checks section is `{{ rubrics }}`: `prepare` renders the
+  rubric for each id in `open_checks` from the `RUBRICS` registry, so a run carries the
+  rubrics it can answer and no others.
+- A judge check with a `precondition` is answered `N/A` by Python when the run does not meet
+  its condition: a `failed`-only check on a run that succeeded, a `transient`-only check on a
+  `code` failure, a fix check with no fix. Those never reach the model. A captured run leaves
+  19 to 22 of the 29 judge checks open.
 
 `finalize` writes the computed results over the judge's output, so the model cannot alter a
 deterministic outcome.
@@ -80,7 +86,7 @@ async def job_inspector_eval(
     return evaluations[0]
 ```
 
-Eight properties of that declaration decide whether it works:
+Each of the following changes how the job deploys.
 
 - **`require={"profile": "access"}` on both jobs.** An agent job that declares no profile
   runs as a batch job on `prod`, which injects the production credentials into its

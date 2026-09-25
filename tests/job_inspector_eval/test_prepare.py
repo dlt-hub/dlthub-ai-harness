@@ -137,8 +137,20 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     assert prep.errors == []
     assert prep.inspector_run_id == INSPECTOR_RUN_ID
 
-    deterministic = [entry.id for entry in C.CHECKS.values() if entry.fn is not None]
-    assert set(prep.results) == set(deterministic)
+    deterministic = {entry.id for entry in C.CHECKS.values() if entry.fn is not None}
+    assert deterministic <= set(prep.results)
+
+    # the rest are judge checks whose condition this run does not meet, answered by their
+    # precondition so they never reach the model
+    by_precondition = set(prep.results) - deterministic
+    assert by_precondition == {
+        "transient_evidence_cites_neighbours", "pipeline_step_named",
+        "failed_summary_rules_out", "failed_summary_starting_point",
+        "aborted_summary_names_missing_input", "aborted_summary_says_what_to_supply",
+        "dependency_cause_named",
+    }
+    assert all(prep.results[id].outcome == C.NA for id in by_precondition)
+    assert not set(C.judge_ids(prep.results)) & by_precondition
 
     windows = json.loads(prep.judge_inputs["evidence_windows"])
     assert windows["open_checks"] == C.judge_ids(prep.results)
@@ -147,6 +159,19 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     assert [frame["owner"] for frame in windows["traceback_frames"]] == ["workspace"]
     assert json.loads(prep.judge_inputs["inspector_output"])["classification"] == "credentials"
     assert json.loads(prep.judge_inputs["neighbour_runs"])[0]["id"] == FAILED_RUN_ID
+
+
+def test_prepare_renders_the_rubric_for_every_open_check_and_no_other():
+    """The judge prompt carries the rubrics it can answer; the rest never reach the model."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                     fetcher=fetcher())
+    rubrics = prep.judge_inputs["rubrics"]
+    open_checks = C.judge_ids(prep.results)
+    assert open_checks
+    for id in open_checks:
+        assert f"**`{id}`**" in rubrics
+    for id in set(C.RUBRICS) - set(open_checks):
+        assert f"**`{id}`**" not in rubrics
 
 
 def test_prepare_aborts_without_an_inspector_run():
@@ -529,6 +554,8 @@ def test_prepare_scores_what_a_deployed_run_did():
     """
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
     assert prep.ctx is not None
+    # This is intentionally coupled to `fixtures/deployed_inspector_run.log`: the checked-in
+    # trace recorded these 11 calls in this order, while the old parser read none of them.
     assert [call.tool for call in prep.ctx.tool_calls] == DEPLOYED_RUN_TOOLS
     assert prep.ctx.transcript_unread is False
     assert prep.ctx.transcript_blind is False
@@ -537,6 +564,7 @@ def test_prepare_scores_what_a_deployed_run_did():
 
     reads_transcript = [entry.id for entry in C.CHECKS.values() if entry.reads_transcript]
     decided = {id for id in reads_transcript if prep.results[id].outcome != C.NA}
+    # Re-capturing the deployed log can change which transcript checks are applicable.
     assert len(decided) == 13, "the other seven state a condition that did not apply"
     assert prep.results["job_declaration_read"].outcome == C.TRUE
     assert prep.results["run_record_read"].outcome == C.TRUE
@@ -1269,3 +1297,40 @@ def test_the_rendered_summary_links_the_ids_the_checks_wrote():
         summary,
         ["## Findings", "## Scope", "## Detailed evaluation results"],
     )
+
+def test_a_precondition_answers_na_and_keeps_the_rubric_out_of_the_prompt():
+    """A `transient`-only check on a `code` failure is Python's answer, not the judge's."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                     fetcher=fetcher(), inspector_run_id=INSPECTOR_RUN_ID)
+    result = prep.results["transient_evidence_cites_neighbours"]
+    assert result.outcome == C.NA
+    assert "not `transient`" in result.reasoning
+    assert "**`transient_evidence_cites_neighbours`**" not in prep.judge_inputs["rubrics"]
+
+
+def test_every_precondition_reads_only_what_prepare_already_holds():
+    """Each one answers from the output or the failed run, so none can raise on a thin run."""
+    ctx = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                    fetcher=fetcher()).ctx
+    for entry in C.CHECKS.values():
+        if entry.precondition is None:
+            continue
+        assert entry.kind == C.JUDGE, entry.id
+        reason = entry.precondition(ctx)
+        assert reason is None or isinstance(reason, str)
+
+
+def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
+    """The trace is often missing on a run that failed early; the run record still lists
+    the pipeline, so `pipeline_step_named` stays the judge's to answer."""
+    ran_a_pipeline = context(pipeline_trace=None,
+                             failed_run=failed_run(pipelines=[{"pipeline_name": "orders"}]))
+    results: dict = {}
+    C.run_preconditions(ran_a_pipeline, results)
+    assert "pipeline_step_named" not in results
+    assert "pipeline_step_named" in C.judge_ids(results)
+
+    no_pipeline = context(pipeline_trace=None)
+    results = {}
+    C.run_preconditions(no_pipeline, results)
+    assert results["pipeline_step_named"].outcome == C.NA

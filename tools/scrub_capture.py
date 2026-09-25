@@ -7,8 +7,9 @@ replaced before the files land in git.
 
 Replacement is a keyed hash of the original value, so a given identifier maps to the same
 pseudonym in every file and the cross-references inside a capture still resolve. The key is
-fixed in this file: the mapping is reproducible, and it is not reversible without the
-original value.
+fixed in this file: the mapping is reproducible, and the captures are safe because the
+source workspace is synthetic. The hash output is not reversible without the original value,
+but a committed key still allows confirmation by guessing likely inputs.
 
 What is replaced:
 
@@ -47,8 +48,8 @@ MARK = "0000"
 """Every pseudonym carries this, so `--verify` can tell a scrubbed capture from a raw one
 without holding the originals. A real identifier wears it with probability 2**-16."""
 
-EPOCH_FLOOR, EPOCH_RANGE = 1577836800, 31_000_000
-"""Pseudonymous load ids sit in 2020. A real one is the instant the load ran."""
+EPOCH_FLOOR, EPOCH_RANGE = 1_600_000_000, 31_000_000
+"""Pseudonymous load ids sit in late 2020. A real one is the instant the load ran."""
 
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 

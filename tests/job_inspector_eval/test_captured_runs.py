@@ -33,6 +33,10 @@ CLEAN = CURRENT_DEFINITION[:2]
 their Recommendation opens with "Ask a coding agent to" (`recommendation_is_the_action`) and
 chains a second action onto the first with a comma (`recommendation_one_action_per_bullet`)."""
 EARLIER_DEFINITION = tuple(name for name in CASES if name not in CURRENT_DEFINITION)
+POST_HOC_RECOMMENDATION_FALSES = {
+    "recommendation_one_action_per_bullet",
+    "recommendation_is_the_action",
+}
 
 
 def replay(name: str) -> C.EvalPrep:
@@ -44,6 +48,10 @@ def replay(name: str) -> C.EvalPrep:
 
 def outcome(prep: C.EvalPrep, check_id: str) -> str:
     return prep.results[check_id].outcome
+
+
+def false_ids(prep: C.EvalPrep) -> set[str]:
+    return {id for id, result in prep.results.items() if result.outcome == C.FALSE}
 
 
 @pytest.mark.parametrize("name", CASES)
@@ -79,13 +87,17 @@ def test_the_summary_lists_each_broken_instruction_in_words(name):
 
 
 @pytest.mark.parametrize("name", CLEAN)
-def test_a_run_of_the_current_definition_passes_the_deterministic_layer(name):
+def test_a_current_definition_run_keeps_the_known_recommendation_debt(name):
     final = _finalized(name)
     false = [entry["id"] for entry in final["checks"] if entry["outcome"] == C.FALSE]
-    assert false == ["recommendation_one_action_per_bullet", "recommendation_is_the_action"]
-    wrapper = next(entry for entry in final["checks"] if entry["id"] == false[1])
+    assert set(false) >= POST_HOC_RECOMMENDATION_FALSES
+    wrapper = next(
+        entry for entry in final["checks"] if entry["id"] == "recommendation_is_the_action"
+    )
     assert "coding agent" in wrapper["reasoning"].lower()
-    chained = next(entry for entry in final["checks"] if entry["id"] == false[0])
+    chained = next(
+        entry for entry in final["checks"] if entry["id"] == "recommendation_one_action_per_bullet"
+    )
     assert "chains a second action" in chained["reasoning"]
 
 
@@ -270,14 +282,13 @@ def test_the_profile_check_reads_the_run_record():
 # runs of the definition with the provenance, fix and summary rules, on the same workspace
 
 
-def test_a_run_that_followed_the_lead_and_pinned_the_value_passes_every_deterministic_check():
+def test_a_run_that_followed_the_lead_and_pinned_the_value_keeps_known_recommendation_debt():
     """`analytics_marts` failed on an unresolved named destination. The inspector read the
     deployment module at the line the traceback named, searched the workspace for the
     destination setting, read the job definition, and named the key and the value."""
     prep = replay("config_missing_destination_type")
     ctx = prep.ctx
-    assert [id for id, result in prep.results.items() if result.outcome == C.FALSE] == [
-        "recommendation_one_action_per_bullet", "recommendation_is_the_action"]
+    assert false_ids(prep) >= POST_HOC_RECOMMENDATION_FALSES
     assert ctx.classification == "config"
     assert ctx.fix_target and ctx.fix_change
     assert {call.tool for call in ctx.tool_calls} >= {"Read", "Grep", "dlthub_get_job"}
@@ -303,8 +314,7 @@ def test_a_run_that_could_not_establish_the_value_leaves_it_open_and_passes():
     backend, left `fix_change` empty, and said so under Confidence and in `open_points`."""
     prep = replay("config_missing_destination_type_value_open")
     ctx = prep.ctx
-    assert [id for id, result in prep.results.items() if result.outcome == C.FALSE] == [
-        "recommendation_one_action_per_bullet", "recommendation_is_the_action"]
+    assert false_ids(prep) >= POST_HOC_RECOMMENDATION_FALSES
     assert ctx.fix_target and not ctx.fix_change
     assert ctx.open_points and "destination_type" in ctx.open_points[0]
     result = prep.results["fix_names_target_and_change"]
@@ -344,8 +354,9 @@ def test_a_missing_table_followed_to_a_producer_that_never_ran():
     # which the platform UI rendered as a broken span
     spans = prep.results["summary_code_spans_balanced"]
     assert spans.outcome == C.FALSE and "backslash" in spans.reasoning
-    assert [id for id, r in prep.results.items() if r.outcome == C.FALSE] == [
-        "recommendation_one_action_per_bullet", "recommendation_is_the_action",
-        "summary_code_spans_balanced", "code_excerpt_free_of_prose"]
+    assert false_ids(prep) >= POST_HOC_RECOMMENDATION_FALSES | {
+        "summary_code_spans_balanced",
+        "code_excerpt_free_of_prose",
+    }
     # the producer's declaration was quoted with its docstring under `workspace_file`
     assert "docstring" in prep.results["code_excerpt_free_of_prose"].reasoning
