@@ -135,8 +135,20 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     assert prep.errors == []
     assert prep.inspector_run_id == INSPECTOR_RUN_ID
 
-    deterministic = [entry.id for entry in C.CHECKS.values() if entry.fn is not None]
-    assert set(prep.results) == set(deterministic)
+    deterministic = {entry.id for entry in C.CHECKS.values() if entry.fn is not None}
+    assert deterministic <= set(prep.results)
+
+    # the rest are judge checks whose condition this run does not meet, answered by their
+    # precondition so they never reach the model
+    by_precondition = set(prep.results) - deterministic
+    assert by_precondition == {
+        "transient_evidence_cites_neighbours", "pipeline_step_named",
+        "failed_summary_rules_out", "failed_summary_starting_point",
+        "aborted_summary_names_missing_input", "aborted_summary_says_what_to_supply",
+        "dependency_cause_named",
+    }
+    assert all(prep.results[id].outcome == C.NA for id in by_precondition)
+    assert not set(C.judge_ids(prep.results)) & by_precondition
 
     windows = json.loads(prep.judge_inputs["evidence_windows"])
     assert windows["open_checks"] == C.judge_ids(prep.results)
@@ -638,3 +650,25 @@ def test_judge_windows_carry_the_summary_sections_and_the_leads():
     assert windows["other_runs_read"] == []
     assert windows["open_point_reasons"] == []
     assert json.loads(prep.judge_inputs["inspector_output"])["open_points"]
+
+
+def test_a_precondition_answers_na_and_keeps_the_rubric_out_of_the_prompt():
+    """A `transient`-only check on a `code` failure is Python's answer, not the judge's."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                     fetcher=fetcher(), inspector_run_id=INSPECTOR_RUN_ID)
+    result = prep.results["transient_evidence_cites_neighbours"]
+    assert result.outcome == C.NA
+    assert "not `transient`" in result.reasoning
+    assert "**`transient_evidence_cites_neighbours`**" not in prep.judge_inputs["rubrics"]
+
+
+def test_every_precondition_reads_only_what_prepare_already_holds():
+    """Each one answers from the output or the failed run, so none can raise on a thin run."""
+    ctx = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                    fetcher=fetcher()).ctx
+    for entry in C.CHECKS.values():
+        if entry.precondition is None:
+            continue
+        assert entry.kind == C.JUDGE, entry.id
+        reason = entry.precondition(ctx)
+        assert reason is None or isinstance(reason, str)

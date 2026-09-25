@@ -222,6 +222,12 @@ class Check:
     fn: Optional[Callable[["EvalContext"], CheckResult]]
     doc: str
     reads_transcript: bool = False
+    precondition: Optional[Callable[["EvalContext"], Optional[str]]] = None
+    """Judge checks only: the reason this run does not meet the check's condition.
+
+    Python answers `N/A` itself, so the check never reaches the judge, its rubric stays out
+    of the prompt, and the model spends no output saying the condition did not apply.
+    """
     """Reads what the inspector did. `run_deterministic` holds these back when the parser
     read no tool call out of a log whose trace records tool use."""
 
@@ -244,9 +250,13 @@ def check(
     return wrap
 
 
-def judge_check(id: str, doc: str) -> None:
-    """Registers a check the judge answers. No function; the rubric is in AGENT.md."""
-    CHECKS[id] = Check(id=id, kind=JUDGE, fn=None, doc=doc)
+def judge_check(
+    id: str,
+    doc: str,
+    precondition: Optional[Callable[["EvalContext"], Optional[str]]] = None,
+) -> None:
+    """Registers a check the judge answers. No function; the rubric is in `RUBRICS`."""
+    CHECKS[id] = Check(id=id, kind=JUDGE, fn=None, doc=doc, precondition=precondition)
 
 
 def _result(outcome: str, reasoning: str, **metadata: Any) -> CheckResult:
@@ -3139,39 +3149,84 @@ judge_check("open_points_stated",
             "The summary says what the inspector could not verify.")
 judge_check("code_vs_platform",
             "A traceback in workspace code is `code`; one in the runner after the job's work"
-            " is `transient`.")
+            " is `transient`.",
+            precondition=lambda ctx: (
+                None if traceback_frames(ctx) else "the failed run's log carries no traceback"
+            ))
 judge_check("transient_evidence_cites_neighbours",
-            "A `transient` report cites the neighbouring runs and their status.")
+            "A `transient` report cites the neighbouring runs and their status.",
+            precondition=lambda ctx: (
+                None if ctx.classification == "transient"
+                else f"the classification is {ctx.classification or 'empty'!r}, not `transient`"
+            ))
 judge_check("pipeline_step_named",
-            "For a pipeline job, the summary names the step that failed.")
+            "For a pipeline job, the summary names the step that failed.",
+            precondition=lambda ctx: (
+                None if ctx.pipeline_trace else "the failed job ran no pipeline"
+            ))
 judge_check("failed_summary_rules_out",
-            "A `failed` inspection says which causes it ruled out.")
+            "A `failed` inspection says which causes it ruled out.",
+            precondition=lambda ctx: (
+                None if ctx.status == "failed"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `failed`"
+            ))
 judge_check("failed_summary_starting_point",
-            "A `failed` inspection says where a human should start looking.")
+            "A `failed` inspection says where a human should start looking.",
+            precondition=lambda ctx: (
+                None if ctx.status == "failed"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `failed`"
+            ))
 judge_check("aborted_summary_names_missing_input",
-            "An `aborted` inspection names the input that was missing.")
+            "An `aborted` inspection names the input that was missing.",
+            precondition=lambda ctx: (
+                None if ctx.status == "aborted"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `aborted`"
+            ))
 judge_check("aborted_summary_says_what_to_supply",
-            "An `aborted` inspection says what the caller must supply.")
+            "An `aborted` inspection says what the caller must supply.",
+            precondition=lambda ctx: (
+                None if ctx.status == "aborted"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `aborted`"
+            ))
 judge_check("summary_says_what_failed", "The summary says what failed.")
 judge_check("summary_says_why", "The summary says why it failed.")
 judge_check("summary_says_what_to_do", "The summary says what to do next.")
 judge_check("summary_concise", "The summary carries no repetition or filler.")
 judge_check("fix_addressed_to_human",
-            "`proposed_fix` is an action for a person and claims nothing was applied.")
+            "`proposed_fix` is an action for a person and claims nothing was applied.",
+            precondition=lambda ctx: (
+                None if ctx.proposed_fix else "`proposed_fix` is empty"
+            ))
 judge_check("fix_field_filled",
             "`proposed_fix` is filled whenever the inspection has a remedy, even when the"
             " summary already spells it out.")
 judge_check("credentials_confidence_capped",
             "A configured credential proves configuration, not validity, so confidence stays"
-            " at `medium` unless the log names it rejected.")
+            " at `medium` unless the log names it rejected.",
+            precondition=lambda ctx: (
+                None if ctx.classification == "credentials"
+                else f"the classification is {ctx.classification or 'empty'!r},"
+                     " not `credentials`"
+            ))
 judge_check("requires_human_consistent",
-            "`requires_human` agrees with the proposed fix and the classification.")
+            "`requires_human` agrees with the proposed fix and the classification.",
+            precondition=lambda ctx: (
+                None if ctx.proposed_fix else "`proposed_fix` is empty"
+            ))
 judge_check("fix_actionable",
             "`proposed_fix` names the concrete target and the exact change the evidence"
-            " supports, or says what to check when the value is not established.")
+            " supports, or says what to check when the value is not established.",
+            precondition=lambda ctx: (
+                None if ctx.proposed_fix else "`proposed_fix` is empty"
+            ))
 judge_check("dependency_cause_named",
             "On a missing table, empty input or zero-row load, the Diagnosis names what made"
-            " the producer deliver nothing rather than restating the symptom.")
+            " the producer deliver nothing rather than restating the symptom.",
+            precondition=lambda ctx: (
+                None if dependency_symptoms(ctx)
+                else "the failed run's log reports no missing table, empty input or"
+                     " zero-row load"
+            ))
 judge_check("repository_prose_labelled",
             "An excerpt that is a comment, a docstring or a job description carries"
             " `repository_comment` or `job_description`, never a fact provenance.")
@@ -3606,9 +3661,31 @@ def run_deterministic(ctx: EvalContext) -> Tuple[Dict[str, CheckResult], List[st
     return results, errors
 
 
+def run_preconditions(ctx: EvalContext, results: Dict[str, CheckResult]) -> None:
+    """Answers `N/A` for every judge check whose condition this run does not meet.
+
+    The conditions are mechanical, so Python decides them: a `failed`-only check on a run
+    that succeeded, a `transient`-only check on a `code` failure, a fix check with no fix.
+    `finalize` reads a computed result as authoritative, so the judge is never asked.
+    """
+    for entry in CHECKS.values():
+        if entry.kind != JUDGE or entry.precondition is None or entry.id in results:
+            continue
+        reason = entry.precondition(ctx)
+        if reason:
+            results[entry.id] = na(reason)
+
+
 def judge_ids(results: Dict[str, CheckResult]) -> List[str]:
-    """Check ids the judge has to answer: the judge checks plus every escalated hybrid."""
-    ids = [entry.id for entry in CHECKS.values() if entry.kind == JUDGE]
+    """Check ids the judge has to answer: the judge checks plus every escalated hybrid.
+
+    A judge check Python answered through its precondition is not among them.
+    """
+    ids = [
+        entry.id
+        for entry in CHECKS.values()
+        if entry.kind == JUDGE and results.get(entry.id) is None
+    ]
     ids += [
         entry.id
         for entry in CHECKS.values()
@@ -4037,6 +4114,7 @@ def prepare(
         )
 
     results, errors = run_deterministic(ctx)
+    run_preconditions(ctx, results)
     problems: List[str] = []
     if ctx.transcript_unread:
         blind = sum(1 for entry in CHECKS.values() if entry.reads_transcript)
