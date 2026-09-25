@@ -66,7 +66,64 @@ DATA_TOOLS = ("list_pipelines", "list_tables", "get_table_schema", "get_table_cr
 """The MCP tools dlt annotates `RequiresAccess(data=["read"])` in `data_tools.py`.
 `list_profiles` and `get_workspace_info` sit in that module on `local: read`."""
 FILE_READ_TOOLS = ("Read", "Grep", "Glob")
+FILE_SEARCH_TOOLS = ("Grep", "Glob")
+FILE_READ_COMMANDS = ("cat ", "sed ", "head ", "tail ", "less ", "grep ", "rg ")
+"""Shell forms of a file read, for a fork that wires `local: execute`."""
 SHELL_TOOLS = ("Bash", "PowerShell", "RunPython")
+
+PROVENANCE_FACTS = ("run_log", "run_record", "trace", "job_definition", "workspace_file",
+                    "secrets_redacted", "destination_query")
+PROVENANCE_CLAIMS = ("repository_comment", "job_description", "inference")
+"""The `provenance` enum of an evidence item, split as the inspector's "Provenance" section
+splits it: a fact is an artifact the run produced or code the job runs, a claim is prose."""
+PROVENANCE = PROVENANCE_FACTS + PROVENANCE_CLAIMS
+
+REQUIRED_SUMMARY_SECTIONS = ("Diagnosis", "Recommendation", "Confidence")
+INSTRUCTION_QUESTIONS = (
+    "what was the root cause of the issue",
+    "which prompt should the user give to their coding agent",
+    "what are limitations of this diagnosis and recommendation",
+    "what are the limits of this diagnosis and recommendation",
+)
+"""The guidance next to each summary heading in the inspector's definition. It is for the
+model and never for the reader."""
+SUMMARY_MAX_WORDS = 400
+BULLET_MAX_WORDS = 70
+SECTION_MAX_BULLETS = 8
+FIX_HEDGES = re.compile(
+    r"(?i)\b(?:typically|usually|probably|likely|for example|e\.g\.|such as|or similar"
+    r"|appropriate|the exact|the correct|the right|whatever|if applicable|may need)\b"
+)
+"""Words that make `fix_change` a description of a value rather than the value."""
+DEPENDENCY_SYMPTOMS = re.compile(
+    r"(?i)(?:table|relation|dataset|schema|view)\b[^\n]{0,60}?"
+    r"\b(?:does not exist|doesn't exist|not found|is missing|missing)"
+    r"|no such table"
+    r"|\b(?:0|zero|no) (?:rows?|records?|items?|data)\b"
+    r"|\bloaded 0\b"
+    r"|\bempty (?:table|input|dataset|source|result|load)"
+    r"|\bnothing (?:was )?loaded\b"
+    r"|\bschema\b[^\n]{0,140}?\bcould not be found\b"
+    r"|\bdefault_schema_name\b[^\n]{0,20}\bNone\b"
+)
+"""A log line saying the input was not there: the failure of the job that produces it. A
+consumer that found no schema for the producer's pipeline is included: the producer never
+loaded."""
+WORKSPACE_PATH_WITH_LINE = re.compile(
+    r'File "([^"]+\.py)", line (\d+)'
+    r"|((?:[\w.-]+/)*[\w-]+\.(?:py|toml|ya?ml|sql|json))(?::(\d+)|,? line (\d+))"
+)
+"""A file and a line in a log: a traceback frame, or `path.py:67` and `path.py line 67`."""
+_PLATFORM_PATH = re.compile(
+    r"(?:site-packages|dist-packages)[/\\]|[/\\](?:dlt|dlthub|dlthub_sdk|runner)[/\\]"
+    r"|[/\\]lib[/\\]python\d|^<frozen"
+)
+"""A path the workspace did not write: an installed package, dlt itself, the runner, the
+standard library. `traceback_frames` and `workspace_files_referenced` leave these out."""
+_HEADING_LINE = re.compile(r"^\s*(?:#{1,6}\s+(.+?)|\*\*([^*]+?)\*\*\s*:?)\s*$")
+_BULLET_LINE = re.compile(r"^\s*(?:[-*+\u2022]|\d+[.)])\s+\S")
+_BRACKETED_QUESTION = re.compile(r"\[[^\]]*\?[^\]]*\]")
+_FIX_WORDS = re.compile(r"(?i)\b(?:fix|value|setting|field|column|key|change|path|target)\b")
 
 WRITE_COMMANDS = (
     "dlthub deploy",
@@ -165,6 +222,12 @@ class Check:
     fn: Optional[Callable[["EvalContext"], CheckResult]]
     doc: str
     reads_transcript: bool = False
+    precondition: Optional[Callable[["EvalContext"], Optional[str]]] = None
+    """Judge checks only: the reason this run does not meet the check's condition.
+
+    Python answers `N/A` itself, so the check never reaches the judge, its rubric stays out
+    of the prompt, and the model spends no output saying the condition did not apply.
+    """
     """Reads what the inspector did. `run_deterministic` holds these back when the parser
     read no tool call out of a log whose trace records tool use."""
 
@@ -187,9 +250,13 @@ def check(
     return wrap
 
 
-def judge_check(id: str, doc: str) -> None:
-    """Registers a check the judge answers. No function; the rubric is in AGENT.md."""
-    CHECKS[id] = Check(id=id, kind=JUDGE, fn=None, doc=doc)
+def judge_check(
+    id: str,
+    doc: str,
+    precondition: Optional[Callable[["EvalContext"], Optional[str]]] = None,
+) -> None:
+    """Registers a check the judge answers. No function; the rubric is in `RUBRICS`."""
+    CHECKS[id] = Check(id=id, kind=JUDGE, fn=None, doc=doc, precondition=precondition)
 
 
 def _result(outcome: str, reasoning: str, **metadata: Any) -> CheckResult:
@@ -302,6 +369,33 @@ class EvalContext:
     def evidence(self) -> List[Dict[str, Any]]:
         items = self.output.get("evidence") or []
         return [item for item in items if isinstance(item, dict)]
+
+    @property
+    def fix_target(self) -> str:
+        return str(self.output.get("fix_target") or "").strip()
+
+    @property
+    def fix_change(self) -> str:
+        return str(self.output.get("fix_change") or "").strip()
+
+    @property
+    def open_points(self) -> List[str]:
+        points = self.output.get("open_points") or []
+        if isinstance(points, str):
+            points = [points]
+        return [str(point).strip() for point in points if str(point).strip()]
+
+    @cached_property
+    def summary_sections(self) -> Dict[str, Any]:
+        """The summary split at its headings. See `parse_summary`."""
+        return parse_summary(self.summary)
+
+    def section(self, title: str) -> Optional[Dict[str, Any]]:
+        """The summary section with that heading, case-insensitive, None when absent."""
+        for entry in self.summary_sections["sections"]:
+            if entry["title"].lower() == title.lower():
+                return entry
+        return None
 
     @property
     def reported_run_id(self) -> str:
@@ -433,6 +527,24 @@ class EvalContext:
         return str((self.failed_run or {}).get("job_ref") or "")
 
     @property
+    def neighbour_ids(self) -> List[str]:
+        """Run ids of the failed job's own runs, lower-cased."""
+        return [str(run.get("id")).lower() for run in self.neighbours if run.get("id")]
+
+    @property
+    def file_reads(self) -> List[Event]:
+        """Tool calls that open or search a workspace file, by tool name or shell command."""
+        found = []
+        for call in self.tool_calls:
+            if call.tool in FILE_READ_TOOLS:
+                found.append(call)
+            elif call.tool in SHELL_TOOLS:
+                command = command_of(call.detail).lstrip()
+                if command.startswith(FILE_READ_COMMANDS):
+                    found.append(call)
+        return found
+
+    @property
     def is_pipeline_job(self) -> bool:
         return bool((self.failed_run or {}).get("pipelines"))
 
@@ -491,6 +603,92 @@ def token_overlap(excerpt: str, haystack: str) -> float:
         return 1.0
     hay = haystack.lower()
     return sum(1 for token in tokens if token in hay) / len(tokens)
+
+
+QUOTE_RUN = 4
+"""Consecutive tokens of an excerpt that have to appear in a text for it to count as quoted."""
+_QUOTE_TOKEN = re.compile(r"[A-Za-z0-9_./-]+")
+"""Like `_TOKEN` without the colon, so `table:` in a log and `table` in a quote agree."""
+
+
+def quotes(excerpt: str, text: str) -> bool:
+    """Whether `text` carries a verbatim run of the excerpt, `QUOTE_RUN` tokens long.
+
+    Shorter than that, the whole excerpt has to appear. Token-based, so markdown backticks,
+    whitespace and trailing punctuation around the quote do not matter.
+    """
+    tokens = _QUOTE_TOKEN.findall(excerpt.lower())
+    if not tokens:
+        return False
+    haystack = " " + " ".join(_QUOTE_TOKEN.findall(text.lower())) + " "
+    run = min(QUOTE_RUN, len(tokens))
+    return any(
+        " " + " ".join(tokens[start:start + run]) + " " in haystack
+        for start in range(len(tokens) - run + 1)
+    )
+
+
+def parse_summary(summary: str) -> Dict[str, Any]:
+    """The summary split at its markdown headings.
+
+    Returns `preamble`, the non-blank lines before the first heading, and `sections`, each
+    with `title` (the heading text, stripped of `#`, `*` and a trailing colon), `heading`
+    (the line as written) and `lines` (the body as written). A heading is `#` to `######`
+    followed by text, or a line that is a bold phrase alone.
+    """
+    preamble: List[str] = []
+    sections: List[Dict[str, Any]] = []
+    for line in summary.splitlines():
+        match = _HEADING_LINE.match(line)
+        if match:
+            title = (match.group(1) or match.group(2) or "").strip().rstrip(":").strip()
+            sections.append({"title": title, "heading": line.strip(), "lines": []})
+            continue
+        if sections:
+            sections[-1]["lines"].append(line)
+        elif line.strip():
+            preamble.append(line)
+    return {"preamble": preamble, "sections": sections}
+
+
+def section_bullets(section: Dict[str, Any]) -> List[str]:
+    """The bullets of a section, each with its continuation lines joined."""
+    bullets: List[str] = []
+    in_fence = False
+    for line in section["lines"]:
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            if bullets:
+                bullets[-1] += " " + stripped
+            continue
+        if not stripped:
+            continue
+        if _BULLET_LINE.match(line) and not in_fence:
+            bullets.append(stripped)
+        elif bullets:
+            bullets[-1] += " " + stripped
+    return bullets
+
+
+def section_stray_text(section: Dict[str, Any]) -> str:
+    """The first line of a section that is neither a bullet, a continuation nor fenced."""
+    in_fence = False
+    seen_bullet = False
+    for line in section["lines"]:
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not stripped or in_fence:
+            continue
+        if _BULLET_LINE.match(line):
+            seen_bullet = True
+            continue
+        if seen_bullet and line.startswith("  "):
+            continue
+        return stripped
+    return ""
 
 
 # transcript parsing
@@ -804,14 +1002,20 @@ _HELD_ARTIFACTS = ("log", "run record", "runs info", "dlthub_get_run", "pipeline
                    "pipeline_run_trace")
 
 
-def _cites_held_artifact(source: str) -> bool:
+def _cites_held_artifact(source: str, held_run_id: str = "") -> bool:
     """Whether an evidence `source` names one of the three artifacts the evaluator fetched.
 
     An empty source is treated as the log, which is where an inspector quotes from by default.
+    A source naming another run's id is that run's log or record, which the evaluator does
+    not hold: the producer lookup quotes one, and its excerpt is checked against nothing.
     """
     text = source.lower()
     if not text.strip():
         return True
+    if held_run_id:
+        cited = [run_id.lower() for run_id in _UUID.findall(text)]
+        if cited and held_run_id.lower() not in cited:
+            return False
     return any(marker in text for marker in _HELD_ARTIFACTS)
 
 
@@ -866,7 +1070,10 @@ def excerpt_placements(ctx: EvalContext) -> List[Dict[str, Any]]:
     record = json.dumps(ctx.failed_run or {}, default=str)
     trace = json.dumps(ctx.pipeline_trace or {}, default=str)
     whole_log = normalise("\n".join(line.content for line in ctx.failed_log))
-    fallback = normalise(record + " " + trace)
+    # an inspector quotes the record as `status: failed; profile: prod`, the way `runs info`
+    # prints it, so the flattened pairs sit next to the JSON
+    fallback = normalise(" ".join((record, trace, flattened(ctx.failed_run),
+                                   flattened(ctx.pipeline_trace))))
 
     placements: List[Dict[str, Any]] = []
     for position, item in enumerate(ctx.evidence):
@@ -879,7 +1086,7 @@ def excerpt_placements(ctx: EvalContext) -> List[Dict[str, Any]]:
             placements.append({**entry, "status": EXCERPT_MISSING, "reason": "empty excerpt"})
             continue
         # the evaluator holds the log, the record and the trace; anything else is unchecked
-        if not _cites_held_artifact(source):
+        if not _cites_held_artifact(source, ctx.reported_run_id):
             placements.append({**entry, "status": EXCERPT_UNVERIFIABLE})
             continue
         first, last = source_line_range(source)
@@ -888,7 +1095,11 @@ def excerpt_placements(ctx: EvalContext) -> List[Dict[str, Any]]:
             entry["cited"] = cited
             # the excerpt may run past the last line cited, so its height widens the window
             if _matches(excerpt, _cited_region(ctx, first, last, raw.count("\n"))):
-                placements.append({**entry, "status": EXCERPT_AT_CITED, "found_line": first})
+                # within tolerance the citation may be a line or two off; the anchor for the
+                # earliest-error search is where the text sits, or the lines between would
+                # read as errors the inspector skipped
+                placements.append({**entry, "status": EXCERPT_AT_CITED,
+                                   "found_line": _locate_in_log(ctx, raw) or first})
                 continue
             # real but cited wrongly is a citation fault, not an invented one
             if _matches(excerpt, whole_log):
@@ -910,6 +1121,27 @@ def excerpt_placements(ctx: EvalContext) -> List[Dict[str, Any]]:
             "reason": "not found in the log, the run record or the pipeline trace",
         })
     return placements
+
+
+def flattened(value: Any, prefix: str = "") -> str:
+    """A nested mapping as `key: value` pairs, nesting joined with a dot, lists by position.
+
+    `pipelines.0.status: failed` is how the record's pipeline entry reads here, so an excerpt
+    saying `pipeline analytics status: failed; total_rows: 0` finds its tokens.
+    """
+    if isinstance(value, dict):
+        items = [(f"{prefix}{key}", item) for key, item in value.items()]
+    elif isinstance(value, list):
+        items = [(f"{prefix}{index}", item) for index, item in enumerate(value)]
+    else:
+        return ""
+    pairs = []
+    for name, item in items:
+        if isinstance(item, (dict, list)):
+            pairs.append(flattened(item, f"{name}."))
+        else:
+            pairs.append(f"{name}: {item}")
+    return " ".join(pairs)
 
 
 def _with_status(placements: List[Dict[str, Any]], *states: str) -> List[Dict[str, Any]]:
@@ -993,21 +1225,26 @@ def evidence_cited_at_line(ctx: EvalContext) -> CheckResult:
 
 @check("evidence_sorted_by_line")
 def evidence_sorted_by_line(ctx: EvalContext) -> CheckResult:
-    """The first evidence item cites the earliest line of all cited items.
+    """The first evidence item cites the earliest line of the inspected run's log among the
+    items that quote that log. A line of a workspace file or of another run's log is a
+    position in a different text and is left out of the comparison.
 
-    TRUE  `evidence[0]` has the lowest line number
-    FALSE a later item cites an earlier line; the reasoning names both
-    N/A   fewer than two items, or the sources name no line numbers
+    TRUE  `evidence[0]` has the lowest line number of the log items
+    FALSE a later log item cites an earlier line; the reasoning names both
+    N/A   fewer than two items quote the log with a line number, or `evidence[0]` is not one
     """
     numbered = [
-        (position, source_line_number(str(item.get("source") or "")))
+        (position, source_line_number(source))
         for position, item in enumerate(ctx.evidence)
+        for source in [str(item.get("source") or "")]
+        if _cites_held_artifact(source, ctx.reported_run_id) and not _SOURCE_FILE.search(source)
     ]
     numbered = [(position, line) for position, line in numbered if line]
     if len(numbered) < 2:
-        return na("fewer than two evidence items name a line number in their source")
+        return na("fewer than two evidence items quote the inspected run's log with a line"
+                  " number")
     if numbered[0][0] != 0:
-        return na("`evidence[0]` names no line number in its source")
+        return na("`evidence[0]` does not quote the inspected run's log with a line number")
 
     first_line = numbered[0][1]
     earlier = [(position, line) for position, line in numbered[1:] if line < first_line]
@@ -1032,6 +1269,8 @@ def no_secrets_in_output(ctx: EvalContext) -> CheckResult:
     Two kinds of match are skipped before the judge sees them, because escalating either
     spends judge attention on a certainty: a value that is a lookup rather than a literal
     (workspace code reading a variable name), and one already redacted to asterisks.
+    The base64-shaped pattern is deliberately broad; this hybrid check escalates those
+    matches instead of deciding in Python whether a long token is a secret.
     """
     fields = [("summary", ctx.summary), ("proposed_fix", ctx.proposed_fix)]
     fields += [(f"evidence[{i}].excerpt", str(item.get("excerpt") or ""))
@@ -1105,12 +1344,15 @@ def latest_failed_run_resolved(ctx: EvalContext) -> CheckResult:
 
     TRUE  the reported run is the latest failed run that existed when the inspector started
     FALSE an older failed run was inspected
-    N/A   a run id was given, or no job was named
+    N/A   a run id was given, no job was named, or a `job.success:` trigger named a completed run
     """
     if ctx.given_run_id:
         return na("a run id was given, so no resolution from a job was needed")
     if not ctx.target_job_ref:
         return na("neither a job ref nor a `job.fail:` trigger named a job")
+    if not ctx.given_job_ref and ctx.trigger.startswith("job.success:"):
+        return na("a `job.success:` trigger names a completed run, so there is no latest failed"
+                  " run to resolve")
 
     started = str(ctx.inspector_run.get("created_at") or "")
     failed = [
@@ -1524,12 +1766,17 @@ def pipeline_trace_read(ctx: EvalContext) -> CheckResult:
 
     TRUE  a pipeline trace call appears in the transcript
     FALSE none does, and neither the run record nor the log names the failed step
-    N/A   the failed job ran no pipeline, status is `aborted`, or the step was already named
+    N/A   the failed job ran no pipeline, status is `aborted`, the inspected run did not fail,
+          or the step was already named
     """
     if ctx.status == "aborted":
         return na("the inspection aborted before reading anything")
     if not ctx.is_pipeline_job:
         return na("the failed run's record lists no pipeline")
+    inspected_status = str((ctx.failed_run or {}).get("status") or "").lower()
+    if inspected_status and inspected_status not in ("failed", "failure", "error"):
+        return na(f"the inspected run {inspected_status!r}, so no step failed and no trace was"
+                  " owed")
     found = ctx.calls_matching(PIPELINE_TRACE_TOOLS)
     if found:
         return ok(f"the pipeline trace was read with {found[0].tool!r}",
@@ -1769,9 +2016,31 @@ def only_inspected_run_logs(ctx: EvalContext) -> CheckResult:
                 others.append(run_id.lower())
     if not others:
         return ok("every log call targets the inspected run")
+    neighbours = [run_id for run_id in others if run_id in ctx.neighbour_ids]
+    if neighbours:
+        return bad(
+            f"the inspector read the log of {len(neighbours)} neighbouring run(s) of the same"
+            f" job: {', '.join(neighbours)}. The neighbour check is the run list, not the logs"
+            " behind it",
+            other_runs=others,
+        )
+    symptoms = dependency_symptoms(ctx)
+    if symptoms and len(others) == 1:
+        return ok(
+            f"one other log was read, run {others[0]} of another job, after the failed run's"
+            f" log reported {symptoms[0]['match']!r} (line {symptoms[0]['line']}): the"
+            " producer lookup the dependency rule allows",
+            other_runs=others,
+        )
+    if symptoms:
+        return bad(
+            f"the inspector read the logs of {len(others)} other runs: {', '.join(others)}."
+            " The dependency rule allows the producing job's latest run and no more",
+            other_runs=others,
+        )
     return bad(
         f"the inspector read the log of {len(others)} other run(s): {', '.join(others)}."
-        " The neighbour check is the run list, not the logs behind it",
+        " The failed run's log reports no missing input, so no other log was owed",
         other_runs=others,
     )
 
@@ -1873,8 +2142,996 @@ def aborted_without_investigation(ctx: EvalContext) -> CheckResult:
     )
 
 
+# deterministic checks: the summary's shape
+
+
+def _aborted_summary(ctx: EvalContext) -> Optional[CheckResult]:
+    if ctx.status == "aborted":
+        return na("an aborted summary is the text of an exception, not a report")
+    return None
+
+
+@check("summary_has_required_sections")
+def summary_has_required_sections(ctx: EvalContext) -> CheckResult:
+    """The summary has the headings `Diagnosis`, `Recommendation` and `Confidence`, in that order,
+    and no other heading or text before the first.
+
+    TRUE  exactly those three headings, in order, nothing before the first
+    FALSE a heading is missing, renamed, extra or out of order, or text precedes the first;
+          the reasoning names it
+    N/A   status is `aborted`
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    if not ctx.summary.strip():
+        return bad("`summary` is empty")
+    parsed = ctx.summary_sections
+    titles = [entry["title"] for entry in parsed["sections"]]
+    lowered = [title.lower() for title in titles]
+    required = [title.lower() for title in REQUIRED_SUMMARY_SECTIONS]
+    if parsed["preamble"]:
+        return bad(
+            f"text sits before the first heading: {parsed['preamble'][0].strip()[:120]!r}."
+            " The summary starts at `## Diagnosis`",
+            titles=titles,
+        )
+    if lowered == required:
+        return ok("the summary has Diagnosis, Recommendation and Confidence, in order")
+    missing = [title for title in REQUIRED_SUMMARY_SECTIONS if title.lower() not in lowered]
+    extra = [title for title in titles if title.lower() not in required]
+    if extra:
+        return bad(
+            f"the summary carries the heading(s) {extra} beyond Diagnosis, Recommendation and"
+            f" Confidence" + (f", and lacks {missing}" if missing else ""),
+            titles=titles, missing=missing, extra=extra,
+        )
+    if missing:
+        return bad(
+            f"the summary lacks the heading(s) {missing}; it has"
+            f" {titles or 'no heading at all'}",
+            titles=titles, missing=missing,
+        )
+    return bad(
+        f"the sections are out of order: {titles}. The order is Diagnosis, Recommendation,"
+        " Confidence",
+        titles=titles,
+    )
+
+
+@check("summary_sections_are_bullets")
+def summary_sections_are_bullets(ctx: EvalContext) -> CheckResult:
+    """Each of the three summary sections holds bullets and nothing else.
+
+    TRUE  every required section present has at least one bullet and no text outside one
+    FALSE a section is empty or carries a paragraph; the reasoning names the section and line
+    N/A   status is `aborted`, or none of the required headings is present
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    sections = [ctx.section(title) for title in REQUIRED_SUMMARY_SECTIONS]
+    present = [entry for entry in sections if entry is not None]
+    if not present:
+        return na("none of the required headings is present; `summary_has_required_sections`"
+                  " reports it")
+    for entry in present:
+        if stray := section_stray_text(entry):
+            return bad(
+                f"the section {entry['title']!r} carries text outside a bullet:"
+                f" {stray[:120]!r}",
+                section=entry["title"],
+            )
+        if not section_bullets(entry):
+            return bad(f"the section {entry['title']!r} has no bullet", section=entry["title"])
+    return ok(f"all {len(present)} section(s) present hold bullets only")
+
+
+@check("summary_free_of_instruction_text")
+def summary_free_of_instruction_text(ctx: EvalContext) -> CheckResult:
+    """The guidance next to the headings in the inspector's definition stays out of the summary.
+
+    TRUE  none of the instruction questions and no bracketed question appears
+    FALSE one does; the reasoning quotes it
+    N/A   `summary` is empty
+    """
+    if not ctx.summary.strip():
+        return na("`summary` is empty")
+    text = normalise(ctx.summary).lower()
+    for question in INSTRUCTION_QUESTIONS:
+        if question in text:
+            return bad(
+                f"the summary carries the instruction question {question!r}, which is guidance"
+                " for the inspector and never for the reader",
+                question=question,
+            )
+    if match := _BRACKETED_QUESTION.search(ctx.summary):
+        return bad(
+            f"the summary carries a bracketed question: {match.group(0)[:120]!r}",
+            question=match.group(0),
+        )
+    return ok("no instruction text in the summary")
+
+
+_ESCAPED_BACKTICK = re.compile(r"\\`")
+RECOMMENDATION_WRAPPERS = re.compile(
+    r"(?i)\b(?:give|hand|ask|tell|instruct|have|get)\b[^.\n]{0,40}?\b(?:coding|operations|ops)?"
+    r"[ /]*agent\b|\bthis prompt\b|\bprompt\s*:"
+)
+"""A Recommendation bullet addressed to an agent rather than stating the action: the reader
+pastes the whole summary, so the wrapper is noise around the instruction."""
+_INLINE_CODE = re.compile(r"``.*?``|`[^`]*`")
+_QUOTATION_MARK = re.compile(r"[\"\u201c\u201d\u201e\u00ab\u00bb]")
+"""Double quotation marks, straight and curly. A value in a Recommendation goes in backticks."""
+
+
+RECOMMENDATION_INVESTIGATIONS = re.compile(
+    r"(?i)\b(?:determine|investigate|find out|figure out|establish|work out|identify)\b"
+    r"[^.\n]{0,30}?\b(?:why|what causes?|the (?:root )?cause|the reason)\b"
+)
+"""A Recommendation bullet that asks the reader to answer the cause question: the inspector's
+own task, handed on."""
+
+
+@check("recommendation_settles_the_cause")
+def recommendation_settles_the_cause(ctx: EvalContext) -> CheckResult:
+    """No Recommendation bullet asks the reader to determine, investigate or find out why
+    something happened. Establishing the cause is the inspection; an open cause belongs under
+    Confidence with a lowered confidence, and the Recommendation names the artifact to check.
+
+    TRUE  no bullet under Recommendation delegates the cause question
+    FALSE one does ("determine why the deployed pipeline has default_schema_name=None"); the
+          reasoning quotes it
+    N/A   status is `aborted`, or there is no Recommendation section
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    section = ctx.section("Recommendation")
+    if section is None:
+        return na("the summary has no Recommendation section; `summary_has_required_sections`"
+                  " reports it")
+    for bullet in section_bullets(section):
+        if match := RECOMMENDATION_INVESTIGATIONS.search(bullet):
+            return bad(
+                f"a Recommendation bullet hands the cause question to the reader"
+                f" ({match.group(0)!r}): {bullet[:140]!r}. Establishing the cause is the"
+                " inspection; an open cause goes under Confidence with a lowered confidence",
+                phrase=match.group(0),
+            )
+    return ok("no Recommendation bullet delegates the cause question")
+
+
+_SENTENCE_BREAK = re.compile(r"[.;:!?]\s+(?=[A-Z`(])")
+"""A sentence ending followed by the start of another, outside inline code."""
+_ACTION_VERBS = (
+    "add|allow|apply|change|check|confirm|create|delete|deploy|disable|drop|edit|enable|fix"
+    "|grant|increase|install|keep|leave|move|open|pause|point|redeploy|remove|rename|replace"
+    "|rerun|re-run|restart|retry|revoke|rotate|run|set|switch|trigger|unpause|update|upgrade"
+    "|use|verify|wait"
+)
+_ACTION_VERB = re.compile(rf"(?i)\b({_ACTION_VERBS})\b")
+_CHAINED_ACTION = re.compile(
+    rf"(?i)(?:,|;|\band\b|\bthen\b)\s+(?:and\s+|then\s+)?({_ACTION_VERBS})\b"
+)
+"""A second imperative verb joined to the first by a comma, `and` or `then`."""
+_NOUN_MARKER = re.compile(
+    r"(?i)\b(?:the|a|an|its|this|that|each|every|no|one|first|last|next|same|existing"
+    r"|declared|manual|success|failure|of|to|per|on|after|before)\s+$"
+)
+"""What precedes a verb-shaped word used as a noun: `the trigger`, `a run`, `to set`."""
+
+
+def chained_action(prose: str) -> Optional["re.Match[str]"]:
+    """The second imperative verb in a bullet, or None. A verb after a leading location
+    (`In file.py line 40, set ...`) is the first verb, not a chained one."""
+    first = next((m for m in _ACTION_VERB.finditer(prose)
+                  if not _NOUN_MARKER.search(prose[:m.start()])), None)
+    if first is None:
+        return None
+    for match in _CHAINED_ACTION.finditer(prose):
+        if match.start(1) > first.end():
+            return match
+    return None
+
+
+@check("recommendation_one_action_per_bullet")
+def recommendation_one_action_per_bullet(ctx: EvalContext) -> CheckResult:
+    """Each Recommendation bullet holds one action in one sentence; the change, the value, the
+    check afterwards and the thing not to assume are separate bullets.
+
+    TRUE  no bullet under Recommendation runs to a second sentence or joins a second
+          imperative verb to the first with a comma, `and` or `then`
+    FALSE one does; the reasoning quotes it
+    N/A   status is `aborted`, or there is no Recommendation section
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    section = ctx.section("Recommendation")
+    if section is None:
+        return na("the summary has no Recommendation section; `summary_has_required_sections`"
+                  " reports it")
+    for bullet in section_bullets(section):
+        prose = _INLINE_CODE.sub("`code`", bullet)
+        if _SENTENCE_BREAK.search(prose.rstrip(" .;:!?")):
+            return bad(
+                f"a Recommendation bullet runs to more than one sentence: {bullet[:140]!r}."
+                " One action per bullet, so the reader can tick them off",
+                bullet=bullet,
+            )
+        if match := chained_action(prose):
+            return bad(
+                f"a Recommendation bullet chains a second action ({match.group(0).strip()!r}):"
+                f" {bullet[:140]!r}. Two verbs joined by a comma, `and` or `then` are two"
+                " bullets",
+                bullet=bullet, verb=match.group(1),
+            )
+    return ok("every Recommendation bullet holds one action in one sentence")
+
+
+REGION_CHANGE = re.compile(
+    r"(?i)\b(?:change|set|update|switch|move|migrate|relocate|create|recreate|point)\b"
+    r"[^.\n]{0,80}?\b(?:location|region|multi-region)\b"
+    r"|\b(?:location|region)\b[^.\n]{0,40}?\b(?:from|to)\b\s*`?[A-Za-z][\w-]*`?"
+    r"[^.\n]{0,20}\bto\b"
+    r"|\b(?:location|region)\b\s*[=:]\s*\S"
+)
+"""An instruction to change where data lives or is processed, or a location value to set."""
+LOCATION_MISMATCH = re.compile(
+    r"(?i)not found in location|was not found in (?:location|region)|location mismatch"
+    r"|region mismatch|different (?:location|region)|wrong (?:location|region)"
+    r"|\bdataset\b[^\n]{0,60}\blocation\b"
+)
+"""A log line saying the data and the request are in different regions."""
+RESIDENCY_WORDS = re.compile(r"(?i)data[- ]residency|compliance|where the data (?:lives|sits|is)")
+ORCHESTRATION_CHANGE = re.compile(
+    r"(?i)\b(?:remove|drop|delete|strip|add|append|change|edit|set|update|replace|rewrite"
+    r"|narrow|widen|adjust|detach|decouple|remov(?:e|ing))\b[^.\n]{0,60}?"
+    r"\b(?:tags?|triggers?|schedule|cron|exposure|expose|exposed|depends_on|dependenc(?:y|ies))\b"
+    r"|\b(?:gate|chain|guard)\b[^.\n]{0,40}\bbehind\b"
+    r"|\btags?\s*=\s*\[|\btrigger\s*=\s*run\.trigger|\bschedule\s*=\s*[\"`']"
+)
+"""An instruction to change how a job is launched: its tags, trigger, schedule or dependencies."""
+
+
+def orchestration_changes(ctx: "EvalContext") -> List[Dict[str, str]]:
+    """Every instruction in the Recommendation, `proposed_fix` or `fix_change` to change a job's
+    tags, trigger, schedule or dependencies. Searched on the raw text: a code span holding
+    `tags=[...]` is itself the instruction."""
+    candidates = [("proposed_fix", ctx.proposed_fix), ("fix_change", ctx.fix_change)]
+    section = ctx.section("Recommendation")
+    if section is not None:
+        candidates += [("Recommendation", bullet) for bullet in section_bullets(section)]
+    hits: List[Dict[str, str]] = []
+    for where, text in candidates:
+        if match := ORCHESTRATION_CHANGE.search(text or ""):
+            hits.append({"field": where, "match": match.group(0), "text": normalise(text)[:200]})
+    return hits
+
+
+@check("no_orchestration_change_recommended", kind=HYBRID)
+def no_orchestration_change_recommended(ctx: EvalContext) -> CheckResult:
+    """No recommendation, fix or fix change tells the reader to remove or add a tag, change a
+    trigger or a schedule, or gate a job behind another. How a job is launched is the
+    operator's orchestration; the one exception is a declaration that cannot work as written,
+    and the judge decides whether the evidence quotes one.
+
+    TRUE  neither the Recommendation bullets, `proposed_fix` nor `fix_change` instructs a
+          tag, trigger, schedule or dependency change
+    FALSE one does and the evidence quotes no declaration that cannot work as written (the
+          judge decides that)
+    N/A   status is `aborted`
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before recommending anything")
+    hits = orchestration_changes(ctx)
+    if not hits:
+        return ok("nothing recommended changes a tag, trigger, schedule or dependency")
+    return _result(
+        JUDGE,
+        f"{len(hits)} instruction(s) change how a job is launched ({hits[0]['match']!r} in"
+        f" {hits[0]['field']}); the judge decides whether the evidence quotes a declaration"
+        " that cannot work as written",
+        hits=hits,
+    )
+
+
+def region_change_in(text: str) -> str:
+    """The instruction to change a location or region in `text`, empty when there is none."""
+    match = REGION_CHANGE.search(_INLINE_CODE.sub("`code`", text))
+    return match.group(0) if match else ""
+
+
+@check("region_change_never_recommended")
+def region_change_never_recommended(ctx: EvalContext) -> CheckResult:
+    """No recommendation, fix or fix change tells the reader to change a location or region
+    setting, move a dataset or create one in another region. Where data lives is a
+    data-residency decision with compliance consequences.
+
+    TRUE  neither the Recommendation bullets, `proposed_fix` nor `fix_change` instructs a
+          region or location change
+    FALSE one does; the reasoning quotes it
+    N/A   status is `aborted`
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before recommending anything")
+    candidates = [("`proposed_fix`", ctx.proposed_fix), ("`fix_change`", ctx.fix_change)]
+    section = ctx.section("Recommendation")
+    if section is not None:
+        candidates += [("a Recommendation bullet", bullet) for bullet in section_bullets(section)]
+    for where, text in candidates:
+        if phrase := region_change_in(text):
+            return bad(
+                f"{where} tells the reader to change where data lives or is processed"
+                f" ({phrase!r}): {normalise(text)[:140]!r}. Data location is a data-residency"
+                " decision for a person with authority over it; the inspector names the"
+                " mismatch and stops",
+                phrase=phrase, where=where,
+            )
+    return ok("no recommendation changes a location or region")
+
+
+@check("location_mismatch_named_as_residency_decision")
+def location_mismatch_named_as_residency_decision(ctx: EvalContext) -> CheckResult:
+    """When the failed run's log reports a dataset or region location mismatch, the summary
+    says it is a data-residency decision for a person and sets `requires_human`.
+
+    TRUE  the summary names data residency or compliance and `requires_human` is true
+    FALSE the log carries the mismatch and the summary treats it as a setting to fix, or
+          `requires_human` is false
+    N/A   status is `aborted`, or the log reports no location mismatch
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before reading anything")
+    hits = [entry for entry in ctx.failed_log if LOCATION_MISMATCH.search(entry.content)]
+    if not hits:
+        return na("the failed run's log reports no location or region mismatch")
+    line = f"line {hits[0].number}: {normalise(hits[0].content)[:100]!r}"
+    if not RESIDENCY_WORDS.search(ctx.summary):
+        return bad(
+            f"the log reports a location mismatch ({line}) and the summary never says that"
+            " where the data lives is a data-residency decision with compliance consequences",
+            line=hits[0].number,
+        )
+    if ctx.output.get("requires_human") is not True:
+        return bad(
+            f"the log reports a location mismatch ({line}) but `requires_human` is not true;"
+            " a data-residency decision needs a person",
+            line=hits[0].number,
+        )
+    return ok("the location mismatch is named as a data-residency decision for a person")
+
+
+@check("recommendation_is_the_action")
+def recommendation_is_the_action(ctx: EvalContext) -> CheckResult:
+    """Recommendation bullets state the action itself: no wrapper handing it to an agent, and
+    no quotation marks outside inline code.
+
+    TRUE  no bullet under Recommendation addresses a coding agent, announces a prompt, or
+          carries a quotation mark outside backticks
+    FALSE one does ("give your coding agent this prompt", "ask an agent to", a quoted
+          instruction); the reasoning quotes it
+    N/A   status is `aborted`, or there is no Recommendation section
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    section = ctx.section("Recommendation")
+    if section is None:
+        return na("the summary has no Recommendation section; `summary_has_required_sections`"
+                  " reports it")
+    for bullet in section_bullets(section):
+        if match := RECOMMENDATION_WRAPPERS.search(bullet):
+            return bad(
+                f"a Recommendation bullet is addressed to an agent instead of stating the"
+                f" action ({match.group(0)!r}): {bullet[:120]!r}. The reader pastes the whole"
+                " summary, so write the instruction itself",
+                wrapper=match.group(0),
+            )
+        if _QUOTATION_MARK.search(_INLINE_CODE.sub("", bullet)):
+            return bad(
+                f"a Recommendation bullet carries a quotation mark outside inline code:"
+                f" {bullet[:120]!r}. The instruction is written as itself, and a value goes in"
+                " backticks",
+                wrapper='"',
+            )
+    return ok("every Recommendation bullet states the action itself, with no quotation mark")
+
+
+@check("summary_code_spans_balanced")
+def summary_code_spans_balanced(ctx: EvalContext) -> CheckResult:
+    """Inline code in the summary renders: no backslash-escaped backtick, and an even number
+    of backticks on every line outside a fenced block.
+
+    TRUE  every line balances its backticks and none carries a backslash before one
+    FALSE a line does not; the reasoning quotes it. A backslash does not escape a backtick
+          in markdown, so the span closes early and the rest of the bullet renders as text
+    N/A   status is `aborted`, or the summary carries no backtick
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    if "`" not in ctx.summary:
+        return na("the summary carries no inline code")
+    in_fence = False
+    for line in ctx.summary.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if _ESCAPED_BACKTICK.search(line):
+            return bad(
+                f"a backslash precedes a backtick, which markdown does not escape, so the code"
+                f" span closes early: {stripped[:120]!r}. Quote a line holding backticks in a"
+                " double-backtick span",
+                line=stripped,
+            )
+        if line.count("`") % 2:
+            return bad(
+                f"a line has an odd number of backticks, so a code span never closes:"
+                f" {stripped[:120]!r}",
+                line=stripped,
+            )
+    return ok("every inline code span in the summary closes on its line")
+
+
+@check("summary_within_length")
+def summary_within_length(ctx: EvalContext) -> CheckResult:
+    """The summary is short: a word budget over all of it, per bullet and per section.
+
+    TRUE  at most `SUMMARY_MAX_WORDS` words, `BULLET_MAX_WORDS` per bullet and
+          `SECTION_MAX_BULLETS` bullets per section
+    FALSE one budget is exceeded; the reasoning names it
+    N/A   status is `aborted`, or none of the required headings is present
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    present = [entry for entry in (ctx.section(t) for t in REQUIRED_SUMMARY_SECTIONS) if entry]
+    if not present:
+        return na("none of the required headings is present; `summary_has_required_sections`"
+                  " reports it")
+    words = len(ctx.summary.split())
+    if words > SUMMARY_MAX_WORDS:
+        return bad(f"the summary runs to {words} words, over the {SUMMARY_MAX_WORDS} allowed",
+                   words=words)
+    for entry in present:
+        bullets = section_bullets(entry)
+        if len(bullets) > SECTION_MAX_BULLETS:
+            return bad(
+                f"the section {entry['title']!r} has {len(bullets)} bullets, over the"
+                f" {SECTION_MAX_BULLETS} allowed",
+                section=entry["title"], bullets=len(bullets),
+            )
+        for bullet in bullets:
+            length = len(bullet.split())
+            if length > BULLET_MAX_WORDS:
+                return bad(
+                    f"a bullet under {entry['title']!r} runs to {length} words, over the"
+                    f" {BULLET_MAX_WORDS} allowed: {bullet[:100]!r}",
+                    section=entry["title"], words=length,
+                )
+    return ok(f"{words} words, every bullet and section within budget", words=words)
+
+
+@check("diagnosis_quotes_evidence")
+def diagnosis_quotes_evidence(ctx: EvalContext) -> CheckResult:
+    """The Diagnosis section quotes an evidence excerpt, so the reader sees the line the cause
+    rests on without opening `evidence`.
+
+    TRUE  a run of `QUOTE_RUN` consecutive tokens of some excerpt appears under Diagnosis
+    FALSE no excerpt is quoted there; the reasoning gives the first excerpt
+    N/A   status is `aborted`, `evidence` is empty, or there is no Diagnosis section
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    if not ctx.evidence:
+        return na("`evidence` is empty")
+    diagnosis = ctx.section("Diagnosis")
+    if diagnosis is None:
+        return na("the summary has no Diagnosis section; `summary_has_required_sections`"
+                  " reports it")
+    text = "\n".join(diagnosis["lines"])
+    for position, item in enumerate(ctx.evidence):
+        excerpt = str(item.get("excerpt") or "")
+        if quotes(excerpt, text):
+            return ok(f"the Diagnosis quotes evidence[{position}]: {normalise(excerpt)[:80]!r}",
+                      index=position)
+    first = normalise(str(ctx.evidence[0].get("excerpt") or ""))[:100]
+    return bad(
+        f"the Diagnosis quotes none of the {len(ctx.evidence)} evidence excerpt(s); the first"
+        f" is {first!r}"
+    )
+
+
+# deterministic checks: provenance, the fix and the open points
+
+
+@check("evidence_has_provenance")
+def evidence_has_provenance(ctx: EvalContext) -> CheckResult:
+    """Every evidence item says what kind of artifact it is.
+
+    TRUE  every item carries a `provenance` from the inspector's table
+    FALSE one carries none, or a value outside the table; the reasoning names it
+    N/A   `evidence` is empty
+    """
+    if not ctx.evidence:
+        return na("`evidence` is empty")
+    for position, item in enumerate(ctx.evidence):
+        value = str(item.get("provenance") or "").strip()
+        if not value:
+            return bad(f"evidence[{position}] carries no `provenance`", index=position)
+        if value not in PROVENANCE:
+            return bad(
+                f"evidence[{position}] carries provenance {value!r}, which is not one of"
+                f" {', '.join(PROVENANCE)}",
+                index=position, provenance=value,
+            )
+    return ok(f"all {len(ctx.evidence)} evidence item(s) carry a provenance")
+
+
+_SOURCE_FILE = re.compile(r"(?i)\.(?:py|toml|ya?ml|json|txt|md|cfg|ini|sql)\b")
+_SOURCE_SECRETS = re.compile(
+    r"(?i)secrets_view_redacted|secrets_list|list_variables|variable list|secrets view-redacted"
+)
+_SOURCE_DATA = re.compile(r"(?i)execute_sql_query|preview_table|get_row_counts|\bselect\b")
+_SOURCE_TRACE = re.compile(r"(?i)\btrace\b")
+_SOURCE_JOB_DEFINITION = re.compile(r"(?i)job definition|show-manifest|dlthub_get_job|manifest")
+_SOURCE_LOG = re.compile(r"(?i)\blogs?\b")
+_SOURCE_RECORD = re.compile(r"(?i)runs? info|run record|dlthub_get_run\b|job_runs_info")
+
+_SOURCE_KINDS: Tuple[Tuple[str, "re.Pattern[str]", Tuple[str, ...]], ...] = (
+    ("a workspace file", _SOURCE_FILE, ("workspace_file", "repository_comment")),
+    ("the redacted secrets view", _SOURCE_SECRETS, ("secrets_redacted",)),
+    ("a destination query", _SOURCE_DATA, ("destination_query",)),
+    ("the pipeline trace", _SOURCE_TRACE, ("trace",)),
+    ("the job definition", _SOURCE_JOB_DEFINITION, ("job_definition", "job_description")),
+    ("a run log", _SOURCE_LOG, ("run_log",)),
+    ("the run record", _SOURCE_RECORD, ("run_record",)),
+)
+"""What a `source` names, and the provenance values that fit it. First match wins, so a file
+path beats the word `log` inside it."""
+
+
+def provenance_allowed_for(source: str) -> Tuple[str, Tuple[str, ...]]:
+    """What the source names and which provenance values fit; empty when it names nothing known."""
+    for name, pattern, allowed in _SOURCE_KINDS:
+        if pattern.search(source):
+            return name, allowed
+    return "", ()
+
+
+@check("evidence_provenance_matches_source")
+def evidence_provenance_matches_source(ctx: EvalContext) -> CheckResult:
+    """The provenance of an item fits what its source names: a log line is `run_log`, a file
+    is `workspace_file` or `repository_comment`, and so on.
+
+    TRUE  every item with a provenance fits its source, or names a source of no known kind
+    FALSE one does not; the reasoning names the item, the source and the value
+    N/A   no item declares a provenance
+    """
+    declared = [
+        (position, item) for position, item in enumerate(ctx.evidence)
+        if str(item.get("provenance") or "").strip() in PROVENANCE
+    ]
+    if not declared:
+        return na("no evidence item declares a provenance")
+    for position, item in declared:
+        value = str(item.get("provenance")).strip()
+        if value == "inference":
+            continue
+        source = str(item.get("source") or "")
+        kind, allowed = provenance_allowed_for(source)
+        if allowed and value not in allowed:
+            return bad(
+                f"evidence[{position}] cites {source[:80]!r}, {kind}, under provenance"
+                f" {value!r}; that source is {' or '.join(repr(a) for a in allowed)}",
+                index=position, provenance=value, allowed=list(allowed),
+            )
+    return ok(f"the provenance of all {len(declared)} item(s) fits the source it cites")
+
+
+@check("high_confidence_rests_on_facts")
+def high_confidence_rests_on_facts(ctx: EvalContext) -> CheckResult:
+    """`confidence: high` rests on at least one fact, never on repository prose, a job
+    description or an inference alone.
+
+    TRUE  some evidence item carries a fact provenance
+    FALSE every item is a claim; the reasoning lists them
+    N/A   confidence is not `high`, or no item declares a provenance
+    """
+    if ctx.confidence != "high":
+        return na(f"confidence is {ctx.confidence!r}, not `high`")
+    values = [str(item.get("provenance") or "").strip() for item in ctx.evidence]
+    declared = [value for value in values if value in PROVENANCE]
+    if not declared:
+        return na("no evidence item declares a provenance; `evidence_has_provenance` reports it")
+    facts = [value for value in declared if value in PROVENANCE_FACTS]
+    if facts:
+        return ok(f"`high` rests on {len(facts)} fact(s): {', '.join(sorted(set(facts)))}")
+    return bad(
+        f"confidence is `high` but every evidence item is a claim ({', '.join(declared)}):"
+        " a comment, a description or an inference says what the author thinks, and `high`"
+        " needs a log line, a record, a trace, a definition or the code itself",
+        provenance=declared,
+    )
+
+
+@check("fix_names_target_and_change")
+def fix_names_target_and_change(ctx: EvalContext) -> CheckResult:
+    """A proposed fix names the thing to change and the change, or declares the value open.
+
+    TRUE  `fix_target` and `fix_change` are filled and the change hedges no value; or the
+          target is filled, the change empty, and an open point exists; or both are empty and
+          an open point speaks of the fix
+    FALSE both fields are empty behind a filled `proposed_fix` with no open point about it,
+          the target is filled and no open point says why the value is open, or
+          `fix_change` hedges (`typically`, `the exact field`); the reasoning quotes it
+    N/A   status is `aborted`, or `proposed_fix` is empty
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before proposing anything")
+    if not ctx.proposed_fix.strip():
+        return na("`proposed_fix` is empty")
+    target, change = ctx.fix_target, ctx.fix_change
+    if target and change:
+        if match := FIX_HEDGES.search(change):
+            return bad(
+                f"`fix_change` hedges with {match.group(0)!r}: {change[:120]!r}. Name the value"
+                " or leave the field empty and put the point in `open_points`",
+                hedge=match.group(0),
+            )
+        return ok(f"the fix changes {target[:80]!r} to {change[:80]!r}")
+    missing = [name for name, value in (("fix_target", target), ("fix_change", change))
+               if not value]
+    # with the target known, whatever is open is the value; without it, the point has to
+    # speak of the fix
+    about_fix = [point for point in ctx.open_points
+                 if target or _FIX_WORDS.search(point)]
+    if about_fix:
+        return ok(
+            f"{' and '.join(f'`{name}`' for name in missing)} empty, and `open_points` says why:"
+            f" {about_fix[0][:100]!r}",
+            missing=missing,
+        )
+    return bad(
+        f"`proposed_fix` is filled but {' and '.join(f'`{name}`' for name in missing)}"
+        f" {'is' if len(missing) == 1 else 'are'} empty and no open point says why the value"
+        f" is not established: {normalise(ctx.proposed_fix)[:140]!r}",
+        missing=missing,
+    )
+
+
+_TWO_TARGETS = re.compile(r"(?i)\s(?:and|plus|as well as)\s|;")
+"""Two things joined into one `fix_target`."""
+_TARGET_ANCHOR = re.compile(r"(?i)[\w./-]+\.(?:py|toml|yaml|yml|json|sql|md)\b|\bjobs\.[\w.]+")
+"""What makes a part of `fix_target` a target of its own: a file path or a job ref."""
+
+
+@check("fix_target_is_one_thing")
+def fix_target_is_one_thing(ctx: EvalContext) -> CheckResult:
+    """`fix_target` names one thing to change: a file, a key, a resource, a secret or a job ref.
+    A remedy with two parts puts the part the cause points at here and the other under
+    Recommendation. Two settings in the same file are one target.
+
+    TRUE  `fix_target` is empty, names one target, or joins names inside one file or job
+    FALSE it joins two files, jobs or resources with `and`, `plus`, `as well as` or a
+          semicolon; the reasoning quotes it
+    N/A   status is `aborted`
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before proposing anything")
+    target = ctx.fix_target.strip()
+    if not target:
+        return ok("`fix_target` is empty")
+    plain = target.replace("`", "")
+    match = _TWO_TARGETS.search(plain)
+    if match:
+        # two constants in one file are one setting; two files or two jobs are two targets
+        anchors = {
+            frozenset(a.lower() for a in _TARGET_ANCHOR.findall(part))
+            for part in _TWO_TARGETS.split(plain) if _TARGET_ANCHOR.search(part)
+        }
+        if len(anchors) > 1:
+            return bad(
+                f"`fix_target` names two things joined by {match.group(0).strip() or ';'!r}:"
+                f" {target[:140]!r}. Name the one the cause points at and put the other under"
+                " Recommendation",
+                target=target,
+            )
+    return ok(f"`fix_target` names one thing: {target[:80]!r}")
+
+
+_PROSE_IN_CODE = re.compile(r'"""|\'\'\'|^\s*#(?!!)', re.M)
+"""A docstring delimiter or a comment line inside what should be code."""
+
+
+@check("code_excerpt_free_of_prose")
+def code_excerpt_free_of_prose(ctx: EvalContext) -> CheckResult:
+    """A `workspace_file` excerpt holds code lines only. A docstring or a comment that carries
+    the point is its own `repository_comment` item, so a fact provenance never covers prose.
+
+    TRUE  no `workspace_file` excerpt contains a triple quote or a line starting with `#`
+    FALSE one does; the reasoning names the item and quotes the prose
+    N/A   status is `aborted`, or no evidence item is `workspace_file`
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before citing anything")
+    code_items = [(i, item) for i, item in enumerate(ctx.evidence)
+                  if str(item.get("provenance") or "") == "workspace_file"]
+    if not code_items:
+        return na("no evidence item carries `workspace_file`")
+    for index, item in code_items:
+        excerpt = str(item.get("excerpt") or "")
+        if match := _PROSE_IN_CODE.search(excerpt):
+            line = excerpt[match.start():].splitlines()[0] if excerpt[match.start():] else ""
+            return bad(
+                f"evidence[{index}] is `workspace_file` but carries prose ({line.strip()[:100]!r})."
+                " A code excerpt stops before the docstring; a comment that carries the point"
+                " is its own `repository_comment` item",
+                index=index,
+            )
+    return ok(f"all {len(code_items)} `workspace_file` excerpt(s) hold code lines only")
+
+
+def open_point_reasons(ctx: EvalContext) -> List[str]:
+    """Why this run owes an entry in `open_points`. Empty when nothing forces one."""
+    reasons: List[str] = []
+    errored = [event.tool for event in ctx.events if event.kind == "tool_error"]
+    if errored:
+        reasons.append(f"a tool call errored ({errored[0]})")
+    claims = sorted({
+        str(item.get("provenance")) for item in ctx.evidence
+        if str(item.get("provenance") or "") in PROVENANCE_CLAIMS
+    })
+    if claims:
+        reasons.append(f"evidence rests in part on a claim ({', '.join(claims)})")
+    if ctx.confidence in ("medium", "low"):
+        reasons.append(f"confidence is `{ctx.confidence}`")
+    if ctx.proposed_fix.strip() and not (ctx.fix_target and ctx.fix_change):
+        reasons.append("the fix names no target or no change")
+    if ctx.status == "failed":
+        reasons.append("the inspection failed to find the cause")
+    return reasons
+
+
+@check("open_points_declared")
+def open_points_declared(ctx: EvalContext) -> CheckResult:
+    """`open_points` is filled whenever a tool failed, the evidence leans on a claim, confidence
+    is below `high`, the fix is not pinned down, or the inspection failed.
+
+    TRUE  one of those holds and `open_points` has an entry
+    FALSE one of those holds and `open_points` is empty; the reasoning names what forced it
+    N/A   status is `aborted`, or nothing forced an open point
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before establishing anything")
+    reasons = open_point_reasons(ctx)
+    if not reasons:
+        return na("nothing forced an open point: no tool error, facts only, `high`, fix pinned")
+    if ctx.open_points:
+        return ok(f"{len(ctx.open_points)} open point(s) declared; owed because"
+                  f" {'; '.join(reasons)}", reasons=reasons)
+    return bad(
+        f"`open_points` is empty although {'; '.join(reasons)}. A reader cannot tell a"
+        " measured field from an inferred one",
+        reasons=reasons,
+    )
+
+
+OPEN_POINT_MATCH_RATIO = 0.4
+"""Share of an open point's tokens that must appear under Confidence for it to count as stated."""
+
+
+@check("confidence_carries_open_points")
+def confidence_carries_open_points(ctx: EvalContext) -> CheckResult:
+    """Every entry of `open_points` is stated under Confidence, so the reader of the summary sees
+    what the structured field records.
+
+    TRUE  each open point is found under Confidence
+    FALSE one is not; the reasoning quotes it
+    N/A   `open_points` is empty, status is `aborted`, or there is no Confidence section
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before establishing anything")
+    if not ctx.open_points:
+        return na("`open_points` is empty")
+    confidence_section = ctx.section("Confidence")
+    if confidence_section is None:
+        return na("the summary has no Confidence section; `summary_has_required_sections`"
+                  " reports it")
+    text = "\n".join(confidence_section["lines"])
+    for point in ctx.open_points:
+        if token_overlap(point, text) < OPEN_POINT_MATCH_RATIO and not quotes(point, text):
+            return bad(f"the open point {point[:120]!r} is not stated under Confidence",
+                       point=point)
+    return ok(f"all {len(ctx.open_points)} open point(s) are stated under Confidence")
+
+
+# deterministic checks: following the lead and the dependency
+
+
+def _is_platform_path(path: str) -> bool:
+    return bool(_PLATFORM_PATH.search(path))
+
+
+def workspace_files_referenced(ctx: EvalContext) -> List[Dict[str, Any]]:
+    """Workspace files the failed run's log names with a line: traceback frames and
+    `path:line` mentions, platform paths left out."""
+    found: List[Dict[str, Any]] = []
+    seen = set()
+    for entry in ctx.failed_log:
+        for match in WORKSPACE_PATH_WITH_LINE.finditer(entry.content):
+            path = match.group(1) or match.group(3) or ""
+            at = int(match.group(2) or match.group(4) or match.group(5) or 0)
+            if not path or _is_platform_path(path) or (path, at) in seen:
+                continue
+            seen.add((path, at))
+            found.append({"log_line": entry.number, "file": path, "at": at})
+    return found
+
+
+def dependency_symptoms(ctx: EvalContext) -> List[Dict[str, Any]]:
+    """Lines of the failed run's log saying the input was not there, with the words that say it."""
+    found = []
+    for entry in ctx.failed_log:
+        if match := DEPENDENCY_SYMPTOMS.search(entry.content):
+            # a traceback prints the raising source line too: `Table `{table_name}` not found`
+            if "{" in match.group(0):
+                continue
+            found.append({"line": entry.number, "match": normalise(match.group(0)),
+                          "text": normalise(entry.content)[:160]})
+    return found
+
+
+@check("workspace_file_read_when_referenced", reads_transcript=True)
+def workspace_file_read_when_referenced(ctx: EvalContext) -> CheckResult:
+    """When the failed run's log names a workspace file and line, the inspector opened it.
+
+    TRUE  a file tool call names that file, or a search tool was used after the log named it
+    FALSE the log names a workspace file and the transcript holds no file read, or reads of
+          other files only; the reasoning names the file and line
+    N/A   status is `aborted`, the log names no workspace file, or the trace says no file tool
+          was wired
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before reading anything")
+    referenced = workspace_files_referenced(ctx)
+    if not referenced:
+        return na("the failed run's log names no workspace file with a line")
+    wired = (ctx.trace or {}).get("local_tools")
+    if isinstance(wired, dict) and not any(tool in wired for tool in FILE_READ_TOOLS):
+        return na(f"the trace says the run was wired {sorted(wired) or 'no local tool'}, none"
+                  " of them a file tool, so no file could be opened")
+    first = referenced[0]
+    where = f"{first['file']} line {first['at']} (log line {first['log_line']})"
+    reads = ctx.file_reads
+    if not reads:
+        return bad(
+            f"the log names {where} and the transcript holds no Read, Grep or Glob call: the"
+            " file was never opened, so the diagnosis rests on the log alone",
+            file=first["file"], at=first["at"],
+        )
+    if ctx.transcript_blind:
+        return ok("a file tool was called; at verbosity 0 which file cannot be read")
+    names = [Path(item["file"]).name for item in referenced]
+    for call in reads:
+        detail = call.detail or ""
+        if any(name in detail for name in names):
+            opened = next(name for name in names if name in detail)
+            return ok(f"{call.tool!r} at call {call.call_index} opened {opened}",
+                      call_index=call.call_index, file=opened)
+    searched = [
+        call for call in reads
+        if call.tool in FILE_SEARCH_TOOLS
+        or (call.tool in SHELL_TOOLS
+            and command_of(call.detail).lstrip().startswith(("grep ", "rg ")))
+    ]
+    if searched:
+        return ok(
+            f"the transcript searches the workspace with {searched[0].tool!r} at call"
+            f" {searched[0].call_index} after the log named {where}",
+            call_index=searched[0].call_index,
+        )
+    opened = ", ".join(normalise(command_of(call.detail))[:60] for call in reads[:3])
+    return bad(
+        f"the log names {where} but the {len(reads)} file read(s) opened other files:"
+        f" {opened}",
+        file=first["file"], at=first["at"],
+    )
+
+
+DEPLOYMENT_MODULE = "__deployment__"
+
+
+@check("job_declaration_read", reads_transcript=True)
+def job_declaration_read(ctx: EvalContext) -> CheckResult:
+    """The inspector read how the failed job is declared before classifying: the deployed
+    definition through the job tool, or the declaring module with a file tool.
+
+    TRUE  a job-definition call, or a file read or search naming the deployment module or the
+          job's own module, appears in the transcript
+    FALSE none does; the classification rests on the run record and the log alone
+    N/A   status is `aborted`, or verbosity 0 left the file arguments out and no job tool ran
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before reading anything")
+    definition = ctx.calls_matching(JOB_DEFINITION_TOOLS, JOB_DEFINITION_COMMANDS)
+    if definition:
+        return ok(f"the deployed definition was read with {definition[0].tool!r} at call"
+                  f" {definition[0].call_index}", call_index=definition[0].call_index)
+    parts = ctx.failed_job_ref.split(".")
+    modules = [DEPLOYMENT_MODULE] + ([parts[1]] if len(parts) > 2 else [])
+    for call in ctx.file_reads:
+        detail = call.detail or ""
+        if any(module in detail for module in modules):
+            return ok(f"the declaring module was read with {call.tool!r} at call"
+                      f" {call.call_index}: {normalise(detail)[:80]!r}",
+                      call_index=call.call_index)
+    if ctx.transcript_blind:
+        return na("verbosity 0: file arguments are not in the log and no job tool ran")
+    return bad(
+        "the transcript holds no read of the failed job's declaration: no job-definition call"
+        f" and no file read naming {' or '.join(repr(m) for m in modules)}. The classification"
+        " rests on the run record and the log alone",
+        modules=modules,
+    )
+
+
+@check("upstream_inspected_on_dependency_symptoms", reads_transcript=True)
+def upstream_inspected_on_dependency_symptoms(ctx: EvalContext) -> CheckResult:
+    """When the failed run's log reports a missing table, empty input or zero-row load, the
+    inspector looked at the job that produces the input, or at the code that does.
+
+    TRUE  a run of another job was read, another job's definition or run list was fetched, or
+          a workspace file was opened
+    FALSE the log carries the symptom and the transcript holds none of those; the reasoning
+          quotes the symptom line
+    N/A   status is `aborted`, the log carries no such symptom, or verbosity 0
+    """
+    if ctx.status == "aborted":
+        return na("the inspection aborted before reading anything")
+    symptoms = dependency_symptoms(ctx)
+    if not symptoms:
+        return na("the failed run's log reports no missing table, empty input or zero-row load")
+    if ctx.transcript_blind:
+        return na("verbosity 0: tool arguments are not in the log, so what was inspected is"
+                  " unknown")
+    symptom = f"{symptoms[0]['match']!r} (line {symptoms[0]['line']})"
+    inspected = ctx.reported_run_id.lower()
+    other_runs = [
+        run_id for run_id in ctx.runs_read
+        if run_id != inspected and run_id not in ctx.neighbour_ids
+    ]
+    if other_runs:
+        return ok(
+            f"after the log reported {symptom} the inspector read run {other_runs[0]} of"
+            " another job",
+            run_id=other_runs[0],
+        )
+    failed_job = ctx.failed_job_ref
+    for call in ctx.calls_matching(
+        RUN_LIST_TOOLS + JOB_DEFINITION_TOOLS, RUN_LIST_COMMANDS + JOB_DEFINITION_COMMANDS
+    ):
+        if call.detail and failed_job and failed_job not in call.detail:
+            return ok(
+                f"after the log reported {symptom} the inspector looked at another job with"
+                f" {call.tool!r} at call {call.call_index}: {normalise(call.detail)[:80]!r}",
+                call_index=call.call_index,
+            )
+    if ctx.file_reads:
+        call = ctx.file_reads[0]
+        return ok(
+            f"after the log reported {symptom} the inspector opened the workspace code with"
+            f" {call.tool!r} at call {call.call_index}",
+            call_index=call.call_index,
+        )
+    return bad(
+        f"the log reports {symptom}, a symptom of the job that produces the input, and the"
+        " transcript inspected no other job's run, fetched no other job and opened no"
+        " workspace file: the diagnosis stops at the symptom",
+        symptom=symptoms[0],
+    )
+
+
 # judge checks
-# no function: the rubric is in AGENT.md. registered so the registry is the one id list
+# no function: the id and the one-line contract here, the rubric the judge reads in `RUBRICS`
 
 judge_check("no_premature_cause",
             "No statement before the first log read presents a cause as settled.")
@@ -1892,33 +3149,318 @@ judge_check("open_points_stated",
             "The summary says what the inspector could not verify.")
 judge_check("code_vs_platform",
             "A traceback in workspace code is `code`; one in the runner after the job's work"
-            " is `transient`.")
+            " is `transient`.",
+            precondition=lambda ctx: (
+                None if traceback_frames(ctx) else "the failed run's log carries no traceback"
+            ))
 judge_check("transient_evidence_cites_neighbours",
-            "A `transient` report cites the neighbouring runs and their status.")
+            "A `transient` report cites the neighbouring runs and their status.",
+            precondition=lambda ctx: (
+                None if ctx.classification == "transient"
+                else f"the classification is {ctx.classification or 'empty'!r}, not `transient`"
+            ))
 judge_check("pipeline_step_named",
-            "For a pipeline job, the summary names the step that failed.")
+            "For a pipeline job, the summary names the step that failed.",
+            # the run record lists the pipelines the job ran; the trace is fetched separately
+            # and is often absent on a run that failed early
+            precondition=lambda ctx: (
+                None if (ctx.failed_run or {}).get("pipelines")
+                else "the failed job ran no pipeline"
+            ))
 judge_check("failed_summary_rules_out",
-            "A `failed` inspection says which causes it ruled out.")
+            "A `failed` inspection says which causes it ruled out.",
+            precondition=lambda ctx: (
+                None if ctx.status == "failed"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `failed`"
+            ))
 judge_check("failed_summary_starting_point",
-            "A `failed` inspection says where a human should start looking.")
+            "A `failed` inspection says where a human should start looking.",
+            precondition=lambda ctx: (
+                None if ctx.status == "failed"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `failed`"
+            ))
 judge_check("aborted_summary_names_missing_input",
-            "An `aborted` inspection names the input that was missing.")
+            "An `aborted` inspection names the input that was missing.",
+            precondition=lambda ctx: (
+                None if ctx.status == "aborted"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `aborted`"
+            ))
 judge_check("aborted_summary_says_what_to_supply",
-            "An `aborted` inspection says what the caller must supply.")
+            "An `aborted` inspection says what the caller must supply.",
+            precondition=lambda ctx: (
+                None if ctx.status == "aborted"
+                else f"the inspector status is {ctx.status or 'empty'!r}, not `aborted`"
+            ))
 judge_check("summary_says_what_failed", "The summary says what failed.")
 judge_check("summary_says_why", "The summary says why it failed.")
 judge_check("summary_says_what_to_do", "The summary says what to do next.")
 judge_check("summary_concise", "The summary carries no repetition or filler.")
 judge_check("fix_addressed_to_human",
-            "`proposed_fix` is an action for a person and claims nothing was applied.")
+            "`proposed_fix` is an action for a person and claims nothing was applied.",
+            precondition=lambda ctx: (
+                None if ctx.proposed_fix else "`proposed_fix` is empty"
+            ))
 judge_check("fix_field_filled",
             "`proposed_fix` is filled whenever the inspection has a remedy, even when the"
             " summary already spells it out.")
 judge_check("credentials_confidence_capped",
             "A configured credential proves configuration, not validity, so confidence stays"
-            " at `medium` unless the log names it rejected.")
+            " at `medium` unless the log names it rejected.",
+            precondition=lambda ctx: (
+                None if ctx.classification == "credentials"
+                else f"the classification is {ctx.classification or 'empty'!r},"
+                     " not `credentials`"
+            ))
 judge_check("requires_human_consistent",
-            "`requires_human` agrees with the proposed fix and the classification.")
+            "`requires_human` agrees with the proposed fix and the classification.",
+            precondition=lambda ctx: (
+                None if ctx.proposed_fix else "`proposed_fix` is empty"
+            ))
+judge_check("fix_actionable",
+            "`proposed_fix` names the concrete target and the exact change the evidence"
+            " supports, or says what to check when the value is not established.",
+            precondition=lambda ctx: (
+                None if ctx.proposed_fix else "`proposed_fix` is empty"
+            ))
+judge_check("dependency_cause_named",
+            "On a missing table, empty input or zero-row load, the Diagnosis names what made"
+            " the producer deliver nothing rather than restating the symptom.",
+            precondition=lambda ctx: (
+                None if dependency_symptoms(ctx)
+                else "the failed run's log reports no missing table, empty input or"
+                     " zero-row load"
+            ))
+judge_check("repository_prose_labelled",
+            "An excerpt that is a comment, a docstring or a job description carries"
+            " `repository_comment` or `job_description`, never a fact provenance.")
+judge_check("summary_sections_clear",
+            "Each bullet sits in the section it belongs to and reads as a plain statement.")
+judge_check("no_unflagged_compliance_or_security_change",
+            "Nothing recommended has compliance or security consequences unless it is named as"
+            " a decision for the person responsible: no moving or copying data across regions"
+            " or accounts, no wider permissions, no weaker authentication or encryption, no"
+            " retention or deletion change, no credential in the open, no production profile"
+            " for an agent.")
+
+
+# The rubric the judge reads for a check, keyed by id. `prepare` renders only the ids in
+# `open_checks` into the prompt, so a run carries the rubrics it can answer and no others.
+# A `{{ }}` here would reach the model unrendered: dlt templates the agent body once,
+# before these values are substituted into it.
+
+RUBRICS: Dict[str, str] = {
+    "no_premature_cause": """\
+no cause may be settled before the log is read. Read
+`evidence_windows.reasoning_before_log`. TRUE when no statement presents a cause as settled;
+wondering and listing hypotheses is fine. FALSE when one does; quote it. N/A when nothing
+precedes the log read or the transcript carries no thoughts.
+""",
+    "no_invented_cause": """\
+the root cause in `summary` must follow from the cited evidence and
+be visible in the log. Read `summary` against the evidence windows and the log tail. TRUE when
+the log supports the stated cause. FALSE when it does not; quote the contradicting line.
+""",
+    "earliest_error_first": """\
+no genuine error may sit in the log before the line `evidence[0]`
+quotes. That line is `earliest_error.anchor_line`: where the excerpt was found, which is not
+always the line the source cites. Read `earliest_error.candidates`, every error-like line
+before the anchor, with context. Decide in this order:
+
+1. `earliest_error.located` is false → **`N/A`**, quoting its `reason`. The candidate list is
+   empty because nothing could be searched.
+2. `located` is true and `candidates` is empty → **`TRUE`**.
+3. `located` is true and a candidate is a genuine error rather than noise, such as a retried
+   warning or an expected message → **`FALSE`**, quoting it with its line number. Every
+   candidate is noise → **`TRUE`**.
+
+A `reason` on a located window says the citation and the excerpt disagree. Judge the citation
+nowhere here: `evidence_cited_at_line` reports it.
+""",
+    "classification_correct": """\
+the classification must match the failure as the inspector's
+classification table defines it: `config`, `credentials`, `upstream_data`, `code`, `resources`,
+`transient`, `unknown`. Classify from the windows yourself, then compare. TRUE on agreement.
+FALSE otherwise; name the value you would have given and why.
+""",
+    "confidence_justified": """\
+`high` means the earliest error names the cause directly and
+`evidence` quotes that line; a producer state a job definition or run list shows as a fact
+(paused, no runs, latest run failed) names the cause when the consumer's error is its direct
+symptom, such as a missing table or schema. `medium` means the cause is inferred and a
+plausible alternative remains. `low` means a guess or `unknown`. Assign the level yourself and
+compare. TRUE on agreement, FALSE otherwise.
+""",
+    "confidence_reason_stated": """\
+`summary` must say why that confidence: what the evidence
+establishes. TRUE when a statement links evidence to confidence. FALSE when none does.
+""",
+    "open_points_stated": """\
+the Confidence section must say what the inspector could not verify,
+whatever the confidence. Read `summary_sections` for Confidence, `open_points`, and
+`open_point_reasons`, which lists what Python found unverified: a tool error, a claim in the
+evidence, a fix without a value. TRUE when Confidence names something it could not establish,
+or says in so many words that nothing was left open while `open_point_reasons` is empty. FALSE
+when Confidence says nothing about it, or when a reason Python found is missing from it: a
+search for a file that never found it is an open point whatever the confidence.
+""",
+    "code_vs_platform": """\
+a traceback inside the workspace's own code means `code`; a failure
+inside the runner or the control plane after the job's work completed means `transient`. Read
+`traceback_frames`, where each frame is marked `workspace` or `platform`. The check applies
+whatever the classification: it asks whether the frames contradict it. A workspace frame
+raising a deliberate error is consistent with `credentials` or `upstream_data`, so that is
+TRUE. FALSE when the frames contradict the classification: workspace frames under `transient`,
+or platform-only frames under `code`. **N/A only when `traceback_frames` is empty.**
+""",
+    "transient_evidence_cites_neighbours": """\
+a `transient` report must cite the neighbouring
+runs and their status, in `evidence` or in `summary`. Compare with the neighbour runs supplied to you.
+TRUE when the neighbours appear, FALSE when they do not. N/A when the classification is not
+`transient`.
+""",
+    "pipeline_step_named": """\
+for a pipeline job, `summary` must name the step that failed:
+extract, normalize or load. `evidence_windows.pipeline_failed_step` holds the step the trace
+reports. TRUE when the summary names it. FALSE when it names none or a different one. N/A when
+the job ran no pipeline.
+""",
+    "failed_summary_rules_out": """\
+a `failed` inspection must say which causes it ruled out.
+TRUE when named causes appear, FALSE when none do. N/A when status is not `failed`.
+""",
+    "failed_summary_starting_point": """\
+a `failed` inspection must say where a human should start
+looking. TRUE when a concrete starting point appears, FALSE when none does. N/A when status is
+not `failed`.
+""",
+    "aborted_summary_names_missing_input": """\
+an `aborted` inspection must name the input that
+was missing. TRUE when it names one, FALSE when it does not. N/A when status is not `aborted`.
+""",
+    "aborted_summary_says_what_to_supply": """\
+an `aborted` inspection must say what the caller
+must supply. TRUE when it does, FALSE when it does not. N/A when status is not `aborted`.
+""",
+    "summary_says_what_failed": """\
+read `summary` alone. TRUE when it names the failing job, run
+or step. FALSE when it does not.
+""",
+    "summary_says_why": """\
+read `summary` alone. TRUE when it states the cause, FALSE when it
+does not.
+""",
+    "summary_says_what_to_do": """\
+read the Recommendation section in `summary_sections`, or
+`summary` alone when there is none. TRUE when it names a next action an on-call engineer can
+take without opening a log, FALSE when it does not.
+""",
+    "summary_concise": """\
+the length and the bullet shape are measured elsewhere; this check is
+about the words. TRUE when `summary` carries no repetition or filler. FALSE when it repeats
+itself, restates a bullet in another section, or pads. A bullet in the wrong section is
+`summary_sections_clear`'s finding and is not counted again here.
+""",
+    "summary_sections_clear": """\
+read `summary_sections`. Each bullet belongs to its section: the
+cause and its quoted evidence under Diagnosis, the action written as the instruction itself
+under Recommendation, the limits and the confidence reason under Confidence. TRUE when every
+bullet sits where it belongs and reads as a plain statement the reader can act on or check.
+FALSE when a bullet sits in the wrong section, or is a fragment or a question; quote it. N/A
+when none of the three headings is present.
+""",
+    "fix_addressed_to_human": """\
+`proposed_fix` must describe what a person should do and must
+not claim the inspector acted. TRUE when it is phrased as an action for a person and claims
+nothing was applied. FALSE otherwise; quote the claim. N/A when `proposed_fix` is empty.
+""",
+    "fix_field_filled": """\
+`proposed_fix` must be filled whenever the inspection has a remedy,
+untested ones included, and even when `summary` spells it out: the field is read on its own.
+TRUE when `proposed_fix` carries the remedy, or when the inspection has none to give. FALSE
+when the summary names a remedy and `proposed_fix` is empty; quote the remedy.
+""",
+    "fix_actionable": """\
+`proposed_fix` must name the concrete target and the exact change the
+evidence supports: which file, setting, resource or secret, and which value or code change.
+Read it with `fix_target`, `fix_change` and the evidence windows. TRUE when a person could
+apply it without working out the value themselves, or when the value is not in the evidence
+and the fix says so and names what to check. FALSE when it describes the shape of the change
+and leaves the value to the reader ("match the exact field present in the source records"
+without naming the field), or names a value no evidence window carries ("typically an `id`
+field"); quote it. N/A when `proposed_fix` is empty.
+""",
+    "dependency_cause_named": """\
+reaches you when `dependency_symptoms` is non-empty: the log
+reports a missing table, an empty input or a zero-row load. Read the Diagnosis section,
+`other_runs_read` and `files_read`. TRUE when the Diagnosis names what made the producing job
+or resource deliver nothing: the upstream run that failed, the selector or cursor that matched
+no rows, the pipeline that wrote to another dataset. FALSE when the Diagnosis restates the
+symptom ("the table does not exist", "no rows were loaded") as the cause; quote it. N/A when
+`dependency_symptoms` is empty.
+""",
+    "repository_prose_labelled": """\
+read each evidence item's `excerpt`, `source` and
+`provenance`. A comment (`#`, `//`), a docstring, a README sentence or a job description is
+prose and carries `repository_comment` or `job_description`. TRUE when every such excerpt is
+labelled so, and every excerpt labelled `workspace_file`, `run_log`, `run_record`, `trace` or
+`job_definition` is a line of code, configuration, log or a stored field. FALSE when prose
+carries a fact provenance; name the item. N/A when no excerpt is prose and none is labelled a
+claim.
+""",
+    "no_unflagged_compliance_or_security_change": """\
+read the Recommendation bullets,
+`proposed_fix` and `fix_change`. A recommended change has compliance or security consequences
+when it moves or copies data across regions, projects or accounts, changes a dataset's
+location, widens a permission, role or network rule, weakens authentication or encryption,
+changes retention or deletes data, puts a credential in plain text or in code, or runs an
+agent job on a production profile. TRUE when nothing recommended is of that kind, or when
+every such item is named as a decision for the person responsible rather than an instruction
+to apply. FALSE when one is recommended as a plain instruction; quote it and name the
+consequence. N/A when `proposed_fix` is empty.
+""",
+    "no_orchestration_change_recommended": """\
+reaches you when Python found an instruction to
+change how a job is launched, listed in `evidence_windows.orchestration_changes`: removing or
+adding a tag, changing a trigger or a schedule, gating a job behind another. How a job is
+launched is the operator's orchestration, and a consumer that a tag launched before its
+producer delivered is a fact about the run, whose cause is what stopped the producer. TRUE
+when every hit is either not an instruction (a quoted declaration under Diagnosis, a `keep` of
+the existing trigger) or is backed by evidence quoting a declaration that cannot work as
+written: a trigger naming a job no module declares, a tag no job carries, a schedule that
+never fires, a dependency on a dataset no job writes, with the contradicting artifact quoted
+too. FALSE when a hit is an instruction and no such evidence exists; quote it and name the
+producer-side fix it replaced.
+""",
+    "credentials_confidence_capped": """\
+this check is only about a credential that **is**
+configured: an entry proves configuration, not validity, so `confidence` stays at `medium`
+unless the log names the credential as rejected. TRUE when confidence follows that rule. FALSE
+when it is `high` on a configured credential the log never shows rejected. N/A when the
+classification is not `credentials`, and N/A when the redacted check found no entry at all: an
+absent credential is the finding itself, and whether the confidence fits is then
+`confidence_justified`'s question. Answer `N/A` here even when the confidence looks wrong.
+""",
+    "requires_human_consistent": """\
+`requires_human` must be true when a person has to act before
+the job can succeed again, and false otherwise. Compare with the proposed fix and the
+classification. TRUE on agreement, FALSE otherwise. N/A when `proposed_fix` is empty.
+""",
+    "no_secrets_in_output": """\
+reaches you when Python found a credential-shaped string, listed
+in `evidence_windows.secret_hits`. TRUE when every hit is a placeholder or a redacted value.
+FALSE when one looks like a real credential; name the field it sits in and do not repeat the
+value.
+""",
+}
+
+
+def rubric_block(ids: List[str]) -> str:
+    """The rubrics for `ids`, in registry order, as the Checks section of the judge prompt."""
+    wanted = [id for id in CHECKS if id in set(ids)]
+    missing = [id for id in ids if id not in RUBRICS]
+    if missing:
+        raise KeyError(f"no rubric registered for {', '.join(sorted(missing))}")
+    return "\n\n".join(f"**`{id}`** – {RUBRICS[id].strip()}" for id in wanted)
 
 
 # evidence extraction for the judge
@@ -2014,10 +3556,7 @@ def traceback_frames(ctx: EvalContext) -> List[Dict[str, Any]]:
         if not match:
             continue
         path = match.group(1)
-        platform = bool(
-            re.search(r"(?:site-packages|dist-packages)[/\\]", path)
-            or re.search(r"[/\\](?:dlt|dlthub|dlthub_sdk|runner)[/\\]", path)
-        )
+        platform = _is_platform_path(path)
         frames.append(
             {"line": entry.number, "file": path, "at": int(match.group(2)),
              "owner": "platform" if platform else "workspace"}
@@ -2051,6 +3590,32 @@ def neighbour_summary(ctx: EvalContext) -> List[Dict[str, Any]]:
         {"id": run.get("id"), "number": run.get("number"), "status": run.get("status"),
          "created_at": str(run.get("created_at") or "")}
         for run in ctx.neighbours
+    ]
+
+
+def summary_windows(ctx: EvalContext) -> List[Dict[str, Any]]:
+    """The summary's sections with their bullets, as the judge reads them."""
+    return [
+        {"title": entry["title"], "bullets": section_bullets(entry),
+         "stray_text": section_stray_text(entry)}
+        for entry in ctx.summary_sections["sections"]
+    ]
+
+
+def files_read(ctx: EvalContext) -> List[Dict[str, Any]]:
+    """The file reads and searches in the transcript, tool and argument."""
+    return [
+        {"call": call.call_index, "tool": call.tool, "detail": normalise(call.detail)[:200]}
+        for call in ctx.file_reads
+    ]
+
+
+def other_runs_read(ctx: EvalContext) -> List[str]:
+    """Run ids the inspector read that are neither the inspected run nor a neighbour."""
+    inspected = ctx.reported_run_id.lower()
+    return [
+        run_id for run_id in ctx.runs_read
+        if run_id != inspected and run_id not in ctx.neighbour_ids
     ]
 
 
@@ -2099,9 +3664,31 @@ def run_deterministic(ctx: EvalContext) -> Tuple[Dict[str, CheckResult], List[st
     return results, errors
 
 
+def run_preconditions(ctx: EvalContext, results: Dict[str, CheckResult]) -> None:
+    """Answers `N/A` for every judge check whose condition this run does not meet.
+
+    The conditions are mechanical, so Python decides them: a `failed`-only check on a run
+    that succeeded, a `transient`-only check on a `code` failure, a fix check with no fix.
+    `finalize` reads a computed result as authoritative, so the judge is never asked.
+    """
+    for entry in CHECKS.values():
+        if entry.kind != JUDGE or entry.precondition is None or entry.id in results:
+            continue
+        reason = entry.precondition(ctx)
+        if reason:
+            results[entry.id] = na(reason)
+
+
 def judge_ids(results: Dict[str, CheckResult]) -> List[str]:
-    """Check ids the judge has to answer: the judge checks plus every escalated hybrid."""
-    ids = [entry.id for entry in CHECKS.values() if entry.kind == JUDGE]
+    """Check ids the judge has to answer: the judge checks plus every escalated hybrid.
+
+    A judge check Python answered through its precondition is not among them.
+    """
+    ids = [
+        entry.id
+        for entry in CHECKS.values()
+        if entry.kind == JUDGE and results.get(entry.id) is None
+    ]
     ids += [
         entry.id
         for entry in CHECKS.values()
@@ -2530,6 +4117,7 @@ def prepare(
         )
 
     results, errors = run_deterministic(ctx)
+    run_preconditions(ctx, results)
     problems: List[str] = []
     if ctx.transcript_unread:
         blind = sum(1 for entry in CHECKS.values() if entry.reads_transcript)
@@ -2564,14 +4152,25 @@ def prepare(
                 "traceback_frames": traceback_frames(ctx),
                 "log_tail": log_tail(ctx),
                 "pipeline_failed_step": pipeline_failed_step(ctx),
+                "summary_sections": summary_windows(ctx),
+                "summary_preamble": ctx.summary_sections["preamble"],
+                "dependency_symptoms": dependency_symptoms(ctx),
+                "workspace_files_referenced": workspace_files_referenced(ctx),
+                "files_read": files_read(ctx),
+                "other_runs_read": other_runs_read(ctx),
+                "open_point_reasons": open_point_reasons(ctx),
                 "secret_hits": results.get(
                     "no_secrets_in_output", CheckResult(NA, "")
+                ).metadata.get("hits", []),
+                "orchestration_changes": results.get(
+                    "no_orchestration_change_recommended", CheckResult(NA, "")
                 ).metadata.get("hits", []),
             },
             default=str,
             indent=2,
         ),
         "neighbour_runs": json.dumps(neighbour_summary(ctx), default=str, indent=2),
+        "rubrics": rubric_block(judge_ids(results)),
     }
     return EvalPrep(
         ctx=ctx,
@@ -2681,7 +4280,14 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     na_count = sum(1 for entry in checks if entry["outcome"] == NA)
     decided = true_count + false_count
 
-    summary = str(output.get("summary") or "")
+    # an evaluation that lost checks says nothing about the inspector, so it never passes
+    incomplete = bool(unusable or unanswered or prep.errors or prep.problems)
+
+    # the verdict and the broken instructions come first, in the words of the registry, so a
+    # reader acts on the summary without opening the rubric
+    summary = verdict(checks, incomplete)
+    if judge_summary := str(output.get("summary") or "").strip():
+        summary += "\n\n" + judge_summary
     # `pass_rate` divides by the decided checks, so the counts go next to it
     summary += (
         f"\n\n{len(checks)} checks: {true_count} TRUE, {false_count} FALSE, {na_count} `N/A`."
@@ -2708,8 +4314,6 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
             " nothing about this inspector run."
         )
 
-    # an evaluation that lost checks says nothing about the inspector, so it never passes
-    incomplete = bool(unusable or unanswered or prep.errors or prep.problems)
     status = "failed" if incomplete else str(output.get("status") or "succeeded")
 
     return {
@@ -2725,6 +4329,48 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
         "checks": checks,
         "metrics": _metrics(ctx),
     }
+
+
+def instruction_of(check_id: str) -> str:
+    """The instruction a check grades, in one sentence, from the registry."""
+    entry = CHECKS.get(check_id)
+    if entry is None:
+        return check_id
+    first = entry.doc.strip().split("\n\n")[0]
+    return normalise(first)
+
+
+def verdict(checks: List[Dict[str, Any]], incomplete: bool) -> str:
+    """The evaluation's outcome in plain words, then every broken instruction and why.
+
+    The tally that follows it reads the same for one FALSE as for many N/A, so the verdict
+    says which it is, and each FALSE carries the instruction it broke in the words of the
+    registry, with the reasoning that found it.
+    """
+    false = [entry for entry in checks if entry["outcome"] == FALSE]
+    true_count = sum(1 for entry in checks if entry["outcome"] == TRUE)
+    na_count = sum(1 for entry in checks if entry["outcome"] == NA)
+    decided = true_count + len(false)
+    if incomplete:
+        head = ("**Verdict: incomplete.** The evaluation could not grade everything, so it"
+                " does not pass; the end of this summary says what was missing.")
+    elif false:
+        head = (f"**Verdict: failed.** {len(false)} of the {decided} decided checks came back"
+                " FALSE. One FALSE fails the evaluation, whatever the rate.")
+    elif decided:
+        head = (f"**Verdict: passed.** All {decided} decided checks came back TRUE;"
+                f" {na_count} did not apply to this run.")
+    else:
+        head = "**Verdict: nothing decided.** Every check reported `N/A`."
+    lines = [head]
+    if false:
+        lines.append("")
+        lines.append("Broken instructions:")
+        for entry in false:
+            lines.append(
+                f"- **{instruction_of(entry['id'])}** (`{entry['id']}`) {entry['reasoning']}"
+            )
+    return "\n".join(lines)
 
 
 def _metrics(ctx: EvalContext) -> Dict[str, Any]:

@@ -468,14 +468,15 @@ async def job_inspector_eval(
     return finalize(output, prep)
 ```
 
-The function overrides the definition it drives, so three things are load-bearing: **no
-docstring** (it would replace the body), **`-> dict` rather than `-> TAgentOutput`** (a
-return type deriving from it would replace the output schema with the bare `status` and
-`summary`), and **a parameter for every input a caller may set** (configured inputs reach a
-decorated function through its signature only; an input declared in the `AGENT.md` but
-absent from the signature is warned about at deploy time and nothing passes it). Inputs the
-code supplies itself stay out of the signature and travel through `loop.run(inputs=...)`;
-the `AGENT.md` declares them because a body placeholder must be declared.
+The function overrides the definition it drives, so watch the signature. Give it **no
+docstring**, since a docstring replaces the body. Return **`dict` rather than
+`TAgentOutput`**, since a return type deriving from `TAgentOutput` replaces the output
+schema with the bare `status` and `summary`. Take **a parameter for every input a caller may
+set**, since configured inputs reach a decorated function through its signature only, and an
+input declared in the `AGENT.md` but absent from the signature is warned about at deploy
+time and nothing passes it. Inputs the code supplies itself stay out of the signature and
+travel through `loop.run(inputs=...)`; the `AGENT.md` declares them because a body
+placeholder must be declared.
 
 A path that never started the loop raises rather than returns. dlt reads `loop.trace` on any
 returned dict carrying `status`, so returning one from the abort branch fails the run with

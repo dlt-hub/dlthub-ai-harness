@@ -1,0 +1,2057 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 5,
+    "phase": "program",
+    "content": "Starting job __deployment__:jaffle_shop_dq (trigger: job.success:jobs.__deployment__.jaffle_shop)"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py:626: UserWarning: Cannot create BigQuery Storage client, the dependency google-cloud-bigquery-storage is not installed."
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": "  warnings.warn("
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "2026-09-22 14:01:13,212|[ERROR]|14|47743966000832|workspace|load.py|w_run_job:293|Terminal exception in job _dlt_checks.f51ae223f3.model in file /tmp/tmpbyf0hhpw/_dlt_dq_jaffle_shop/load/normalized/1581843236.512355/started_jobs/_dlt_checks.f51ae223f3.0.model"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 228, in _execute"
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "    rows = client.query_and_wait("
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "        formatted_operation,"
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "        job_config=config,"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "        page_size=self.arraysize,"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 3750, in query_and_wait"
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": "    return self._query_and_wait_bigframes("
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "        query,"
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": "        ^^^^^^"
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": "    ...<10 lines>..."
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": "        compression_codec=compression_codec,"
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 3800, in _query_and_wait_bigframes"
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "    return _job_helpers.query_and_wait("
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "        self,"
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": "        ^^^^^"
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "    ...<12 lines>..."
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "        callback=callback,"
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/_job_helpers.py\", line 655, in query_and_wait"
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "    return job_retry(do_query)()"
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~^^"
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 295, in retry_wrapped_func"
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "    return retry_target("
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "        target,"
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 43,
+    "phase": "program",
+    "content": "        on_error=on_error,"
+  },
+  {
+    "number": 44,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 45,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 157, in retry_target"
+  },
+  {
+    "number": 46,
+    "phase": "program",
+    "content": "    next_sleep = _retry_error_helper("
+  },
+  {
+    "number": 47,
+    "phase": "program",
+    "content": "        exc,"
+  },
+  {
+    "number": 48,
+    "phase": "program",
+    "content": "    ...<6 lines>..."
+  },
+  {
+    "number": 49,
+    "phase": "program",
+    "content": "        timeout,"
+  },
+  {
+    "number": 50,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 51,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_base.py\", line 215, in _retry_error_helper"
+  },
+  {
+    "number": 52,
+    "phase": "program",
+    "content": "    raise final_exc from source_exc"
+  },
+  {
+    "number": 53,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 148, in retry_target"
+  },
+  {
+    "number": 54,
+    "phase": "program",
+    "content": "    result = target()"
+  },
+  {
+    "number": 55,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/_job_helpers.py\", line 571, in do_query"
+  },
+  {
+    "number": 56,
+    "phase": "program",
+    "content": "    response = retry(client._call_api)("
+  },
+  {
+    "number": 57,
+    "phase": "program",
+    "content": "        retry=None,  # We're calling the retry decorator ourselves."
+  },
+  {
+    "number": 58,
+    "phase": "program",
+    "content": "    ...<5 lines>..."
+  },
+  {
+    "number": 59,
+    "phase": "program",
+    "content": "        timeout=api_timeout,"
+  },
+  {
+    "number": 60,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 61,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 295, in retry_wrapped_func"
+  },
+  {
+    "number": 62,
+    "phase": "program",
+    "content": "    return retry_target("
+  },
+  {
+    "number": 63,
+    "phase": "program",
+    "content": "        target,"
+  },
+  {
+    "number": 64,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 65,
+    "phase": "program",
+    "content": "        on_error=on_error,"
+  },
+  {
+    "number": 66,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 67,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 157, in retry_target"
+  },
+  {
+    "number": 68,
+    "phase": "program",
+    "content": "    next_sleep = _retry_error_helper("
+  },
+  {
+    "number": 69,
+    "phase": "program",
+    "content": "        exc,"
+  },
+  {
+    "number": 70,
+    "phase": "program",
+    "content": "    ...<6 lines>..."
+  },
+  {
+    "number": 71,
+    "phase": "program",
+    "content": "        timeout,"
+  },
+  {
+    "number": 72,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 73,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_base.py\", line 215, in _retry_error_helper"
+  },
+  {
+    "number": 74,
+    "phase": "program",
+    "content": "    raise final_exc from source_exc"
+  },
+  {
+    "number": 75,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 148, in retry_target"
+  },
+  {
+    "number": 76,
+    "phase": "program",
+    "content": "    result = target()"
+  },
+  {
+    "number": 77,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 915, in _call_api"
+  },
+  {
+    "number": 78,
+    "phase": "program",
+    "content": "    return call()"
+  },
+  {
+    "number": 79,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/_http/__init__.py\", line 509, in api_request"
+  },
+  {
+    "number": 80,
+    "phase": "program",
+    "content": "    raise exceptions.from_http_response(response)"
+  },
+  {
+    "number": 81,
+    "phase": "program",
+    "content": "google.api_core.exceptions.BadRequest: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 82,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 83,
+    "phase": "program",
+    "content": "During handling of the above exception, another exception occurred:"
+  },
+  {
+    "number": 84,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 85,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 86,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 532, in _wrap_gen"
+  },
+  {
+    "number": 87,
+    "phase": "program",
+    "content": "    return (yield from f(self, *args, **kwargs))"
+  },
+  {
+    "number": 88,
+    "phase": "program",
+    "content": "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 89,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 241, in execute_query"
+  },
+  {
+    "number": 90,
+    "phase": "program",
+    "content": "    curr.execute(query, db_args, job_config=self._session_query or self._default_query)"
+  },
+  {
+    "number": 91,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 92,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/_helpers.py\", line 496, in with_closed_check"
+  },
+  {
+    "number": 93,
+    "phase": "program",
+    "content": "    return method(self, *args, **kwargs)"
+  },
+  {
+    "number": 94,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 196, in execute"
+  },
+  {
+    "number": 95,
+    "phase": "program",
+    "content": "    self._execute("
+  },
+  {
+    "number": 96,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 97,
+    "phase": "program",
+    "content": "        formatted_operation, parameters, job_id, job_config, parameter_types"
+  },
+  {
+    "number": 98,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 99,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 100,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 101,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 234, in _execute"
+  },
+  {
+    "number": 102,
+    "phase": "program",
+    "content": "    raise exceptions.DatabaseError(exc)"
+  },
+  {
+    "number": 103,
+    "phase": "program",
+    "content": "google.cloud.bigquery.dbapi.exceptions.DatabaseError: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 104,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 105,
+    "phase": "program",
+    "content": "The above exception was the direct cause of the following exception:"
+  },
+  {
+    "number": 106,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 107,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 108,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/destination/client.py\", line 568, in run_managed"
+  },
+  {
+    "number": 109,
+    "phase": "program",
+    "content": "    self.run()"
+  },
+  {
+    "number": 110,
+    "phase": "program",
+    "content": "    ~~~~~~~~^^"
+  },
+  {
+    "number": 111,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/job_client_impl.py\", line 196, in run"
+  },
+  {
+    "number": 112,
+    "phase": "program",
+    "content": "    sql_client.execute_sql(insert_statement)"
+  },
+  {
+    "number": 113,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 114,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 222, in execute_sql"
+  },
+  {
+    "number": 115,
+    "phase": "program",
+    "content": "    with self.execute_query(sql, *args, **kwargs) as curr:"
+  },
+  {
+    "number": 116,
+    "phase": "program",
+    "content": "         ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 117,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/contextlib.py\", line 141, in __enter__"
+  },
+  {
+    "number": 118,
+    "phase": "program",
+    "content": "    return next(self.gen)"
+  },
+  {
+    "number": 119,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 538, in _wrap_gen"
+  },
+  {
+    "number": 120,
+    "phase": "program",
+    "content": "    raise db_ex.with_traceback(ex.__traceback__) from ex"
+  },
+  {
+    "number": 121,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 532, in _wrap_gen"
+  },
+  {
+    "number": 122,
+    "phase": "program",
+    "content": "    return (yield from f(self, *args, **kwargs))"
+  },
+  {
+    "number": 123,
+    "phase": "program",
+    "content": "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 124,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 241, in execute_query"
+  },
+  {
+    "number": 125,
+    "phase": "program",
+    "content": "    curr.execute(query, db_args, job_config=self._session_query or self._default_query)"
+  },
+  {
+    "number": 126,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 127,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/_helpers.py\", line 496, in with_closed_check"
+  },
+  {
+    "number": 128,
+    "phase": "program",
+    "content": "    return method(self, *args, **kwargs)"
+  },
+  {
+    "number": 129,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 196, in execute"
+  },
+  {
+    "number": 130,
+    "phase": "program",
+    "content": "    self._execute("
+  },
+  {
+    "number": 131,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 132,
+    "phase": "program",
+    "content": "        formatted_operation, parameters, job_id, job_config, parameter_types"
+  },
+  {
+    "number": 133,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 134,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 135,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 136,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 234, in _execute"
+  },
+  {
+    "number": 137,
+    "phase": "program",
+    "content": "    raise exceptions.DatabaseError(exc)"
+  },
+  {
+    "number": 138,
+    "phase": "program",
+    "content": "dlt.destinations.exceptions.DatabaseTerminalException: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 139,
+    "phase": "program",
+    "content": "2026-09-22 14:01:13,223|[ERROR]|14|47743562271616|workspace|load.py|complete_jobs:531|Job for _dlt_checks.f51ae223f3.model failed terminally in load 1581843236.512355 with message Traceback (most recent call last):"
+  },
+  {
+    "number": 140,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 228, in _execute"
+  },
+  {
+    "number": 141,
+    "phase": "program",
+    "content": "    rows = client.query_and_wait("
+  },
+  {
+    "number": 142,
+    "phase": "program",
+    "content": "        formatted_operation,"
+  },
+  {
+    "number": 143,
+    "phase": "program",
+    "content": "        job_config=config,"
+  },
+  {
+    "number": 144,
+    "phase": "program",
+    "content": "        page_size=self.arraysize,"
+  },
+  {
+    "number": 145,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 146,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 3750, in query_and_wait"
+  },
+  {
+    "number": 147,
+    "phase": "program",
+    "content": "    return self._query_and_wait_bigframes("
+  },
+  {
+    "number": 148,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 149,
+    "phase": "program",
+    "content": "        query,"
+  },
+  {
+    "number": 150,
+    "phase": "program",
+    "content": "        ^^^^^^"
+  },
+  {
+    "number": 151,
+    "phase": "program",
+    "content": "    ...<10 lines>..."
+  },
+  {
+    "number": 152,
+    "phase": "program",
+    "content": "        compression_codec=compression_codec,"
+  },
+  {
+    "number": 153,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 154,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 155,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 156,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 3800, in _query_and_wait_bigframes"
+  },
+  {
+    "number": 157,
+    "phase": "program",
+    "content": "    return _job_helpers.query_and_wait("
+  },
+  {
+    "number": 158,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 159,
+    "phase": "program",
+    "content": "        self,"
+  },
+  {
+    "number": 160,
+    "phase": "program",
+    "content": "        ^^^^^"
+  },
+  {
+    "number": 161,
+    "phase": "program",
+    "content": "    ...<12 lines>..."
+  },
+  {
+    "number": 162,
+    "phase": "program",
+    "content": "        callback=callback,"
+  },
+  {
+    "number": 163,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 164,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 165,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 166,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/_job_helpers.py\", line 655, in query_and_wait"
+  },
+  {
+    "number": 167,
+    "phase": "program",
+    "content": "    return job_retry(do_query)()"
+  },
+  {
+    "number": 168,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~^^"
+  },
+  {
+    "number": 169,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 295, in retry_wrapped_func"
+  },
+  {
+    "number": 170,
+    "phase": "program",
+    "content": "    return retry_target("
+  },
+  {
+    "number": 171,
+    "phase": "program",
+    "content": "        target,"
+  },
+  {
+    "number": 172,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 173,
+    "phase": "program",
+    "content": "        on_error=on_error,"
+  },
+  {
+    "number": 174,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 175,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 157, in retry_target"
+  },
+  {
+    "number": 176,
+    "phase": "program",
+    "content": "    next_sleep = _retry_error_helper("
+  },
+  {
+    "number": 177,
+    "phase": "program",
+    "content": "        exc,"
+  },
+  {
+    "number": 178,
+    "phase": "program",
+    "content": "    ...<6 lines>..."
+  },
+  {
+    "number": 179,
+    "phase": "program",
+    "content": "        timeout,"
+  },
+  {
+    "number": 180,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 181,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_base.py\", line 215, in _retry_error_helper"
+  },
+  {
+    "number": 182,
+    "phase": "program",
+    "content": "    raise final_exc from source_exc"
+  },
+  {
+    "number": 183,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 148, in retry_target"
+  },
+  {
+    "number": 184,
+    "phase": "program",
+    "content": "    result = target()"
+  },
+  {
+    "number": 185,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/_job_helpers.py\", line 571, in do_query"
+  },
+  {
+    "number": 186,
+    "phase": "program",
+    "content": "    response = retry(client._call_api)("
+  },
+  {
+    "number": 187,
+    "phase": "program",
+    "content": "        retry=None,  # We're calling the retry decorator ourselves."
+  },
+  {
+    "number": 188,
+    "phase": "program",
+    "content": "    ...<5 lines>..."
+  },
+  {
+    "number": 189,
+    "phase": "program",
+    "content": "        timeout=api_timeout,"
+  },
+  {
+    "number": 190,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 191,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 295, in retry_wrapped_func"
+  },
+  {
+    "number": 192,
+    "phase": "program",
+    "content": "    return retry_target("
+  },
+  {
+    "number": 193,
+    "phase": "program",
+    "content": "        target,"
+  },
+  {
+    "number": 194,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 195,
+    "phase": "program",
+    "content": "        on_error=on_error,"
+  },
+  {
+    "number": 196,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 197,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 157, in retry_target"
+  },
+  {
+    "number": 198,
+    "phase": "program",
+    "content": "    next_sleep = _retry_error_helper("
+  },
+  {
+    "number": 199,
+    "phase": "program",
+    "content": "        exc,"
+  },
+  {
+    "number": 200,
+    "phase": "program",
+    "content": "    ...<6 lines>..."
+  },
+  {
+    "number": 201,
+    "phase": "program",
+    "content": "        timeout,"
+  },
+  {
+    "number": 202,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 203,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_base.py\", line 215, in _retry_error_helper"
+  },
+  {
+    "number": 204,
+    "phase": "program",
+    "content": "    raise final_exc from source_exc"
+  },
+  {
+    "number": 205,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 148, in retry_target"
+  },
+  {
+    "number": 206,
+    "phase": "program",
+    "content": "    result = target()"
+  },
+  {
+    "number": 207,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 915, in _call_api"
+  },
+  {
+    "number": 208,
+    "phase": "program",
+    "content": "    return call()"
+  },
+  {
+    "number": 209,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/_http/__init__.py\", line 509, in api_request"
+  },
+  {
+    "number": 210,
+    "phase": "program",
+    "content": "    raise exceptions.from_http_response(response)"
+  },
+  {
+    "number": 211,
+    "phase": "program",
+    "content": "google.api_core.exceptions.BadRequest: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 212,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 213,
+    "phase": "program",
+    "content": "During handling of the above exception, another exception occurred:"
+  },
+  {
+    "number": 214,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 215,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 216,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 532, in _wrap_gen"
+  },
+  {
+    "number": 217,
+    "phase": "program",
+    "content": "    return (yield from f(self, *args, **kwargs))"
+  },
+  {
+    "number": 218,
+    "phase": "program",
+    "content": "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 219,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 241, in execute_query"
+  },
+  {
+    "number": 220,
+    "phase": "program",
+    "content": "    curr.execute(query, db_args, job_config=self._session_query or self._default_query)"
+  },
+  {
+    "number": 221,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 222,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/_helpers.py\", line 496, in with_closed_check"
+  },
+  {
+    "number": 223,
+    "phase": "program",
+    "content": "    return method(self, *args, **kwargs)"
+  },
+  {
+    "number": 224,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 196, in execute"
+  },
+  {
+    "number": 225,
+    "phase": "program",
+    "content": "    self._execute("
+  },
+  {
+    "number": 226,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 227,
+    "phase": "program",
+    "content": "        formatted_operation, parameters, job_id, job_config, parameter_types"
+  },
+  {
+    "number": 228,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 229,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 230,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 231,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 234, in _execute"
+  },
+  {
+    "number": 232,
+    "phase": "program",
+    "content": "    raise exceptions.DatabaseError(exc)"
+  },
+  {
+    "number": 233,
+    "phase": "program",
+    "content": "google.cloud.bigquery.dbapi.exceptions.DatabaseError: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 234,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 235,
+    "phase": "program",
+    "content": "The above exception was the direct cause of the following exception:"
+  },
+  {
+    "number": 236,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 237,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 238,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/destination/client.py\", line 568, in run_managed"
+  },
+  {
+    "number": 239,
+    "phase": "program",
+    "content": "    self.run()"
+  },
+  {
+    "number": 240,
+    "phase": "program",
+    "content": "    ~~~~~~~~^^"
+  },
+  {
+    "number": 241,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/job_client_impl.py\", line 196, in run"
+  },
+  {
+    "number": 242,
+    "phase": "program",
+    "content": "    sql_client.execute_sql(insert_statement)"
+  },
+  {
+    "number": 243,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 244,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 222, in execute_sql"
+  },
+  {
+    "number": 245,
+    "phase": "program",
+    "content": "    with self.execute_query(sql, *args, **kwargs) as curr:"
+  },
+  {
+    "number": 246,
+    "phase": "program",
+    "content": "         ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 247,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/contextlib.py\", line 141, in __enter__"
+  },
+  {
+    "number": 248,
+    "phase": "program",
+    "content": "    return next(self.gen)"
+  },
+  {
+    "number": 249,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 538, in _wrap_gen"
+  },
+  {
+    "number": 250,
+    "phase": "program",
+    "content": "    raise db_ex.with_traceback(ex.__traceback__) from ex"
+  },
+  {
+    "number": 251,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 532, in _wrap_gen"
+  },
+  {
+    "number": 252,
+    "phase": "program",
+    "content": "    return (yield from f(self, *args, **kwargs))"
+  },
+  {
+    "number": 253,
+    "phase": "program",
+    "content": "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 254,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 241, in execute_query"
+  },
+  {
+    "number": 255,
+    "phase": "program",
+    "content": "    curr.execute(query, db_args, job_config=self._session_query or self._default_query)"
+  },
+  {
+    "number": 256,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 257,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/_helpers.py\", line 496, in with_closed_check"
+  },
+  {
+    "number": 258,
+    "phase": "program",
+    "content": "    return method(self, *args, **kwargs)"
+  },
+  {
+    "number": 259,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 196, in execute"
+  },
+  {
+    "number": 260,
+    "phase": "program",
+    "content": "    self._execute("
+  },
+  {
+    "number": 261,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 262,
+    "phase": "program",
+    "content": "        formatted_operation, parameters, job_id, job_config, parameter_types"
+  },
+  {
+    "number": 263,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 264,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 265,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 266,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 234, in _execute"
+  },
+  {
+    "number": 267,
+    "phase": "program",
+    "content": "    raise exceptions.DatabaseError(exc)"
+  },
+  {
+    "number": 268,
+    "phase": "program",
+    "content": "dlt.destinations.exceptions.DatabaseTerminalException: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 269,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 270,
+    "phase": "program",
+    "content": "[dq] run_checks skipped: PipelineStepFailed: Pipeline execution failed at `step=load` when processing package with `load_id=1581843236.512355` with exception:"
+  },
+  {
+    "number": 271,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 272,
+    "phase": "program",
+    "content": "<class 'dlt.load.exceptions.LoadClientJobTerminalRetry'>"
+  },
+  {
+    "number": 273,
+    "phase": "program",
+    "content": "Job with `job_id=_dlt_checks.f51ae223f3.model` and `load_id=1581843236.512355` failed terminally with message: Traceback (most recent call last):"
+  },
+  {
+    "number": 274,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 228, in _execute"
+  },
+  {
+    "number": 275,
+    "phase": "program",
+    "content": "    rows = client.query_and_wait("
+  },
+  {
+    "number": 276,
+    "phase": "program",
+    "content": "        formatted_operation,"
+  },
+  {
+    "number": 277,
+    "phase": "program",
+    "content": "        job_config=config,"
+  },
+  {
+    "number": 278,
+    "phase": "program",
+    "content": "        page_size=self.arraysize,"
+  },
+  {
+    "number": 279,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 280,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 3750, in query_and_wait"
+  },
+  {
+    "number": 281,
+    "phase": "program",
+    "content": "    return self._query_and_wait_bigframes("
+  },
+  {
+    "number": 282,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 283,
+    "phase": "program",
+    "content": "        query,"
+  },
+  {
+    "number": 284,
+    "phase": "program",
+    "content": "        ^^^^^^"
+  },
+  {
+    "number": 285,
+    "phase": "program",
+    "content": "    ...<10 lines>..."
+  },
+  {
+    "number": 286,
+    "phase": "program",
+    "content": "        compression_codec=compression_codec,"
+  },
+  {
+    "number": 287,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 288,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 289,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 290,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 3800, in _query_and_wait_bigframes"
+  },
+  {
+    "number": 291,
+    "phase": "program",
+    "content": "    return _job_helpers.query_and_wait("
+  },
+  {
+    "number": 292,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 293,
+    "phase": "program",
+    "content": "        self,"
+  },
+  {
+    "number": 294,
+    "phase": "program",
+    "content": "        ^^^^^"
+  },
+  {
+    "number": 295,
+    "phase": "program",
+    "content": "    ...<12 lines>..."
+  },
+  {
+    "number": 296,
+    "phase": "program",
+    "content": "        callback=callback,"
+  },
+  {
+    "number": 297,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 298,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 299,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 300,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/_job_helpers.py\", line 655, in query_and_wait"
+  },
+  {
+    "number": 301,
+    "phase": "program",
+    "content": "    return job_retry(do_query)()"
+  },
+  {
+    "number": 302,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~^^"
+  },
+  {
+    "number": 303,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 295, in retry_wrapped_func"
+  },
+  {
+    "number": 304,
+    "phase": "program",
+    "content": "    return retry_target("
+  },
+  {
+    "number": 305,
+    "phase": "program",
+    "content": "        target,"
+  },
+  {
+    "number": 306,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 307,
+    "phase": "program",
+    "content": "        on_error=on_error,"
+  },
+  {
+    "number": 308,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 309,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 157, in retry_target"
+  },
+  {
+    "number": 310,
+    "phase": "program",
+    "content": "    next_sleep = _retry_error_helper("
+  },
+  {
+    "number": 311,
+    "phase": "program",
+    "content": "        exc,"
+  },
+  {
+    "number": 312,
+    "phase": "program",
+    "content": "    ...<6 lines>..."
+  },
+  {
+    "number": 313,
+    "phase": "program",
+    "content": "        timeout,"
+  },
+  {
+    "number": 314,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 315,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_base.py\", line 215, in _retry_error_helper"
+  },
+  {
+    "number": 316,
+    "phase": "program",
+    "content": "    raise final_exc from source_exc"
+  },
+  {
+    "number": 317,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 148, in retry_target"
+  },
+  {
+    "number": 318,
+    "phase": "program",
+    "content": "    result = target()"
+  },
+  {
+    "number": 319,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/_job_helpers.py\", line 571, in do_query"
+  },
+  {
+    "number": 320,
+    "phase": "program",
+    "content": "    response = retry(client._call_api)("
+  },
+  {
+    "number": 321,
+    "phase": "program",
+    "content": "        retry=None,  # We're calling the retry decorator ourselves."
+  },
+  {
+    "number": 322,
+    "phase": "program",
+    "content": "    ...<5 lines>..."
+  },
+  {
+    "number": 323,
+    "phase": "program",
+    "content": "        timeout=api_timeout,"
+  },
+  {
+    "number": 324,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 325,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 295, in retry_wrapped_func"
+  },
+  {
+    "number": 326,
+    "phase": "program",
+    "content": "    return retry_target("
+  },
+  {
+    "number": 327,
+    "phase": "program",
+    "content": "        target,"
+  },
+  {
+    "number": 328,
+    "phase": "program",
+    "content": "    ...<3 lines>..."
+  },
+  {
+    "number": 329,
+    "phase": "program",
+    "content": "        on_error=on_error,"
+  },
+  {
+    "number": 330,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 331,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 157, in retry_target"
+  },
+  {
+    "number": 332,
+    "phase": "program",
+    "content": "    next_sleep = _retry_error_helper("
+  },
+  {
+    "number": 333,
+    "phase": "program",
+    "content": "        exc,"
+  },
+  {
+    "number": 334,
+    "phase": "program",
+    "content": "    ...<6 lines>..."
+  },
+  {
+    "number": 335,
+    "phase": "program",
+    "content": "        timeout,"
+  },
+  {
+    "number": 336,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 337,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_base.py\", line 215, in _retry_error_helper"
+  },
+  {
+    "number": 338,
+    "phase": "program",
+    "content": "    raise final_exc from source_exc"
+  },
+  {
+    "number": 339,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py\", line 148, in retry_target"
+  },
+  {
+    "number": 340,
+    "phase": "program",
+    "content": "    result = target()"
+  },
+  {
+    "number": 341,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py\", line 915, in _call_api"
+  },
+  {
+    "number": 342,
+    "phase": "program",
+    "content": "    return call()"
+  },
+  {
+    "number": 343,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/_http/__init__.py\", line 509, in api_request"
+  },
+  {
+    "number": 344,
+    "phase": "program",
+    "content": "    raise exceptions.from_http_response(response)"
+  },
+  {
+    "number": 345,
+    "phase": "program",
+    "content": "google.api_core.exceptions.BadRequest: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 346,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 347,
+    "phase": "program",
+    "content": "During handling of the above exception, another exception occurred:"
+  },
+  {
+    "number": 348,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 349,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 350,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 532, in _wrap_gen"
+  },
+  {
+    "number": 351,
+    "phase": "program",
+    "content": "    return (yield from f(self, *args, **kwargs))"
+  },
+  {
+    "number": 352,
+    "phase": "program",
+    "content": "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 353,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 241, in execute_query"
+  },
+  {
+    "number": 354,
+    "phase": "program",
+    "content": "    curr.execute(query, db_args, job_config=self._session_query or self._default_query)"
+  },
+  {
+    "number": 355,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 356,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/_helpers.py\", line 496, in with_closed_check"
+  },
+  {
+    "number": 357,
+    "phase": "program",
+    "content": "    return method(self, *args, **kwargs)"
+  },
+  {
+    "number": 358,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 196, in execute"
+  },
+  {
+    "number": 359,
+    "phase": "program",
+    "content": "    self._execute("
+  },
+  {
+    "number": 360,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 361,
+    "phase": "program",
+    "content": "        formatted_operation, parameters, job_id, job_config, parameter_types"
+  },
+  {
+    "number": 362,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 363,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 364,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 365,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 234, in _execute"
+  },
+  {
+    "number": 366,
+    "phase": "program",
+    "content": "    raise exceptions.DatabaseError(exc)"
+  },
+  {
+    "number": 367,
+    "phase": "program",
+    "content": "google.cloud.bigquery.dbapi.exceptions.DatabaseError: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 368,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 369,
+    "phase": "program",
+    "content": "The above exception was the direct cause of the following exception:"
+  },
+  {
+    "number": 370,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 371,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 372,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/destination/client.py\", line 568, in run_managed"
+  },
+  {
+    "number": 373,
+    "phase": "program",
+    "content": "    self.run()"
+  },
+  {
+    "number": 374,
+    "phase": "program",
+    "content": "    ~~~~~~~~^^"
+  },
+  {
+    "number": 375,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/job_client_impl.py\", line 196, in run"
+  },
+  {
+    "number": 376,
+    "phase": "program",
+    "content": "    sql_client.execute_sql(insert_statement)"
+  },
+  {
+    "number": 377,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 378,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 222, in execute_sql"
+  },
+  {
+    "number": 379,
+    "phase": "program",
+    "content": "    with self.execute_query(sql, *args, **kwargs) as curr:"
+  },
+  {
+    "number": 380,
+    "phase": "program",
+    "content": "         ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 381,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/contextlib.py\", line 141, in __enter__"
+  },
+  {
+    "number": 382,
+    "phase": "program",
+    "content": "    return next(self.gen)"
+  },
+  {
+    "number": 383,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 538, in _wrap_gen"
+  },
+  {
+    "number": 384,
+    "phase": "program",
+    "content": "    raise db_ex.with_traceback(ex.__traceback__) from ex"
+  },
+  {
+    "number": 385,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/sql_client.py\", line 532, in _wrap_gen"
+  },
+  {
+    "number": 386,
+    "phase": "program",
+    "content": "    return (yield from f(self, *args, **kwargs))"
+  },
+  {
+    "number": 387,
+    "phase": "program",
+    "content": "            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 388,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/destinations/impl/bigquery/sql_client.py\", line 241, in execute_query"
+  },
+  {
+    "number": 389,
+    "phase": "program",
+    "content": "    curr.execute(query, db_args, job_config=self._session_query or self._default_query)"
+  },
+  {
+    "number": 390,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 391,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/_helpers.py\", line 496, in with_closed_check"
+  },
+  {
+    "number": 392,
+    "phase": "program",
+    "content": "    return method(self, *args, **kwargs)"
+  },
+  {
+    "number": 393,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 196, in execute"
+  },
+  {
+    "number": 394,
+    "phase": "program",
+    "content": "    self._execute("
+  },
+  {
+    "number": 395,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 396,
+    "phase": "program",
+    "content": "        formatted_operation, parameters, job_id, job_config, parameter_types"
+  },
+  {
+    "number": 397,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 398,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 399,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 400,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/dbapi/cursor.py\", line 234, in _execute"
+  },
+  {
+    "number": 401,
+    "phase": "program",
+    "content": "    raise exceptions.DatabaseError(exc)"
+  },
+  {
+    "number": 402,
+    "phase": "program",
+    "content": "dlt.destinations.exceptions.DatabaseTerminalException: 400 POST https://bigquery.googleapis.com/bigquery/v2/projects/example-project/queries?prettyPrint=false: Required field success_rate cannot be null"
+  },
+  {
+    "number": 403,
+    "phase": "program",
+    "content": ". The job has been queued for retry and the package remains pending. Run `pipeline.load()` to retry or abort the package."
+  },
+  {
+    "number": 404,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 405,
+    "phase": "program",
+    "content": "Pending packages are left in the pipeline and will be re-tried on the next pipeline run. If you pass new data to extract to next run, it will be ignored. Run `dlt pipeline _dlt_dq_jaffle_shop info` for more information or `dlt pipeline _dlt_dq_jaffle_shop abort-packages` to abort pending packages."
+  },
+  {
+    "number": 406,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 407,
+    "phase": "program",
+    "content": "Note: If the pipeline working directory is on ephemeral storage (e.g. dltHub platform jobs, serverless functions, or CI runners without persistent volumes), pending packages are lost and not retried."
+  },
+  {
+    "number": 408,
+    "phase": "program",
+    "content": "/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py:626: UserWarning: Cannot create BigQuery Storage client, the dependency google-cloud-bigquery-storage is not installed."
+  },
+  {
+    "number": 409,
+    "phase": "program",
+    "content": "  warnings.warn("
+  },
+  {
+    "number": 410,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]

@@ -113,7 +113,8 @@ def test_context_is_built_from_the_log_envelope_when_no_result_is_stored():
     assert ctx.trace["turn_count"] == 3
     assert ctx.failed_run["job_ref"] == "pipelines.github_events"
     assert len(ctx.failed_log) == len(FAILED_LOG) + len(SETUP_NOISE)
-    assert [call.tool for call in ctx.tool_calls] == ["dlthub_get_run", "dlthub_get_run_logs"]
+    assert [call.tool for call in ctx.tool_calls] == ["dlthub_get_run", "dlthub_get_run_logs",
+                                                      "dlthub_get_job", "Read"]
 
 
 def test_stored_result_is_preferred_over_the_envelope():
@@ -134,8 +135,20 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     assert prep.errors == []
     assert prep.inspector_run_id == INSPECTOR_RUN_ID
 
-    deterministic = [entry.id for entry in C.CHECKS.values() if entry.fn is not None]
-    assert set(prep.results) == set(deterministic)
+    deterministic = {entry.id for entry in C.CHECKS.values() if entry.fn is not None}
+    assert deterministic <= set(prep.results)
+
+    # the rest are judge checks whose condition this run does not meet, answered by their
+    # precondition so they never reach the model
+    by_precondition = set(prep.results) - deterministic
+    assert by_precondition == {
+        "transient_evidence_cites_neighbours", "pipeline_step_named",
+        "failed_summary_rules_out", "failed_summary_starting_point",
+        "aborted_summary_names_missing_input", "aborted_summary_says_what_to_supply",
+        "dependency_cause_named",
+    }
+    assert all(prep.results[id].outcome == C.NA for id in by_precondition)
+    assert not set(C.judge_ids(prep.results)) & by_precondition
 
     windows = json.loads(prep.judge_inputs["evidence_windows"])
     assert windows["open_checks"] == C.judge_ids(prep.results)
@@ -144,6 +157,19 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     assert [frame["owner"] for frame in windows["traceback_frames"]] == ["workspace"]
     assert json.loads(prep.judge_inputs["inspector_output"])["classification"] == "credentials"
     assert json.loads(prep.judge_inputs["neighbour_runs"])[0]["id"] == FAILED_RUN_ID
+
+
+def test_prepare_renders_the_rubric_for_every_open_check_and_no_other():
+    """The judge prompt carries the rubrics it can answer; the rest never reach the model."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                     fetcher=fetcher())
+    rubrics = prep.judge_inputs["rubrics"]
+    open_checks = C.judge_ids(prep.results)
+    assert open_checks
+    for id in open_checks:
+        assert f"**`{id}`**" in rubrics
+    for id in set(C.RUBRICS) - set(open_checks):
+        assert f"**`{id}`**" not in rubrics
 
 
 def test_prepare_aborts_without_an_inspector_run():
@@ -301,6 +327,23 @@ def test_earliest_error_window_anchors_on_the_line_the_excerpt_sits_on():
     assert window["anchor_line"] == line_no(8)
     assert line_no(3) in [candidate["line"] for candidate in window["candidates"]]
     assert "sits at line" in window["reason"]
+
+
+def test_earliest_error_window_anchors_on_the_real_line_when_the_citation_is_a_little_late():
+    """A citation two lines late is within tolerance, so the excerpt counts as cited at its line;
+    the anchor is still where the text sits, or the exception itself would read as an error
+    the inspector skipped."""
+    late = output(evidence=[{
+        "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(10)}",
+        "excerpt": "requests.exceptions.HTTPError: 401 Client Error: Unauthorized",
+        "provenance": "run_log",
+    }])
+    ctx = context(output=late)
+    assert C.excerpt_placements(ctx)[0]["status"] == C.EXCERPT_AT_CITED
+    window = C.earliest_error_window(ctx)
+    assert window["located"] is True
+    assert window["anchor_line"] == line_no(8)
+    assert line_no(8) not in [candidate["line"] for candidate in window["candidates"]]
 
 
 def test_earliest_error_window_has_no_anchor_in_a_file_the_evaluator_does_not_hold():
@@ -475,10 +518,15 @@ def deployed_run_fetcher() -> StubFetcher:
     job_ref = "jobs.jaffle_shop.load_jaffle_bad_config"
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(classification="config"), "trace": deployed_run_trace()}
+    # the run read `jaffle_shop/bad_config.py`, so that is the file its failed log names
+    failed_log = [
+        line.replace("/workspace/pipelines/github.py", "/workspace/jaffle_shop/bad_config.py")
+        for line in FAILED_LOG
+    ]
     return fetcher(
         logs={
             INSPECTOR_RUN_ID: deployed_run_log(result_json=json.dumps(payload, indent=2)),
-            FAILED_RUN_ID: with_setup(FAILED_LOG),
+            FAILED_RUN_ID: with_setup(failed_log),
         },
         records={
             INSPECTOR_RUN_ID: dict(INSPECTOR_RECORD, trigger=f"job.fail:{job_ref}"),
@@ -504,6 +552,8 @@ def test_prepare_scores_what_a_deployed_run_did():
     """
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
     assert prep.ctx is not None
+    # This is intentionally coupled to `fixtures/deployed_inspector_run.log`: the checked-in
+    # trace recorded these 11 calls in this order, while the old parser read none of them.
     assert [call.tool for call in prep.ctx.tool_calls] == DEPLOYED_RUN_TOOLS
     assert prep.ctx.transcript_unread is False
     assert prep.ctx.transcript_blind is False
@@ -512,8 +562,12 @@ def test_prepare_scores_what_a_deployed_run_did():
 
     reads_transcript = [entry.id for entry in C.CHECKS.values() if entry.reads_transcript]
     decided = {id for id in reads_transcript if prep.results[id].outcome != C.NA}
-    assert len(decided) == 11, "the other six state a condition that did not apply"
+    # Re-capturing the deployed log can change which transcript checks are applicable.
+    assert len(decided) == 13, "the other seven state a condition that did not apply"
+    assert prep.results["job_declaration_read"].outcome == C.TRUE
     assert prep.results["run_record_read"].outcome == C.TRUE
+    # its one `Read` opened the file the traceback names
+    assert prep.results["workspace_file_read_when_referenced"].outcome == C.TRUE
     assert prep.results["run_logs_read"].outcome == C.TRUE
     assert prep.results["job_definition_read_for_config"].outcome == C.TRUE
     # the order of the calls survives the parse, which is what this one rests on
@@ -535,3 +589,102 @@ def test_a_deployed_run_reports_the_checks_it_left_undecided():
     assert final["na_count"] > 0
     assert f"{final['na_count']} `N/A`" in final["summary"]
     assert f"over the {final['decided_count']} decided" in final["summary"]
+
+
+# the verdict
+
+
+def _all_true(prep):
+    return [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
+            for id in C.judge_ids(prep.results)]
+
+
+def test_finalize_opens_with_the_verdict_and_names_each_broken_instruction():
+    """A reader acts on the summary without opening the rubric."""
+    prep = _prep_with(output=output(fix_target="", fix_change="", open_points=[]))
+    final = C.finalize({"status": "succeeded", "summary": "graded", "checks": _all_true(prep)},
+                       prep)
+    summary = final["summary"]
+    assert summary.startswith("**Verdict: failed.**")
+    assert "One FALSE fails the evaluation" in summary
+    assert "Broken instructions:" in summary
+    assert "(`fix_names_target_and_change`)" in summary
+    assert C.instruction_of("fix_names_target_and_change") in summary
+    assert prep.results["fix_names_target_and_change"].reasoning in summary
+    # the judge's own words follow the verdict, then the tally
+    assert summary.index("graded") > summary.index("Broken instructions:")
+    assert summary.index("checks:") > summary.index("graded")
+
+
+def test_finalize_verdict_passed_when_nothing_is_false():
+    prep = _prep_with()
+    final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+    assert final["passed"] is True
+    assert final["summary"].startswith("**Verdict: passed.**")
+    assert "Broken instructions" not in final["summary"]
+
+
+def test_finalize_verdict_incomplete_when_a_judge_check_went_unanswered():
+    prep = _prep_with()
+    final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)[:-1]},
+                       prep)
+    assert final["summary"].startswith("**Verdict: incomplete.**")
+    assert final["passed"] is False
+
+
+def test_instruction_of_is_the_first_paragraph_of_the_docstring():
+    assert C.instruction_of("run_record_read") == "The run record of the inspected run was read."
+    assert C.instruction_of("fix_actionable").startswith("`proposed_fix` names the concrete")
+    assert C.instruction_of("not_a_check") == "not_a_check"
+
+
+def test_judge_windows_carry_the_summary_sections_and_the_leads():
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
+    windows = json.loads(prep.judge_inputs["evidence_windows"])
+    assert [s["title"] for s in windows["summary_sections"]] == list(C.REQUIRED_SUMMARY_SECTIONS)
+    assert windows["summary_sections"][0]["bullets"]
+    assert windows["summary_preamble"] == []
+    assert windows["dependency_symptoms"] == []
+    assert windows["workspace_files_referenced"][0]["file"].endswith("pipelines/github.py")
+    assert windows["files_read"][0]["tool"] == "Read"
+    assert windows["other_runs_read"] == []
+    assert windows["open_point_reasons"] == []
+    assert json.loads(prep.judge_inputs["inspector_output"])["open_points"]
+
+
+def test_a_precondition_answers_na_and_keeps_the_rubric_out_of_the_prompt():
+    """A `transient`-only check on a `code` failure is Python's answer, not the judge's."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                     fetcher=fetcher(), inspector_run_id=INSPECTOR_RUN_ID)
+    result = prep.results["transient_evidence_cites_neighbours"]
+    assert result.outcome == C.NA
+    assert "not `transient`" in result.reasoning
+    assert "**`transient_evidence_cites_neighbours`**" not in prep.judge_inputs["rubrics"]
+
+
+def test_every_precondition_reads_only_what_prepare_already_holds():
+    """Each one answers from the output or the failed run, so none can raise on a thin run."""
+    ctx = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                    fetcher=fetcher()).ctx
+    for entry in C.CHECKS.values():
+        if entry.precondition is None:
+            continue
+        assert entry.kind == C.JUDGE, entry.id
+        reason = entry.precondition(ctx)
+        assert reason is None or isinstance(reason, str)
+
+
+def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
+    """The trace is often missing on a run that failed early; the run record still lists
+    the pipeline, so `pipeline_step_named` stays the judge's to answer."""
+    ran_a_pipeline = context(pipeline_trace=None,
+                             failed_run=failed_run(pipelines=[{"pipeline_name": "orders"}]))
+    results: dict = {}
+    C.run_preconditions(ran_a_pipeline, results)
+    assert "pipeline_step_named" not in results
+    assert "pipeline_step_named" in C.judge_ids(results)
+
+    no_pipeline = context(pipeline_trace=None)
+    results = {}
+    C.run_preconditions(no_pipeline, results)
+    assert results["pipeline_step_named"].outcome == C.NA

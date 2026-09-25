@@ -1,0 +1,252 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "program",
+    "content": "Starting job __deployment__:ads_platform_dq (trigger: tag:ads)"
+  },
+  {
+    "number": 5,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py:626: UserWarning: Cannot create BigQuery Storage client, the dependency google-cloud-bigquery-storage is not installed."
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": "  warnings.warn("
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 198, in _run_module_as_main"
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 88, in _run_code"
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 309, in <module>"
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "    result = run("
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "        entry_point=args.entry_point,"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "        run_id=args.run_id,"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": "        trigger=args.trigger,"
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 295, in run"
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "    result = _call()"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 262, in _call"
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": "    called = invoke(job, ctx) if invoke else job(**kwargs)"
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": "                                             ~~~^^^^^^^^^^"
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 221, in __call__"
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "    rv: TJobResult = self._deco_f(*args, **kwargs)"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": "                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 245, in _call"
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": "    return conf_f(*args, **kwargs)"
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_2a5ab38a/run/__deployment__.py\", line 208, in ads_platform_dq"
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "    run_dq_checks("
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": "        \"ads_platform\","
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "    ...<14 lines>..."
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": "        require_non_empty=(\"campaign\", \"daily_ad_metrics\"),"
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_2a5ab38a/run/utils/dq.py\", line 76, in run_dq_checks"
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "    existing_tables = set(pipeline.default_schema.data_table_names())"
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": "                          ^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/pipeline.py\", line 1086, in default_schema"
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "    return self.schemas[self.default_schema_name]"
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 43,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/storages/live_schema_storage.py\", line 22, in __getitem__"
+  },
+  {
+    "number": 44,
+    "phase": "program",
+    "content": "    schema = self.load_schema(name)"
+  },
+  {
+    "number": 45,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/storages/schema_storage.py\", line 56, in load_schema"
+  },
+  {
+    "number": 46,
+    "phase": "program",
+    "content": "    raise SchemaNotFoundError(name, self.config.schema_volume_path)"
+  },
+  {
+    "number": 47,
+    "phase": "program",
+    "content": "dlt.common.storages.exceptions.SchemaNotFoundError: Schema `None` in `/tmp/dlt_run_2a5ab38a/run/.dlt/state/prod/pipelines/ads_platform/schemas` could not be found."
+  },
+  {
+    "number": 48,
+    "phase": "program",
+    "content": "Runner failed with exit code: 1"
+  },
+  {
+    "number": 49,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]

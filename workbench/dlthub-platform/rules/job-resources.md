@@ -10,7 +10,7 @@ config change is free; these are not.
 2. **Show the budget math in the question**, so the user decides with the number in front of them: current
    vs proposed multiplier, typical wall-clock per run, cadence, and the resulting change in charged hours
    per run and per month. Charged budget = **wall-clock hours × instance multiplier × runs**. Read the
-   current tiers and multipliers from `deploy-workspace` (`advanced-patterns.md`) or the reference below —
+   current tiers and multipliers from `deploy-workspace` (`runtime-settings.md`) or the reference below —
    do not quote them from memory.
 3. **Wait for an explicit yes.** Silence, "sounds good", or a general go-ahead given earlier in the session
    for unrelated work is not permission for this. Approval covers **one** change to **one** job — re-ask for
