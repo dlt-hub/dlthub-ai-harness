@@ -1,0 +1,222 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 5,
+    "phase": "program",
+    "content": "Starting job __deployment__:jaffle_shop_dq (trigger: tag:jaffle_shop)"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "/usr/local/lib/python3.13/site-packages/google/cloud/bigquery/client.py:626: UserWarning: Cannot create BigQuery Storage client, the dependency google-cloud-bigquery-storage is not installed."
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": "  warnings.warn("
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 198, in _run_module_as_main"
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 88, in _run_code"
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 309, in <module>"
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "    result = run("
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "        entry_point=args.entry_point,"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "        run_id=args.run_id,"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": "        trigger=args.trigger,"
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 295, in run"
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "    result = _call()"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 262, in _call"
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": "    called = invoke(job, ctx) if invoke else job(**kwargs)"
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": "                                             ~~~^^^^^^^^^^"
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 221, in __call__"
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "    rv: TJobResult = self._deco_f(*args, **kwargs)"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": "                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 245, in _call"
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": "    return conf_f(*args, **kwargs)"
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_77bbc5b3/run/__deployment__.py\", line 294, in jaffle_shop_dq"
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "    run_dq_checks("
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": "        \"jaffle_shop\","
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "    ...<11 lines>..."
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": "        require_non_empty=(\"customers\", \"products\", \"orders\"),"
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_77bbc5b3/run/utils/dq.py\", line 79, in run_dq_checks"
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "    raise DataQualityFailed("
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": "    ...<4 lines>..."
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "utils.dq.DataQualityFailed: DQ check failed on jaffle_shop: table(s) ['orders'] were not loaded by the ingestion pipeline. The source returned no rows \u2014 check the source module's configuration in `workspace/sources/`."
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": "Runner failed with exit code: 1"
+  },
+  {
+    "number": 43,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]

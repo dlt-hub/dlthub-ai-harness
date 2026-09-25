@@ -16,11 +16,11 @@ Report failures immediately — broken frontmatter, unresolved skill references,
 
 ---
 
-## Step 2 — Review against product principles
+## Step 2 — Review against the quality criteria
 
-Evaluate the change against each principle from `product_principles.md`:
+Evaluate the change against each of the following.
 
-### Principle 1: Transparent, declarative, context-aware
+### Transparent, declarative, context-aware
 
 - [ ] No black-box abstractions — the agent's steps are visible and inspectable
 - [ ] Intermediate outputs are persisted as readable artifacts (Markdown, DBML, SQL, annotated Python)
@@ -28,16 +28,16 @@ Evaluate the change against each principle from `product_principles.md`:
 - [ ] Context flows forward: source metadata, schemas, annotations are not discarded
 - [ ] Logs and traces are available; agents don't silently consume data
 
-> "Un-black-box the process." A skill that conflates distinct stages hides intent. Split them — each conceptual stage must be its own step with its own inspectable, persisted output.
+A skill that conflates distinct stages hides intent. Split them, so each conceptual stage is its own step with its own inspectable, persisted output.
 
-### Principle 2: Modular, composable
+### Modular, composable
 
 - [ ] Uses dlt built-ins (auth helpers, REST client, dataset API) rather than reimplementing patterns
 - [ ] New functionality is a discrete skill or command, not woven into an existing one
 - [ ] Workflow references are well-structured: internal links use `` `(skill-name)` ``, external toolkit handoffs use `**toolkit-name**`
 - [ ] No new library dependencies unless necessary — prefer dlt ecosystem (ibis, marimo, Streamlit)
 
-### Principle 3: Built-in guardrails, human-in-the-loop
+### Built-in guardrails, human-in-the-loop
 
 - [ ] Skills ask for user input before irreversible or data-modifying steps
 - [ ] Sample/preview before full execution: `.add_limit(1)`, `dev_mode=True`, schema preview before pipeline run

@@ -1,0 +1,412 @@
+[
+  {
+    "number": 0,
+    "phase": "runner",
+    "content": "preparing bootstrap"
+  },
+  {
+    "number": 1,
+    "phase": "runner",
+    "content": "getting run package"
+  },
+  {
+    "number": 2,
+    "phase": "runner",
+    "content": "parsing run package"
+  },
+  {
+    "number": 3,
+    "phase": "runner",
+    "content": "extracting user code and configuration"
+  },
+  {
+    "number": 4,
+    "phase": "runner",
+    "content": "launching user code"
+  },
+  {
+    "number": 5,
+    "phase": "program",
+    "content": "Starting job __deployment__:jaffle_shop_dq (trigger: tag:jaffle_shop)"
+  },
+  {
+    "number": 6,
+    "phase": "program",
+    "content": "Traceback (most recent call last):"
+  },
+  {
+    "number": 7,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 198, in _run_module_as_main"
+  },
+  {
+    "number": 8,
+    "phase": "program",
+    "content": "  File \"<frozen runpy>\", line 88, in _run_code"
+  },
+  {
+    "number": 9,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 309, in <module>"
+  },
+  {
+    "number": 10,
+    "phase": "program",
+    "content": "    result = run("
+  },
+  {
+    "number": 11,
+    "phase": "program",
+    "content": "        entry_point=args.entry_point,"
+  },
+  {
+    "number": 12,
+    "phase": "program",
+    "content": "        run_id=args.run_id,"
+  },
+  {
+    "number": 13,
+    "phase": "program",
+    "content": "        trigger=args.trigger,"
+  },
+  {
+    "number": 14,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 15,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 295, in run"
+  },
+  {
+    "number": 16,
+    "phase": "program",
+    "content": "    result = _call()"
+  },
+  {
+    "number": 17,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/launchers/job.py\", line 262, in _call"
+  },
+  {
+    "number": 18,
+    "phase": "program",
+    "content": "    called = invoke(job, ctx) if invoke else job(**kwargs)"
+  },
+  {
+    "number": 19,
+    "phase": "program",
+    "content": "                                             ~~~^^^^^^^^^^"
+  },
+  {
+    "number": 20,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 221, in __call__"
+  },
+  {
+    "number": 21,
+    "phase": "program",
+    "content": "    rv: TJobResult = self._deco_f(*args, **kwargs)"
+  },
+  {
+    "number": 22,
+    "phase": "program",
+    "content": "                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 23,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/_workspace/deployment/decorators.py\", line 245, in _call"
+  },
+  {
+    "number": 24,
+    "phase": "program",
+    "content": "    return conf_f(*args, **kwargs)"
+  },
+  {
+    "number": 25,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_51a711cf/run/__deployment__.py\", line 294, in jaffle_shop_dq"
+  },
+  {
+    "number": 26,
+    "phase": "program",
+    "content": "    run_dq_checks("
+  },
+  {
+    "number": 27,
+    "phase": "program",
+    "content": "    ~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 28,
+    "phase": "program",
+    "content": "        \"jaffle_shop\","
+  },
+  {
+    "number": 29,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 30,
+    "phase": "program",
+    "content": "    ...<11 lines>..."
+  },
+  {
+    "number": 31,
+    "phase": "program",
+    "content": "        require_non_empty=(\"customers\", \"products\", \"orders\"),"
+  },
+  {
+    "number": 32,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 33,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 34,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 35,
+    "phase": "program",
+    "content": "  File \"/tmp/dlt_run_51a711cf/run/utils/dq.py\", line 69, in run_dq_checks"
+  },
+  {
+    "number": 36,
+    "phase": "program",
+    "content": "    pipeline = dlt.pipeline("
+  },
+  {
+    "number": 37,
+    "phase": "program",
+    "content": "        pipeline_name=source_pipeline_name,"
+  },
+  {
+    "number": 38,
+    "phase": "program",
+    "content": "        destination=destination,"
+  },
+  {
+    "number": 39,
+    "phase": "program",
+    "content": "        dataset_name=dataset_name,"
+  },
+  {
+    "number": 40,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 41,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/configuration/inject.py\", line 281, in _wrap"
+  },
+  {
+    "number": 42,
+    "phase": "program",
+    "content": "    return f(*bound_args.args, **bound_args.kwargs)"
+  },
+  {
+    "number": 43,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/pipeline/__init__.py\", line 149, in pipeline"
+  },
+  {
+    "number": 44,
+    "phase": "program",
+    "content": "    destination = Destination.from_reference("
+  },
+  {
+    "number": 45,
+    "phase": "program",
+    "content": "        destination or injection_kwargs[\"destination_type\"],"
+  },
+  {
+    "number": 46,
+    "phase": "program",
+    "content": "        destination_name=injection_kwargs[\"destination_name\"],"
+  },
+  {
+    "number": 47,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 48,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/destination/reference.py\", line 328, in from_reference"
+  },
+  {
+    "number": 49,
+    "phase": "program",
+    "content": "    return DestinationReference.from_reference("
+  },
+  {
+    "number": 50,
+    "phase": "program",
+    "content": "           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^"
+  },
+  {
+    "number": 51,
+    "phase": "program",
+    "content": "        ref, credentials, destination_name, environment, **kwargs"
+  },
+  {
+    "number": 52,
+    "phase": "program",
+    "content": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  },
+  {
+    "number": 53,
+    "phase": "program",
+    "content": "    )"
+  },
+  {
+    "number": 54,
+    "phase": "program",
+    "content": "    ^"
+  },
+  {
+    "number": 55,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/destination/reference.py\", line 434, in from_reference"
+  },
+  {
+    "number": 56,
+    "phase": "program",
+    "content": "    factory = cls.find(ref)"
+  },
+  {
+    "number": 57,
+    "phase": "program",
+    "content": "  File \"/usr/local/lib/python3.13/site-packages/dlt/common/destination/reference.py\", line 407, in find"
+  },
+  {
+    "number": 58,
+    "phase": "program",
+    "content": "    raise UnknownDestinationModule(ref, refs, import_traces)"
+  },
+  {
+    "number": 59,
+    "phase": "program",
+    "content": "dlt.common.destination.exceptions.UnknownDestinationModule: Destination 'warehouse' was first attempted to be resolved as a named destination with a configured type. However, no destination type was configured. If your destination is a named destination, set a valid destination type either as an environment variable:"
+  },
+  {
+    "number": 60,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 61,
+    "phase": "program",
+    "content": "  DESTINATION__WAREHOUSE__DESTINATION_TYPE=duckdb"
+  },
+  {
+    "number": 62,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 63,
+    "phase": "program",
+    "content": "or in your configuration files:"
+  },
+  {
+    "number": 64,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 65,
+    "phase": "program",
+    "content": "  [destination.warehouse]"
+  },
+  {
+    "number": 66,
+    "phase": "program",
+    "content": "  destination_type=\"duckdb\""
+  },
+  {
+    "number": 67,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 68,
+    "phase": "program",
+    "content": "Since no destination type was found, dlt also tried to resolve 'warehouse' as a standard destination. However, destination `warehouse` is not one of the standard dlt destinations. Following fully qualified refs were tried in the registry:"
+  },
+  {
+    "number": 69,
+    "phase": "program",
+    "content": "\twarehouse"
+  },
+  {
+    "number": 70,
+    "phase": "program",
+    "content": "\tdestinations.warehouse"
+  },
+  {
+    "number": 71,
+    "phase": "program",
+    "content": "\tdlt.destinations.warehouse"
+  },
+  {
+    "number": 72,
+    "phase": "program",
+    "content": "\tdlthub.destinations.warehouse"
+  },
+  {
+    "number": 73,
+    "phase": "program",
+    "content": "\tdlt_runtime.destinations.warehouse"
+  },
+  {
+    "number": 74,
+    "phase": "program",
+    "content": "Modules and attributes were tried in the following order and failed to import:"
+  },
+  {
+    "number": 75,
+    "phase": "program",
+    "content": "\tmod:`destinations` attr: `warehouse` failed due to: ModuleSpecNotFound"
+  },
+  {
+    "number": 76,
+    "phase": "program",
+    "content": "\tmod:`dlt.destinations` attr: `warehouse` failed due to: AttrNotFound and causing exception: module 'dlt.destinations' has no attribute 'warehouse'"
+  },
+  {
+    "number": 77,
+    "phase": "program",
+    "content": "\tmod:`dlthub.destinations` attr: `warehouse` failed due to: AttrNotFound and causing exception: module 'dlthub.destinations' has no attribute 'warehouse'"
+  },
+  {
+    "number": 78,
+    "phase": "program",
+    "content": "\tmod:`dlt_runtime.destinations` attr: `warehouse` failed due to: ModuleSpecNotFound"
+  },
+  {
+    "number": 79,
+    "phase": "program",
+    "content": ""
+  },
+  {
+    "number": 80,
+    "phase": "program",
+    "content": "Runner failed with exit code: 1"
+  },
+  {
+    "number": 81,
+    "phase": "provider",
+    "content": "Stopping app - user stopped from python client."
+  }
+]

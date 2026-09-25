@@ -1,0 +1,17 @@
+{
+  "number": 36,
+  "id": "03262361-f56e-4bec-883d-0000c93b6a0e",
+  "job_ref": "jobs.__deployment__.job_inspector",
+  "status": "failed",
+  "trigger": "job.fail:jobs.__deployment__.jaffle_shop_dq",
+  "profile": "prod",
+  "started_at": "2026-09-22 14:53:53.986307+00:00",
+  "ended_at": "2026-09-22 14:54:27.130711+00:00",
+  "duration_seconds": 33.144404,
+  "timeout_seconds": 7200,
+  "interval_start": "2026-09-22 14:53:52.786862+00:00",
+  "interval_end": "2026-09-22 14:53:52.786862+00:00",
+  "pipelines": [],
+  "prev_run_id": "2fecfcee-6497-419c-8930-000088ac6ffd",
+  "created_at": "2026-09-22 14:53:52.759658+00:00"
+}

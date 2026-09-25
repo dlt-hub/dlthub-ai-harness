@@ -19,18 +19,42 @@ def test_readme_tables_list_every_check_once():
     assert len(listed) == len(set(listed))
 
 
-def test_agent_md_holds_a_rubric_for_every_check_the_judge_answers():
-    rubrics = _RUBRIC_ID.findall(AGENT_MD)
-    judged = [
-        entry.id for entry in C.CHECKS.values() if entry.kind in (C.JUDGE, C.HYBRID)
-    ]
-    assert sorted(rubrics) == sorted(judged)
+def test_a_rubric_is_registered_for_every_check_the_judge_answers():
+    judged = {entry.id for entry in C.CHECKS.values() if entry.kind in (C.JUDGE, C.HYBRID)}
+    assert set(C.RUBRICS) == judged
 
 
-def test_agent_md_spells_out_no_deterministic_check():
-    """The model copies the deterministic results; their rubric lives in `checks.py`."""
+def test_no_deterministic_check_carries_a_rubric():
+    """The model copies the deterministic results; their rubric is the docstring in `checks.py`."""
     deterministic = {entry.id for entry in C.CHECKS.values() if entry.kind == C.DETERMINISTIC}
-    assert deterministic.isdisjoint(_RUBRIC_ID.findall(AGENT_MD))
+    assert deterministic.isdisjoint(C.RUBRICS)
+
+
+def test_the_prompt_asks_for_the_rubrics_instead_of_spelling_them_out():
+    """The Checks section is `{{ rubrics }}`: the prompt carries the applicable ones only."""
+    assert "{{ rubrics }}" in AGENT_MD
+    assert _RUBRIC_ID.findall(AGENT_MD) == []
+
+
+def test_rubric_block_renders_only_the_ids_asked_for_in_registry_order():
+    block = C.rubric_block(["summary_says_why", "no_premature_cause"])
+    assert block.index("**`no_premature_cause`**") < block.index("**`summary_says_why`**")
+    assert "**`summary_says_what_failed`**" not in block
+    for id in ("no_premature_cause", "summary_says_why"):
+        assert C.RUBRICS[id].strip() in block
+
+
+def test_rubric_block_rejects_an_id_with_no_rubric():
+    import pytest
+
+    with pytest.raises(KeyError):
+        C.rubric_block(["evidence_has_provenance"])
+
+
+def test_no_rubric_carries_an_unrendered_placeholder():
+    """dlt renders the body once; a `{{ }}` inside an injected value reaches the model raw."""
+    for id, text in C.RUBRICS.items():
+        assert "{{" not in text, id
 
 
 def test_every_deterministic_check_documents_its_three_outcomes():
@@ -58,7 +82,7 @@ def test_readme_documents_every_input_the_agent_declares():
 
 TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
                         "events_before_call", "runs_read", "transcript_blind", "ctx.events")
-TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access"}
+TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access", "no_write_tool_used"}
 """Checks that read transcript calls but can still decide from the run trace if parsing fails."""
 
 
@@ -86,3 +110,41 @@ def test_data_tool_table_matches_dlt_access_annotations():
         if "read" in granted_verbs(required_access(tool), "data")
     }
     assert set(C.DATA_TOOLS) == data_read_tools
+
+
+def test_the_shipped_definitions_declare_read_only_access():
+    """What `inspector_access_read_only` grades at run time must hold in the repository."""
+    for definition in sorted(AGENT_DIR.parent.glob("*/AGENT.md")):
+        access = C.parse_access(definition.read_text())
+        assert access, f"{definition} declares no access block"
+        for axis, verbs in access.items():
+            allowed = C.READ_ONLY_ACCESS.get(axis)
+            assert allowed is not None, f"{definition} grants the {axis} axis"
+            assert set(verbs) <= allowed, f"{definition} grants {axis}: {verbs}"
+
+
+def test_the_inspector_definition_sits_where_the_evaluator_looks_for_it():
+    """The path the check reads is where the installer writes the definition."""
+    assert C.INSPECTOR_DEFINITION_PATH == ".claude/dlthub/agents/job-inspector/AGENT.md"
+    assert (AGENT_DIR.parent / "job-inspector" / "AGENT.md").is_file()
+
+
+def test_every_check_has_a_category_the_summary_renders():
+    for entry in C.CHECKS.values():
+        assert entry.category in C.CATEGORIES, entry.id
+        assert entry.category in C.CATEGORY_TITLES
+
+
+def test_the_readme_names_the_security_checks_the_registry_marks():
+    """A security FALSE fails its section on its own, so the list cannot drift."""
+    marked = sorted(entry.id for entry in C.CHECKS.values() if entry.security)
+    assert f"`security` marks the {len(marked)} checks" in README
+    for check_id in marked:
+        assert f"`{check_id}`" in README
+
+
+def test_every_deploy_snippet_pins_the_read_only_profile():
+    """An agent job without a profile runs on `prod`, which `agent_profile_not_prod` fails."""
+    declarations = README.count("run.agent(")
+    assert declarations
+    assert README.count('require={"profile": "access"}') >= declarations

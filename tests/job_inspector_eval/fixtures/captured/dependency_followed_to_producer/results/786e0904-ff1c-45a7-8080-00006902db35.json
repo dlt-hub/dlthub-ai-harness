@@ -1,0 +1,238 @@
+{
+  "result": {
+    "status": "succeeded",
+    "summary": "## Diagnosis\n- `jobs.__deployment__.analytics_marts` run 9 failed in the `analytics` pipeline\u2019s extract step because `dim_customer` attempted to read `salesforce_data.contact`, but the Salesforce dataset contained only dlt metadata tables.\n- Earliest causal line: `ValueError: Table \\`contact\\` not found. Available table(s): ['_dlt_version', '_dlt_loads']` (`dlthub job runs logs efe275b8-4fac-459e-8def-00008c5c9613`, line 19).\n- The upstream producer is `jobs.__deployment__.salesforce_demo`; no runs were recorded for it, although `sources/salesforce.py` defines a non-empty `contact` resource. The analytics run was manually/tag-triggered rather than following a successful Salesforce load.\n\n## Recommendation\n- Ask a coding/operations agent to trigger `jobs.__deployment__.salesforce_demo`, verify it successfully creates and populates `salesforce_data.contact`, allow `jobs.__deployment__.salesforce_dq` to pass, and only then rerun `jobs.__deployment__.analytics_marts`.\n- Also review `__deployment__.py` so `analytics_marts` cannot start after only one of its independent upstream DQ triggers; implement an all-prerequisites gate or coordinator after confirming the platform-supported fan-in pattern.\n\n## Confidence\n- The Salesforce producer has no recorded run, so there was no producer log to inspect and the reason it was never run is not established.\n- Destination querying was unavailable. Before rerunning analytics, verify `salesforce_data.contact` exists and has rows, for example with an `INFORMATION_SCHEMA.TABLES` check followed by `SELECT COUNT(*) FROM salesforce_data.contact`.\n- Confidence is high because the run log directly identifies the absent table, workspace code identifies both its consumer and producer, and the producer run listing is empty; the durable fan-in implementation remains open.",
+    "evidence": [
+      {
+        "source": "dlthub job runs logs efe275b8-4fac-459e-8def-00008c5c9613 line 19",
+        "excerpt": "ValueError: Table `contact` not found. Available table(s): ['_dlt_version', '_dlt_loads']",
+        "provenance": "run_log"
+      },
+      {
+        "source": "transformations/analytics.py line 57",
+        "excerpt": "contact = salesforce.table(\"contact\").to_ibis().select(\"email\", \"created_date\")",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "sources/salesforce.py lines 17 and 92",
+        "excerpt": "SALESFORCE_DATASET_NAME = \"salesforce_data\"\n    def contact() -> Iterable[TDataItem]:",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "__deployment__.py lines 80-93",
+        "excerpt": "@run.pipeline(\n    \"salesforce_demo\",\n    expose={\"display_name\": \"Salesforce \u2192 Snowflake\", \"tags\": [\"salesforce\", \"crm\"]},\n    trigger=run.trigger.schedule(\"30 5 * * *\"),\n)\ndef salesforce_demo():\n    \"\"\"Load Salesforce-shaped dummy CRM data (deterministic, no API).\"\"\"\n    from sources.salesforce import SALESFORCE_DATASET_NAME, salesforce_source\n\n    pipeline = dlt.pipeline(\n        pipeline_name=\"salesforce\",\n        destination=\"warehouse\",\n        dataset_name=SALESFORCE_DATASET_NAME,\n    )",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "dlthub_list_runs(job=\"jobs.__deployment__.salesforce_demo\")",
+        "excerpt": "[]",
+        "provenance": "run_record"
+      },
+      {
+        "source": "run efe275b8-4fac-459e-8def-00008c5c9613 record",
+        "excerpt": "\"status\":\"failed\",\"trigger\":\"tag:analytics\",\"profile\":\"prod\"",
+        "provenance": "run_record"
+      },
+      {
+        "source": "deployed definition for jobs.__deployment__.analytics_marts",
+        "excerpt": "\"triggers\": [\"job.success:jobs.__deployment__.salesforce_dq\", \"job.success:jobs.__deployment__.ads_platform_dq\", \"job.success:jobs.__deployment__.stripe_billing_dq\", \"job.success:jobs.__deployment__.product_events_dq\", \"job.success:jobs.__deployment__.jaffle_shop_dq\"]",
+        "provenance": "job_definition"
+      }
+    ],
+    "confidence": "high",
+    "fix_change": "Run successfully to populate `salesforce_data.contact` before `jobs.__deployment__.analytics_marts` executes.",
+    "fix_target": "jobs.__deployment__.salesforce_demo",
+    "open_points": [
+      "The Salesforce producer has no recorded run, so no producer log exists to explain why it was never executed.",
+      "Destination access was unavailable; verify `salesforce_data.contact` exists and is non-empty before rerunning analytics.",
+      "The exact platform-supported all-prerequisites/fan-in trigger implementation was not established from the inspected artifacts."
+    ],
+    "proposed_fix": "Have an operations/coding agent trigger `jobs.__deployment__.salesforce_demo` and verify that it succeeds and creates a non-empty `salesforce_data.contact`; then run or await `jobs.__deployment__.salesforce_dq` and rerun `jobs.__deployment__.analytics_marts`. Separately, inspect the platform-supported dependency fan-in mechanism and update the `analytics_marts` trigger in `__deployment__.py` so the job runs only after all required source/DQ prerequisites are ready, rather than after any one independent `job.success` event; the exact coordinator/gate value is open because no supported all-prerequisites construct was established from the inspected artifacts.",
+    "failed_run_id": "efe275b8-4fac-459e-8def-00008c5c9613",
+    "classification": "upstream_data",
+    "failed_job_ref": "jobs.__deployment__.analytics_marts",
+    "requires_human": true
+  },
+  "trace": {
+    "agent": "dlthub-platform:job-inspector",
+    "agent_file": ".claude/dlthub/agents/job-inspector/AGENT.md",
+    "loop_type": "pydantic-ai",
+    "model": "azure:gpt",
+    "limits": {
+      "max_turns": 30,
+      "max_tokens": 1000000
+    },
+    "loop_run_args": {
+      "retries": 2
+    },
+    "inputs": {
+      "run_context": {
+        "run_id": "786e0904-ff1c-45a7-8080-00006902db35",
+        "trigger": "job.fail:jobs.__deployment__.analytics_marts",
+        "refresh": false,
+        "run_args": {
+          "port": 8080
+        },
+        "interval_start": "2026-09-24T10:31:01.211510+00:00",
+        "interval_end": "2026-09-24T10:31:01.211510+00:00"
+      },
+      "port": 8080
+    },
+    "access": {
+      "local": [
+        "read"
+      ],
+      "context": [
+        "read"
+      ]
+    },
+    "local_tools": {
+      "Read": "read",
+      "Glob": "read",
+      "Grep": "read"
+    },
+    "mcp_features": [
+      "jobs",
+      "logs",
+      "telemetry",
+      "workspace",
+      "pipeline",
+      "secrets",
+      "config"
+    ],
+    "native_skills": [],
+    "inlined_skills": [
+      "dlthub-platform:debug-deployment"
+    ],
+    "unresolved_placeholders": [
+      "failed_run_id",
+      "failed_job_ref"
+    ],
+    "turn_count": 9,
+    "input_tokens": 174464,
+    "output_tokens": 3269,
+    "total_tokens": 177733,
+    "turns": [
+      {
+        "tools": [
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13439,
+        "output_tokens": 99
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 16085,
+        "output_tokens": 127
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run_logs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 16470,
+        "output_tokens": 99
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          },
+          {
+            "name": "Read",
+            "kind": "builtin"
+          },
+          {
+            "name": "dlthub_get_job",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 18274,
+        "output_tokens": 196
+      },
+      {
+        "tools": [
+          {
+            "name": "Grep",
+            "kind": "builtin"
+          },
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          },
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 20793,
+        "output_tokens": 248
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 21256,
+        "output_tokens": 104
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 22315,
+        "output_tokens": 107
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 22406,
+        "output_tokens": 183
+      },
+      {
+        "tools": [],
+        "input_tokens": 23426,
+        "output_tokens": 2106
+      }
+    ],
+    "tools_used": [
+      "Read",
+      "Grep"
+    ],
+    "skills_used": [],
+    "mcp_tools_used": [
+      "dlthub_list_runs",
+      "dlthub_get_run",
+      "dlthub_get_run_logs",
+      "dlthub_get_job"
+    ],
+    "instructions": "Go ahead"
+  }
+}

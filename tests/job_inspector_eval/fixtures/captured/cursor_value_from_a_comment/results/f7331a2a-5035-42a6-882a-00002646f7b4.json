@@ -1,0 +1,202 @@
+{
+  "result": {
+    "status": "succeeded",
+    "summary": "## Diagnosis\n- The `jaffle_bad_incremental` pipeline failed during extraction because resource `orders_bad_incremental` configures an incremental cursor path, `updated_at`, that is absent from the extracted order records.\n- Run log line 54: ``IncrementalCursorPathMissing: In processing pipe `orders_bad_incremental`: Cursor element with JSON path `updated_at` was not found in extracted data item.``\n\n## Recommendation\n- In `jaffle_shop/bad_incremental.py` line 40, replace `cursor_path: \"updated_at\"` with `cursor_path: \"ordered_at\"`, then deploy the corrected job. Before deployment, confirm against an actual orders response or authoritative API schema that every record contains `ordered_at` because that field name is documented only in workspace comments available to this inspection.\n\n## Confidence\n- High confidence in the root cause: the earliest exception directly identifies the missing cursor, and workspace code confirms that exact cursor configuration.\n- The proposed `ordered_at` replacement is stated repeatedly in the workspace file but was not corroborated by a source record, fixture, or API schema; verify it before deployment.",
+    "evidence": [
+      {
+        "source": "dlthub job runs logs 1f86d76f-deca-46c3-88fc-000069cd9fb6 line 54",
+        "excerpt": "dlt.extract.incremental.exceptions.IncrementalCursorPathMissing: In processing pipe `orders_bad_incremental`: Cursor element with JSON path `updated_at` was not found in extracted data item. All data items must contain this path. Use the same names of fields as in your JSON document because they can be different from the names you see in database.",
+        "provenance": "run_log"
+      },
+      {
+        "source": "jaffle_shop/bad_incremental.py line 40",
+        "excerpt": "                                \"cursor_path\": \"updated_at\",",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "jaffle_shop/bad_incremental.py line 39",
+        "excerpt": "                                # BUG: orders have `ordered_at`, not `updated_at`",
+        "provenance": "repository_comment"
+      },
+      {
+        "source": "dlthub job runs info 1f86d76f-deca-46c3-88fc-000069cd9fb6 pipeline record",
+        "excerpt": "{\"pipeline_name\":\"jaffle_bad_incremental\",\"status\":\"failed\",\"total_rows\":0}",
+        "provenance": "run_record"
+      }
+    ],
+    "confidence": "high",
+    "fix_change": "Change `cursor_path: \"updated_at\"` to `cursor_path: \"ordered_at\"`.",
+    "fix_target": "jaffle_shop/bad_incremental.py line 40, `orders_bad_incremental` cursor_path",
+    "open_points": [
+      "No source payload, fixture, or authoritative API schema was available to corroborate the workspace comments stating that the correct field is `ordered_at`; verify that every order record contains it before deployment."
+    ],
+    "proposed_fix": "In `jaffle_shop/bad_incremental.py` line 40, change the `orders_bad_incremental` resource setting from `cursor_path: \"updated_at\"` to `cursor_path: \"ordered_at\"`, after confirming from an actual orders response or authoritative API schema that every order contains `ordered_at`; then deploy the corrected job.",
+    "failed_run_id": "1f86d76f-deca-46c3-88fc-000069cd9fb6",
+    "classification": "config",
+    "failed_job_ref": "jobs.jaffle_shop.load_jaffle_bad_incremental",
+    "requires_human": true
+  },
+  "trace": {
+    "agent": "dlthub-platform:job-inspector",
+    "agent_file": ".claude/dlthub/agents/job-inspector/AGENT.md",
+    "loop_type": "pydantic-ai",
+    "model": "azure:gpt-eval",
+    "limits": {
+      "max_turns": 30,
+      "max_tokens": 1000000
+    },
+    "loop_run_args": {
+      "retries": 2
+    },
+    "inputs": {
+      "run_context": {
+        "run_id": "f7331a2a-5035-42a6-882a-00002646f7b4",
+        "trigger": "job.fail:jobs.jaffle_shop.load_jaffle_bad_incremental",
+        "refresh": false,
+        "run_args": {
+          "port": 8080
+        },
+        "interval_start": "2026-09-24T10:50:11.992678+00:00",
+        "interval_end": "2026-09-24T10:50:11.992678+00:00"
+      },
+      "port": 8080
+    },
+    "access": {
+      "local": [
+        "read"
+      ],
+      "context": [
+        "read"
+      ]
+    },
+    "local_tools": {
+      "Read": "read",
+      "Glob": "read",
+      "Grep": "read"
+    },
+    "mcp_features": [
+      "jobs",
+      "logs",
+      "telemetry",
+      "workspace",
+      "pipeline",
+      "secrets",
+      "config"
+    ],
+    "native_skills": [],
+    "inlined_skills": [
+      "dlthub-platform:debug-deployment"
+    ],
+    "unresolved_placeholders": [
+      "failed_run_id",
+      "failed_job_ref"
+    ],
+    "turn_count": 9,
+    "input_tokens": 144252,
+    "output_tokens": 3458,
+    "total_tokens": 147710,
+    "turns": [
+      {
+        "tools": [
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13512,
+        "output_tokens": 117
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13880,
+        "output_tokens": 110
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run_logs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 14268,
+        "output_tokens": 90
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 16155,
+        "output_tokens": 103
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_job",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 16746,
+        "output_tokens": 136
+      },
+      {
+        "tools": [
+          {
+            "name": "Grep",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 17155,
+        "output_tokens": 546
+      },
+      {
+        "tools": [
+          {
+            "name": "Grep",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 17259,
+        "output_tokens": 580
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 17562,
+        "output_tokens": 516
+      },
+      {
+        "tools": [],
+        "input_tokens": 17715,
+        "output_tokens": 1260
+      }
+    ],
+    "tools_used": [
+      "Read",
+      "Grep"
+    ],
+    "skills_used": [],
+    "mcp_tools_used": [
+      "dlthub_list_runs",
+      "dlthub_get_run",
+      "dlthub_get_run_logs",
+      "dlthub_get_job"
+    ],
+    "instructions": "Go ahead"
+  }
+}

@@ -4,7 +4,7 @@
 
 A bigger runner is not a tuning lever: it is a **recurring cost** charged against your organization's run-time budget by a multiplier, so one hour on `large` spends four hours of budget — every run, forever. A config change is free; a tier bump is not. Reach for it when you have **measured** that the machine, not the pipeline, is the ceiling.
 
-Tiers step `small` → `medium` → `large` → `xlarge`, doubling vCPU and memory each step and doubling the budget multiplier with them (`small` is the default at 1×). **Read the current numbers from the reference below, or from `deploy-workspace` (`advanced-patterns.md`) if that toolkit is installed — never quote tiers or multipliers from memory**, since instance sizing is in public preview.
+Tiers step `small` → `medium` → `large` → `xlarge`, doubling vCPU and memory each step and doubling the budget multiplier with them (`small` is the default at 1×). **Read the current numbers from the reference below, or from `deploy-workspace` (`runtime-settings.md`) if that toolkit is installed — never quote tiers or multipliers from memory**, since instance sizing is in public preview.
 
 **Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size
 

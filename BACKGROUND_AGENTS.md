@@ -224,6 +224,89 @@ The agent run's `status` decides what the job does: `succeeded` and `failed` com
 run; `aborted` raises with `summary` as the message and the run fails, after the result and
 trace were delivered.
 
+#### The shape of `summary`
+
+The platform renders `summary` as markdown on the run page, and it is the only field a
+reader sees without opening the result. Every agent writes it the same way:
+
+- **Markdown headings over short bullets, and nothing else.** No text before the first
+  heading, no text outside a bullet, no question or bracketed note next to a heading.
+- **The same headings on every run of one agent**, in the same order, named for what that
+  agent reports. The set is the author's to choose: take the default for the kind of agent
+  below and change it where the agent reports something else. Declare it in the body and
+  hold to it, so a reader who has read one run can scan the next.
+- **The finding first, the scope last.** The first section says what the run found. What
+  the run covered goes at the bottom, next to the detail a reader opens only when the
+  finding sends them there.
+- **One or two plain sentences per bullet, one fact each.** Two verbs joined by `and` or
+  `then` are two bullets.
+- **A part of a finding is a bullet under it, nested one level**, not a section of its own.
+  A grade's categories, a check's broken instructions: they sit inside the finding they
+  belong to. Only `##` headings, so every heading in the summary is a section a reader can
+  scan for.
+- **What the run could not cover goes in `Scope`, never in the findings.** Checks that did
+  not apply, inputs that could not be read, a window that was cut short: a reader meets
+  them next to what the run did cover, and the findings stay what was found. An agent
+  with no `Scope` section puts them in its last section, which is what `job-inspector`
+  does with `Confidence`.
+- **A markdown table only as the last thing in the last section**, when the agent reports
+  rows. A table anywhere else breaks the scan. Its headers are lowercase and name the field
+  in the row, so one header in title case does not read as the important column. A row that
+  measured nothing stays out: how many there were is a number, and a number belongs in
+  `Scope` or in the tally above the table.
+- **Every run id and job ref is a link**, wherever it falls: a bullet, a sentence the code
+  wrote, a table cell. `[`<id>`](<web ui base>/w/<workspace id>/runs/<id>)` for a run,
+  `/jobs/<job ref>` for a job. A reader who meets an id follows it.
+  `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints a
+  run link.
+- **Markdown only, no raw HTML.** The summary renderer in the web UI strips tags, so a
+  `<details>` element folding a long list arrives as an empty section and the list inside
+  it is lost. A long list goes in as plain bullets, or is cut to the entries a reader
+  needs.
+- **Close every code span, and never escape a backtick with a backslash.** An unbalanced
+  span swallows the rest of the line in the UI, and `\`` renders as itself. A quoted line
+  that holds backticks loses them inside the quote.
+- **No verdict label at the top.** State what was found. `passed` and the other output
+  fields carry the verdict, and a label repeats what the bullets already say.
+
+Prose is what a model reaches for, so say the shape in the body and check it. `job-inspector`
+has the rules under "Summary format" and `job-inspector-eval` grades them with
+`summary_has_required_sections`, `summary_sections_are_bullets`, `summary_code_spans_balanced`
+and `summary_within_length`. An agent that assembles its summary in Python around the loop
+splits what the model wrote into bullets rather than trusting it.
+
+##### Default sections
+
+An agent that reports on one thing it did takes the sections `job-inspector` writes. They
+answer the three questions a reader arrives with, in the order they ask them:
+
+| heading | the bullets answer |
+|---|---|
+| `## Diagnosis` | What happened, where, and why; the bullet that carries the cause quotes its evidence with the source and the line |
+| `## Recommendation` | What the reader does next: the target and the change, written as the instruction itself |
+| `## Confidence` | What this rests on and what it leaves open; when nothing was left open, one bullet says so |
+
+An agent that grades another agent's run takes the sections `job-inspector-eval` writes.
+A grade opens on the verdict and keeps the evidence for it underneath:
+
+| heading | the bullets answer |
+|---|---|
+| `## Findings` | The counts, any rule broken that outranks the rest, what the graded agent got wrong and why it matters, then one bullet per category with its verdict and every broken check nested under it |
+| `## Recommendation` | What to change in the graded agent's definition so a broken check stops recurring. A report over one run leaves this out: one run is one observation, and a change to an agent's instructions rests on a pattern over many |
+| `## Scope` | How many checks did not apply, then the run or runs graded and what each acted on, each linked |
+| `## Detailed evaluation results` | The tally, then the table of every decided check: `check_id`, `category`, `kind`, `results`, `reasoning` |
+
+`job-inspector-eval` names its two categories `Instruction following` and `Quality`. A
+grader with other categories renames those bullets and leaves the rest.
+
+A report over many runs takes the same sections. The window it covered, the runs it
+skipped and why go under `Scope` with the runs themselves, and each broken instruction
+states the runs it broke on. One renderer writes both, so the two cannot drift.
+
+Changing a section the evaluator grades means changing the evaluator too:
+`REQUIRED_SUMMARY_SECTIONS` in `checks.py` holds the inspector's three headings, and the
+checks that read the `Confidence` section by name go with them.
+
 ### `defaults`
 
 Settings the agent job may set differently and a run may override again:
@@ -237,7 +320,9 @@ defaults:
 
 `trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
 `job.success:...`; `job.fail:*` watches every job in the workspace and expands at manifest
-time, never onto the job that declares it. A job event never stands in for a manual run: a
+time, never onto the job that declares it. In a workspace that also runs an evaluator agent
+it expands onto the evaluator's job, so a failed evaluation is inspected and the inspection
+starts the evaluator again: name the jobs to watch or tag them. A job event never stands in for a manual run: a
 run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was
 given, which is one more reason the body must say what to do with empty input.
 `limits.max_tokens` is counted by dlt after every turn, so it means the same on every loop.
@@ -468,14 +553,15 @@ async def job_inspector_eval(
     return finalize(output, prep)
 ```
 
-The function overrides the definition it drives, so three things are load-bearing: **no
-docstring** (it would replace the body), **`-> dict` rather than `-> TAgentOutput`** (a
-return type deriving from it would replace the output schema with the bare `status` and
-`summary`), and **a parameter for every input a caller may set** (configured inputs reach a
-decorated function through its signature only; an input declared in the `AGENT.md` but
-absent from the signature is warned about at deploy time and nothing passes it). Inputs the
-code supplies itself stay out of the signature and travel through `loop.run(inputs=...)`;
-the `AGENT.md` declares them because a body placeholder must be declared.
+The function overrides the definition it drives, so watch the signature. Give it **no
+docstring**, since a docstring replaces the body. Return **`dict` rather than
+`TAgentOutput`**, since a return type deriving from `TAgentOutput` replaces the output
+schema with the bare `status` and `summary`. Take **a parameter for every input a caller may
+set**, since configured inputs reach a decorated function through its signature only, and an
+input declared in the `AGENT.md` but absent from the signature is warned about at deploy
+time and nothing passes it. Inputs the code supplies itself stay out of the signature and
+travel through `loop.run(inputs=...)`; the `AGENT.md` declares them because a body
+placeholder must be declared.
 
 A path that never started the loop raises rather than returns. dlt reads `loop.trace` on any
 returned dict carrying `status`, so returning one from the abort branch fails the run with
@@ -505,6 +591,8 @@ module in the agent folder would replace that line; it is a dlt follow-up.
   `inputs.properties` or reachable under `run_context`
 - `access` axes and verbs are known
 - no `inputs.prompt`
+- `summary` is headings over short bullets, the same headings on every run, with a table
+  only at the end of the last section (§ the shape of `summary`)
 - `output` declares `status` and `summary`, described and required, with the standard
   values; a contradicting declaration is an error, a missing one a warning
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency

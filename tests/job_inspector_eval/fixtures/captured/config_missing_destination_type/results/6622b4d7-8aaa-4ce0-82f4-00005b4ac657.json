@@ -1,0 +1,186 @@
+{
+  "result": {
+    "status": "succeeded",
+    "summary": "## Diagnosis\n- Run 8 failed during job startup because the named destination `warehouse` has no configured destination type; no dlt pipeline execution was recorded.\n- The causal error is: \u201cDestination 'warehouse' was first attempted to be resolved as a named destination with a configured type. However, no destination type was configured.\u201d (`dlthub job runs logs 691bd0f7-b5c7-426a-8f11-00005d3f3045`, line 52).\n- `__deployment__.py:346` passes `destination=\"warehouse\"`, while the deployed job identifies its target as Snowflake, so `warehouse` must be configured as a Snowflake named destination.\n## Recommendation\n- Ask a coding agent to add `[destination.warehouse]` with `destination_type=\"snowflake\"` to the workspace configuration used by the `prod` profile, deploy that configuration, and rerun `jobs.__deployment__.analytics_marts`.\n## Confidence\n- The change was not applied or tested because this inspection is read-only; verify after deployment that run startup resolves `warehouse` and reaches the analytics pipeline.",
+    "evidence": [
+      {
+        "source": "dlthub job runs logs 691bd0f7-b5c7-426a-8f11-00005d3f3045 line 52",
+        "excerpt": "dlt.common.destination.exceptions.UnknownDestinationModule: Destination 'warehouse' was first attempted to be resolved as a named destination with a configured type. However, no destination type was configured.",
+        "provenance": "run_log"
+      },
+      {
+        "source": "__deployment__.py line 346",
+        "excerpt": "            destination=\"warehouse\",",
+        "provenance": "workspace_file"
+      },
+      {
+        "source": "deployed definition for jobs.__deployment__.analytics_marts, field name",
+        "excerpt": "Analytics marts (transformations) \u2192 Snowflake (analytics_marts)",
+        "provenance": "job_definition"
+      },
+      {
+        "source": "run 691bd0f7-b5c7-426a-8f11-00005d3f3045 fields status, profile, pipelines",
+        "excerpt": "status=failed; profile=prod; pipelines=[]",
+        "provenance": "run_record"
+      }
+    ],
+    "confidence": "high",
+    "fix_change": "destination_type=\"snowflake\"",
+    "fix_target": "prod runtime configuration key destination.warehouse.destination_type",
+    "open_points": [
+      "The configuration change was not applied or validated because the inspection is read-only; confirm with a new run that `warehouse` resolves and the analytics pipeline starts."
+    ],
+    "proposed_fix": "Add the named destination type to the configuration available to the runtime `prod` profile: `[destination.warehouse]` followed by `destination_type=\"snowflake\"`. Deploy the configuration and rerun `jobs.__deployment__.analytics_marts`; confirm that `dlt.dataset(destination=\"warehouse\", ...)` resolves and the `analytics` pipeline starts.",
+    "failed_run_id": "691bd0f7-b5c7-426a-8f11-00005d3f3045",
+    "classification": "config",
+    "failed_job_ref": "jobs.__deployment__.analytics_marts",
+    "requires_human": true
+  },
+  "trace": {
+    "agent": "dlthub-platform:job-inspector",
+    "agent_file": ".claude/dlthub/agents/job-inspector/AGENT.md",
+    "loop_type": "pydantic-ai",
+    "model": "azure:gpt",
+    "limits": {
+      "max_turns": 30,
+      "max_tokens": 1000000
+    },
+    "loop_run_args": {
+      "retries": 2
+    },
+    "inputs": {
+      "run_context": {
+        "run_id": "6622b4d7-8aaa-4ce0-82f4-00005b4ac657",
+        "trigger": "job.fail:jobs.__deployment__.analytics_marts",
+        "refresh": false,
+        "run_args": {
+          "port": 8080
+        },
+        "interval_start": "2026-09-24T10:08:11.517615+00:00",
+        "interval_end": "2026-09-24T10:08:11.517615+00:00"
+      },
+      "port": 8080
+    },
+    "access": {
+      "local": [
+        "read"
+      ],
+      "context": [
+        "read"
+      ]
+    },
+    "local_tools": {
+      "Read": "read",
+      "Glob": "read",
+      "Grep": "read"
+    },
+    "mcp_features": [
+      "jobs",
+      "logs",
+      "telemetry",
+      "workspace",
+      "pipeline",
+      "secrets",
+      "config"
+    ],
+    "native_skills": [],
+    "inlined_skills": [
+      "dlthub-platform:debug-deployment"
+    ],
+    "unresolved_placeholders": [
+      "failed_run_id",
+      "failed_job_ref"
+    ],
+    "turn_count": 7,
+    "input_tokens": 118052,
+    "output_tokens": 1853,
+    "total_tokens": 119905,
+    "turns": [
+      {
+        "tools": [
+          {
+            "name": "dlthub_list_runs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 13440,
+        "output_tokens": 103
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 15814,
+        "output_tokens": 138
+      },
+      {
+        "tools": [
+          {
+            "name": "dlthub_get_run_logs",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 16100,
+        "output_tokens": 84
+      },
+      {
+        "tools": [
+          {
+            "name": "Read",
+            "kind": "builtin"
+          },
+          {
+            "name": "dlthub_get_job",
+            "kind": "mcp",
+            "server": "dlt-workspace-mcp"
+          }
+        ],
+        "input_tokens": 17272,
+        "output_tokens": 155
+      },
+      {
+        "tools": [
+          {
+            "name": "Grep",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 18253,
+        "output_tokens": 172
+      },
+      {
+        "tools": [
+          {
+            "name": "Grep",
+            "kind": "builtin"
+          }
+        ],
+        "input_tokens": 18364,
+        "output_tokens": 167
+      },
+      {
+        "tools": [],
+        "input_tokens": 18809,
+        "output_tokens": 1034
+      }
+    ],
+    "tools_used": [
+      "Read",
+      "Grep"
+    ],
+    "skills_used": [],
+    "mcp_tools_used": [
+      "dlthub_list_runs",
+      "dlthub_get_run",
+      "dlthub_get_run_logs",
+      "dlthub_get_job"
+    ],
+    "instructions": "Go ahead"
+  }
+}
