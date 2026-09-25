@@ -71,7 +71,7 @@ def test_the_summary_lists_each_broken_instruction_in_words(name):
     final = _finalized(name)
     broken = [entry["id"] for entry in final["checks"] if entry["outcome"] == C.FALSE]
     assert broken, "a run of the earlier definition breaks at least one of the new rules"
-    assert final["summary"].startswith("## Scope\n")
+    assert final["summary"].startswith("## Findings\n")
     assert "## Findings\n\n- The inspector broke " in final["summary"]
     for check_id in broken:
         assert f"(`{check_id}`)" in final["summary"]

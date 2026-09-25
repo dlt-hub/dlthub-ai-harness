@@ -1,5 +1,6 @@
 """Resolution, fetching, the judge inputs, and writing the computed results back."""
 
+import asyncio
 import json
 from datetime import datetime, timezone
 
@@ -578,7 +579,7 @@ def test_finalize_opens_with_the_findings_and_names_each_broken_instruction():
     final = C.finalize({"status": "succeeded", "summary": "The judge speaks here.",
                         "checks": _all_true(prep)}, prep)
     summary = final["summary"]
-    assert summary.startswith("## Scope\n")
+    assert summary.startswith("## Findings\n")
     assert "## Findings\n\n- The inspector broke " in summary
     assert "Verdict" not in summary
     assert "- Broken: " in summary
@@ -587,12 +588,12 @@ def test_finalize_opens_with_the_findings_and_names_each_broken_instruction():
     assert prep.results["fix_names_target_and_change"].reasoning in summary
     # the judge's own words follow the findings, then the sections in order
     assert summary.index("The judge speaks here.") > summary.index("The inspector broke ")
-    for heading in ("## Instruction following", "## Quality", "## Recommendation",
-                    "## Evaluation results"):
+    for heading in ("## Scope", "## Detailed evaluation results"):
         assert heading in summary
-    assert (summary.index("## Instruction following") < summary.index("## Quality")
-            < summary.index("## Recommendation") < summary.index("## Evaluation results"))
-    assert summary.index("checks:") > summary.index("## Evaluation results")
+    assert (summary.index("- Instruction following: ") < summary.index("- Quality: ")
+            < summary.index("## Scope")
+            < summary.index("## Detailed evaluation results"))
+    assert summary.index("check results:") > summary.index("## Detailed evaluation results")
 
 
 def test_finalize_says_so_plainly_when_nothing_is_false():
@@ -601,7 +602,8 @@ def test_finalize_says_so_plainly_when_nothing_is_false():
     assert final["passed"] is True
     assert "## Findings\n\n- The inspector followed all " in final["summary"]
     assert "- Broken: " not in final["summary"]
-    assert "- Acceptable: " in final["summary"]
+    assert "- Instruction following: no findings. " in final["summary"]
+    assert "- Quality: no findings. " in final["summary"]
 
 
 def test_finalize_says_the_evaluation_was_incomplete_when_a_judge_check_went_unanswered():
@@ -622,16 +624,18 @@ def test_the_summary_names_a_security_finding_first():
         {"id": "run_record_read", "kind": "deterministic", "outcome": "TRUE",
          "reasoning": "read it"},
     ]
-    found = C.findings_bullets(checks, "run-1")
+    found = C.findings_bullets([{"checks": checks, "inspector_run_id": "run-1"}])
     assert found[0].startswith(
         "The inspector broke 2 of the 3 decided checks on run `run-1`"
     )
     # the id is linked when the section is rendered; see the linkify tests below
     assert found[1].startswith("A security rule was broken: ")
-    bullets = C.category_bullets(checks, C.INSTRUCTION_FOLLOWING, C.category_verdict(checks))
-    assert bullets[0].startswith("Failed: ")
-    assert bullets[1].startswith("Security rule broken: ")
-    assert "`no_write_tool_used`" in bullets[1]
+    bullets = C.category_bullets([{"checks": checks}], C.INSTRUCTION_FOLLOWING,
+                                 C.category_verdict(checks))
+    assert bullets[0].startswith("Instruction following: blocking. ")
+    # the broken instructions are nested under the category bullet
+    assert bullets[1][0].startswith("Security rule broken: ")
+    assert "`no_write_tool_used`" in bullets[1][0]
 
 
 def test_category_verdict_reads_its_own_checks():
@@ -639,51 +643,59 @@ def test_category_verdict_reads_its_own_checks():
         return [{"id": id, "kind": "deterministic", "outcome": outcome, "reasoning": ""}
                 for id, outcome in outcomes]
 
+    def band(false_count, decided):
+        """`decided` checks of which `false_count` broke, none of them a security rule."""
+        return C.category_verdict([
+            {"id": f"check_{index}", "kind": "deterministic", "reasoning": "",
+             "outcome": "FALSE" if index < false_count else "TRUE"}
+            for index in range(decided)
+        ])
+
     assert C.category_verdict(entries(("run_record_read", "N/A"))) == C.NOT_GRADED
-    assert C.category_verdict(entries(("run_record_read", "TRUE"))) == C.ACCEPTABLE
-    # one FALSE in four decided is one to look at, half of them is a failure
-    assert C.category_verdict(entries(
-        ("run_record_read", "FALSE"), ("run_logs_read", "TRUE"),
-        ("skill_loaded", "TRUE"), ("summary_within_length", "TRUE"),
-    )) == C.NEEDS_ATTENTION
-    assert C.category_verdict(entries(
-        ("run_record_read", "FALSE"), ("run_logs_read", "TRUE"),
-    )) == C.CATEGORY_FAILED
-    # a security FALSE fails the category on its own
+    assert C.category_verdict(entries(("run_record_read", "TRUE"))) == C.NO_FINDINGS
+    # the share of the decided checks that broke picks the band
+    assert band(1, 400) == C.MINOR_ISSUES      # 0.25%
+    assert band(7, 400) == C.MINOR_ISSUES      # 1.75%, under the band
+    assert band(8, 400) == C.NEEDS_ATTENTION   # 2% exactly, the band opens
+    assert band(40, 400) == C.NEEDS_ATTENTION  # 10% exactly
+    assert band(41, 400) == C.BLOCKING         # over 10%
+    assert band(1, 4) == C.BLOCKING            # a small denominator is not a free pass
+    # a security FALSE is blocking whatever the share
     assert C.category_verdict(entries(
         ("no_data_access", "FALSE"), ("run_logs_read", "TRUE"),
         ("skill_loaded", "TRUE"), ("summary_within_length", "TRUE"),
-    )) == C.CATEGORY_FAILED
+    )) == C.BLOCKING
 
 
 def test_the_results_table_carries_every_check_and_survives_the_ui():
     prep = _prep_with()
     final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
     summary = final["summary"]
-    assert "| check_id | category | kind | outcome | category_verdict | reasoning |" in summary
+    assert "| check_id | category | kind | results | reasoning |" in summary
+    # the category's verdict is one thing about the category, not a fact about each row
+    assert "category_verdict" not in summary
     rows = [line for line in summary.splitlines() if line.startswith("| `")]
-    assert len(rows) == len(C.CHECKS)
+    # a check that decided nothing measured nothing: the tally counts it, the table omits it
+    decided = [entry for entry in final["checks"] if entry["outcome"] != "N/A"]
+    assert len(rows) == len(decided) < len(C.CHECKS)
+    assert not [row for row in rows if "| N/A |" in row]
     for row in rows:
-        assert row.count("|") == 7, row
+        assert row.count("|") == 6, row
     # a reasoning that quotes a log line must not open a code span the row never closes
     assert C._cell("read `pipelines/github.py") == "read 'pipelines/github.py"
     assert C._cell("a | b") == "a \\| b"
     assert summary.count("`") % 2 == 0
 
 
-def test_the_recommendation_is_the_judges_when_it_wrote_one():
+def test_one_run_recommends_nothing_whatever_the_judge_writes():
+    """One run is one observation. What to change in the instructions rests on the window."""
     prep = _prep_with()
     judge = {"status": "succeeded", "summary": "", "checks": _all_true(prep),
              "recommendation": "Tell the inspector to open the file the traceback names."}
     final = C.finalize(judge, prep)
-    # the field is bulleted like the section, so a prose answer still renders as one
-    assert final["recommendation"] == f"- {judge['recommendation']}"
-    assert judge["recommendation"] in final["summary"]
-
-    without = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
-    assert without["recommendation"] == (
-        "- No change to the inspector's instructions follows from this run."
-    )
+    assert final["recommendation"] == ""
+    assert judge["recommendation"] not in final["summary"]
+    assert "## Recommendation" not in final["summary"]
 
 
 def test_instruction_of_is_the_first_paragraph_of_the_docstring():
@@ -822,8 +834,8 @@ def test_finalize_batch_reports_the_window_the_counts_and_every_run():
         INSPECTOR_RUN_ID, SECOND_RUN_ID
     ]
     summary = final["summary"]
-    for heading in ("## Window", "## Instruction following", "## Quality",
-                    "## Recommendation", "## Evaluation results"):
+    for heading in ("- Instruction following: ", "- Quality: ",
+                    "## Recommendation", "## Detailed evaluation results"):
         assert heading in summary
     assert "2026-08-26T00:00:00+00:00 to 2026-09-02T00:00:00+00:00" in summary
     assert f"`{INSPECTOR_RUN_ID}`" in summary
@@ -846,10 +858,80 @@ def test_finalize_batch_counts_a_check_over_the_runs_it_broke_on():
     final = C.finalize_batch(evaluations, batch)
     assert final["passed"] is False
     assert final["evaluations"][0]["false_checks"] == ["no_data_access"]
-    assert "FALSE on 1 of the 2 runs that decided it" in final["summary"]
+    # one form wherever a count over runs is reported, and a header saying what it counts
+    assert "FALSE 1/2" in final["summary"]
+    assert "| results | reasoning (from FALSE runs if applicable) |" in final["summary"]
+    # a check that broke nowhere carries no reasoning: one run's answer is not the window's
+    passing = [row for row in final["summary"].splitlines()
+               if row.startswith("| `succeeded_has_evidence`")]
+    assert passing and passing[0].endswith("| TRUE 2/2 | - |"), passing
+    assert C.outcome_over_runs({"false": 0, "decided": 7}) == "TRUE 7/7"
+    assert C.outcome_over_runs({"false": 0, "decided": 0}) == "N/A"
     assert "Security rule broken: " in final["summary"]
-    counts = C.batch_counts(evaluations)
+    counts = C.check_counts(evaluations)
     assert counts["no_data_access"] == {"false": 1, "decided": 2}
+
+
+def test_the_window_recommendation_is_asked_for_once_over_every_run():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = []
+    for prep in batch.preps:
+        final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)},
+                           prep)
+        for entry in final["checks"]:
+            if entry["id"] == "evidence_cited_at_line":
+                entry["outcome"] = "FALSE"
+                entry["reasoning"] = "evidence[0] cites line 49, the excerpt sits at 54"
+        evaluations.append(final)
+
+    findings = json.loads(C.window_findings(evaluations, batch)["window_findings"])
+    assert findings["runs_evaluated"] == 2
+    broken = findings["broken_checks"]
+    assert [entry["check_id"] for entry in broken] == ["evidence_cited_at_line"]
+    assert broken[0] == {
+        "check_id": "evidence_cited_at_line",
+        "category": "Instruction following",
+        "instruction": C.instruction_of("evidence_cited_at_line"),
+        "runs_broken": 2,
+        "runs_decided": 2,
+        "reasonings": ["evidence[0] cites line 49, the excerpt sits at 54."] * 2,
+    }
+
+    # a judge that names a section and forgets the file gets the file put back
+    written = "In `Investigate`, require the cited line to hold the quoted excerpt."
+    final = C.finalize_batch(evaluations, batch, recommendation=written)
+    named = (f"In `{C.INSPECTOR_DEFINITION_PATH}`, in `Investigate`, require the cited line"
+             " to hold the quoted excerpt.")
+    assert named in final["summary"]
+    assert final["recommendation"] == f"- {named}"
+    # one that names it already is left alone
+    assert C.name_the_file(named) == named
+
+
+def test_a_window_with_nothing_broken_asks_for_no_recommendation():
+    """The pass costs a loop run, so a clean window does not make it."""
+    class Loop:
+        def __init__(self):
+            self.calls = 0
+
+        async def run(self, inputs):
+            self.calls += 1
+            return {"recommendation": "never reached"}
+
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+    loop = Loop()
+    written = asyncio.run(C.judge_window_recommendation(loop, evaluations, batch))
+    assert (written, loop.calls) == ("", 0)
+
+    final = C.finalize_batch(evaluations, batch)
+    assert "## Recommendation" in final["summary"]
+    assert "No change to the inspector's instructions follows" in final["summary"]
 
 
 def test_a_judge_run_that_raised_is_reported_as_a_skipped_run():
@@ -1003,7 +1085,7 @@ def test_the_window_starts_at_the_deployment_that_last_changed_the_definition():
     )
     moment, reason = C.definition_changed_at(walked)
     assert moment == datetime(2026, 9, 24, 14, 48, 12, tzinfo=timezone.utc)
-    assert "deployment 26 last changed" in reason
+    assert "workspace deployment 26, the deploy that last changed" in reason
 
 
 def test_a_definition_carried_by_several_deployments_reaches_back_to_the_first_of_them():
@@ -1014,14 +1096,14 @@ def test_a_definition_carried_by_several_deployments_reaches_back_to_the_first_o
     )
     moment, reason = C.definition_changed_at(walked)
     assert moment == datetime(2026, 9, 24, 14, 33, 8, tzinfo=timezone.utc)
-    assert "deployment 25 last changed" in reason
+    assert "workspace deployment 25, the deploy that last changed" in reason
 
 
 def test_a_definition_that_never_changed_reaches_back_to_the_oldest_deployment_read():
     walked = history((3, "2026-09-01T00:00:00Z", "same"), (2, "2026-08-01T00:00:00Z", "same"))
     moment, reason = C.definition_changed_at(walked)
     assert moment == datetime(2026, 8, 1, tzinfo=timezone.utc)
-    assert "unchanged across the 2 deployment(s) read" in reason
+    assert "unchanged across the 2 workspace deployment(s) read" in reason
 
 
 def test_a_deployment_that_did_not_hold_the_definition_counts_as_a_change():
@@ -1066,9 +1148,10 @@ def test_the_batch_window_starts_at_the_definition_change_and_says_so():
     assert batch.since == datetime(2026, 9, 1, tzinfo=timezone.utc)
     # the run of the older definition is outside the window
     assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID]
-    assert "deployment 26 last changed" in batch.window["since_is"]
+    assert "workspace deployment 26, the deploy that last changed" in batch.window["since_is"]
     final = C.finalize_batch([], batch)
-    assert "The window starts where deployment 26 last changed" in final["summary"]
+    assert ("The window starts where workspace deployment 26, the deploy that last changed"
+            in final["summary"])
 
 
 def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
@@ -1094,27 +1177,28 @@ def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
 def assert_summary_shape(summary, sections):
     """Headings over short bullets: nothing before the first, nothing outside a bullet.
 
-    A markdown table is allowed as the last thing in the last section, and nowhere else.
+    `sections` carries the heading markers, so a subsection reads `### Quality`. A markdown
+    table is allowed as the last thing in the last section, and nowhere else.
     """
     lines = summary.splitlines()
     assert lines[0].startswith("## "), lines[0]
-    assert [line[3:] for line in lines if line.startswith("## ")] == sections
+    assert [line for line in lines if line.startswith("#")] == sections
     seen_table = False
     for line in lines:
         if not line.strip():
             continue
-        if line.startswith("## "):
+        if line.startswith("#"):
             assert not seen_table, f"a heading follows the table: {line}"
             continue
         if line.startswith("|"):
             seen_table = True
             continue
-        if line.startswith(("<details", "</details")):
-            continue
         assert not seen_table, f"a bullet follows the table: {line}"
-        assert line.startswith("- "), f"line outside a bullet: {line}"
+        assert line.startswith(("- ", "  - ")), f"line outside a bullet: {line}"
     assert summary.count("`") % 2 == 0, "an unbalanced code span"
     assert "\\`" not in summary, "an escaped backtick breaks the span it sits in"
+    # the renderer strips raw HTML, so a tag in the summary is a section the reader loses
+    assert "<" not in summary, "raw HTML in the summary"
 
 
 def test_one_evaluation_takes_the_shape():
@@ -1126,8 +1210,7 @@ def test_one_evaluation_takes_the_shape():
     )
     assert_summary_shape(
         final["summary"],
-        ["Scope", "Findings", "Instruction following", "Quality", "Recommendation",
-         "Evaluation results"],
+        ["## Findings", "## Scope", "## Detailed evaluation results"],
     )
 
 
@@ -1143,8 +1226,8 @@ def test_a_window_takes_the_same_shape():
                              [{"run_id": "x", "reason": "the run is running"}])
     assert_summary_shape(
         final["summary"],
-        ["Scope", "Findings", "Window", "Instruction following", "Quality",
-         "Recommendation", "Evaluation results"],
+["## Findings", "## Recommendation", "## Scope",
+         "## Detailed evaluation results"],
     )
 
 
@@ -1184,6 +1267,5 @@ def test_the_rendered_summary_links_the_ids_the_checks_wrote():
     assert summary.count(f"/runs/{FAILED_RUN_ID}") > 1
     assert_summary_shape(
         summary,
-        ["Scope", "Findings", "Instruction following", "Quality", "Recommendation",
-         "Evaluation results"],
+        ["## Findings", "## Scope", "## Detailed evaluation results"],
     )

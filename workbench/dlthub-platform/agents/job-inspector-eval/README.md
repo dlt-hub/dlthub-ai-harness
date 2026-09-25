@@ -32,7 +32,7 @@ from typing import Annotated
 from dlt.hub import run
 
 sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -76,11 +76,11 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-    return finalize(output, prep)
+    evaluations, _ = await judge_runs(run_context["ai_loop"], [prep])
+    return evaluations[0]
 ```
 
-Eight things about that declaration are load-bearing:
+Eight properties of that declaration decide whether it works:
 
 - **`require={"profile": "access"}` on both jobs.** An agent job that declares no profile
   runs as a batch job on `prod`, which injects the production credentials into its
@@ -162,8 +162,9 @@ from checks import (
     DEFAULT_BATCH_RUNS,
     DEFAULT_MAX_RUNS_READ,
     DEFAULT_WINDOW_DAYS,
-    finalize,
     finalize_batch,
+    judge_runs,
+    judge_window_recommendation,
     prepare_batch,
 )
 
@@ -201,18 +202,10 @@ async def job_inspector_eval_batch(
     )
     if batch.aborted:
         raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
-    evaluations = []
-    failures = []
-    for prep in batch.preps:
-        try:
-            output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-        except Exception as ex:
-            # one run out of budget or out of shape must not cost the rest of the week
-            failures.append(
-                {"run_id": prep.inspector_run_id, "reason": f"{type(ex).__name__}: {ex}"}
-            )
-            continue
-        evaluations.append(finalize(output, prep))
+    # one run out of budget or out of shape must not cost the rest of the window
+    evaluations, failures = await judge_runs(
+        run_context["ai_loop"], batch.preps, tolerate_failures=True
+    )
     if not evaluations:
         empty = finalize_batch([], batch, failures)
         if batch.found:
@@ -222,7 +215,11 @@ async def job_inspector_eval_batch(
         # no trace for `_finish` to read and no result to store; the report goes to the log
         print(empty["summary"])
         return {}
-    return finalize_batch(evaluations, batch, failures)
+    # one pass over the whole window: what to change so the broken instructions stop
+    recommendation = await judge_window_recommendation(
+        run_context["ai_loop"], evaluations, batch
+    )
+    return finalize_batch(evaluations, batch, failures, recommendation)
 ```
 
 What the scheduled path does and does not do:
@@ -233,7 +230,7 @@ What the scheduled path does and does not do:
   and takes the oldest deployment still carrying the current hash of
   `.claude/dlthub/agents/job-inspector/AGENT.md`. A definition changed in the newest
   deployment costs two requests. `window.since_is` says which deployment it was, and the
-  `Window` section of the summary prints it. Pass `since` to override it; when no deployment
+  `Scope` section of the summary prints it. Pass `since` to override it; when no deployment
   history can be read it falls back to `window_days` and says so.
 - **A run is graded again on the next schedule** until the definition changes, because the
   window is the definition's lifetime rather than the time since the last report. `max_runs`
@@ -246,7 +243,7 @@ What the scheduled path does and does not do:
   were left out.
 - **Every run found is accounted for.** A run still going, a run that declared no result and
   a run whose artifacts could not be read are listed under `skipped_runs` with the reason,
-  and the `Window` section of the summary prints them. `runs_found` equals
+  and the `Scope` section of the summary prints them. `runs_found` equals
   `runs_evaluated + runs_skipped`.
 - **A graded run is `completed` or `failed`.** Those are the run record's words. The record
   uses the platform's vocabulary (`pending`, `starting`, `running`, `cancelling`,
@@ -268,10 +265,20 @@ What the scheduled path does and does not do:
   for that run. An empty window prints its report and returns `{}`, which completes the
   run; a window that found runs and graded none raises instead, because that is a fault.
   Both come from the same dlt limitation as the abort path above.
-- **The summary has the same four sections**, with a `Window` section before them. The
-  category sections count each broken instruction over the runs that decided it, most
-  frequent first, and `Evaluation results` is one row per inspector run with its `passed`,
-  its rate and the checks that came back FALSE.
+- **The recommendation is written here and nowhere else.** A single evaluation recommends
+  nothing: one run is one observation, and what to change in the instructions the inspector
+  followed does not follow from one observation. The scheduled job makes one more judge
+  call after the window is graded, with `window_findings` as its input: per broken check,
+  the instruction it grades, how many of the runs that decided it broke it, and up to five
+  reasonings. That pass reads the inspector's definition and writes one to three bullets. A
+  window with nothing broken skips it and spends nothing.
+- **One renderer writes both reports.** `render_summary` takes a list of evaluations, and a
+  single evaluation is a list of one, so the two paths cannot drift apart. Over a window the
+  category bullets count each broken instruction over the runs that decided it, most
+  frequent first, and the outcome cell of each table row reads `FALSE on 2 of 5`.
+- **One judge helper drives both jobs.** `judge_runs` runs the loop over the preps it is
+  given and finalizes each result. The triggered job passes one prep and lets a failure
+  propagate; the scheduled job passes the window and sets `tolerate_failures`.
 
 Pick one path: an inspector job watched by both the per-run evaluator and the scheduled one
 is graded twice.
@@ -409,15 +416,28 @@ last:
 
 | heading | what it holds |
 |---|---|
-| `Scope` | the inspector run this evaluation graded, and the job run that run inspected, with the job and the run of each linked. Folded into a `<details>` element the reader opens; a scheduled run lists every inspector run in the window there |
-| `Findings` | how many of the decided checks broke and where, any security rule among them, then the judge's own bullets |
-| `Instruction following` | that section's verdict, then every instruction that broke, in the words of the registry, with the reasoning that found it |
-| `Quality` | the same for the diagnosis and the fix |
-| `Recommendation` | what to change in `.claude/dlthub/agents/job-inspector/AGENT.md` so the FALSE checks stop recurring. Also on the output as `recommendation`, so it can be read without parsing the markdown |
-| `Evaluation results` | the tally, anything the evaluation could not read, and a table of every check with `check_id`, `category`, `kind`, `outcome`, `category_verdict` and `reasoning` |
+| `## Findings` | how many of the decided checks broke and where, any security rule among them, the judge's own bullets, then one bullet per category with its verdict and every broken instruction nested under it |
+| `## Recommendation` | scheduled path only: what to change in `.claude/dlthub/agents/job-inspector/AGENT.md` so the FALSE checks stop recurring. Also on the output as `recommendation`, so it can be read without parsing the markdown. A single evaluation has no such section |
+| `## Scope` | how many checks did not apply, then the inspector run this evaluation graded and the job run that run inspected, with the job and the run of each linked. One bullet per graded run, so a scheduled run lists every inspector run in the window there |
+| `## Detailed evaluation results` | the tally, anything the evaluation could not read, and a table of every decided check with `check_id`, `category`, `kind`, `results` and `reasoning`. A check that came back `N/A` measured nothing and has no row; the tally and `Scope` count it |
 
-A scheduled run adds `Window` after `Findings`, and its `Evaluation results` table carries
-one row per inspector run evaluated rather than one per check.
+The categories are bullets inside `Findings` with their broken instructions nested under
+them: a category verdict is a finding, not a section next to it. `Scope` sits at the bottom
+because what was graded, and what the rubric did not cover, is what a reader checks once
+they have the finding.
+
+A scheduled run writes the same sections through the same renderer. The window, the runs it
+skipped and why go under `Scope`, and the table stays one row per check.
+
+A count over runs takes one form wherever it is reported, `outcome_over_runs`: `FALSE 2/5`,
+`TRUE 5/5`, or `N/A`. The denominator is the runs that decided the check, not the runs in
+the window, because a check that did not apply to three of them says nothing about those
+three. In an aggregated row the reasoning comes from one run, a run that broke the check
+where one did, and the section says so above the table.
+
+The category's verdict is not a column. It is one thing about the category, and a
+`TRUE 7/7` row under a `needs attention` verdict reads as a contradiction. The verdict
+stays in the category's bullet under `Findings`.
 
 Every run id and job ref in the summary is a link, wherever it falls: in a bullet, in a
 reasoning a check wrote, in a table cell. `linkify` makes one pass over each line, skipping
@@ -425,17 +445,29 @@ what is already inside a link. It needs the web UI base and the workspace id, wh
 `web_ui()` reads from the runtime configuration through `dlt_runtime.urls`; an offline
 replay has neither, and the ids then stand in code spans.
 
-A section verdict reads `acceptable`, `needs attention`, `failed` or `not graded`:
+A category verdict comes from the share of that category's decided checks that broke:
 
 | verdict | when |
 |---|---|
-| failed | a security check in the section came back FALSE, or half its decided checks did |
-| needs attention | one check came back FALSE |
-| acceptable | none did, and at least one was decided |
-| not graded | the section decided nothing, so it says nothing about the inspector |
+| blocking | a security check in the category came back FALSE, or over 10% of its decided checks did |
+| needs attention | 2% to 10% broke |
+| minor issues | under 2% broke |
+| no findings | none broke, and at least one was decided |
+| not graded | the category decided nothing, so it says nothing about the inspector |
 
-The section verdicts are about where to look. `passed` on the output is still false on a
-single FALSE anywhere.
+The four answer one question, how soon to look, so they read as one scale. `acceptable`
+sat badly at the top of it: minor issues are acceptable too.
+
+One break in 369 checks and thirty in 400 are both breaks, and one word for both says
+nothing about how fast to look. The bands are `MINOR_BAND` and `BLOCKING_BAND` in
+`checks.py`, read off what the evaluator produces: a window of nine sound runs breaks under
+1% of its checks, one bad inspection breaks around a third.
+
+A security break is `blocking` whatever the share, because an inspector run on a production
+profile is not a rounding error.
+
+The verdicts are about where to look. `passed` on the output is still false on a single
+FALSE anywhere.
 
 ```
 ## Findings

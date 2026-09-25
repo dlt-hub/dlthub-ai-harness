@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import re
 import shlex
-from html import escape
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -43,10 +42,21 @@ CATEGORY_TITLES = {
     QUALITY: "Quality",
 }
 
-ACCEPTABLE = "acceptable"
+NO_FINDINGS = "no findings"
+MINOR_ISSUES = "minor issues"
 NEEDS_ATTENTION = "needs attention"
-CATEGORY_FAILED = "failed"
+BLOCKING = "blocking"
 NOT_GRADED = "not graded"
+
+MINOR_BAND = 0.02
+BLOCKING_BAND = 0.10
+"""Where a category's verdict changes, as a share of the checks it decided.
+
+One break in 369 and thirty in 400 are both breaks, and calling them the same thing tells a
+reader nothing about how fast to look. The bands are read off what the evaluator produces:
+a window of nine clean-ish runs breaks under 1% of its checks, a single bad inspection
+breaks around a third of them.
+"""
 
 CLASSIFICATIONS = (
     "config",
@@ -3690,14 +3700,15 @@ def definition_changed_at(
         if str(entry.get("content_hash") or "") != current:
             moment = _moment(changed.get("created_at"))
             return moment, (
-                f"deployment {changed['version']} last changed `{path}`, at"
+                f"workspace deployment {changed['version']}, the deploy that last changed"
+                f" `{path}`, went out at"
                 f" {moment.isoformat() if moment else 'an unreadable time'}"
             )
         changed = entry
     moment = _moment(changed.get("created_at"))
     return moment, (
-        f"`{path}` is unchanged across the {len(history)} deployment(s) read, so the window"
-        f" starts at deployment {changed['version']}"
+        f"`{path}` is unchanged across the {len(history)} workspace deployment(s) read, so"
+        f" the window reaches back to deployment {changed['version']}"
     )
 
 
@@ -4456,7 +4467,10 @@ def prepare_batch(
 
 
 def finalize_batch(
-    evaluations: List[Dict[str, Any]], batch: BatchPrep, failures: Optional[List[Dict[str, str]]] = None
+    evaluations: List[Dict[str, Any]],
+    batch: BatchPrep,
+    failures: Optional[List[Dict[str, str]]] = None,
+    recommendation: str = "",
 ) -> Dict[str, Any]:
     """One output for the week: the window, the aggregate, and every evaluation under it.
 
@@ -4477,8 +4491,11 @@ def finalize_batch(
     window["runs_skipped"] = len(skipped)
     return {
         "status": "succeeded" if evaluations or not batch.found else "failed",
-        "summary": render_batch_summary(evaluations, batch, skipped),
-        "recommendation": _batch_recommendation(evaluations),
+        "summary": render_batch_summary(evaluations, batch, skipped, recommendation),
+        "recommendation": "\n".join(
+            f"- {bullet}"
+            for bullet in recommendation_bullets(checks, recommendation)
+        ),
         # a week passes when every evaluation in it passed and every run found was graded
         "passed": (
             bool(evaluations)
@@ -4521,27 +4538,108 @@ def finalize_batch(
     }
 
 
-def _batch_recommendation(evaluations: List[Dict[str, Any]]) -> str:
-    """The recommendations of the runs that broke something, in order, without repeats."""
-    written: List[str] = []
-    for evaluation in evaluations:
-        text = str(evaluation.get("recommendation") or "").strip()
-        if not text or text in written:
-            continue
-        if not any(entry["outcome"] == FALSE for entry in evaluation.get("checks", [])):
-            continue
-        written.append(text)
-    if not written:
-        return "No change to the inspector's instructions follows from this window."
-    shown = written[:5]
-    joined = "\n\n".join(shown)
-    if len(written) > len(shown):
-        joined += f"\n\n{len(written) - len(shown)} further recommendation(s) are on the runs."
-    return joined
+async def judge_runs(
+    loop: Any, preps: Sequence[EvalPrep], *, tolerate_failures: bool = False
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+    """Run the judge over each prepared inspector run and finalize what it returns.
+
+    Both deployment functions call this: the triggered job with one prep, the scheduled job
+    with the window's. `tolerate_failures` is what the two disagree on. A single evaluation
+    that raises is the run's own failure and propagates; over a window, one run out of
+    budget or out of shape is reported under `skipped_runs` and the rest still report.
+    """
+    evaluations: List[Dict[str, Any]] = []
+    failures: List[Dict[str, str]] = []
+    for prep in preps:
+        try:
+            evaluations.append(finalize(await loop.run(inputs=prep.judge_inputs), prep))
+        except Exception as ex:
+            if not tolerate_failures:
+                raise
+            failures.append(
+                {"run_id": prep.inspector_run_id, "reason": f"{type(ex).__name__}: {ex}"}
+            )
+    return evaluations, failures
 
 
-def batch_counts(evaluations: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
-    """How often each check came back FALSE, and over how many runs it was decided."""
+def window_findings(
+    evaluations: Sequence[Dict[str, Any]], batch: BatchPrep
+) -> Dict[str, Any]:
+    """What the judge is given to write the window's recommendation, and nothing else.
+
+    Per broken check: the instruction it grades, how many of the runs that decided it broke
+    it, and the reasonings that found it, capped so a window of 25 runs stays readable. No
+    log window and no inspector output: the question here is which instruction to change,
+    and the check registry already says what each instruction is.
+    """
+    counts = check_counts(evaluations)
+    broken = sorted(
+        ((id, tally) for id, tally in counts.items() if tally["false"]),
+        key=lambda item: (-item[1]["false"], item[0]),
+    )
+    findings = []
+    for id, tally in broken:
+        reasonings = [
+            _sentence(entry["reasoning"])
+            for evaluation in evaluations
+            for entry in evaluation.get("checks", [])
+            if entry["id"] == id and entry["outcome"] == FALSE and entry["reasoning"]
+        ]
+        findings.append(
+            {
+                "check_id": id,
+                "category": CATEGORY_TITLES[category_of(id)],
+                "instruction": instruction_of(id),
+                "runs_broken": tally["false"],
+                "runs_decided": tally["decided"],
+                "reasonings": reasonings[:_WINDOW_REASONINGS],
+            }
+        )
+    return {
+        "window_findings": json.dumps(
+            {
+                "job_ref": batch.job_ref,
+                "runs_evaluated": len(evaluations),
+                "since": batch.window.get("since"),
+                "until": batch.window.get("until"),
+                "definition": INSPECTOR_DEFINITION_PATH,
+                "broken_checks": findings,
+            },
+            default=str,
+            indent=2,
+        )
+    }
+
+
+_WINDOW_REASONINGS = 5
+"""Reasonings per broken check the recommendation pass is given. Five say what one says."""
+
+
+async def judge_window_recommendation(
+    loop: Any, evaluations: Sequence[Dict[str, Any]], batch: BatchPrep
+) -> str:
+    """One judge pass over the whole window: what to change in the inspector's definition.
+
+    A single evaluation recommends nothing, because one run is one observation. The window
+    is what a change rests on, so the recommendation is written once, here, over every run
+    the window graded. A window with nothing broken skips the pass and spends nothing.
+    """
+    if not any(
+        entry["outcome"] == FALSE
+        for evaluation in evaluations
+        for entry in evaluation.get("checks", [])
+    ):
+        return ""
+    output = await loop.run(inputs=window_findings(evaluations, batch))
+    return str((output or {}).get("recommendation") or "").strip()
+
+
+def check_counts(evaluations: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+    """Per check: how often it came back FALSE, over how many runs it was decided.
+
+    One evaluation gives every count a denominator of one, which is what makes the single
+    run and the window read the same way.
+    """
     counts: Dict[str, Dict[str, int]] = {}
     for evaluation in evaluations:
         for entry in evaluation.get("checks", []):
@@ -4553,81 +4651,34 @@ def batch_counts(evaluations: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]
     return counts
 
 
+def all_checks(evaluations: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Every check of every evaluation, for the counts a section states."""
+    return [entry for evaluation in evaluations for entry in evaluation.get("checks", [])]
+
+
 def render_batch_summary(
-    evaluations: List[Dict[str, Any]], batch: BatchPrep, skipped: List[Dict[str, str]]
+    evaluations: List[Dict[str, Any]],
+    batch: BatchPrep,
+    skipped: List[Dict[str, str]],
+    recommendation: str = "",
 ) -> str:
-    """The window as markdown headings over short bullets, the same shape as one evaluation."""
-    counts = batch_counts(evaluations)
-    runs = len(evaluations)
-    scope = scope_bullets(evaluations)
-    links = batch.links
-    sections = [
-        section(
-            "Scope",
-            scope,
-            fold=f"the {len(scope)} inspector run(s) this window evaluated",
-            links=links,
-        ),
-        section("Findings", _batch_findings(evaluations, batch, skipped), links=links),
-        section("Window", _window_bullets(batch, skipped), links=links),
-    ]
-    for category in CATEGORIES:
-        sections.append(
-            section(
-                CATEGORY_TITLES[category],
-                _batch_category_bullets(counts, category, runs),
-                links=links,
-            )
-        )
-    sections.append(
-        section(
-            "Recommendation", as_bullets(_batch_recommendation(evaluations)), links=links
-        )
+    """The window through the same renderer one evaluation goes through.
+
+    Two things a window has that one run does not: how often each check broke, and a
+    `Recommendation`. `recommendation` is what the judge wrote over the whole window in
+    `judge_window_recommendation`; empty, the section says no change follows.
+    """
+    return render_summary(
+        evaluations,
+        recommendation=recommendation,
+        recommend=True,
+        scope_extra=window_bullets(batch, skipped),
+        links=batch.links,
     )
-    sections.append(
-        section(
-            "Evaluation results",
-            [
-                f"One row per inspector run evaluated in this window, {runs} in total."
-                " The checks behind each row are on that run's own evaluation.",
-            ],
-            _batch_runs_table(evaluations),
-            links=links,
-        )
-    )
-    return "\n\n".join(sections)
 
 
-def _batch_findings(
-    evaluations: List[Dict[str, Any]], batch: BatchPrep, skipped: List[Dict[str, str]]
-) -> List[str]:
-    runs = len(evaluations)
-    found = batch.window["runs_found"]
-    broke = [
-        evaluation for evaluation in evaluations
-        if any(entry["outcome"] == FALSE for entry in evaluation.get("checks", []))
-    ]
-    if not runs:
-        return [
-            f"No inspector run of {batch.job_ref} was evaluated in this window."
-            f" {found} run(s) were found and {len(skipped)} skipped."
-        ]
-    bullets = []
-    if broke:
-        bullets.append(
-            f"{len(broke)} of the {runs} inspector runs evaluated broke at least one"
-            " instruction."
-        )
-    else:
-        bullets.append(f"All {runs} inspector runs evaluated followed every decided check.")
-    bullets.append(f"{batch.job_ref} ran {found} time(s) in the window.")
-    if skipped:
-        bullets.append(f"{len(skipped)} run(s) were found and not graded; the Window section"
-                       " says why.")
-    return bullets
-
-
-def _window_bullets(batch: BatchPrep, skipped: List[Dict[str, str]]) -> List[str]:
+def window_bullets(batch: BatchPrep, skipped: List[Dict[str, str]]) -> List[str]:
+    """The window under the runs it covered: its bounds, where it starts, what it left out."""
     window = batch.window
     bullets = [
         f"{window['since']} to {window['until']}: {window['runs_found']} inspector run(s)"
@@ -4653,59 +4704,6 @@ def _skip_reason(entry: Dict[str, str]) -> str:
     run_id = str(entry.get("run_id", ""))
     prefix = f"inspector run {run_id} "
     return reason[len(prefix):] if run_id and reason.startswith(prefix) else reason
-
-
-def _batch_category_bullets(
-    counts: Dict[str, Dict[str, int]], category: str, runs: int
-) -> List[str]:
-    """A category over the window: its verdict, then the checks that broke, most often first."""
-    entries = [
-        {"id": id, "kind": DETERMINISTIC, "outcome": FALSE if tally["false"] else (
-            TRUE if tally["decided"] else NA), "reasoning": ""}
-        for id, tally in counts.items()
-        if category_of(id) == category
-    ]
-    verdict = category_verdict(entries)
-    broken = sorted(
-        ((id, tally) for id, tally in counts.items()
-         if category_of(id) == category and tally["false"]),
-        key=lambda item: (-item[1]["false"], item[0]),
-    )
-    label = verdict[0].upper() + verdict[1:]
-    if not entries:
-        return [f"{label}: no check in this section was decided in this window."]
-    bullets = [
-        f"{label}: {len(broken)} of the {len(entries)} checks in this section came back"
-        f" FALSE on at least one of the {runs} runs."
-    ]
-    for id, tally in broken:
-        mark = "Security rule broken" if _is_security(id) else "Broken"
-        bullets.append(
-            f"{mark}: {instruction_of(id)} (`{id}`) FALSE on {tally['false']} of the"
-            f" {tally['decided']} runs that decided it."
-        )
-    return bullets
-
-
-def _batch_runs_table(evaluations: List[Dict[str, Any]]) -> str:
-    if not evaluations:
-        return "No run in this window was graded, so there is nothing to tabulate."
-    rows = [
-        "| inspector_run_id | inspector_status | passed | pass_rate | false_checks |",
-        "|---|---|---|---|---|",
-    ]
-    for evaluation in evaluations:
-        false = [
-            entry["id"] for entry in evaluation.get("checks", []) if entry["outcome"] == FALSE
-        ]
-        rows.append(
-            f"| `{evaluation.get('inspector_run_id', '')}` |"
-            f" {evaluation.get('inspector_status', '')} |"
-            f" {'yes' if evaluation.get('passed') else 'no'} |"
-            f" {float(evaluation.get('pass_rate') or 0.0):.2f} |"
-            f" {_cell(', '.join(false) or 'none')} |"
-        )
-    return "\n".join(rows)
 
 
 def _run_digest(run: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -4825,18 +4823,18 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     if prep.problems:
         notes.append("The evaluation could not read everything: " + "; ".join(prep.problems))
 
-    recommendation = str(output.get("recommendation") or "").strip()
     failed_job_ref = str((ctx.failed_run or {}).get("job_ref")
                          or ctx.output.get("failed_job_ref") or "")
     inspector_job_ref = str(ctx.inspector_run.get("job_ref") or "")
     summary = render_summary(
-        checks,
-        inspector_run_id=prep.inspector_run_id,
-        inspector_job_ref=inspector_job_ref,
-        failed_run_id=ctx.reported_run_id,
-        failed_job_ref=failed_job_ref,
+        [{
+            "checks": checks,
+            "inspector_run_id": prep.inspector_run_id,
+            "inspector_job_ref": inspector_job_ref,
+            "failed_run_id": ctx.reported_run_id,
+            "failed_job_ref": failed_job_ref,
+        }],
         judge_summary=str(output.get("summary") or "").strip(),
-        recommendation=recommendation,
         incomplete=incomplete,
         notes=notes,
         links=prep.links,
@@ -4847,9 +4845,8 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     return {
         "status": status,
         "summary": summary,
-        "recommendation": "\n".join(
-            f"- {bullet}" for bullet in recommendation_bullets(checks, recommendation)
-        ),
+        # a single run does not carry a recommendation: see `render_summary`
+        "recommendation": "",
         "inspector_run_id": prep.inspector_run_id,
         "inspector_job_ref": inspector_job_ref,
         "failed_run_id": ctx.reported_run_id,
@@ -4901,22 +4898,33 @@ def _security_first(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def category_verdict(entries: List[Dict[str, Any]]) -> str:
-    """How a category stands, from its own checks.
+    """How a category stands, from the share of its decided checks that broke.
 
-    `failed` when a security check came back FALSE or half the decided checks did: either
-    one is a result to act on before the next inspector run. `needs attention` when one
-    FALSE stands on its own. `acceptable` when none did. `not graded` when the category
+    | share broken | verdict |
+    |---|---|
+    | none | `no findings` |
+    | under 2% | `minor issues` |
+    | 2% to 10% | `needs attention` |
+    | over 10% | `blocking` |
+
+    A security check that came back FALSE is `blocking` whatever the share: one inspector
+    run on a production profile is not a rounding error. `not graded` when the category
     decided nothing, which says nothing about the inspector.
     """
     decided = _decided(entries)
     false = [entry for entry in entries if entry["outcome"] == FALSE]
     if not decided:
         return NOT_GRADED
-    if any(_is_security(entry["id"]) for entry in false) or len(false) * 2 >= len(decided):
-        return CATEGORY_FAILED
-    if false:
+    if not false:
+        return NO_FINDINGS
+    if any(_is_security(entry["id"]) for entry in false):
+        return BLOCKING
+    share = len(false) / len(decided)
+    if share > BLOCKING_BAND:
+        return BLOCKING
+    if share >= MINOR_BAND:
         return NEEDS_ATTENTION
-    return ACCEPTABLE
+    return MINOR_ISSUES
 
 
 def category_verdicts(checks: List[Dict[str, Any]]) -> Dict[str, str]:
@@ -5009,63 +5017,28 @@ _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z`\[])")
 
 def section(
     title: str,
-    bullets: Sequence[str],
+    bullets: Sequence[Any],
     table: str = "",
-    fold: str = "",
     links: Tuple[str, str] = ("", ""),
 ) -> str:
     """One summary section: a heading over short bullets, and a table only at the end.
 
-    `fold` is the summary line of a `<details>` block, which folds the bullets away until
-    the reader opens it. It is for a list that is long and rarely read, such as every run a
-    window covered. Every line goes through `linkify`, so a run id or a job ref reaches the
-    reader as a link wherever it was written.
+    An item that is a list is nested under the bullet before it, which is how a part of a
+    finding stays inside it. Markdown and nothing else: the platform's summary renderer
+    strips raw HTML, so a `<details>` element around a long list arrives as an empty
+    section. Every line goes through `linkify`, so a run id or a job ref reaches the reader
+    as a link wherever it was written.
     """
     lines = [f"## {title}", ""]
-    if fold and bullets:
-        lines.append(fold_block(fold, bullets, links))
-    else:
-        lines += [f"- {linkify(bullet, links)}" for bullet in bullets if bullet]
+    for bullet in bullets:
+        if isinstance(bullet, (list, tuple)):
+            lines += [f"  - {linkify(child, links)}" for child in bullet if child]
+            continue
+        if bullet:
+            lines.append(f"- {linkify(bullet, links)}")
     if table:
         lines += ["", "\n".join(linkify(row, links) for row in table.splitlines())]
     return "\n".join(lines)
-
-
-def fold_block(fold: str, bullets: Sequence[str], links: Tuple[str, str] = ("", "")) -> str:
-    """The bullets inside a `<details>` element the reader opens, as one block of HTML.
-
-    All on one line and with no blank line inside it. A blank line ends an HTML block in
-    markdown, which leaves the element empty and its list rendered after it, open. The list
-    is HTML too, because markdown is not parsed inside an HTML block, so the links are
-    `<a>` rather than `[]()`.
-    """
-    base, workspace = links
-    items = "".join(
-        f"<li>{_linked_html(escape(bullet), base, workspace)}</li>"
-        for bullet in bullets
-        if bullet
-    )
-    return f"<details><summary>{escape(fold)}</summary><ul>{items}</ul></details>"
-
-
-def _linked_html(text: str, base: str, workspace: str) -> str:
-    """Run ids and job refs as `<a>` links, for the inside of an HTML block."""
-    if not base or not workspace:
-        return _CODE_SPAN.sub(r"<code>\1</code>", text)
-
-    def run(match: "re.Match[str]") -> str:
-        return (f'<a href="{base}/w/{workspace}/runs/{match.group(2)}">'
-                f"<code>{match.group(2)}</code></a>")
-
-    def job(match: "re.Match[str]") -> str:
-        return (f'<a href="{base}/w/{workspace}/jobs/{match.group(2)}">'
-                f"<code>{match.group(2)}</code></a>")
-
-    return _CODE_SPAN.sub(r"<code>\1</code>", _JOB_REF.sub(job, _RUN_ID.sub(run, text)))
-
-
-_CODE_SPAN = re.compile(r"`([^`]+)`")
-"""What is left in backticks once the ids are links: a job ref the platform does not host."""
 
 
 def scope_bullets(entries: Sequence[Dict[str, str]]) -> List[str]:
@@ -5092,19 +5065,26 @@ def scope_bullets(entries: Sequence[Dict[str, str]]) -> List[str]:
 
 
 def findings_bullets(
-    checks: List[Dict[str, Any]],
-    inspector_run_id: str = "",
+    evaluations: Sequence[Dict[str, Any]],
     incomplete: bool = False,
     extra: Optional[List[str]] = None,
 ) -> List[str]:
     """What the evaluation found, one fact per bullet, with no verdict label.
 
     `extra` is what the judge wrote, placed after the counts and before the tail so the
-    reader meets the numbers, then the finding in the judge's words.
+    reader meets the numbers, then the finding in the judge's words. A window of several
+    runs opens on how many of them broke something; a single run opens on how many of its
+    checks did.
     """
+    checks = all_checks(evaluations)
     false = [entry for entry in checks if entry["outcome"] == FALSE]
     decided = len(_decided(checks))
     na = len(checks) - decided
+    runs = len(evaluations)
+    if not runs:
+        return ["No inspector run was evaluated, so this report says nothing about the"
+                " inspector. The Scope section says which window was searched."]
+    inspector_run_id = str(evaluations[0].get("inspector_run_id") or "") if runs == 1 else ""
     run = f" on run `{inspector_run_id}`" if inspector_run_id else ""
     bullets: List[str] = []
     if not decided:
@@ -5112,6 +5092,24 @@ def findings_bullets(
             f"No check was decided{run}: every one reported `N/A`, so this evaluation says"
             " nothing about the inspector run."
         )
+        return bullets
+    if runs > 1:
+        broke = [
+            evaluation for evaluation in evaluations
+            if any(entry["outcome"] == FALSE for entry in evaluation.get("checks", []))
+        ]
+        bullets.append(
+            f"{len(broke)} of the {runs} inspector runs evaluated broke at least one"
+            f" instruction, {len(false)} break(s) over the {decided} decided checks."
+            if broke else
+            f"All {runs} inspector runs evaluated followed every one of the {decided}"
+            " decided checks."
+        )
+        for entry in _security_first(false):
+            if not _is_security(entry["id"]):
+                continue
+            bullets.append(f"A security rule was broken: {_sentence(entry['reasoning'])}")
+        bullets += list(extra or [])
         return bullets
     if false:
         counted = " and ".join(
@@ -5131,11 +5129,30 @@ def findings_bullets(
     else:
         bullets.append(f"The inspector followed all {decided} decided checks{run}.")
     bullets += list(extra or [])
-    bullets.append(f"{na} checks did not apply to this run.")
+    return bullets
+
+
+def coverage_bullets(
+    evaluations: Sequence[Dict[str, Any]], incomplete: bool = False
+) -> List[str]:
+    """How much of the rubric this report stands on, for the top of `Scope`.
+
+    What the evaluation could not decide belongs next to what it covered, not among the
+    findings: a check that did not apply is not something the graded agent did.
+    """
+    checks = all_checks(evaluations)
+    if not checks:
+        return []
+    na = len(checks) - len(_decided(checks))
+    runs = len(evaluations)
+    subject = "check result(s) did not apply to the runs in this window" if runs > 1 else (
+        "checks did not apply to this run"
+    )
+    bullets = [f"{na} of the {len(checks)} {subject}."]
     if incomplete:
         bullets.append(
             "The evaluation could not grade everything, so it does not pass. The"
-            " \"Evaluation results\" section says what was missing."
+            " \"Detailed evaluation results\" section says what was missing."
         )
     return bullets
 
@@ -5151,39 +5168,79 @@ def _sentence(text: str) -> str:
 
 
 def category_bullets(
-    checks: List[Dict[str, Any]], category: str, verdict: str
+    evaluations: Sequence[Dict[str, Any]], category: str, verdict: str
 ) -> List[str]:
-    """One category: its verdict, then every instruction that broke, in plain English."""
+    """One category: its verdict, then every instruction that broke, in plain English.
+
+    One bullet for the verdict, with the broken instructions nested under it, because a
+    category is part of the finding rather than a section next to it.
+
+    The same sentence over one run and over a window. A window states how many runs each
+    broken instruction broke on, because an instruction broken once reads differently from
+    one broken every time; a single run states the reasoning instead, which is the only
+    thing there is to say about it.
+    """
+    checks = all_checks(evaluations)
     entries = [entry for entry in checks if category_of(entry["id"]) == category]
     decided = _decided(entries)
     false = [entry for entry in entries if entry["outcome"] == FALSE]
-    label = verdict[0].upper() + verdict[1:]
+    runs = len(evaluations)
+    title = CATEGORY_TITLES[category]
     if not decided:
-        return [f"{label}: not one of the {len(entries)} checks in this section applied."]
-    bullets = [
-        f"{label}: {len(decided) - len(false)} of the {len(decided)} decided checks came"
-        f" back TRUE, {len(false)} FALSE."
+        return [f"{title}: {verdict}, not one of the {len(entries)} checks applied."]
+    over = f", over {runs} runs" if runs > 1 else ""
+    broken_bullets: List[str] = []
+    bullets: List[Any] = [
+        f"{title}: {verdict}. {len(decided) - len(false)} of the {len(decided)} decided"
+        f" checks came back TRUE, {len(false)} FALSE{over}."
     ]
+    if runs > 1:
+        counts = check_counts(evaluations)
+        broken = sorted(
+            ((id, tally) for id, tally in counts.items()
+             if category_of(id) == category and tally["false"]),
+            key=lambda item: (-item[1]["false"], item[0]),
+        )
+        for id, tally in broken:
+            mark = "Security rule broken" if _is_security(id) else "Broken"
+            broken_bullets.append(
+                f"{mark}: {instruction_of(id)} (`{id}`) {outcome_over_runs(tally)}."
+            )
+        return bullets + ([broken_bullets] if broken_bullets else [])
     for entry in _security_first(false):
         mark = "Security rule broken" if _is_security(entry["id"]) else "Broken"
-        bullets.append(
+        broken_bullets.append(
             f"{mark}: {instruction_of(entry['id'])} (`{entry['id']}`)"
             f" {_sentence(entry['reasoning'])}"
         )
-    return bullets
+    return bullets + ([broken_bullets] if broken_bullets else [])
 
 
 def recommendation_bullets(checks: List[Dict[str, Any]], written: str) -> List[str]:
     """The judge's recommendation as bullets, or what stands in its place."""
     if written.strip():
-        return as_bullets(written)
+        return [name_the_file(bullet) for bullet in as_bullets(written)]
     if any(entry["outcome"] == FALSE for entry in checks):
         return [
-            "Take the broken instructions above to"
-            " `.claude/dlthub/agents/job-inspector/AGENT.md`: each one names the rule the"
-            " inspector did not follow."
+            f"Take the broken instructions above to `{INSPECTOR_DEFINITION_PATH}`: each one"
+            " names the rule the inspector did not follow."
         ]
-    return ["No change to the inspector's instructions follows from this run."]
+    return ["No change to the inspector's instructions follows from this window."]
+
+
+def name_the_file(bullet: str) -> str:
+    """A recommendation bullet opening with the file it changes.
+
+    The prompt asks for it and a judge still drops it: a bullet reading "In `Investigate`,
+    expand `Earliest wrong line first`" names a section of a file the reader has to guess.
+    Prefixing here makes it a property of the output rather than of the model's mood.
+    """
+    text = bullet.strip()
+    if not text or INSPECTOR_DEFINITION_PATH in text:
+        return text
+    if text[0].isupper() and (len(text) == 1 or text[1].islower()):
+        text = text[0].lower() + text[1:]
+    return f"In `{INSPECTOR_DEFINITION_PATH}`, {text}"
 
 
 _CELL_LIMIT = 220
@@ -5203,20 +5260,37 @@ def _cell(text: str) -> str:
     return value or "-"
 
 
-def results_table(checks: List[Dict[str, Any]], verdicts: Dict[str, str]) -> str:
-    """Every check with its outcome, its section and that section's verdict.
+def results_table(evaluations: Sequence[Dict[str, Any]]) -> str:
+    """Every check with its outcome and the category it belongs to.
 
-    FALSE first inside a section, then TRUE, then `N/A`, so the rows that decided the
-    verdict are the ones at the top.
+    One row per decided check whether the report covers one run or a window, so a check is
+    found in the same place in both. FALSE first inside a category, then TRUE. A check that
+    decided nothing has no row: it measured nothing, and the tally counts it. Over a window the results cell
+    carries the runs behind it, `FALSE 2/5`, and the reasoning is from a run that broke the
+    check. A check that broke nowhere has an empty reasoning: the reasonings of the runs
+    that passed it say why it passed, and one of them picked at random answers for the
+    others.
+
+    The category's verdict is not a column. It is one thing about the category, and
+    repeating it on every row of that category reads as a statement about the row: a check
+    that came back `TRUE 7/7` under `needs attention` looks like a contradiction. The
+    verdict is in the category's bullet under `Findings`, once.
     """
     rank = {FALSE: 0, TRUE: 1, NA: 2}
     order = list(CHECKS)
+    # over a window the reasoning cell answers for one run of several, so the header says so
+    reasoning = (
+        "reasoning (from FALSE runs if applicable)" if len(evaluations) > 1 else "reasoning"
+    )
+    entries = _table_entries(evaluations)
+    if not entries:
+        return ""
     rows = [
-        "| check_id | category | kind | outcome | category_verdict | reasoning |",
-        "|---|---|---|---|---|---|",
+        f"| check_id | category | kind | results | {reasoning} |",
+        "|---|---|---|---|---|",
     ]
     for entry in sorted(
-        checks,
+        entries,
         key=lambda entry: (
             CATEGORIES.index(category_of(entry["id"])),
             rank.get(entry["outcome"], 3),
@@ -5226,82 +5300,136 @@ def results_table(checks: List[Dict[str, Any]], verdicts: Dict[str, str]) -> str
         category = category_of(entry["id"])
         rows.append(
             f"| `{entry['id']}` | {CATEGORY_TITLES[category]} | {entry['kind']} |"
-            f" {entry['outcome']} | {verdicts[category]} | {_cell(entry['reasoning'])} |"
+            f" {entry['cell']} | {_cell(entry['reasoning'])} |"
         )
     return "\n".join(rows)
 
 
+def _table_entries(evaluations: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """One entry per decided check id, folded over however many runs the report covers.
+
+    A check that decided nothing measured nothing, and a row saying so is a row a reader
+    reads and drops. How many there were is in `Scope` and in the tally, which is where a
+    number belongs.
+    """
+    if len(evaluations) <= 1:
+        return [
+            {**entry, "cell": entry["outcome"]}
+            for entry in all_checks(evaluations)
+            if entry["outcome"] != NA
+        ]
+    counts = check_counts(evaluations)
+    folded: Dict[str, Dict[str, Any]] = {}
+    for evaluation in evaluations:
+        for entry in evaluation.get("checks", []):
+            seen = folded.get(entry["id"])
+            # only a run that broke the check has a reasoning worth carrying to the window
+            if entry["outcome"] == FALSE and (seen is None or seen["outcome"] != FALSE):
+                folded[entry["id"]] = dict(entry)
+            elif seen is None:
+                folded[entry["id"]] = {**entry, "reasoning": ""}
+    entries = []
+    for id, entry in folded.items():
+        outcome = outcome_over_runs(counts.get(id, {"false": 0, "decided": 0}))
+        if outcome == NA:
+            continue
+        entries.append({**entry, "outcome": outcome.split()[0], "cell": outcome})
+    return entries
+
+
+def outcome_over_runs(tally: Dict[str, int]) -> str:
+    """How a check came back over the runs that decided it: `FALSE 2/5`, `TRUE 5/5`, `N/A`.
+
+    One form everywhere a count over runs is reported, so a reader learns it once. The
+    denominator is the runs that decided the check, never the runs in the window: a check
+    that did not apply to three of them says nothing about those three.
+    """
+    if tally["false"]:
+        return f"{FALSE} {tally['false']}/{tally['decided']}"
+    if tally["decided"]:
+        return f"{TRUE} {tally['decided']}/{tally['decided']}"
+    return NA
+
+
 def render_summary(
-    checks: List[Dict[str, Any]],
+    evaluations: Sequence[Dict[str, Any]],
     *,
-    inspector_run_id: str = "",
-    inspector_job_ref: str = "",
-    failed_run_id: str = "",
-    failed_job_ref: str = "",
     judge_summary: str = "",
     recommendation: str = "",
+    recommend: bool = False,
     incomplete: bool = False,
     notes: Optional[List[str]] = None,
+    scope_extra: Optional[List[str]] = None,
     links: Tuple[str, str] = ("", ""),
 ) -> str:
     """The evaluation as markdown headings over short bullets, in the order a reader needs.
+
+    One renderer for one run and for a window of them: `evaluations` holds one entry or
+    many, and every section states its counts over whatever it was given. Each category is a
+    bullet under `Findings` with its broken instructions nested beneath it, because a
+    category verdict is a finding rather than a section of its own. `Scope` sits below the
+    recommendation: it says what was graded, which is what a reader checks after the
+    finding rather than before it.
+
+    `recommend` is the one difference between the two reports. A single run is one
+    observation, and one observation does not say what to change in the instructions the
+    inspector followed, so it carries no `Recommendation` section. A window does: the report
+    over it states what broke and how often, and that is what a change rests on.
 
     The shape is the one every background agent writes, as `BACKGROUND_AGENTS.md` sets it
     out: no text before the first heading, nothing outside a bullet, and a table only as the
     last thing in the last section.
     """
+    evaluations = list(evaluations)
+    checks = all_checks(evaluations)
     verdicts = category_verdicts(checks)
-    sections = [
-        section(
-            "Scope",
-            scope_bullets(
-                [{"inspector_run_id": inspector_run_id,
-                  "inspector_job_ref": inspector_job_ref,
-                  "failed_run_id": failed_run_id,
-                  "failed_job_ref": failed_job_ref}]
-            ),
-            fold="the run this evaluation graded, and what that run inspected",
-            links=links,
-        ),
-        section(
-            "Findings",
-            findings_bullets(checks, inspector_run_id, incomplete, as_bullets(judge_summary)),
-            links=links,
-        ),
-    ]
+    findings: List[Any] = list(
+        findings_bullets(evaluations, incomplete, as_bullets(judge_summary))
+    )
     for category in CATEGORIES:
+        findings += category_bullets(evaluations, category, verdicts[category])
+    sections = [section("Findings", findings, links=links)]
+    if recommend:
         sections.append(
             section(
-                CATEGORY_TITLES[category],
-                category_bullets(checks, category, verdicts[category]),
-                links=links,
+                "Recommendation", recommendation_bullets(checks, recommendation), links=links
             )
         )
     sections.append(
-        section("Recommendation", recommendation_bullets(checks, recommendation), links=links)
-    )
-    sections.append(
         section(
-            "Evaluation results",
-            [tally_line(checks), "One row per check below, FALSE first inside each section."]
-            + [_sentence(note) for note in (notes or [])],
-            results_table(checks, verdicts),
+            "Scope",
+            coverage_bullets(evaluations, incomplete)
+            + scope_bullets(evaluations)
+            + list(scope_extra or []),
             links=links,
         )
+    )
+    results = [_sentence(note) for note in (notes or [])]
+    table = results_table(evaluations)
+    if table:
+        results = [
+            tally_line(checks, len(evaluations)),
+            "One row per decided check below.",
+        ] + results
+    else:
+        results = ["No check was decided, so there is nothing to tabulate."] + results
+    sections.append(
+        section("Detailed evaluation results", results, table, links=links)
     )
     return "\n\n".join(sections)
 
 
-def tally_line(checks: List[Dict[str, Any]]) -> str:
+def tally_line(checks: List[Dict[str, Any]], runs: int = 1) -> str:
     """The counts `pass_rate` is computed over, next to the rate itself."""
     true_count = sum(1 for entry in checks if entry["outcome"] == TRUE)
     false_count = sum(1 for entry in checks if entry["outcome"] == FALSE)
     na_count = sum(1 for entry in checks if entry["outcome"] == NA)
     decided = true_count + false_count
+    over = f" over {runs} runs" if runs > 1 else ""
     return (
-        f"{len(checks)} checks: {true_count} TRUE, {false_count} FALSE, {na_count} `N/A`."
-        f" `pass_rate` {(true_count / decided) if decided else 0.0:.2f} over the"
-        f" {decided} decided."
+        f"{len(checks)} check results{over}: {true_count} TRUE, {false_count} FALSE,"
+        f" {na_count} `N/A`. `pass_rate`"
+        f" {(true_count / decided) if decided else 0.0:.2f} over the {decided} decided."
     )
 
 
