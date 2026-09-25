@@ -147,6 +147,19 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     assert json.loads(prep.judge_inputs["neighbour_runs"])[0]["id"] == FAILED_RUN_ID
 
 
+def test_prepare_renders_the_rubric_for_every_open_check_and_no_other():
+    """The judge prompt carries the rubrics it can answer; the rest never reach the model."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
+                     fetcher=fetcher())
+    rubrics = prep.judge_inputs["rubrics"]
+    open_checks = C.judge_ids(prep.results)
+    assert open_checks
+    for id in open_checks:
+        assert f"**`{id}`**" in rubrics
+    for id in set(C.RUBRICS) - set(open_checks):
+        assert f"**`{id}`**" not in rubrics
+
+
 def test_prepare_aborts_without_an_inspector_run():
     prep = C.prepare({"run_id": "local", "trigger": "manual:"}, fetcher=fetcher())
     assert prep.aborted is True

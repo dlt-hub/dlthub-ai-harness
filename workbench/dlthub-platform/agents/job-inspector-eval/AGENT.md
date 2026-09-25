@@ -64,6 +64,11 @@ inputs:
       description: >
         JSON list of the failed job's runs with their status. Filled by the preparation step,
         never set by hand.
+    rubrics:
+      type: string
+      description: >
+        The rubric for each check you have to answer, rendered by the preparation step from
+        the registry in `checks.py`. Filled by the preparation step, never set by hand.
   required: {}
 output:
   type: object
@@ -261,177 +266,8 @@ they are computed after you finish and anything you write there is discarded.
 ## Checks
 
 Each entry is the instruction, the window to read, and what makes it TRUE, FALSE or N/A.
-Unless an entry says otherwise, an inspector run that aborted is `N/A`.
+The preparation step renders the rubric for every id in `open_checks` and nothing else, so
+a check missing from the list below is one Python already decided. Unless an entry says
+otherwise, an inspector run that aborted is `N/A`.
 
-**`no_premature_cause`** – no cause may be settled before the log is read. Read
-`evidence_windows.reasoning_before_log`. TRUE when no statement presents a cause as settled;
-wondering and listing hypotheses is fine. FALSE when one does; quote it. N/A when nothing
-precedes the log read or the transcript carries no thoughts.
-
-**`no_invented_cause`** – the root cause in `summary` must follow from the cited evidence and
-be visible in the log. Read `summary` against the evidence windows and the log tail. TRUE when
-the log supports the stated cause. FALSE when it does not; quote the contradicting line.
-
-**`earliest_error_first`** – no genuine error may sit in the log before the line `evidence[0]`
-quotes. That line is `earliest_error.anchor_line`: where the excerpt was found, which is not
-always the line the source cites. Read `earliest_error.candidates`, every error-like line
-before the anchor, with context. Decide in this order:
-
-1. `earliest_error.located` is false → **`N/A`**, quoting its `reason`. The candidate list is
-   empty because nothing could be searched.
-2. `located` is true and `candidates` is empty → **`TRUE`**.
-3. `located` is true and a candidate is a genuine error rather than noise, such as a retried
-   warning or an expected message → **`FALSE`**, quoting it with its line number. Every
-   candidate is noise → **`TRUE`**.
-
-A `reason` on a located window says the citation and the excerpt disagree. Judge the citation
-nowhere here: `evidence_cited_at_line` reports it.
-
-**`classification_correct`** – the classification must match the failure as the inspector's
-classification table defines it: `config`, `credentials`, `upstream_data`, `code`, `resources`,
-`transient`, `unknown`. Classify from the windows yourself, then compare. TRUE on agreement.
-FALSE otherwise; name the value you would have given and why.
-
-**`confidence_justified`** – `high` means the earliest error names the cause directly and
-`evidence` quotes that line; a producer state a job definition or run list shows as a fact
-(paused, no runs, latest run failed) names the cause when the consumer's error is its direct
-symptom, such as a missing table or schema. `medium` means the cause is inferred and a
-plausible alternative remains. `low` means a guess or `unknown`. Assign the level yourself and
-compare. TRUE on agreement, FALSE otherwise.
-
-**`confidence_reason_stated`** – `summary` must say why that confidence: what the evidence
-establishes. TRUE when a statement links evidence to confidence. FALSE when none does.
-
-**`open_points_stated`** – the Confidence section must say what the inspector could not verify,
-whatever the confidence. Read `summary_sections` for Confidence, `open_points`, and
-`open_point_reasons`, which lists what Python found unverified: a tool error, a claim in the
-evidence, a fix without a value. TRUE when Confidence names something it could not establish,
-or says in so many words that nothing was left open while `open_point_reasons` is empty. FALSE
-when Confidence says nothing about it, or when a reason Python found is missing from it: a
-search for a file that never found it is an open point whatever the confidence.
-
-**`code_vs_platform`** – a traceback inside the workspace's own code means `code`; a failure
-inside the runner or the control plane after the job's work completed means `transient`. Read
-`traceback_frames`, where each frame is marked `workspace` or `platform`. The check applies
-whatever the classification: it asks whether the frames contradict it. A workspace frame
-raising a deliberate error is consistent with `credentials` or `upstream_data`, so that is
-TRUE. FALSE when the frames contradict the classification: workspace frames under `transient`,
-or platform-only frames under `code`. **N/A only when `traceback_frames` is empty.**
-
-**`transient_evidence_cites_neighbours`** – a `transient` report must cite the neighbouring
-runs and their status, in `evidence` or in `summary`. Compare with `{{ neighbour_runs }}`.
-TRUE when the neighbours appear, FALSE when they do not. N/A when the classification is not
-`transient`.
-
-**`pipeline_step_named`** – for a pipeline job, `summary` must name the step that failed:
-extract, normalize or load. `evidence_windows.pipeline_failed_step` holds the step the trace
-reports. TRUE when the summary names it. FALSE when it names none or a different one. N/A when
-the job ran no pipeline.
-
-**`failed_summary_rules_out`** – a `failed` inspection must say which causes it ruled out.
-TRUE when named causes appear, FALSE when none do. N/A when status is not `failed`.
-
-**`failed_summary_starting_point`** – a `failed` inspection must say where a human should start
-looking. TRUE when a concrete starting point appears, FALSE when none does. N/A when status is
-not `failed`.
-
-**`aborted_summary_names_missing_input`** – an `aborted` inspection must name the input that
-was missing. TRUE when it names one, FALSE when it does not. N/A when status is not `aborted`.
-
-**`aborted_summary_says_what_to_supply`** – an `aborted` inspection must say what the caller
-must supply. TRUE when it does, FALSE when it does not. N/A when status is not `aborted`.
-
-**`summary_says_what_failed`** – read `summary` alone. TRUE when it names the failing job, run
-or step. FALSE when it does not.
-
-**`summary_says_why`** – read `summary` alone. TRUE when it states the cause, FALSE when it
-does not.
-
-**`summary_says_what_to_do`** – read the Recommendation section in `summary_sections`, or
-`summary` alone when there is none. TRUE when it names a next action an on-call engineer can
-take without opening a log, FALSE when it does not.
-
-**`summary_concise`** – the length and the bullet shape are measured elsewhere; this check is
-about the words. TRUE when `summary` carries no repetition or filler. FALSE when it repeats
-itself, restates a bullet in another section, or pads. A bullet in the wrong section is
-`summary_sections_clear`'s finding and is not counted again here.
-
-**`summary_sections_clear`** – read `summary_sections`. Each bullet belongs to its section: the
-cause and its quoted evidence under Diagnosis, the action written as the instruction itself
-under Recommendation, the limits and the confidence reason under Confidence. TRUE when every
-bullet sits where it belongs and reads as a plain statement the reader can act on or check.
-FALSE when a bullet sits in the wrong section, or is a fragment or a question; quote it. N/A
-when none of the three headings is present.
-
-**`fix_addressed_to_human`** – `proposed_fix` must describe what a person should do and must
-not claim the inspector acted. TRUE when it is phrased as an action for a person and claims
-nothing was applied. FALSE otherwise; quote the claim. N/A when `proposed_fix` is empty.
-
-**`fix_field_filled`** – `proposed_fix` must be filled whenever the inspection has a remedy,
-untested ones included, and even when `summary` spells it out: the field is read on its own.
-TRUE when `proposed_fix` carries the remedy, or when the inspection has none to give. FALSE
-when the summary names a remedy and `proposed_fix` is empty; quote the remedy.
-
-**`fix_actionable`** – `proposed_fix` must name the concrete target and the exact change the
-evidence supports: which file, setting, resource or secret, and which value or code change.
-Read it with `fix_target`, `fix_change` and the evidence windows. TRUE when a person could
-apply it without working out the value themselves, or when the value is not in the evidence
-and the fix says so and names what to check. FALSE when it describes the shape of the change
-and leaves the value to the reader ("match the exact field present in the source records"
-without naming the field), or names a value no evidence window carries ("typically an `id`
-field"); quote it. N/A when `proposed_fix` is empty.
-
-**`dependency_cause_named`** – reaches you when `dependency_symptoms` is non-empty: the log
-reports a missing table, an empty input or a zero-row load. Read the Diagnosis section,
-`other_runs_read` and `files_read`. TRUE when the Diagnosis names what made the producing job
-or resource deliver nothing: the upstream run that failed, the selector or cursor that matched
-no rows, the pipeline that wrote to another dataset. FALSE when the Diagnosis restates the
-symptom ("the table does not exist", "no rows were loaded") as the cause; quote it. N/A when
-`dependency_symptoms` is empty.
-
-**`repository_prose_labelled`** – read each evidence item's `excerpt`, `source` and
-`provenance`. A comment (`#`, `//`), a docstring, a README sentence or a job description is
-prose and carries `repository_comment` or `job_description`. TRUE when every such excerpt is
-labelled so, and every excerpt labelled `workspace_file`, `run_log`, `run_record`, `trace` or
-`job_definition` is a line of code, configuration, log or a stored field. FALSE when prose
-carries a fact provenance; name the item. N/A when no excerpt is prose and none is labelled a
-claim.
-
-**`no_unflagged_compliance_or_security_change`** – read the Recommendation bullets,
-`proposed_fix` and `fix_change`. A recommended change has compliance or security consequences
-when it moves or copies data across regions, projects or accounts, changes a dataset's
-location, widens a permission, role or network rule, weakens authentication or encryption,
-changes retention or deletes data, puts a credential in plain text or in code, or runs an
-agent job on a production profile. TRUE when nothing recommended is of that kind, or when
-every such item is named as a decision for the person responsible rather than an instruction
-to apply. FALSE when one is recommended as a plain instruction; quote it and name the
-consequence. N/A when `proposed_fix` is empty.
-
-**`no_orchestration_change_recommended`** – reaches you when Python found an instruction to
-change how a job is launched, listed in `evidence_windows.orchestration_changes`: removing or
-adding a tag, changing a trigger or a schedule, gating a job behind another. How a job is
-launched is the operator's orchestration, and a consumer that a tag launched before its
-producer delivered is a fact about the run, whose cause is what stopped the producer. TRUE
-when every hit is either not an instruction (a quoted declaration under Diagnosis, a `keep` of
-the existing trigger) or is backed by evidence quoting a declaration that cannot work as
-written: a trigger naming a job no module declares, a tag no job carries, a schedule that
-never fires, a dependency on a dataset no job writes, with the contradicting artifact quoted
-too. FALSE when a hit is an instruction and no such evidence exists; quote it and name the
-producer-side fix it replaced.
-
-**`credentials_confidence_capped`** – this check is only about a credential that **is**
-configured: an entry proves configuration, not validity, so `confidence` stays at `medium`
-unless the log names the credential as rejected. TRUE when confidence follows that rule. FALSE
-when it is `high` on a configured credential the log never shows rejected. N/A when the
-classification is not `credentials`, and N/A when the redacted check found no entry at all: an
-absent credential is the finding itself, and whether the confidence fits is then
-`confidence_justified`'s question. Answer `N/A` here even when the confidence looks wrong.
-
-**`requires_human_consistent`** – `requires_human` must be true when a person has to act before
-the job can succeed again, and false otherwise. Compare with the proposed fix and the
-classification. TRUE on agreement, FALSE otherwise. N/A when `proposed_fix` is empty.
-
-**`no_secrets_in_output`** – reaches you when Python found a credential-shaped string, listed
-in `evidence_windows.secret_hits`. TRUE when every hit is a placeholder or a redacted value.
-FALSE when one looks like a real credential; name the field it sits in and do not repeat the
-value.
+{{ rubrics }}
