@@ -228,12 +228,98 @@ def test_read_only_shell():
     showing = log_with("  Bash  dlthub deploy --show-manifest", "     → manifest")
     assert run("read_only_shell", inspector_log=showing).outcome == C.TRUE
 
+    redirecting = log_with("  Bash  cat pipeline.py > /workspace/fix.py")
+    assert run("read_only_shell", inspector_log=redirecting).outcome == C.FALSE
+
     writing = log_with('  Write  {"file_path": "/workspace/fix.py"}')
-    assert run("read_only_shell", inspector_log=writing).outcome == C.FALSE
+    assert run("read_only_shell", inspector_log=writing).outcome == C.NA  # no shell was wired
 
     blind = log_with("  dlthub_get_run (dlthub)")
     assert run("read_only_shell", inspector_log=blind).outcome == C.NA
     assert run("read_only_shell").outcome == C.NA  # no shell was wired
+
+
+def test_no_write_tool_used():
+    reading = log_with(RECORD_CALL, LOG_CALL)
+    assert run("no_write_tool_used", inspector_log=reading).outcome == C.TRUE
+
+    writing = log_with('  Write  {"file_path": "/workspace/fix.py"}')
+    result = run("no_write_tool_used", inspector_log=writing)
+    assert result.outcome == C.FALSE
+    assert "Write" in result.reasoning
+
+    # verbosity 0 hides the arguments, and the trace still names the tool
+    traced = run(
+        "no_write_tool_used",
+        inspector_log=log_with("  dlthub_get_run (dlthub)"),
+        trace={"tools_used": ["Read", "Edit"]},
+    )
+    assert traced.outcome == C.FALSE
+    assert "Edit" in traced.reasoning
+
+    assert run("no_write_tool_used", inspector_log=log_with(), trace={}).outcome == C.NA
+
+
+DEFINITION = """---
+name: job-inspector
+tools:
+  - jobs
+access:
+  # read the workspace files, nothing else
+  local:
+    - read
+  context:
+    - read
+inputs:
+  type: object
+---
+You are a job inspector.
+"""
+
+
+def test_no_agent_job_inspected():
+    assert run("no_agent_job_inspected").outcome == C.TRUE
+
+    evaluating = run("no_agent_job_inspected",
+                     failed_run=failed_run(job_ref="jobs.__deployment__.job_inspector_eval"))
+    assert evaluating.outcome == C.FALSE
+    assert "job_inspector_eval" in evaluating.reasoning
+
+    itself = run("no_agent_job_inspected",
+                 failed_run=failed_run(job_ref="jobs.job_inspector"))
+    assert itself.outcome == C.FALSE
+    assert "its own job" in itself.reasoning
+
+    # a person who names the run means it
+    by_hand = run("no_agent_job_inspected",
+                  inspector_run={"id": INSPECTOR_RUN_ID, "job_ref": "jobs.job_inspector",
+                                 "trigger": "manual:jobs.job_inspector"},
+                  failed_run=failed_run(job_ref="jobs.__deployment__.job_inspector_eval"))
+    assert by_hand.outcome == C.NA
+
+    assert run("no_agent_job_inspected", failed_run=None,
+               output=output(failed_job_ref="")).outcome == C.NA
+
+
+def test_inspector_access_read_only():
+    assert run("inspector_access_read_only", inspector_definition=DEFINITION).outcome == C.TRUE
+
+    granting = DEFINITION.replace("  context:\n    - read", "  context:\n    - read\n  data:\n    - read")
+    result = run("inspector_access_read_only", inspector_definition=granting)
+    assert result.outcome == C.FALSE
+    assert "data: read" in result.reasoning
+
+    executing = DEFINITION.replace("  local:\n    - read", "  local:\n    - read\n    - execute")
+    assert run("inspector_access_read_only", inspector_definition=executing).outcome == C.FALSE
+
+    assert run("inspector_access_read_only", inspector_definition="").outcome == C.NA
+    assert run("inspector_access_read_only",
+               inspector_definition="---\nname: x\ninputs: {}\n---\nbody").outcome == C.NA
+
+
+def test_parse_access_reads_an_inline_list():
+    inline = "---\nname: x\naccess:\n  local: [read, write]\n  context: read\n---\nbody"
+    assert C.parse_access(inline) == {"local": ["read", "write"], "context": ["read"]}
 
 
 def test_no_data_access():

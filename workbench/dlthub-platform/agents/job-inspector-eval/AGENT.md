@@ -44,6 +44,16 @@ inputs:
       description: >
         how many distinct runs the inspector may read before `single_run_scope` fails.
         Default 5.
+    window_days:
+      type: integer
+      description: >
+        batch path only: how many days back the window falls to when no deployment history
+        can be read. The window normally starts where the inspector's definition last
+        changed. Default 7.
+    max_runs:
+      type: integer
+      description: >
+        batch path only: how many inspector runs one scheduled job evaluates. Default 25.
     deterministic_checks:
       type: string
       description: >
@@ -64,6 +74,12 @@ inputs:
       description: >
         JSON list of the failed job's runs with their status. Filled by the preparation step,
         never set by hand.
+    window_findings:
+      type: string
+      description: >
+        JSON of the instructions a window of inspector runs broke. Filled by the scheduled
+        job for its one recommendation pass, never set by hand. Empty means you are grading
+        a run.
     rubrics:
       type: string
       description: >
@@ -82,14 +98,33 @@ output:
     summary:
       type: string
       description: >
-        Markdown. What you accomplished. When `status` is `aborted` this becomes the
-        exception text, so say what blocked you.
+        Two or three markdown bullets: what the inspector got wrong and why it matters. They
+        go under the counts in the `Findings` section of the evaluation's own summary, which
+        carries the section verdicts and the results table. Write no heading and no table
+        here. When `status` is `aborted` this becomes the exception text, so say what
+        blocked you.
+    recommendation:
+      type: string
+      description: >
+        Empty while you grade one run: one observation does not say what to change in the
+        instructions the inspector followed. Filled only in the recommendation pass, when
+        `window_findings` is set, with one to three markdown bullets naming what to change
+        in `.claude/dlthub/agents/job-inspector/AGENT.md` so the broken instructions stop
+        recurring: the section to change and the instruction to put there.
     # the same names and entity types as the inputs, so the evaluation shows up on the
     # inspector run's page even when the run was resolved from `prev_run_id`
     inspector_run_id:
       type: string
       description: run id of the job-inspector run you evaluated
       entity_type: job-run
+    inspector_job_ref:
+      type: string
+      description: job ref of the inspector job the evaluated run belongs to
+      entity_type: job
+    failed_job_ref:
+      type: string
+      description: job ref of the failed job the inspector inspected
+      entity_type: job
     failed_run_id:
       type: string
       description: run id of the failed job run the inspector inspected
@@ -136,6 +171,27 @@ output:
               One or two sentences. For FALSE, quote what contradicts the instruction. For
               N/A, name the condition.
         required: [id, kind, outcome, reasoning]
+    # the scheduled batch path fills these three from `prepare_batch` and `finalize_batch`.
+    # A single evaluation leaves them out, and you never write them
+    window:
+      type: object
+      description: >
+        Batch path only. The window evaluated: `job_ref`, `since`, `until`, `runs_found`,
+        `runs_evaluated`, `runs_skipped`, `capped`. Filled by `checks.py`, never by you.
+    evaluations:
+      type: array
+      description: >
+        Batch path only. One entry per inspector run graded, with its run ids, its
+        `passed`, its `pass_rate` and the ids that came back FALSE. Filled by `checks.py`.
+      items:
+        type: object
+    skipped_runs:
+      type: array
+      description: >
+        Batch path only. One entry per run found and not graded, with `run_id` and the
+        reason. Filled by `checks.py`.
+      items:
+        type: object
     metrics:
       type: object
       description: Numbers about the inspector run, copied from its trace. Not pass or fail.
@@ -174,6 +230,18 @@ output only when a check is FALSE, so every FALSE stands on its own.
 
 You are not inspecting a job failure. You grade a diagnosis someone else wrote.
 
+## Which task you were started for
+
+Read `{{ window_findings }}` first. It decides what you do.
+
+- **It is empty.** You are grading one inspector run. Everything below applies: answer the
+  checks in `open_checks`, write `summary`, and leave `recommendation` empty. One run is
+  one observation, and what to change in the inspector's instructions does not follow from
+  one observation, so a single evaluation recommends nothing.
+- **It is filled.** You are writing the recommendation for a window of inspector runs that
+  were graded before you. Skip to "Writing the window recommendation" at the end of this
+  prompt. Answer no checks: return `checks` empty.
+
 ## What counts as success for your run
 
 - **`succeeded`**: every check in `open_checks` has an outcome and a reasoning. A FALSE on the
@@ -194,6 +262,10 @@ whole log yourself.
 - `{{ max_runs_read }}` is how many distinct runs the inspector was allowed to read. The
   deterministic check `single_run_scope` already applies it; you need it only to read that
   check's reasoning.
+- `{{ window_days }}` and `{{ max_runs }}` belong to the batch path, which grades every
+  inspector run since the definition last changed. They bound the window the preparation
+  step resolved, and you grade one run whichever path started you, so they change nothing
+  about your answers.
 - `{{ deterministic_checks }}` is a JSON list of results Python computed, given to you as
   context. **Do not repeat them in your output.** They are merged in after you finish, and an
   entry you rewrite is discarded.
@@ -209,6 +281,8 @@ whole log yourself.
   and any credential-shaped strings in the output.
 - `{{ neighbour_runs }}` is the failed job's runs with their status, for the `transient`
   checks.
+- `{{ window_findings }}` is empty while you grade a run. It is filled only for the
+  recommendation pass described at the end.
 - `{{ rubrics }}` is the rubric for each id in `open_checks`, and no others: a check whose
   condition this run does not meet was answered by Python and never reaches you.
 
@@ -238,9 +312,41 @@ Your run started from trigger `{{ run_context.trigger }}` as run `{{ run_context
 leave out is reported `N/A` and fails the whole evaluation, so when you run out of room,
 shorten the reasonings rather than dropping answers.
 
-Fill `status`, `summary` and `checks`. Leave `inspector_run_id`, `failed_run_id`,
-`inspector_status`, `passed`, `pass_rate`, `decided_count`, `na_count` and `metrics` alone:
-they are computed after you finish and anything you write there is discarded.
+Fill `status`, `summary` and `checks`, and leave `recommendation` empty. Leave
+`inspector_run_id`,
+`inspector_job_ref`, `failed_run_id`, `failed_job_ref`, `inspector_status`, `passed`,
+`pass_rate`, `decided_count`, `na_count` and `metrics` alone: they are computed from the data after you finish, and anything you write
+there is discarded.
+
+## What to write in `summary`
+
+Your `summary` sits inside a summary Python assembles. It is markdown headings over short
+bullets, in this order, and the reader sees nothing else:
+
+| heading | what it holds |
+|---|---|
+| `## Findings` | the counts, any security rule broken, your `summary` bullets, then one bullet per category with its verdict and every broken instruction nested under it |
+| `## Scope` | how many checks did not apply, then the inspector run this evaluation graded and the job run that run inspected, each linked |
+| `## Detailed evaluation results` | the tally and a table of every decided check, one row each: `check_id`, `category`, `kind`, `results`, `reasoning`. An `N/A` check has no row |
+
+The categories are bullets inside `Findings`, not sections: a category verdict is a
+finding. A scheduled run over a window adds a `## Recommendation` section before `Scope`,
+written in the pass described at the end of this prompt, puts the window under `Scope`, and
+states each broken instruction with the runs it broke on. Everything else reads the same.
+
+So write `summary` as bullets, one fact each:
+
+- Two or three bullets on what the inspector got wrong and why it matters to the person
+  reading the diagnosis. No heading, no list of check ids, no table: those are already
+  there, and a second copy is what makes the result unreadable in the UI. A paragraph is
+  split into bullets on the way in, so write them yourself and control where the breaks
+  fall.
+- Say nothing about what to change in the inspector's definition. That is the window's
+  question, and a recommendation written from one run is one observation presented as a
+  pattern.
+- It is rendered as markdown in the platform UI. Close every code span you open, never
+  escape a backtick with a backslash, and write no `|` outside a table. See "The shape of
+  `summary`" in `BACKGROUND_AGENTS.md`: every agent writes it this way.
 
 ## Rules
 
@@ -273,3 +379,29 @@ a check missing from the list below is one Python already decided. Unless an ent
 otherwise, an inspector run that aborted is `N/A`.
 
 {{ rubrics }}
+
+## Writing the window recommendation
+
+You reach this section only when `{{ window_findings }}` is filled. A scheduled job graded
+every inspector run since the inspector's definition last changed, and you are asked, once,
+what to change in that definition so the broken instructions stop recurring.
+
+`{{ window_findings }}` is JSON: the `job_ref` graded, `runs_evaluated`, the window bounds,
+the `definition` path, and `broken_checks`. Each entry there holds the `check_id`, its
+`category`, the `instruction` it grades, `runs_broken` of `runs_decided`, and up to five
+`reasonings` from the runs that broke it.
+
+Read the definition at the `definition` path before you write. It is the file your
+recommendation changes, and a recommendation that names a section it does not have is
+useless.
+
+Write `recommendation` as one to three markdown bullets. **Each opens with the file it
+changes**, the `definition` path in backticks, then the section inside it and the
+instruction to put there: a bullet that opens `In \`Investigate\`, expand ...` names a
+section of a file the reader has to guess. Rank them: a check broken on every run comes
+before one broken once. Where two broken checks have one cause, say it once and name both
+check ids.
+
+Fill `status` `succeeded`, put in `summary` one bullet saying how many instructions the
+window broke and which definition sections your bullets change, and return `checks` empty.
+Answer no check here: the runs were graded before you and their results stand.

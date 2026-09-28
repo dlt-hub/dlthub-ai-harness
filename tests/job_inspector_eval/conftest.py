@@ -203,7 +203,7 @@ def context(**overrides: Any) -> "C.EvalContext":
         "inspector_run": {
             "id": INSPECTOR_RUN_ID,
             "job_ref": "jobs.job_inspector",
-            "status": "succeeded",
+            "status": "completed",
             "created_at": "2026-09-01T10:05:00Z",
             "trigger": "job.fail:pipelines.github_events",
         },

@@ -63,7 +63,7 @@ Route here when the user wants work to happen on its own after an event ("whenev
 
 ```
 capability                                                        → agent                              | install                                                     | declare
-diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:*")
+diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:tag:ingest")
 grade an inspector diagnosis against the inspector's instructions → dlthub-platform:job-inspector-eval  | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector-eval", trigger=[inspector.success, inspector.fail])
 ```
 
