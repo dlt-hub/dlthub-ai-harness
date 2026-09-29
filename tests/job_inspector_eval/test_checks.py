@@ -585,6 +585,26 @@ def test_single_run_scope():
     assert run("single_run_scope", output=output(status="aborted")).outcome == C.NA
 
 
+def test_the_inspected_run_does_not_count_against_the_bound():
+    """`run_record_read` and `run_logs_read` require reading it, so `0` has to be reachable."""
+    result = run("single_run_scope", max_runs_read=0)
+
+    assert result.outcome == C.TRUE
+    assert "0 run(s) beyond the one it inspected" in result.reasoning
+    assert result.metadata["runs_read"] == [FAILED_RUN_ID.lower()]
+
+
+def test_a_neighbour_read_counts_against_the_bound():
+    one_neighbour = log_with(
+        RECORD_CALL, f'  dlthub_get_run_logs (dlthub)  {{"run_id": "{OLDER_RUN_ID}"}}'
+    )
+
+    assert run("single_run_scope", inspector_log=one_neighbour,
+               max_runs_read=0).outcome == C.FALSE
+    assert run("single_run_scope", inspector_log=one_neighbour,
+               max_runs_read=1).outcome == C.TRUE
+
+
 def test_job_definition_read_for_config():
     read = log_with('  dlthub_get_job (dlthub)  {"ref": "pipelines.github_events"}')
     assert run("job_definition_read_for_config", inspector_log=read,

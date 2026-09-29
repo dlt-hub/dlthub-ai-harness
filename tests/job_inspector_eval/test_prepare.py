@@ -1459,3 +1459,32 @@ def test_definition_sections_are_the_headings_and_not_the_file(tmp_path):
     sections = C.definition_sections("AGENT.md", str(tmp_path))
 
     assert sections == ["## Investigate", "### Checking credentials"]
+
+
+# the bounds a window ran under
+
+
+def test_the_window_report_prints_the_cap_the_run_used():
+    """`capped` next to the default cap read as a contradiction: `4 evaluated` and `the 25`."""
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
+                            max_runs=1)
+
+    assert batch.max_runs == 1
+    assert batch.capped is True
+    assert "more than the 1 runs this job evaluates" in " ".join(C.window_bullets(batch, []))
+
+
+def test_the_recommendation_pass_is_told_what_the_runs_were_graded_under():
+    """A check broken by a tighter bound is configuration, not a missing instruction."""
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
+                            max_runs=3, max_runs_read=0)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+
+    findings = json.loads(C.window_findings(evaluations, batch)["window_findings"])
+
+    assert findings["bounds"] == {"max_runs_read": 0, "max_runs": 3}

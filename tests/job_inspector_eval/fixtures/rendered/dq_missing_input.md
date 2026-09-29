@@ -57,7 +57,7 @@
 | `record_read_before_logs` | Instruction following | deterministic | TRUE | the run record was read at call 1, the log at call 2 |
 | `no_explicit_cause_before_log` | Instruction following | deterministic | TRUE | none of the 4 statement(s) before the log read commits to a cause |
 | `finished_within_limits` | Instruction following | deterministic | TRUE | the trace records no limit as the stop reason |
-| `single_run_scope` | Instruction following | deterministic | TRUE | the inspector read 1 run(s), at most 5 allowed |
+| `single_run_scope` | Instruction following | deterministic | TRUE | the inspector read 0 run(s) beyond the one it inspected, at most 5 allowed |
 | `only_inspected_run_logs` | Instruction following | deterministic | TRUE | every log call targets the inspected run |
 | `evidence_source_has_line` | Instruction following | deterministic | TRUE | all 2 source(s) that have lines name one |
 | `summary_free_of_instruction_text` | Instruction following | deterministic | TRUE | no instruction text in the summary |

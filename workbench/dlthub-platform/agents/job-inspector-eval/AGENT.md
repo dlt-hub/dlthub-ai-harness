@@ -45,8 +45,9 @@ inputs:
     max_runs_read:
       type: integer
       description: >
-        how many distinct runs the inspector may read before `single_run_scope` fails.
-        Defaults to `DEFAULT_MAX_RUNS_READ` in `checks.py`, which is 5.
+        how many runs beyond the one it inspected the inspector may read before
+        `single_run_scope` fails. The inspected run is never counted, so `0` means that run
+        alone. Defaults to `DEFAULT_MAX_RUNS_READ` in `checks.py`, which is 5.
     window_days:
       type: integer
       description: >
@@ -312,9 +313,9 @@ whole log yourself.
 
 - `{{ inspector_run_id }}` is the inspector run under evaluation and `{{ inspector_job_ref }}`
   the job it belongs to. One of them is always set by the time you read this.
-- `{{ max_runs_read }}` is how many distinct runs the inspector was allowed to read. The
-  deterministic check `single_run_scope` already applies it; you need it only to read that
-  check's reasoning.
+- `{{ max_runs_read }}` is how many runs beyond the one it inspected the inspector was allowed
+  to read; the inspected run itself is never counted. The deterministic check
+  `single_run_scope` already applies it; you need it only to read that check's reasoning.
 - `{{ window_days }}` and `{{ max_runs }}` belong to the batch path, which grades every
   inspector run since the definition last changed. They bound the window the preparation
   step resolved, and you grade one run whichever path started you, so they change nothing
@@ -472,9 +473,16 @@ were graded before you and their findings are already in the report. You are ask
 change.
 
 `{{ window_findings }}` is JSON: the `job_ref` graded, `runs_evaluated`, the window bounds,
-the `definition` path, its `definition_sections`, and `broken_checks`. Each entry there holds
-the `check_id`, its `category`, the `instruction` it grades, `runs_broken` of `runs_decided`,
-and up to five `reasonings` from the runs that broke it.
+the `definition` path, its `definition_sections`, the `bounds` the runs were graded under, and
+`broken_checks`. Each entry there holds the `check_id`, its `category`, the `instruction` it
+grades, `runs_broken` of `runs_decided`, and up to five `reasonings` from the runs that broke
+it.
+
+`bounds` holds the configured limits, `max_runs_read` and `max_runs`. A check that broke
+because the window ran under a tighter limit than usual is a fact about the configuration, not
+an instruction the inspector is missing. Do not propose a change for it. Where that accounts
+for every break, `recommendation` takes one bullet saying so and naming the bound: leaving it
+empty is read as no answer and replaced with a generic line.
 
 `definition_sections` is the heading outline of the file your recommendation changes, read for
 you. Name a section from that list: one the definition does not have makes the recommendation

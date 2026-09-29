@@ -571,6 +571,12 @@ class EvalContext:
             seen.append(reported)
         return seen
 
+    @property
+    def runs_read_beyond_the_inspected(self) -> List[str]:
+        """What `max_runs_read` bounds: every run read except the one under inspection."""
+        inspected = self.reported_run_id.lower()
+        return [run_id for run_id in self.runs_read if run_id != inspected]
+
     # --- the failed run ---
 
     @property
@@ -2152,20 +2158,27 @@ def finished_within_limits(ctx: EvalContext) -> CheckResult:
 def single_run_scope(ctx: EvalContext) -> CheckResult:
     """The inspector read one run and at most a few neighbours, not the job's history.
 
-    TRUE  at most `max_runs_read` distinct run ids were fetched
+    The bound covers the runs beyond the inspected one. Counting the inspected run against it
+    makes `max_runs_read = 0` unreachable, since `run_record_read` and `run_logs_read` require
+    reading it.
+
+    TRUE  at most `max_runs_read` runs beyond the inspected one were fetched
     FALSE more; the reasoning lists them
     N/A   status is `aborted`
     """
     if ctx.status == "aborted":
         return na("the inspection aborted before reading anything")
-    read = ctx.runs_read
-    if len(read) <= ctx.max_runs_read:
-        return ok(f"the inspector read {len(read)} run(s), at most {ctx.max_runs_read} allowed",
-                  runs_read=read)
+    beyond = ctx.runs_read_beyond_the_inspected
+    if len(beyond) <= ctx.max_runs_read:
+        return ok(
+            f"the inspector read {len(beyond)} run(s) beyond the one it inspected, at most"
+            f" {ctx.max_runs_read} allowed",
+            runs_read=ctx.runs_read,
+        )
     return bad(
-        f"the inspector read {len(read)} runs, more than the {ctx.max_runs_read} allowed:"
-        f" {', '.join(read)}",
-        runs_read=read,
+        f"the inspector read {len(beyond)} runs beyond the one it inspected, more than the"
+        f" {ctx.max_runs_read} allowed: {', '.join(beyond)}",
+        runs_read=ctx.runs_read,
     )
 
 
@@ -4785,6 +4798,10 @@ class BatchPrep:
     skipped: List[Dict[str, str]] = field(default_factory=list)
     capped: bool = False
     """The window held more runs than `max_runs`; the oldest ones were left out."""
+    max_runs: int = DEFAULT_BATCH_RUNS
+    """The cap this run used. The report prints it, so a configured cap is not read as 25."""
+    max_runs_read: int = DEFAULT_MAX_RUNS_READ
+    """The bound `single_run_scope` was graded under, carried into `window_findings`."""
     abort_reason: str = ""
 
     @property
@@ -4900,7 +4917,8 @@ def prepare_batch(
 
     runs, capped = fetcher.job_runs_since(job_ref, since, max_runs)
     batch = BatchPrep(job_ref=job_ref, since=since, until=end, window_source=window_source,
-                      found=len(runs), capped=capped, links=web_ui())
+                      found=len(runs), capped=capped, max_runs=max_runs,
+                      max_runs_read=max_runs_read, links=web_ui())
     for record in runs:
         run_id = str(record.get("id") or "")
         if not run_id:
@@ -5099,6 +5117,7 @@ def window_findings(
                 "until": batch.window.get("until"),
                 "definition": INSPECTOR_DEFINITION_PATH,
                 "definition_sections": definition_sections(),
+                "bounds": {"max_runs_read": batch.max_runs_read, "max_runs": batch.max_runs},
                 "broken_checks": findings,
             },
             default=str,
@@ -5182,7 +5201,7 @@ def window_bullets(batch: BatchPrep, skipped: List[Dict[str, str]]) -> List[str]
         bullets.append(f"The window starts where {batch.window_source}.")
     if batch.capped:
         bullets.append(
-            f"The window holds more than the {DEFAULT_BATCH_RUNS} runs this job evaluates,"
+            f"The window holds more than the {batch.max_runs} runs this job evaluates,"
             " so the oldest ones were left for a shorter window or a higher cap."
         )
     bullets += [
