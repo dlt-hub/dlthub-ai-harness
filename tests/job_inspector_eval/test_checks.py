@@ -492,6 +492,19 @@ def test_single_run_scope():
     assert result.outcome == C.FALSE
     assert len(result.metadata["runs_read"]) == 4
 
+    # the producer's run is free on a dependency symptom
+    followed = log_with(RECORD_CALL, LOG_CALL, UPSTREAM_RECORD, UPSTREAM_LOG)
+    symptom = with_setup_lines(MISSING_TABLE_LOG)
+    result = run("single_run_scope", failed_log=symptom, inspector_log=followed,
+                 max_runs_read=1)
+    assert result.outcome == C.TRUE
+    assert result.metadata["producer_run"] == [UPSTREAM_RUN_ID]
+
+    # the same reads without the symptom count in full
+    result = run("single_run_scope", inspector_log=followed, max_runs_read=1)
+    assert result.outcome == C.FALSE
+    assert result.metadata["producer_run"] == []
+
     assert run("single_run_scope", output=output(status="aborted")).outcome == C.NA
 
 

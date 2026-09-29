@@ -1872,20 +1872,30 @@ def finished_within_limits(ctx: EvalContext) -> CheckResult:
 def single_run_scope(ctx: EvalContext) -> CheckResult:
     """The inspector read one run and at most a few neighbours, not the job's history.
 
-    TRUE  at most `max_runs_read` distinct run ids were fetched
+    On a dependency symptom the producer's run is free. "Follow the dependency" tells the
+    inspector to read it and `upstream_inspected_on_dependency_symptoms` fails a run that does
+    not, so counting it would make the two checks contradict each other.
+
+    TRUE  at most `max_runs_read` distinct run ids were fetched, the producer's aside
     FALSE more; the reasoning lists them
     N/A   status is `aborted`
     """
     if ctx.status == "aborted":
         return na("the inspection aborted before reading anything")
     read = ctx.runs_read
-    if len(read) <= ctx.max_runs_read:
-        return ok(f"the inspector read {len(read)} run(s), at most {ctx.max_runs_read} allowed",
-                  runs_read=read)
+    producer = other_runs_read(ctx)[:1] if dependency_symptoms(ctx) else []
+    counted = [run_id for run_id in read if run_id not in producer]
+    free = f", and {producer[0]} free as the producer's" if producer else ""
+    if len(counted) <= ctx.max_runs_read:
+        return ok(
+            f"the inspector read {len(counted)} run(s), at most {ctx.max_runs_read} allowed"
+            f"{free}",
+            runs_read=read, producer_run=producer,
+        )
     return bad(
-        f"the inspector read {len(read)} runs, more than the {ctx.max_runs_read} allowed:"
-        f" {', '.join(read)}",
-        runs_read=read,
+        f"the inspector read {len(counted)} runs, more than the {ctx.max_runs_read} allowed:"
+        f" {', '.join(counted)}{free}",
+        runs_read=read, producer_run=producer,
     )
 
 

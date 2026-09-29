@@ -43,7 +43,8 @@ inputs:
       type: integer
       description: >
         how many distinct runs the inspector may read before `single_run_scope` fails.
-        Default 5.
+        Default 5. The producer's run does not count when the failed run's log carries a
+        dependency symptom.
     deterministic_checks:
       type: string
       description: >
