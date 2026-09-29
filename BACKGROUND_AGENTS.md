@@ -17,15 +17,12 @@ written much like a `SKILL.md`, and the working example is
   calls this an `AgentSpec`.)
 - **agent job**: a definition plus the settings that say how it operates in one workspace:
   model, token and turn limits, trigger, instructions, loop. A workspace declares it with
-  `run.agent("<toolkit>:<name>", ...)`. (This is what pydantic-ai and claude-agent-sdk call an
-  Agent, and what the dltHub web UI lists as one.)
+  `run.agent("<toolkit>:<name>", ...)`. (This is what pydantic-ai calls an Agent, and what
+  the dltHub web UI lists as one.)
 - **agent run**: an execution of the agent job. It takes inputs (for example a job run id)
   and returns the agent output and a trace. Instructions, limits and model can be overridden
   for a single run through job configuration.
-- **agent loop**: the framework that runs the model turn by turn. Two are built in:
-  `pydantic-ai`, the default, and `claude-agent-sdk`, which runs Claude Code and accepts
-  Anthropic models only. A job selects one with `loop=` on `run.agent` or `agent.loop` in
-  config.
+- **agent loop**: the framework that runs the model turn by turn. dlt runs pydantic-ai.
 
 Everything below is about the first of these, the agent definition: writing it so that any
 job built on it, and any run of that job, follows your instructions.
@@ -60,16 +57,16 @@ after its folder, with the standard output and nothing else.
 | `access` | what the agent may touch: `local`, `data`, `context` (§ access) |
 | `inputs` | JSON Schema of what the agent takes; every input is a job configuration key (§ inputs) |
 | `output` | JSON Schema of what the agent returns; `status` and `summary` are always in it (§ output) |
-| `defaults` | settings the agent job and the run may override: `trigger`, `model`, `limits`, `loop_run_args` (§ defaults) |
+| `defaults` | settings the agent job and the run may override: `model`, `limits`, `loop_run_args` (§ defaults) |
 | body | the system prompt, a template over `inputs` (§ the body) |
 
 ### `tools`
 
 Feature groups of the dlthub MCP server, the platform-side tools: `jobs`, `logs`,
-`telemetry`, `workspace`, `pipeline`, `toolkit`, `secrets`, `context`, plus whatever other
-plugins contribute. The agent gets exactly the groups listed, not the server's interactive
-defaults, and within a group only the tools its `access` covers (§ access). No `tools`, no
-server.
+`telemetry`, `workspace`, `pipeline`, `toolkit`, `secrets`, `context`, `config`, plus
+whatever other plugins contribute. The agent gets exactly the groups listed, not the
+server's interactive defaults, and within a group only the tools its `access` covers
+(§ access). No `tools`, no server.
 
 ```yaml
 tools: [jobs, logs, telemetry]
@@ -78,12 +75,10 @@ tools: [jobs, logs, telemetry]
 ### `skills` and `rules`
 
 References to components of the same toolkit or one of its declared dependencies, as
-`<toolkit>:<name>`. Skills are what the agent may invoke. How they reach the model depends
-on the loop: pydantic-ai inlines their text into the system prompt, claude-agent-sdk lists
-them by name and loads them on demand. Rules are inlined into the system prompt on every
-loop. Only the listed components reach the agent; nothing else installed in the workspace
-does. A reference that does not resolve is skipped with a warning, and the agent runs with
-less.
+`<toolkit>:<name>`. Skills are what the agent may invoke, and pydantic-ai inlines their text
+into the system prompt. Rules are inlined into the system prompt on every loop. Only the
+listed components reach the agent; nothing else installed in the workspace does. A
+reference that does not resolve is skipped with a warning, and the agent runs with less.
 
 ```yaml
 skills: [dlthub-platform:debug-deployment]
@@ -105,7 +100,7 @@ access:
 | axis | verbs | what it buys |
 |---|---|---|
 | `local` | `read` | `Read`, `Glob`, `Grep`: the workspace files |
-| | `write` | `Write`, `Edit` on the pydantic-ai loop; `Write`, `Edit`, `MultiEdit`, `NotebookEdit` on the claude-agent-sdk loop |
+| | `write` | `Write`, `Edit` |
 | | `execute` | `Bash` (`PowerShell` on Windows), `RunPython`, in the workspace, in the job's own process tree |
 | | `network` | `WebFetch`, `WebSearch` |
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
@@ -118,11 +113,7 @@ grades. A background diagnosis is built from run records, logs, job definitions,
 and source. A `data` grant exposes workspace data to a model-driven process and is outside
 the job-inspector/evaluator safety model.
 
-`local` verbs are named after Claude Code's tools, so one declaration means one thing on
-both loops, pydantic-ai and claude-agent-sdk. The set each verb wires differs: the
-claude-agent-sdk loop adds the CLI tools that extend a name, `MultiEdit` and `NotebookEdit`
-under `Edit`, `NotebookRead` under `Read`, `BashOutput` and `KillShell` under `Bash`, and it
-has no `RunPython`, so Python runs through the shell. Credential files (`*secrets.toml`,
+`local` verbs are named after Claude Code's tools. Credential files (`*secrets.toml`,
 `.env`) are never readable, whatever `local` says. MCP tools declare what they require, and
 a tool the declaration does not cover is not offered to the model. The declaration is a
 request: the runtime grants what it can, and the trace of every run lists the tools that
@@ -230,19 +221,19 @@ Settings the agent job may set differently and a run may override again:
 
 ```yaml
 defaults:
-  trigger: [job.fail:*]                 # trigger strings, selectors allowed
   limits: {max_turns: 30, max_tokens: 1000000}
   loop_run_args: {retries: 1}           # framework-specific; unknown keys are reported, not fatal
 ```
 
-`trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
-`job.success:...`; `job.fail:*` watches every job in the workspace and expands at manifest
-time, never onto the job that declares it. A job event never stands in for a manual run: a
-run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was
-given, which is one more reason the body must say what to do with empty input.
-`limits.max_tokens` is counted by dlt after every turn, so it means the same on every loop.
+`limits.max_tokens` is counted by dlt after every turn.
 `loop_run_args` are handed to the framework: `retries` is how often pydantic-ai lets the model
-correct a failing tool call; keys a loop does not know are listed in the trace as ignored.
+correct a failing tool call; keys the loop does not know are listed in the trace as ignored.
+
+A definition sets no `trigger`. `to_agent_definition` drops `defaults` from the manifest
+and the loop takes `model`, `limits` and `loop_run_args` from it, so a trigger declared here
+does nothing. The trigger belongs to `run.agent(trigger=...)`, where the workspace declares
+which of its own jobs the agent watches. `make validate-toolkits` rejects a
+`defaults.trigger`.
 
 Precedence, lowest first: loop default, `defaults` here, the agent job's arguments,
 configuration at run time. A runtime value always wins, so put here what should hold when
@@ -264,9 +255,6 @@ open. `make validate-toolkits` rejects one.
 Say in the `AGENT.md` what to pin instead: the class of model the instructions were written
 for, as "at least as capable as Claude Sonnet 5".
 
-`loop: claude-agent-sdk` is the same decision by another name, since it takes Anthropic
-models only. Leave it to the workspace unless the agent needs Claude Code.
-
 ## The body
 
 The body is the system prompt: who the agent is, what it produces, what "done" means, and
@@ -276,10 +264,8 @@ skill, for a reader that has the tools and none of the context.
 
 What the model gets besides the body: the rules inlined, the skills listed or inlined, a
 sentence naming the workspace folder and the temp folder for scratch files, the output schema
-with its descriptions, and the tools `access` and `tools` bought. On
-claude-agent-sdk the workspace's `CLAUDE.md` loads as in any Claude Code session, while the
-`.claude/rules` folder stays out. What it gets as the user turn is the agent job's
-`instructions`, or a bare "Go ahead". Do not restate any of that.
+with its descriptions, and the tools `access` and `tools` bought. What it gets as the user
+turn is the agent job's `instructions`, or a bare "Go ahead". Do not restate any of that.
 
 Six things a body should do, with job-inspector as the example:
 
@@ -316,11 +302,17 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     # access comes from the definition: local: [read], context: [read]. an `access=`
     # argument on a referenced agent is dropped; see below
-    trigger="job.fail:tag:ingest",       # narrower than the default
+    trigger="job.fail:tag:ingest",       # which jobs this agent watches
     require={"profile": "access"},       # see "Profile"
     instructions="focus on the loader step",
 )
 ```
+
+`trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
+`job.success:...`; `job.fail:*` watches every job in the workspace and expands at manifest
+time, never onto the job that declares it. A job event never stands in for a manual run: a
+run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it
+was given, which is one more reason the body must say what to do with empty input.
 
 Every decorator argument overrides the matching `defaults`, and configuration overrides both;
 `instructions` is the user turn of every run. The job is named after the definition (`job_inspector`). Instead of a
@@ -509,7 +501,8 @@ module in the agent folder would replace that line; it is a dlt follow-up.
 - `output` declares `status` and `summary`, described and required, with the standard
   values; a contradicting declaration is an error, a missing one a warning
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency
-- `defaults` and `defaults.limits` keys are known, and `defaults` sets no `model`
+- `defaults` and `defaults.limits` keys are known, and `defaults` sets no `model` and no
+  `trigger`
 
 dlthub validates again when the deployment manifest is generated: the body is required, the
 name falls back to the folder, `access` is checked, an unknown `entity_type` is refused, a
@@ -526,6 +519,7 @@ that does not resolve in the workspace is skipped with a warning.
   own; an entity the agent may resolve itself is an output property too.
 - The body defines succeeded, failed and aborted for this agent, gives the first steps, and
   defines every enum.
-- `defaults` holds a sensible trigger and limits and no `model`; the `AGENT.md` says what
-  model to pin. Nothing in `defaults` is a requirement.
+- `defaults` holds sensible limits and no `model` and no `trigger`; the `AGENT.md` says
+  what model to pin and the deployment sets the trigger. Nothing in `defaults` is a
+  requirement.
 - `make validate-toolkits` passes.

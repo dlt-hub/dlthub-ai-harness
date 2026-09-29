@@ -13,6 +13,8 @@ tools:
   - logs
   - telemetry
   - workspace
+  # `pipeline` serves nothing while `data` is ungranted: every tool in the group needs
+  # `data: read`. kept so a fork that grants `data` gets them without touching this list
   - pipeline
   # the redacted credential check: `secrets` gives secrets_list and secrets_view_redacted
   # (secrets_update_fragment needs `local: write` and is pruned), `config` gives
@@ -137,8 +139,9 @@ output:
       description: True when a person has to act before the job can succeed again.
   required: [status, summary, classification, confidence, evidence, open_points, requires_human]
 defaults:
-  trigger:
-    - job.fail:*
+  # no `trigger` here: one declared in a definition does nothing, and wiring this agent to
+  # every job would decide for a workspace the toolkit knows nothing about. the deployment
+  # sets it on `run.agent`
   # no `model` here: set `AGENT__MODEL` in your workspace, at least as capable as Claude
   # Sonnet 5. a template that named a provider would hand every installer that provider
   limits:

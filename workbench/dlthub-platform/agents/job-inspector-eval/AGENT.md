@@ -156,9 +156,8 @@ output:
   # the model puts there is overwritten
   required: [status, summary, checks]
 defaults:
-  trigger:
-    - job.success:job_inspector
-    - job.fail:job_inspector
+  # no `trigger` here: one declared in a definition does nothing. the deployment wires this
+  # job to the inspector's success and failure on `run.agent`
   limits:
     max_turns: 25
     # 25 turns of extra log windows cost about this much. at 600,000 a run that used its

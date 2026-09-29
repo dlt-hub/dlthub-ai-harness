@@ -21,7 +21,7 @@ Checks:
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
-- Agent `defaults` sets no `model`; the workspace deploying the agent pins it
+- Agent `defaults` sets no `model` and no `trigger`; the deployment sets both
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
@@ -471,7 +471,7 @@ def _validate_defaults(
     """`defaults` holds everything the runtime may override."""
     node = fm.get("defaults")
     if node is None:
-        warnings.append(f"[{pname}] {rel} has no defaults — no trigger, model or limits")
+        warnings.append(f"[{pname}] {rel} has no defaults — no model or limits")
         return
     if not isinstance(node, dict):
         errors.append(f"[{pname}] {rel} defaults must be a mapping")
@@ -482,6 +482,16 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
+    # a trigger declared here does nothing: the manifest drops `defaults` and the loop takes
+    # model, limits and loop_run_args from it. it also decides for a workspace the toolkit
+    # knows nothing about, so a shipped one is rejected rather than honoured
+    if node.get("trigger") is not None:
+        errors.append(
+            f"[{pname}] {rel} defaults.trigger {node['trigger']!r} is never read and wires"
+            " the agent to jobs the toolkit knows nothing about; leave it out and set"
+            " trigger= on run.agent (see BACKGROUND_AGENTS.md)"
+        )
+
     # a shipped definition names no provider: the aliases resolve on Anthropic, OpenAI
     # and Google, and an Azure workspace has none. the deployment pins the model.
     if node.get("model") is not None:

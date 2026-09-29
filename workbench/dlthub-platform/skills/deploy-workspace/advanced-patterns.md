@@ -32,7 +32,7 @@ An installed agent definition becomes a job by naming it:
 ```python
 inspector = run.agent(
     "dlthub-platform:job-inspector",
-    trigger="job.fail:tag:ingest",       # narrower than the definition's default
+    trigger="job.fail:tag:ingest",       # which jobs this agent watches; a definition sets none
     require={"profile": "access"},
 )
 ```
