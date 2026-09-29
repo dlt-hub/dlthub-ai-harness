@@ -99,7 +99,7 @@ output:
             type: string
             description: The text as it stands in the source. Never paraphrase it.
           provenance:
-            enum: [run_log, run_record, trace, job_definition, workspace_file, secrets_redacted, destination_query, repository_comment, job_description, inference]
+            enum: [run_log, run_record, trace, job_definition, workspace_file, secrets_redacted, repository_comment, job_description, inference]
             description: >
               What kind of artifact the excerpt is, as "Provenance" in your system prompt
               defines the values. `repository_comment`, `job_description` and `inference`
@@ -299,12 +299,11 @@ Every `evidence` item says what kind of artifact it is.
 | `job_definition` | a setting in the deployed job definition: profile, trigger, arguments, dependencies |
 | `workspace_file` | a line of code or configuration in a workspace file |
 | `secrets_redacted` | an entry, or its absence, in the redacted secrets or variables view |
-| `destination_query` | a row count or query result from the destination |
 | `repository_comment` | a comment, a docstring or a README sentence in the workspace |
 | `job_description` | the prose description of a job in its definition |
 | `inference` | a conclusion you drew that no artifact states |
 
-- The first seven are facts. The last three are claims, prose saying what an author thinks:
+- The first six are facts. The last three are claims, prose saying what an author thinks:
   corroborate a claim against a fact before citing it as cause. `confidence: high` needs at
   least one fact.
 - A `workspace_file` excerpt holds code lines only. An excerpt spanning a decorator or a `def`

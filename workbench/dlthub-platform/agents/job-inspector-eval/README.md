@@ -292,8 +292,8 @@ this table and the registry list the same ids.
 | `evidence_cited_at_line` | Cite the line the excerpt actually sits on. |
 | `evidence_sorted_by_line` | Put the earliest cited line of the inspected run's log first; a file line or another run's log line is not compared. |
 | `evidence_source_has_line` | Name the line number on every source that has lines. |
-| `evidence_has_provenance` | Say on every evidence item what kind of artifact it is: `run_log`, `run_record`, `trace`, `job_definition`, `workspace_file`, `secrets_redacted`, `destination_query`, `repository_comment`, `job_description` or `inference`. |
-| `evidence_provenance_matches_source` | Label an item as what its source names: a log line is `run_log`, a file is `workspace_file` or `repository_comment`. |
+| `evidence_has_provenance` | Say on every evidence item what kind of artifact it is: `run_log`, `run_record`, `trace`, `job_definition`, `workspace_file`, `secrets_redacted`, `repository_comment`, `job_description` or `inference`. |
+| `evidence_provenance_matches_source` | Label an item as what its source names: a log line is `run_log`, a file is `workspace_file` or `repository_comment`. A source naming a destination query fails under any provenance but `inference`: the definition grants no `data` axis, so nothing the inspector can read produces one. |
 | `high_confidence_rests_on_facts` | Rest `confidence: high` on at least one fact, never on a comment, a description or an inference alone. |
 | `fix_names_target_and_change` | Fill `fix_target` and `fix_change` behind a `proposed_fix`, with a value rather than a hedge (`typically`, `the exact field`), or declare in `open_points` why the value is open. |
 | `fix_target_is_one_thing` | Name one file, job or resource in `fix_target`; two settings in the same file are one target, and a remedy with two parts puts the part the cause points at there and the other under Recommendation. |

@@ -986,6 +986,14 @@ def test_evidence_provenance_matches_source():
     unknown_kind = output(evidence=[_item("the run", "it failed twice", "inference")])
     assert run("evidence_provenance_matches_source", output=unknown_kind).outcome == C.TRUE
 
+    queried = output(evidence=[_item("execute_sql_query on `orders`", "count 0", "run_log")])
+    result = run("evidence_provenance_matches_source", output=queried)
+    assert result.outcome == C.FALSE
+    assert "destination query" in result.reasoning and "`data` access" in result.reasoning
+
+    inferred = output(evidence=[_item("a SELECT over the loaded table", "no rows", "inference")])
+    assert run("evidence_provenance_matches_source", output=inferred).outcome == C.TRUE
+
     unlabelled = output(evidence=[_item(LOG_SOURCE, LOG_EXCERPT)])
     assert run("evidence_provenance_matches_source", output=unlabelled).outcome == C.NA
 
