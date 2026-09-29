@@ -375,8 +375,13 @@ So write `summary` as bullets, one fact each:
 
 Each entry is the instruction, the window to read, and what makes it TRUE, FALSE or N/A.
 The preparation step renders the rubric for every id in `open_checks` and nothing else, so
-a check missing from the list below is one Python already decided. Unless an entry says
-otherwise, an inspector run that aborted is `N/A`.
+a check missing from the list below is one Python already decided.
+
+An aborted inspection stores its whole output before the runner raises, so grade what it
+produced: the transcript, what its summary claims, the fix fields, and every security rule.
+It produced no diagnosis, and the checks over one (the cause, the classification, the
+confidence level, the dependency cause, why it failed) are answered `N/A` by Python before
+you see the list, so a check that reaches you on an aborted run is one you answer.
 
 {{ rubrics }}
 

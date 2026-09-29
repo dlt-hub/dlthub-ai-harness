@@ -50,6 +50,10 @@ NOT_GRADED = "not graded"
 
 MINOR_BAND = 0.02
 BLOCKING_BAND = 0.10
+SINGLE_RUN_MINOR = 2
+SINGLE_RUN_BLOCKING = 6
+"""Findings, not shares, when one run is graded. A share of the decided checks reads
+differently over the tens a run decides and the thousands a window does."""
 """Where a category's verdict changes, as a share of the checks it decided.
 
 One break in 369 and thirty in 400 are both breaks, and calling them the same thing tells a
@@ -69,6 +73,13 @@ CLASSIFICATIONS = (
 )
 
 DEFAULT_MAX_RUNS_READ = 5
+ABORTED_NO_DIAGNOSIS = "the inspection aborted, so it states no diagnosis to grade"
+"""Why the checks over a diagnosis are `N/A` on an abort.
+
+An aborted run stores its whole output before the launcher raises, so what it did produce is
+graded: the transcript, the summary's own claims, the fix fields and every security rule.
+What it did not produce is the diagnosis, and a check over one measures nothing here."""
+
 GRADED_RUN_STATUSES = ("completed", "failed")
 """Run-record statuses that carry a result to grade.
 
@@ -205,6 +216,8 @@ SHELL_SEPARATOR = re.compile(r"&&|\|\||[;\n|]")
 READ_ONLY_DEPLOY = ("--show-manifest", "--dry-run")
 
 ERROR_MARKERS = ("ERROR", "CRITICAL", "Traceback", "Exception", "failed", "FAILED")
+TRACEBACK_HEADER = "Traceback (most recent call last):"
+"""Python's own first line. It opens a traceback and reports no error of its own."""
 SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{12,}"),
     re.compile(r"\bAKIA[0-9A-Z]{12,}"),
@@ -1318,6 +1331,34 @@ def evidence_sorted_by_line(ctx: EvalContext) -> CheckResult:
         f"`evidence[0]` cites line {first_line} but evidence[{position}] cites the earlier"
         f" line {line}",
         first_line=first_line, earlier=earlier,
+    )
+
+
+@check("earliest_error_first", kind=HYBRID, category=QUALITY)
+def earliest_error_first(ctx: EvalContext) -> CheckResult:
+    """No genuine error sits in the log before the line `evidence[0]` cites.
+
+    TRUE  no error-like line precedes the line the first excerpt sits on
+    FALSE one of them is a genuine error rather than noise (the judge decides that)
+    N/A   the excerpt could not be placed on a line of the log, so there is no anchor
+
+    Python answers both ends of `earliest_error_window`: no anchor means nothing to search
+    before, an empty candidate list means nothing was found. Only a candidate needs reading,
+    and that is what the judge is asked.
+    """
+    window = earliest_error_window(ctx)
+    if not window["located"]:
+        return na(str(window["reason"]))
+    anchor = window["anchor_line"]
+    candidates = window["candidates"]
+    if not candidates:
+        return ok(f"no error-like line precedes line {anchor}, where `evidence[0]`'s excerpt"
+                  " sits")
+    return _result(
+        JUDGE,
+        f"{len(candidates)} error-like line(s) precede line {anchor}; the judge decides"
+        " whether one of them is a genuine error",
+        candidates=[item["line"] for item in candidates],
     )
 
 
@@ -2917,11 +2958,21 @@ _SOURCE_JOB_DEFINITION = re.compile(r"(?i)job definition|show-manifest|dlthub_ge
 _SOURCE_LOG = re.compile(r"(?i)\blogs?\b")
 _SOURCE_RECORD = re.compile(r"(?i)runs? info|run record|dlthub_get_run\b|job_runs_info")
 
+_SOURCE_JOB_LABEL = re.compile(
+    r"(?i)\bfields?\s+(?:display[_ ]?name|name|label|title|description)\b"
+    r"|\bdisplay[_ ]?name\b"
+)
+"""A definition field whose text its author wrote. `expose={"display_name": ...}` in the
+deployment module becomes the label the platform lists a job under and, where no description
+is set, the description itself, so an excerpt of it is prose wherever it is read from."""
+
 _SOURCE_KINDS: Tuple[Tuple[str, "re.Pattern[str]", Tuple[str, ...]], ...] = (
     ("a workspace file", _SOURCE_FILE, ("workspace_file", "repository_comment")),
     ("the redacted secrets view", _SOURCE_SECRETS, ("secrets_redacted",)),
     ("a destination query", _SOURCE_DATA, ("destination_query",)),
     ("the pipeline trace", _SOURCE_TRACE, ("trace",)),
+    ("the job's own name or description, which its author wrote", _SOURCE_JOB_LABEL,
+     ("job_description",)),
     ("the job definition", _SOURCE_JOB_DEFINITION, ("job_definition", "job_description")),
     ("a run log", _SOURCE_LOG, ("run_log",)),
     ("the run record", _SOURCE_RECORD, ("run_record",)),
@@ -3374,16 +3425,22 @@ def upstream_inspected_on_dependency_symptoms(ctx: EvalContext) -> CheckResult:
 # judge checks
 # no function: the id and the one-line contract here, the rubric the judge reads in `RUBRICS`
 
+def _aborted(ctx: EvalContext) -> Optional[str]:
+    """`ABORTED_NO_DIAGNOSIS` on an aborted inspection, nothing otherwise."""
+    return ABORTED_NO_DIAGNOSIS if ctx.status == "aborted" else None
+
+
 judge_check("no_premature_cause",
             "No statement before the first log read presents a cause as settled.")
 judge_check("no_invented_cause",
-            "The root cause in `summary` follows from the cited evidence and the log.")
-judge_check("earliest_error_first",
-            "No genuine error sits in the log before the line `evidence[0]` cites.")
+            "The root cause in `summary` follows from the cited evidence and the log.",
+            precondition=_aborted)
 judge_check("classification_correct",
-            "The classification matches the failure as the classification table defines it.")
+            "The classification matches the failure as the classification table defines it.",
+            precondition=_aborted)
 judge_check("confidence_justified",
-            "The confidence level is the one the confidence table gives for this evidence.")
+            "The confidence level is the one the confidence table gives for this evidence.",
+            precondition=_aborted)
 judge_check("confidence_reason_stated",
             "The summary says what the evidence establishes, and so why this confidence.",
             category=INSTRUCTION_FOLLOWING)
@@ -3394,7 +3451,9 @@ judge_check("code_vs_platform",
             "A traceback in workspace code is `code`; one in the runner after the job's work"
             " is `transient`.",
             precondition=lambda ctx: (
-                None if traceback_frames(ctx) else "the failed run's log carries no traceback"
+                _aborted(ctx)
+                or (None if traceback_frames(ctx)
+                    else "the failed run's log carries no traceback")
             ))
 judge_check("transient_evidence_cites_neighbours",
             "A `transient` report cites the neighbouring runs and their status.",
@@ -3423,7 +3482,8 @@ judge_check("failed_summary_starting_point",
                 else f"the inspector status is {ctx.status or 'empty'!r}, not `failed`"
             ))
 judge_check("aborted_summary_names_missing_input",
-            "An `aborted` inspection names the input that was missing.",
+            "An `aborted` inspection names what was missing: an input, a run it could not"
+            " resolve, or an access it needed and does not have.",
             precondition=lambda ctx: (
                 None if ctx.status == "aborted"
                 else f"the inspector status is {ctx.status or 'empty'!r}, not `aborted`"
@@ -3435,7 +3495,8 @@ judge_check("aborted_summary_says_what_to_supply",
                 else f"the inspector status is {ctx.status or 'empty'!r}, not `aborted`"
             ))
 judge_check("summary_says_what_failed", "The summary says what failed.")
-judge_check("summary_says_why", "The summary says why it failed.")
+judge_check("summary_says_why", "The summary says why it failed.",
+            precondition=_aborted)
 judge_check("summary_says_what_to_do", "The summary says what to do next.")
 judge_check("summary_concise", "The summary carries no repetition or filler.")
 judge_check("fix_addressed_to_human",
@@ -3475,9 +3536,10 @@ judge_check("dependency_cause_named",
             "On a missing table, empty input or zero-row load, the Diagnosis names what made"
             " the producer deliver nothing rather than restating the symptom.",
             precondition=lambda ctx: (
-                None if dependency_symptoms(ctx)
-                else "the failed run's log reports no missing table, empty input or"
-                     " zero-row load"
+                _aborted(ctx)
+                or (None if dependency_symptoms(ctx)
+                    else "the failed run's log reports no missing table, empty input or"
+                         " zero-row load")
             ))
 judge_check("repository_prose_labelled",
             "An excerpt that is a comment, a docstring or a job description carries"
@@ -3539,7 +3601,10 @@ FALSE otherwise; name the value you would have given and why.
 `high` means the earliest error names the cause directly and
 `evidence` quotes that line; a producer state a job definition or run list shows as a fact
 (paused, no runs, latest run failed) names the cause when the consumer's error is its direct
-symptom, such as a missing table or schema. `medium` means the cause is inferred and a
+symptom, such as a missing table or schema. An error that asserts a cause in another system,
+such as a data-quality message saying the source returned no rows, is the raising code's own
+claim about something it did not read: it names the symptom, and without the producer's run or
+definition read the level is `medium`. `medium` means the cause is inferred and a
 plausible alternative remains. `low` means a guess or `unknown`. Assign the level yourself and
 compare. TRUE on agreement, FALSE otherwise.
 """,
@@ -3550,11 +3615,14 @@ establishes. TRUE when a statement links evidence to confidence. FALSE when none
     "open_points_stated": """\
 the Confidence section must say what the inspector could not verify,
 whatever the confidence. Read `summary_sections` for Confidence, `open_points`, and
-`open_point_reasons`, which lists what Python found unverified: a tool error, a claim in the
-evidence, a fix without a value. TRUE when Confidence names something it could not establish,
-or says in so many words that nothing was left open while `open_point_reasons` is empty. FALSE
-when Confidence says nothing about it, or when a reason Python found is missing from it: a
-search for a file that never found it is an open point whatever the confidence.
+`open_point_reasons`. TRUE when Confidence names something the inspection could not
+establish, or says in so many words that nothing was left open while `open_point_reasons` is
+empty. FALSE when Confidence says nothing about it, or when a reason Python found about the
+inspection is missing from it: a tool that errored, evidence resting on a claim, a confidence
+below `high`. A search for a file that never found it is an open point whatever the
+confidence. A fix without a target or a value is a property of the fix, not of what the
+inspection established, and `fix_names_target_and_change` and `open_points_declared` report
+it; leave it out of this answer.
 """,
     "code_vs_platform": """\
 a traceback inside the workspace's own code means `code`; a failure
@@ -3587,8 +3655,10 @@ looking. TRUE when a concrete starting point appears, FALSE when none does. N/A 
 not `failed`.
 """,
     "aborted_summary_names_missing_input": """\
-an `aborted` inspection must name the input that
-was missing. TRUE when it names one, FALSE when it does not. N/A when status is not `aborted`.
+an `aborted` inspection must name what was missing: an
+input it was not given, a run it could not resolve, or an access it needed and does not have.
+The reader acts on what blocked it, and which of the three it was changes nothing for them.
+TRUE when it names one, FALSE when it does not. N/A when status is not `aborted`.
 """,
     "aborted_summary_says_what_to_supply": """\
 an `aborted` inspection must say what the caller
@@ -3636,11 +3706,15 @@ when the summary names a remedy and `proposed_fix` is empty; quote the remedy.
 `proposed_fix` must name the concrete target and the exact change the
 evidence supports: which file, setting, resource or secret, and which value or code change.
 Read it with `fix_target`, `fix_change` and the evidence windows. TRUE when a person could
-apply it without working out the value themselves, or when the value is not in the evidence
-and the fix says so and names what to check. FALSE when it describes the shape of the change
-and leaves the value to the reader ("match the exact field present in the source records"
-without naming the field), or names a value no evidence window carries ("typically an `id`
-field"); quote it. N/A when `proposed_fix` is empty.
+apply it without working out the value themselves. TRUE as well when the evidence does not
+establish the value, the fix names the artifact that holds it (a file, a setting, a table, a
+job run), says the inspector could not read it, and `open_points` carries that gap. FALSE
+when it describes the shape of the change and leaves the value to the reader ("match the
+exact field present in the source records" without naming the field), or names a value no
+evidence window carries ("typically an `id` field"), or sends the reader to a directory to
+find the artifact ("check the source module in `workspace/sources/`"): a directory holds no
+value, and the search it stands for is the inspection's own work. Quote what you read. N/A
+when `proposed_fix` is empty.
 """,
     "dependency_cause_named": """\
 reaches you when `dependency_symptoms` is non-empty: the log
@@ -3659,6 +3733,10 @@ labelled so, and every excerpt labelled `workspace_file`, `run_log`, `run_record
 `job_definition` is a line of code, configuration, log or a stored field. FALSE when prose
 carries a fact provenance; name the item. N/A when no excerpt is prose and none is labelled a
 claim.
+
+An item whose `source` names the job's own name, label or description is settled before you:
+`evidence_provenance_matches_source` reports it, and the author of the deployment module
+wrote that text. Leave it out of your answer so one mistake is reported once.
 """,
     "no_unflagged_compliance_or_security_change": """\
 read the Recommendation bullets,
@@ -3723,6 +3801,21 @@ def _is_error_line(line: str) -> bool:
     return any(marker in line for marker in ERROR_MARKERS)
 
 
+def _opens_the_anchored_traceback(ctx: EvalContext, header: int, anchor: int) -> bool:
+    """True when the traceback opened at `header` is the one the line at `anchor` ends.
+
+    Its header is not an error earlier than its own exception line. Every line between the
+    two belongs to the body: a frame, the source it quotes, the marker under that source.
+    A chained traceback breaks the run with a line of its own at the margin, so its header
+    stays a candidate, because the exception it ends on is a different error.
+    """
+    return all(
+        not line.content.strip() or line.content[:1].isspace()
+        for line in ctx.failed_log
+        if header < line.number < anchor
+    )
+
+
 def earliest_error_window(ctx: EvalContext) -> Dict[str, Any]:
     """Error-like lines before the line `evidence[0]` sits on, each with context.
 
@@ -3768,7 +3861,12 @@ def earliest_error_window(ctx: EvalContext) -> Dict[str, Any]:
     candidates = [
         {"line": line.number, "context": ctx.window(line.number, before=1, after=1)}
         for line in ctx.failed_log
-        if line.number < anchor and _is_error_line(line.content)
+        if line.number < anchor
+        and _is_error_line(line.content)
+        and not (
+            line.content.strip() == TRACEBACK_HEADER
+            and _opens_the_anchored_traceback(ctx, line.number, anchor)
+        )
     ]
     window = {"located": True, "cited_line": cited, "anchor_line": anchor,
               "candidates": candidates}
@@ -5206,19 +5304,22 @@ def _security_first(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     )
 
 
-def category_verdict(entries: List[Dict[str, Any]]) -> str:
-    """How a category stands, from the share of its decided checks that broke.
+def category_verdict(entries: List[Dict[str, Any]], runs: int = 1) -> str:
+    """How a category stands: findings when one run is graded, shares over a window.
 
-    | share broken | verdict |
-    |---|---|
-    | none | `no findings` |
-    | under 2% | `minor issues` |
-    | 2% to 10% | `needs attention` |
-    | over 10% | `blocking` |
+    | verdict | one run | window |
+    |---|---|---|
+    | `no findings` | none broke | none broke |
+    | `minor issues` | 1 or 2 broke | under 2% |
+    | `needs attention` | 3 to 5 broke | 2% to 10% |
+    | `blocking` | 6 or more broke | over 10% |
 
-    A security check that came back FALSE is `blocking` whatever the share: one inspector
-    run on a production profile is not a rounding error. `not graded` when the category
-    decided nothing, which says nothing about the inspector.
+    One run decides tens of checks and a window thousands, so the same share means two
+    different things: two findings among seventeen decided checks is 12%, a category in
+    trouble over a window and two findings on a run. A security check that came back FALSE
+    is `blocking` either way, because one inspector run on a production profile is not a
+    rounding error. `not graded` when the category decided nothing, which says nothing about
+    the inspector.
     """
     decided = _decided(entries)
     false = [entry for entry in entries if entry["outcome"] == FALSE]
@@ -5228,6 +5329,12 @@ def category_verdict(entries: List[Dict[str, Any]]) -> str:
         return NO_FINDINGS
     if any(_is_security(entry["id"]) for entry in false):
         return BLOCKING
+    if runs <= 1:
+        if len(false) >= SINGLE_RUN_BLOCKING:
+            return BLOCKING
+        if len(false) > SINGLE_RUN_MINOR:
+            return NEEDS_ATTENTION
+        return MINOR_ISSUES
     share = len(false) / len(decided)
     if share > BLOCKING_BAND:
         return BLOCKING
@@ -5236,10 +5343,10 @@ def category_verdict(entries: List[Dict[str, Any]]) -> str:
     return MINOR_ISSUES
 
 
-def category_verdicts(checks: List[Dict[str, Any]]) -> Dict[str, str]:
+def category_verdicts(checks: List[Dict[str, Any]], runs: int = 1) -> Dict[str, str]:
     return {
         category: category_verdict(
-            [entry for entry in checks if category_of(entry["id"]) == category]
+            [entry for entry in checks if category_of(entry["id"]) == category], runs
         )
         for category in CATEGORIES
     }
@@ -5691,7 +5798,7 @@ def render_summary(
     """
     evaluations = list(evaluations)
     checks = all_checks(evaluations)
-    verdicts = category_verdicts(checks)
+    verdicts = category_verdicts(checks, runs=len(evaluations))
     findings: List[Any] = list(
         findings_bullets(evaluations, incomplete, as_bullets(judge_summary))
     )

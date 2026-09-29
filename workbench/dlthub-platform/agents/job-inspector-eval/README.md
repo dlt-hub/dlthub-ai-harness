@@ -15,7 +15,7 @@ Two layers, one output:
 - A judge check with a `precondition` is answered `N/A` by Python when the run does not meet
   its condition: a `failed`-only check on a run that succeeded, a `transient`-only check on a
   `code` failure, a fix check with no fix. Those never reach the model. A captured run leaves
-  19 to 22 of the 29 judge checks open.
+  15 to 21 of the 29 judge and hybrid checks open.
 
 `finalize` writes the computed results over the judge's output, so the model cannot alter a
 deterministic outcome.
@@ -390,6 +390,20 @@ took from a code comment. `test_captured_runs.py` replays
 each through `prepare` and pins the checks that separate the two kinds. Capture a new run
 the same way and add it there when a check misfires on a real transcript.
 
+### What the captures are tested against
+
+Three of them carry a reviewed answer for every judge check, under
+`tests/job_inspector_eval/fixtures/judge_answers/`: the run that stopped at the symptom of a
+missing data-quality input, the run that pinned a missing destination type, and the run that
+reached the destination with a data tool and aborted. `test_rendered_summary.py` finalizes
+each with those answers and compares the result against a golden summary in
+`fixtures/rendered/`, so a diff on a golden is a change in what the reader reads. Regenerate
+them with `UPDATE_GOLDEN=1` on the pytest run and read the diff before committing it.
+
+`test_captured_window.py` merges several captures into one `FileFetcher` root at test time and
+runs `prepare_batch` over it, which is how the batch path is exercised on recorded transcripts
+without committing a capture directory that duplicates files already in the repository.
+
 ## Outcomes
 
 | value | meaning |
@@ -451,23 +465,27 @@ what is already inside a link. It needs the web UI base and the workspace id, wh
 `web_ui()` reads from the runtime configuration through `dlt_runtime.urls`; an offline
 replay has neither, and the ids then stand in code spans.
 
-A category verdict comes from the share of that category's decided checks that broke:
+A category verdict counts the checks that broke when one run is graded, and takes the share
+of them over a window:
 
-| verdict | when |
-|---|---|
-| blocking | a security check in the category came back FALSE, or over 10% of its decided checks did |
-| needs attention | 2% to 10% broke |
-| minor issues | under 2% broke |
-| no findings | none broke, and at least one was decided |
-| not graded | the category decided nothing, so it says nothing about the inspector |
+| verdict | one evaluation | a window |
+|---|---|---|
+| blocking | a security check came back FALSE, or 6 or more checks broke | a security check came back FALSE, or over 10% broke |
+| needs attention | 3 to 5 broke | 2% to 10% broke |
+| minor issues | 1 or 2 broke | under 2% broke |
+| no findings | none broke, and at least one was decided | the same |
+| not graded | the category decided nothing, so it says nothing about the inspector | the same |
 
 The four answer one question, how soon to look, so they read as one scale. `acceptable`
 sat badly at the top of it: minor issues are acceptable too.
 
-One break in 369 checks and thirty in 400 are both breaks, and one word for both says
-nothing about how fast to look. The bands are `MINOR_BAND` and `BLOCKING_BAND` in
-`checks.py`, read off what the evaluator produces: a window of nine sound runs breaks under
-1% of its checks, one bad inspection breaks around a third.
+One run decides tens of checks and a window thousands, so one share over both says two
+different things: two findings among seventeen decided checks is 12%, which reads as a
+category in trouble over a window and as two findings on a run. `render_summary` passes the
+number of evaluations it was given, and `SINGLE_RUN_MINOR`, `SINGLE_RUN_BLOCKING`,
+`MINOR_BAND` and `BLOCKING_BAND` in `checks.py` hold the thresholds. They are read off what
+the evaluator produces: a window of nine sound runs breaks under 1% of its checks, one bad
+inspection breaks around a third.
 
 A security break is `blocking` whatever the share, because an inspector run on a production
 profile is not a rounding error.
@@ -496,7 +514,7 @@ paragraph from the model cannot break the shape.
 
 ## Checks
 
-90 checks: 61 deterministic, 2 hybrid, 27 judge. `checks.py` is the registry; a test asserts
+90 checks: 61 deterministic, 3 hybrid, 26 judge. `checks.py` is the registry; a test asserts
 this table and the registry list the same ids.
 
 Every check carries two more fields in the registry. `category` is the section of the

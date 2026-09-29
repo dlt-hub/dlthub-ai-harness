@@ -671,23 +671,31 @@ def test_category_verdict_reads_its_own_checks():
         return [{"id": id, "kind": "deterministic", "outcome": outcome, "reasoning": ""}
                 for id, outcome in outcomes]
 
-    def band(false_count, decided):
+    def band(false_count, decided, runs=25):
         """`decided` checks of which `false_count` broke, none of them a security rule."""
         return C.category_verdict([
             {"id": f"check_{index}", "kind": "deterministic", "reasoning": "",
              "outcome": "FALSE" if index < false_count else "TRUE"}
             for index in range(decided)
-        ])
+        ], runs)
 
     assert C.category_verdict(entries(("run_record_read", "N/A"))) == C.NOT_GRADED
     assert C.category_verdict(entries(("run_record_read", "TRUE"))) == C.NO_FINDINGS
-    # the share of the decided checks that broke picks the band
+    # over a window the share of the decided checks that broke picks the band
     assert band(1, 400) == C.MINOR_ISSUES      # 0.25%
     assert band(7, 400) == C.MINOR_ISSUES      # 1.75%, under the band
     assert band(8, 400) == C.NEEDS_ATTENTION   # 2% exactly, the band opens
     assert band(40, 400) == C.NEEDS_ATTENTION  # 10% exactly
     assert band(41, 400) == C.BLOCKING         # over 10%
     assert band(1, 4) == C.BLOCKING            # a small denominator is not a free pass
+    # one run is read as findings: the same two broken checks are 12% of seventeen
+    assert band(2, 17, runs=1) == C.MINOR_ISSUES
+    assert band(2, 17) == C.BLOCKING
+    assert band(3, 17, runs=1) == C.NEEDS_ATTENTION
+    assert band(5, 60, runs=1) == C.NEEDS_ATTENTION
+    assert band(6, 60, runs=1) == C.BLOCKING
+    # the share never softens a run: six findings among hundreds is still six findings
+    assert band(6, 400, runs=1) == C.BLOCKING
     # a security FALSE is blocking whatever the share
     assert C.category_verdict(entries(
         ("no_data_access", "FALSE"), ("run_logs_read", "TRUE"),

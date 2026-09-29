@@ -436,6 +436,6 @@ Turns are limited, and the output exists only once you write it.
 
 | value | when |
 |---|---|
-| `high` | the earliest error names the cause directly, `evidence` quotes it, and at least one item is a fact under "Provenance". A producer state the job definition or run list shows as a fact (paused, no runs, latest run failed) counts as naming the cause when the consumer's error is its direct symptom |
+| `high` | the earliest error names the cause directly, `evidence` quotes it, and at least one item is a fact under "Provenance". A producer state the job definition or run list shows as a fact (paused, no runs, latest run failed) counts as naming the cause when the consumer's error is its direct symptom. An error that asserts a cause in another system, such as a data-quality message saying the source returned no rows, is the raising code's own claim about something it did not read: check the producer's run or definition before calling it `high` |
 | `medium` | the cause is inferred from surrounding evidence, such as neighbouring runs, the job definition or a comment, and a plausible alternative remains |
 | `low` | the classification is a guess or `unknown`; `Confidence` says what you could not establish |
