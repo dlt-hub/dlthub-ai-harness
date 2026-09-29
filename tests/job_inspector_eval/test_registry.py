@@ -135,3 +135,49 @@ def test_every_deploy_snippet_pins_the_read_only_profile():
         block.count('require={"profile": "access"}') for block in _PYTHON_BLOCK.findall(SPEC)
     )
     assert pinned >= declarations
+
+
+def _declared_output() -> dict:
+    """The output schema as a model receives it, read out of the shipped `AGENT.md`."""
+    import yaml
+
+    return yaml.safe_load(AGENT_MD.split("---", 2)[1])["output"]
+
+
+def test_no_declared_object_is_left_without_properties():
+    """A strict validator refuses an object schema with no `properties`, so OpenAI's structured
+    output falls back or rejects it. Every object the judge is shown names its fields."""
+    bare = []
+
+    def walk(node, path="output"):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "properties" not in node:
+                bare.append(path)
+            for key, value in node.items():
+                walk(value, f"{path}.{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, f"{path}[{index}]")
+
+    walk(_declared_output())
+    assert bare == []
+
+
+def test_the_batch_fields_declare_what_checks_py_writes():
+    """`window`, `evaluations` and `skipped_runs` are filled in Python, so the schema is the
+    one place they can drift from the code."""
+    properties = _declared_output()["properties"]
+    batch = C.BatchPrep(job_ref="jobs.x.job_inspector")
+    batch.skipped.append({"run_id": "r", "reason": "still running"})
+    final = C.finalize_batch([{"inspector_run_id": "a", "checks": []}], batch)
+
+    assert set(properties["window"]["properties"]) == set(final["window"])
+    assert set(properties["evaluations"]["items"]["properties"]) == set(final["evaluations"][0])
+    assert set(properties["skipped_runs"]["items"]["properties"]) == set(final["skipped_runs"][0])
+
+
+def test_the_output_schema_stays_small():
+    """The judge reads the whole schema on every run, and a large one has failed to launch."""
+    import json
+
+    assert len(json.dumps(_declared_output())) < 7_800

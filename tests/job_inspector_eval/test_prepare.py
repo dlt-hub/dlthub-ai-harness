@@ -371,6 +371,34 @@ def test_finalize_reads_a_checks_array_the_judge_serialised_as_a_string():
     assert "could not be read" not in final["summary"]
 
 
+def test_finalize_reads_the_shapes_a_judge_wraps_its_answers_in():
+    """Constrained decoding guarantees the schema, not that a model fills it as declared.
+
+    Each shape below reaches `finalize` as a full set of answers, so an evaluation is not lost
+    to a wrapper object, a double encoding or a per-entry serialisation.
+    """
+    prep = _prep_with()
+    answers = [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
+               for id in C.judge_ids(prep.results)]
+    shapes = {
+        "wrapped in an object": {"checks": answers},
+        "wrapped and serialised": {"results": json.dumps(answers)},
+        "keyed by check id": {entry["id"]: entry for entry in answers},
+        "keyed by check id, no id inside": {
+            entry["id"]: {k: v for k, v in entry.items() if k != "id"} for entry in answers
+        },
+        "serialised twice": json.dumps(json.dumps(answers)),
+        "one serialised entry each": [json.dumps(entry) for entry in answers],
+        "a trailing comma": json.dumps(answers)[:-1] + ",]",
+    }
+    for name, checks in shapes.items():
+        final = C.finalize({"status": "succeeded", "summary": "done", "checks": checks}, prep)
+        answered = [e for e in final["checks"] if e["kind"] == "judge"]
+        assert answered and all(e["outcome"] == "TRUE" for e in answered), name
+        assert final["status"] == "succeeded", name
+        assert "could not be read" not in final["summary"], name
+
+
 def test_finalize_fails_loudly_when_the_judge_answers_cannot_be_read():
     """Silently reporting every judge check `N/A` hides a broken judge behind a pass rate."""
     prep = _prep_with()

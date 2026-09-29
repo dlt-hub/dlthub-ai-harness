@@ -215,6 +215,12 @@ Add the agent's own fields next to them. What to know about the schema:
   added or relaxed on your behalf, so write what the provider accepts. For example,
   Anthropic's structured output rejects `minimum`, `maximum` and `minLength`. Put numeric
   bounds in the description.
+- **Every object names its `properties`.** A bare `type: object` means "any object", which a
+  strict validator refuses, so OpenAI's structured output falls back or rejects the schema. A
+  field Python fills after the loop is declared as fully as one the model writes.
+- **Keep the schema small.** The model reads all of it on every run, and a large one has
+  stopped a job launching. `job-inspector-eval` declares 17 properties in about 5,600
+  characters, and a test holds it under 7,800.
 
 The agent run's `status` decides what the job does: `succeeded` and `failed` complete the
 run; `aborted` raises with `summary` as the message and the run fails, after the result and
@@ -743,6 +749,12 @@ one check was decided. A judge response that is empty or cut off leaves checks u
 fails the evaluation. `pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A` never moves it. It sits
 beside `decided_count` and `na_count` in the summary, because a rate over a third of the
 checks reads the same as a rate over all of them.
+
+Constrained decoding guarantees the schema, not that a model fills it as declared. `checks`
+has come back as a JSON string, so `_judge_checks` also reads a double encoding, a
+`{"checks": ...}` wrapper, a map keyed by check id, per-entry serialisation and a trailing
+comma. A shape it cannot read is named in the summary and fails the evaluation, rather than
+passing on the deterministic results alone.
 
 A category verdict counts the checks that broke when one run is graded and takes their share
 over a window, because one run decides tens of checks and a window thousands:

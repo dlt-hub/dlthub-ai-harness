@@ -5049,30 +5049,73 @@ def _run_digest(run: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return {key: run.get(key) for key in keys if key in run}
 
 
+JUDGE_WRAPPER_KEYS = ("checks", "results", "answers")
+"""Keys a judge wraps its answers in instead of returning them bare."""
+
+
+def _decode(value: Any, depth: int = 3) -> Tuple[Any, str]:
+    """A value the judge serialised, decoded, and again while the result is another string."""
+    while depth and isinstance(value, str):
+        text = value.strip()
+        try:
+            value = json.loads(text)
+        except ValueError:
+            # a trailing comma is the one malformation seen; repairing beats losing them all
+            try:
+                value = json.loads(_TRAILING_COMMA.sub(r"\1", text))
+            except ValueError as ex:
+                return None, f"a string that is not JSON ({ex})"
+        depth -= 1
+    if isinstance(value, str):
+        return None, "a string that decodes to another string"
+    return value, ""
+
+
+def _unwrap(value: Dict[str, Any]) -> Tuple[Any, str]:
+    """The answers inside a dict: under a wrapper key, or keyed by the check ids themselves."""
+    for key in JUDGE_WRAPPER_KEYS:
+        if (inner := value.get(key)) is not None:
+            decoded, problem = _decode(inner)
+            if problem:
+                return None, f"the judge wrapped `checks` in `{key}`, which holds {problem}"
+            return decoded, ""
+    # a registered id as the key is what separates an answer map from a stray object
+    keyed = [
+        {"id": id, **entry}
+        for id, entry in value.items()
+        if id in CHECKS and isinstance(entry, dict)
+    ]
+    if keyed:
+        return keyed, ""
+    return None, "the judge returned `checks` as dict, not a list"
+
+
 def _judge_checks(value: Any) -> Tuple[List[Any], str]:
     """The judge's answers as a list, and why they could not be read when they could not.
 
-    A model sometimes returns the array serialised as a string. Iterating that yields
-    characters, every check reads as unanswered, and the evaluation reports a plausible
-    `pass_rate` over the deterministic checks alone.
+    A model sometimes serialises the array, wraps it in an object, keys it by check id, or
+    serialises each entry. Iterating a string yields characters, every check reads as
+    unanswered, and the evaluation reports a plausible `pass_rate` over the deterministic
+    checks alone.
     """
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except ValueError:
-            # a trailing comma is the one malformation seen; repairing beats losing them all
-            repaired = _TRAILING_COMMA.sub(r"\1", value)
-            try:
-                value = json.loads(repaired)
-            except ValueError as ex:
-                return [], f"the judge returned `checks` as a string that is not JSON ({ex})"
+    value, problem = _decode(value)
+    if problem:
+        return [], f"the judge returned `checks` as {problem}"
     if value is None:
         return [], ""
+    if isinstance(value, dict):
+        value, problem = _unwrap(value)
+        if problem:
+            return [], problem
     if not isinstance(value, list):
         return [], f"the judge returned `checks` as {type(value).__name__}, not a list"
-    if value and not any(isinstance(entry, dict) for entry in value):
+    entries: List[Any] = []
+    for entry in value:
+        decoded, _ = _decode(entry)
+        entries.append(decoded if isinstance(decoded, dict) else entry)
+    if entries and not any(isinstance(entry, dict) for entry in entries):
         return [], "the judge returned `checks` as a list holding no objects"
-    return value, ""
+    return entries, ""
 
 
 def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:

@@ -175,26 +175,72 @@ output:
               N/A, name the condition.
         required: [id, kind, outcome, reasoning]
     # the scheduled batch path fills these three from `prepare_batch` and `finalize_batch`.
-    # A single evaluation leaves them out, and you never write them
+    # A single evaluation leaves them out, and you never write them. Their properties are
+    # spelled out because an object with none is what a strict validator refuses
     window:
       type: object
-      description: >
-        Batch path only. The window evaluated: `job_ref`, `since`, `until`, `runs_found`,
-        `runs_evaluated`, `runs_skipped`, `capped`. Filled by `checks.py`, never by you.
+      description: Batch path only. The window evaluated. Filled by `checks.py`, never by you.
+      properties:
+        job_ref:
+          type: string
+        since:
+          type: string
+          description: start of the window, ISO 8601
+        until:
+          type: string
+          description: end of the window, ISO 8601
+        since_is:
+          type: string
+          description: how the start was established, a definition change or a dated fallback
+        runs_found:
+          type: integer
+        runs_evaluated:
+          type: integer
+        runs_skipped:
+          type: integer
+          description: runs found and not graded, each one listed in `skipped_runs`
+        capped:
+          type: boolean
+          description: the window held more runs than `max_runs`, so the oldest were left out
     evaluations:
       type: array
-      description: >
-        Batch path only. One entry per inspector run graded, with its run ids, its
-        `passed`, its `pass_rate` and the ids that came back FALSE. Filled by `checks.py`.
+      description: Batch path only. One entry per inspector run graded. Filled by `checks.py`.
       items:
         type: object
+        properties:
+          inspector_run_id:
+            type: string
+          inspector_job_ref:
+            type: string
+          failed_run_id:
+            type: string
+            description: run id of the failed job run that inspection inspected
+          failed_job_ref:
+            type: string
+          inspector_status:
+            type: string
+            description: the status the inspector reported for itself on that run
+          passed:
+            type: boolean
+          pass_rate:
+            type: number
+          false_checks:
+            type: array
+            description: ids of the checks that came back FALSE on that run
+            items:
+              type: string
     skipped_runs:
       type: array
       description: >
-        Batch path only. One entry per run found and not graded, with `run_id` and the
-        reason. Filled by `checks.py`.
+        Batch path only. One entry per run found and not graded. Filled by `checks.py`.
       items:
         type: object
+        properties:
+          run_id:
+            type: string
+          reason:
+            type: string
+            description: why the run was not graded
     metrics:
       type: object
       description: Numbers about the inspector run, copied from its trace. Not pass or fail.
