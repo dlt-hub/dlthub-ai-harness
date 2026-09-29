@@ -24,7 +24,9 @@ This document is a guideline for authors. An agent is an `AGENT.md`, written muc
 - **agent loop**: the framework that runs the model turn by turn. Two are built in:
   `pydantic-ai`, the default, and `claude-agent-sdk`, which runs Claude Code and accepts
   Anthropic models only. A job selects one with `loop=` on `run.agent` or `agent.loop` in
-  config.
+  config. `claude-agent-sdk` is not officially supported: the agents in this repo are written
+  for and tested on `pydantic-ai`, and what the other loop does is recorded here as
+  observation rather than as a contract.
 
 Everything below is about the first of these, the agent definition: writing it so that any
 job built on it, and any run of that job, follows your instructions.
@@ -337,7 +339,8 @@ Say in the `AGENT.md` what to pin instead: the class of model the instructions w
 for, as "at least as capable as Claude Sonnet 5".
 
 `loop: claude-agent-sdk` is the same decision by another name, since it takes Anthropic
-models only. Leave it to the workspace unless the agent needs Claude Code.
+models only. Leave it to the workspace: that loop is not officially supported, and an agent
+pinned to it runs on one provider.
 
 ## The body
 
