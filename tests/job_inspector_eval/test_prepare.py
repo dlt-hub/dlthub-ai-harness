@@ -724,7 +724,7 @@ def test_the_results_table_carries_every_check_and_survives_the_ui():
 
 
 def test_one_run_recommends_nothing_whatever_the_judge_writes():
-    """One run is one observation. What to change in the instructions rests on the window."""
+    """What to change in the instructions rests on the window, never on a single run."""
     prep = _prep_with()
     judge = {"status": "succeeded", "summary": "", "checks": _all_true(prep),
              "recommendation": "Tell the inspector to open the file the traceback names."}

@@ -24,11 +24,14 @@ access:
   # runs, logs, job definitions and telemetry
   context:
     - read
-# every input is a job configuration key: `-c inspector_run_id=...`. The last four are filled
-# by the preparation step in `checks.py`, never by hand
+# every input is a job configuration key: `-c inspector_run_id=...` on a single run, or a
+# default on the deployment function's parameter of the same name. A workspace changes a
+# default there; `BACKGROUND_AGENTS.md` carries both deployment functions
 inputs:
   type: object
   properties:
+    # which run or job to grade. the triggered job sets neither and falls back to
+    # `prev_run_id`; the scheduled job names the inspector job
     inspector_run_id:
       type: string
       description: >
@@ -39,21 +42,21 @@ inputs:
       type: string
       description: job ref of the inspector job; its latest run is evaluated when no run id is given
       entity_type: job
+    # bounds. `max_runs_read` holds on both paths, the two below only on the scheduled one
     max_runs_read:
       type: integer
       description: >
         how many distinct runs the inspector may read before `single_run_scope` fails.
-        Default 5.
+        Defaults to `DEFAULT_MAX_RUNS_READ` in `checks.py`, which is 5.
     window_days:
       type: integer
       description: >
-        batch path only: how many days back the window falls to when no deployment history
-        can be read. The window normally starts where the inspector's definition last
-        changed. Default 7.
+        how many days back the window falls to when no deployment history can be read. The
+        window normally starts where the inspector's definition last changed. Defaults to 7.
     max_runs:
       type: integer
-      description: >
-        batch path only: how many inspector runs one scheduled job evaluates. Default 25.
+      description: how many inspector runs one scheduled job evaluates. Defaults to 25.
+    # filled by the preparation step in `checks.py`, never set by hand or by configuration
     deterministic_checks:
       type: string
       description: >
@@ -74,12 +77,12 @@ inputs:
       description: >
         JSON list of the failed job's runs with their status. Filled by the preparation step,
         never set by hand.
+    # filled by the scheduled job for its one recommendation pass
     window_findings:
       type: string
       description: >
-        JSON of the instructions a window of inspector runs broke. Filled by the scheduled
-        job for its one recommendation pass, never set by hand. Empty means you are grading
-        a run.
+        JSON of the instructions a window of inspector runs broke. Empty means you are
+        grading a run.
     rubrics:
       type: string
       description: >
@@ -106,7 +109,7 @@ output:
     recommendation:
       type: string
       description: >
-        Empty while you grade one run: one observation does not say what to change in the
+        Empty while you grade one run: a single run shows too little to change the
         instructions the inspector followed. Filled only in the recommendation pass, when
         `window_findings` is set, with one to three markdown bullets naming what to change
         in `.claude/dlthub/agents/job-inspector/AGENT.md` so the broken instructions stop
@@ -235,9 +238,9 @@ You are not inspecting a job failure. You grade a diagnosis someone else wrote.
 Read `{{ window_findings }}` first. It decides what you do.
 
 - **It is empty.** You are grading one inspector run. Everything below applies: answer the
-  checks in `open_checks`, write `summary`, and leave `recommendation` empty. One run is
-  one observation, and what to change in the inspector's instructions does not follow from
-  one observation, so a single evaluation recommends nothing.
+  checks in `open_checks`, write `summary`, and leave `recommendation` empty. A change to
+  the inspector's instructions rests on a pattern across several runs, so a single
+  evaluation recommends nothing.
 - **It is filled.** You are writing the recommendation for a window of inspector runs that
   were graded before you. Skip to "Writing the window recommendation" at the end of this
   prompt. Answer no checks: return `checks` empty.
@@ -313,10 +316,9 @@ leave out is reported `N/A` and fails the whole evaluation, so when you run out 
 shorten the reasonings rather than dropping answers.
 
 Fill `status`, `summary` and `checks`, and leave `recommendation` empty. Leave
-`inspector_run_id`,
-`inspector_job_ref`, `failed_run_id`, `failed_job_ref`, `inspector_status`, `passed`,
-`pass_rate`, `decided_count`, `na_count` and `metrics` alone: they are computed from the data after you finish, and anything you write
-there is discarded.
+`inspector_run_id`, `inspector_job_ref`, `failed_run_id`, `failed_job_ref`,
+`inspector_status`, `passed`, `pass_rate`, `decided_count`, `na_count` and `metrics` alone:
+they are computed from the data after you finish, and anything you write there is discarded.
 
 ## What to write in `summary`
 
@@ -342,7 +344,7 @@ So write `summary` as bullets, one fact each:
   split into bullets on the way in, so write them yourself and control where the breaks
   fall.
 - Say nothing about what to change in the inspector's definition. That is the window's
-  question, and a recommendation written from one run is one observation presented as a
+  question, and a recommendation written from one run presents a single reading as a
   pattern.
 - It is rendered as markdown in the platform UI. Close every code span you open, never
   escape a backtick with a backslash, and write no `|` outside a table. See "The shape of
