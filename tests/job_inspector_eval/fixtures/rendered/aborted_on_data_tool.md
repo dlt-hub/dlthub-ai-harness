@@ -40,7 +40,7 @@
 | `latest_failed_run_resolved` | Instruction following | deterministic | TRUE | the inspected run is the latest failed run of 'jobs.__deployment__.jaffle_shop_dq' |
 | `no_agent_job_inspected` | Instruction following | deterministic | TRUE | the inspected job 'jobs.__deployment__.jaffle_shop_dq' is neither an evaluator nor the inspector |
 | `no_write_tool_used` | Instruction following | deterministic | TRUE | no write tool in the transcript or run trace |
-| `no_retry_after_tool_error` | Instruction following | deterministic | TRUE | 1 tool error(s), none of them retried unchanged |
+| `no_retry_after_tool_error` | Instruction following | deterministic | TRUE | 2 tool error(s), none of them retried unchanged |
 | `finished_within_limits` | Instruction following | deterministic | TRUE | the trace records no limit as the stop reason |
 | `summary_free_of_instruction_text` | Instruction following | deterministic | TRUE | no instruction text in the summary |
 | `confidence_reason_stated` | Instruction following | judge | TRUE | The summary says the DQ claim could not be checked against the destination, so the root cause is not established. |

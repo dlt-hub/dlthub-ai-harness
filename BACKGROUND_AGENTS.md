@@ -103,7 +103,7 @@ access:
 | axis | verbs | what it wires |
 |---|---|---|
 | `local` | `read` | `Read`, `Glob`, `Grep`: the workspace files |
-| | `write` | `Write`, `Edit` on the pydantic-ai loop; `Write`, `Edit`, `MultiEdit`, `NotebookEdit` on the claude-agent-sdk loop |
+| | `write` | `Write`, `Edit`, and whatever else the loop wires under those names |
 | | `execute` | `Bash` (`PowerShell` on Windows), `RunPython`, in the workspace, in the job's own process tree |
 | | `network` | `WebFetch`, `WebSearch` |
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
@@ -654,6 +654,24 @@ What the scheduled path settles:
   change.
 
 Deploy one or the other. An agent watched by both is graded twice.
+
+#### Inputs and where a default lives
+
+Every input is a parameter of the deployment function above. A workspace changes a default by
+editing that parameter; a single run overrides one with `-c <name>=...`, and a job section in
+`config.toml` overrides it for every run of that job.
+
+| input | per-run deployment | scheduled deployment | default |
+|---|---|---|---|
+| `inspector_run_id` | the run graded; empty on a trigger, then `prev_run_id` | unused | `""` |
+| `inspector_job_ref` | the job whose latest run is graded when no run id is given | the job whose window is graded | `""`, and the inspector's job ref on the scheduled one |
+| `max_runs_read` | bounds `single_run_scope` | the same, on every run in the window | `DEFAULT_MAX_RUNS_READ` in `checks.py`, 5 |
+| `window_days` | unused | how far back the window reaches with no deployment history | `DEFAULT_WINDOW_DAYS` in `checks.py`, 7 |
+| `max_runs` | unused | inspector runs one scheduled job grades | `DEFAULT_BATCH_RUNS` in `checks.py`, 25 |
+
+`prepare_batch` also takes `since` to pin the window start. It is an argument of the function,
+not a declared input, so a deployment that exposes it as a parameter gets a manifest warning
+that the system prompt never mentions it.
 
 ### Triggers that would loop
 

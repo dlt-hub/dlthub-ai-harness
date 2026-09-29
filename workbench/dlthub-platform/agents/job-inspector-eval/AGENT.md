@@ -17,9 +17,9 @@ rules:
 # as a window, so the judge needs no tool and cannot spend a turn looking for one
 access: {}
 # Two deployments run this agent: a triggered one grading a single inspector run, and a
-# scheduled one grading a window of runs. Both are in `BACKGROUND_AGENTS.md`. Every input
-# below is a job configuration key: set it for one run with `-c max_runs=10`, or change its
-# default on the deployment function's parameter of the same name
+# scheduled one grading a window of runs. "Inputs and where a default lives" in
+# `BACKGROUND_AGENTS.md` maps every input below to the deployments that use it and to where
+# its default is set
 inputs:
   type: object
   properties:
@@ -258,7 +258,11 @@ output:
           description: Cost of the inspector run when its loop reported it.
         runs_read:
           type: integer
-          description: Distinct runs the inspector read a record or a log for.
+          description: >
+            Distinct runs the inspector read a record or a log for, the inspected run
+            included. `single_run_scope` counts the runs beyond that one, so it reads one
+            lower.
+
   # only what the judge itself produces; the rest are computed after the loop and any value
   # the model puts there is overwritten
   required: [status, summary, checks]

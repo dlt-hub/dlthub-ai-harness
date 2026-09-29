@@ -61,8 +61,53 @@ def test_result_envelope_is_read_from_the_log_tail():
     assert envelope["trace"]["turn_count"] == 3
 
 
+def test_result_envelope_survives_a_brace_inside_a_string_value():
+    """A fix quoting `require={...}` or a summary holding a bare `}` is ordinary output."""
+    result = output()
+    result["summary"] = "## Diagnosis\n\n- the loader closed on } before the batch ended"
+    result["fix_change"] = 'require={"profile": "access"}'
+    result["proposed_fix"] = "set it to {"
+    payload = {"type": "x", "status": "succeeded", "result": result,
+               "trace": {"turn_count": 3}}
+    log = inspector_log(result_json=json.dumps(payload, indent=2))
+
+    envelope = C.parse_result_envelope(log)
+
+    assert envelope is not None
+    assert envelope["result"]["proposed_fix"] == "set it to {"
+    assert envelope["result"]["fix_change"] == 'require={"profile": "access"}'
+    assert envelope["trace"]["turn_count"] == 3
+
+
 def test_result_envelope_is_none_without_one():
     assert C.parse_result_envelope(inspector_log()) is None
+
+
+def test_a_tool_error_attaches_to_its_own_call_across_a_batch():
+    """The captured runs print two calls before either result, so the scan cannot stop at the
+    next call of any tool."""
+    log = inspector_log(events=[
+        "  list_tables (dlt-workspace-mcp)",
+        "  get_row_counts (dlt-workspace-mcp)",
+        "  Error calling tool 'get_row_counts'",
+        "  Error calling tool 'list_tables'",
+    ])
+    ctx = C.EvalContext(
+        inspector_run={}, output={}, trace=None, inspector_log=log,
+        events=C.parse_transcript(log), failed_run=None, failed_log=[], neighbours=[],
+        pipeline_trace=None,
+    )
+
+    assert [C._errored(ctx, call) for call in ctx.tool_calls] == [True, True]
+
+
+def test_token_overlap_counts_whole_tokens_only():
+    """A substring test let short tokens match inside longer words and inflate the share."""
+    assert C.token_overlap("load failed at 38", "load failed at 38") == 1.0
+    # `38` inside `138` and `no` inside `nothing` are not the tokens the excerpt named
+    assert C.token_overlap("38", "row 138 written") == 0.0
+    assert C.token_overlap("no rows", "nothing wrong here") == 0.0
+    assert C.token_overlap("", "anything") == 1.0
 
 
 def test_source_line_number():
