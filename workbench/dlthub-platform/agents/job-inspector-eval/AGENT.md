@@ -468,8 +468,8 @@ what to change in that definition so the broken instructions stop recurring.
 
 **Your answer goes in `recommendation`, and it is never empty.** Nothing reads `summary` for
 it, and a pass that puts the answer there, or leaves `recommendation` blank, is discarded and
-replaced with a generic line. It takes one of two shapes, both set out below: bullets naming
-what to change, or a single bullet saying no change follows and why. The `summary` description in
+replaced with a generic line. It takes one of two shapes, both set out below: bullets
+naming what to change, or, where nothing in the window warrants one, a single bullet saying so. The `summary` description in
 the output schema is written for the grading pass; on this one `summary` takes a single bullet,
 described at the end of this section. Restating what broke is not the task either: the runs
 were graded before you and their findings are already in the report. You are asked what to
@@ -483,7 +483,7 @@ it.
 
 `bounds` holds the configured limits, `max_runs_read` and `max_runs`. A check that broke
 because the window ran under a tighter limit than usual is a fact about the configuration, not
-an instruction the inspector is missing, so propose no change for it.
+an instruction the inspector is missing, so leave it out.
 
 `definition_sections` is the heading outline of the file your recommendation changes, read for
 you. Name a section from that list: one the definition does not have makes the recommendation
@@ -496,11 +496,16 @@ names a section of a file the reader has to guess. Rank them: a check broken on 
 before one broken once. Where two broken checks have one cause, say it once and name both check
 ids.
 
-Where there is not, write one bullet saying so and why, and skip the format above: it is for a
-change, and a no-change answer has no section to name. "No change to `<the definition path>`
-follows: every break came under the configured `max_runs_read: 0`" is the whole bullet. This is
-the shape to use when `bounds` accounts for the breaks, and when the reasonings show the
-instruction was followed and the check read it wrong.
+**Every bullet asks for a change.** A broken check that warrants none is left out, silently and
+with no bullet of its own: a reader acts on this list, and a line explaining why something needs
+no change is one they have to read and then discard. Leave one out when `bounds` accounts for
+it, the window ran under a tighter limit than usual, or the reasonings show the instruction was
+followed and the check graded it wrong.
+
+Only where that empties the list does `recommendation` take the other shape: one short bullet,
+saying no change follows and naming the reason in a clause. "No change to `<the definition
+path>` follows: every break came under the configured `max_runs_read: 0`" is the whole bullet.
+Skip the format above for it, since a no-change answer has no section to name.
 
 Fill `status` `succeeded` and return `checks` empty: answer no check here, the runs were
 graded before you and their results stand. `summary` takes one bullet and no more, saying how
