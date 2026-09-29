@@ -410,11 +410,7 @@ def test_the_inspector_reads_the_workspace_and_the_context():
 
 
 def test_the_evaluator_is_granted_nothing():
-    """It fetches nothing: the preparation step reads every artifact its checks turn on.
-
-    Given tools it used them, on files and then on run records, and spent the budget re-running
-    the inspection it was meant to grade.
-    """
+    """It fetches nothing: the preparation step reads every artifact its checks turn on."""
     assert _agent_access(SHIPPED_AGENTS / "job-inspector-eval" / "AGENT.md") == {}
 
 

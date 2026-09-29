@@ -6,8 +6,7 @@ description: >
   result and trace, the failed run it inspected and that run's log, and reports TRUE, FALSE
   or N/A per instruction with a reasoning. Read-only.
 # no `tools`, so no MCP server. The preparation step fetches the run records, the logs, the
-# traces and the neighbours, and the judge reads them as windows. Given the tools it fetched
-# instead of grading: it re-ran the inspection it was meant to grade and spent the budget on it
+# traces and the neighbours, and the judge reads them as windows
 skills:
   - dlthub-platform:debug-deployment
 rules:
@@ -17,9 +16,10 @@ rules:
 # nothing is granted: every artifact the checks read is fetched before the loop and handed over
 # as a window, so the judge needs no tool and cannot spend a turn looking for one
 access: {}
-# every input is a job configuration key: `-c inspector_run_id=...` on a single run, or a
-# default on the deployment function's parameter of the same name. A workspace changes a
-# default there; `BACKGROUND_AGENTS.md` carries both deployment functions
+# Two deployments run this agent: a triggered one grading a single inspector run, and a
+# scheduled one grading a window of runs. Both are in `BACKGROUND_AGENTS.md`. Every input
+# below is a job configuration key: set it for one run with `-c max_runs=10`, or change its
+# default on the deployment function's parameter of the same name
 inputs:
   type: object
   properties:
@@ -35,21 +35,23 @@ inputs:
       type: string
       description: job ref of the inspector job; its latest run is evaluated when no run id is given
       entity_type: job
-    # bounds. `max_runs_read` holds on both paths, the two below only on the scheduled one
     max_runs_read:
       type: integer
       description: >
-        how many runs beyond the one it inspected the inspector may read before
-        `single_run_scope` fails. The inspected run is never counted, so `0` means that run
-        alone. Defaults to `DEFAULT_MAX_RUNS_READ` in `checks.py`, which is 5.
+        Both deployments. How many runs beyond the one it inspected the inspector may read
+        before `single_run_scope` fails. The inspected run is never counted, so `0` means
+        that run alone. Default `DEFAULT_MAX_RUNS_READ` in `checks.py`, which is 5.
     window_days:
       type: integer
       description: >
-        how many days back the window falls to when no deployment history can be read. The
-        window normally starts where the inspector's definition last changed. Defaults to 7.
+        Scheduled deployment only. How many days back the window reaches when no deployment
+        history can be read; otherwise it starts where the inspector's definition last
+        changed. Default 7.
     max_runs:
       type: integer
-      description: how many inspector runs one scheduled job evaluates. Defaults to 25.
+      description: >
+        Scheduled deployment only. How many inspector runs one scheduled job evaluates.
+        Default 25.
     # filled by the preparation step in `checks.py`, never set by hand or by configuration
     deterministic_checks:
       type: string
@@ -174,12 +176,12 @@ output:
               One or two sentences. For FALSE, quote what contradicts the instruction. For
               N/A, name the condition.
         required: [id, kind, outcome, reasoning]
-    # the scheduled batch path fills these three from `prepare_batch` and `finalize_batch`.
-    # A single evaluation leaves them out, and you never write them. Their properties are
+    # the scheduled path fills these three from `prepare_batch` and `finalize_batch`. A
+    # single evaluation leaves them out, and you never write them. Their properties are
     # spelled out because an object with none is what a strict validator refuses
     window:
       type: object
-      description: Batch path only. The window evaluated. Filled by `checks.py`, never by you.
+      description: Scheduled path only. The window evaluated. Filled by `checks.py`, never by you.
       properties:
         job_ref:
           type: string
@@ -204,7 +206,7 @@ output:
           description: the window held more runs than `max_runs`, so the oldest were left out
     evaluations:
       type: array
-      description: Batch path only. One entry per inspector run graded. Filled by `checks.py`.
+      description: Scheduled path only. One entry per inspector run graded. Filled by `checks.py`.
       items:
         type: object
         properties:
@@ -232,7 +234,7 @@ output:
     skipped_runs:
       type: array
       description: >
-        Batch path only. One entry per run found and not graded. Filled by `checks.py`.
+        Scheduled path only. One entry per run found and not graded. Filled by `checks.py`.
       items:
         type: object
         properties:
@@ -290,10 +292,8 @@ open, and an input with no value renders as nothing between its backticks.
   rests on a pattern across several runs, so a single evaluation recommends nothing.
 - **`write the window recommendation`.** A window of inspector runs was graded before you and
   you say, once, what to change. Skip to "Writing the window recommendation" at the end of this
-  prompt and follow that section alone. Every section between here and it describes grading one
-  run and none of it applies to you: the grading inputs are empty on this pass by design, which
-  is the shape of your task and not a fault to report. Answer no checks: return `checks`
-  empty.
+  prompt and follow that section alone. Everything between here and it describes grading one
+  run, so the grading inputs are empty on this pass by design. Return `checks` empty.
 
 ## What counts as success for your run
 
@@ -315,10 +315,8 @@ you have no tools, and every window below is already in this prompt.
 - `{{ max_runs_read }}` is how many runs beyond the one it inspected the inspector was allowed
   to read; the inspected run itself is never counted. The deterministic check
   `single_run_scope` already applies it; you need it only to read that check's reasoning.
-- `{{ window_days }}` and `{{ max_runs }}` belong to the batch path, which grades every
-  inspector run since the definition last changed. They bound the window the preparation
-  step resolved, and you grade one run whichever path started you, so they change nothing
-  about your answers.
+- `{{ window_days }}` and `{{ max_runs }}` bound the window on the scheduled deployment. You
+  grade one run whichever deployment started you, so they change nothing about your answers.
 - `{{ deterministic_checks }}` is a JSON list of results Python computed, given to you as
   context. **Do not repeat them in your output.** They are merged in after you finish, and an
   entry you rewrite is discarded.
@@ -349,16 +347,13 @@ While `task` is `grade one inspector run`, report `status: failed` when
 resolved, and say so. Under the other task both are empty because that task grades nothing, and
 reporting it is itself the fault.
 
-The inputs above are your evidence, and you have no file tools: `workspace_sources` is the
-source the checks turn on, read and bounded before your first turn. Cite the path and the line
-from it in the reasoning, as you would from a file you opened.
+Cite the path and the line from `workspace_sources` in the reasoning, as you would from a file
+you opened. Where it does not settle a check, say so and answer from what you hold: a missing
+window is no reason to leave an id unanswered.
 
-`{{ rubrics }}` carries the instruction every check you answer grades, so the inspector's
-definition is not among your inputs either. The preparation step reads it for the two checks
-that turn on its `access` block and its heading guidance, and answers those in Python.
-
-Where `workspace_sources` does not settle a check, say so in the reasoning and answer from what
-you hold. A missing window is not a reason to leave an id unanswered.
+`{{ rubrics }}` carries the instruction every check you answer grades. The preparation step
+reads the inspector's definition for the two checks that turn on its `access` block and its
+heading guidance, and answers those in Python.
 
 Your run started from trigger `{{ run_context.trigger }}` as run `{{ run_context.run_id }}`.
 
@@ -466,14 +461,11 @@ You reach this section only when `task` is `write the window recommendation`. A 
 every inspector run since the inspector's definition last changed, and you are asked, once,
 what to change in that definition so the broken instructions stop recurring.
 
-**Your answer goes in `recommendation`, and it is never empty.** Nothing reads `summary` for
-it, and a pass that puts the answer there, or leaves `recommendation` blank, is discarded and
-replaced with a generic line. It takes one of two shapes, both set out below: bullets
-naming what to change, or, where nothing in the window warrants one, a single bullet saying so. The `summary` description in
-the output schema is written for the grading pass; on this one `summary` takes a single bullet,
-described at the end of this section. Restating what broke is not the task either: the runs
-were graded before you and their findings are already in the report. You are asked what to
-change.
+**Your answer goes in `recommendation`, and it is never empty.** A pass that puts it in
+`summary`, or leaves `recommendation` blank, is discarded and replaced with a generic line. It
+takes one of two shapes, both set out below: bullets naming what to change, or a single bullet
+saying no change follows. The runs were graded before you and their findings are already in the
+report, so restating what broke answers nothing. You are asked what to change.
 
 `{{ window_findings }}` is JSON: the `job_ref` graded, `runs_evaluated`, the window bounds,
 the `definition` path, its `definition_sections`, the `bounds` the runs were graded under, and

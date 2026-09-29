@@ -109,29 +109,19 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-Neither agent this repo ships grants `data`. A background diagnosis is built from run
-records, logs, job definitions, telemetry and source, and a `data` grant exposes workspace
-data to a model-driven process, which is outside the job-inspector/evaluator safety model.
+The two agents this repo ships differ in what they need. `job-inspector` grants `local: read`
+and `context: read`: it investigates an open question and cannot know in advance which file or
+which record answers it. `job-inspector-eval` grants nothing and declares no `tools`: it
+answers a fixed list of checks, so its preparation step fetches every artifact those checks
+read before the loop starts and hands the judge bounded windows.
 
-The two split on the rest, and the split is the general rule. `job-inspector` grants
-`local: read` and `context: read`: it investigates an open question and cannot know in advance
-which file or which record answers it. `job-inspector-eval` grants nothing and declares no
-`tools`: it answers a fixed list of checks, so its preparation step knows every artifact they
-turn on and fetches all of it before the loop, handing the judge bounded windows.
-
-Grant access where the task decides what to open, and prepare the reads where the checks are
-fixed. Measured on the evaluator, a judge given tools used them: with file tools it read the
-workspace at a dozen offsets, and with the file tools gone but the context tools left it
-fetched run records, job definitions and traces and re-ran the inspection it was grading. Both
-times it spent the budget and returned nothing. Preparing the reads is what made it finish.
+Neither agent grants `data`. Both work from run records, logs, job definitions, telemetry and
+source, and a `data` grant would put workspace data in front of a model-driven process.
 
 `local` verbs are named after Claude Code's tools, so one declaration means the same on both
-loops. The set each verb wires differs: claude-agent-sdk adds `MultiEdit` and `NotebookEdit`
-under `Edit`, `NotebookRead` under `Read`, `BashOutput` and `KillShell` under `Bash`, and has
-no `RunPython`, so Python runs through the shell. Credential files (`*secrets.toml`, `.env`)
-are never readable, whatever `local` says. A tool the declaration does not cover is not
-offered to the model. The runtime grants what it can, and the trace of every run lists the
-tools that were wired.
+loops, though the exact set each verb wires differs. Credential files (`*secrets.toml`,
+`.env`) are never readable, whatever `local` says. A tool the declaration does not cover is
+not offered to the model, and the trace of every run lists the tools that were wired.
 
 Repeat the policy in the body as explanation: "you are read-only" helps the model understand
 its role, and the `access` block enforces it for the MCP tools. `local: execute` is the
@@ -245,9 +235,8 @@ reader sees without opening the result. Every agent writes it the same way:
 - **The same headings on every run of one agent**, in the same order, named for what that
   agent reports. Take the default for the kind of agent below and change it where the agent
   reports something else. Declare the set in the body and hold to it.
-- **The finding comes first and the scope last.** The first section says what the run found.
-  What the run covered goes at the bottom, next to the detail a reader opens when the finding
-  sends them there.
+- **The finding comes first and the scope last.** The first section says what the run found;
+  what it covered goes at the bottom, next to the detail a reader opens from there.
 - **One or two plain sentences per bullet, one fact each.** Two verbs joined by `and` or
   `then` are two bullets.
 - **A part of a finding is a bullet under it, nested one level.** A grade's categories and a
@@ -265,7 +254,7 @@ reader sees without opening the result. Every agent writes it the same way:
   link.
 - **Markdown only, no raw HTML.** The summary renderer in the web UI strips tags, so a
   `<details>` element folding a long list arrives as an empty section. A long list goes in as
-  plain bullets, or is cut to the entries a reader needs.
+  plain bullets.
 - **Close every code span, and never escape a backtick with a backslash.** An unbalanced span
   swallows the rest of the line in the UI, and `\`` renders as itself.
 - **No verdict label at the top.** State what was found; `passed` and the other output fields
@@ -279,7 +268,8 @@ bullets itself.
 
 ##### Default sections
 
-An agent that reports on one thing it did takes the sections `job-inspector` writes:
+An agent that investigates, inspects or analyses an entity in the workspace takes the
+sections `job-inspector` writes:
 
 | heading | the bullets answer |
 |---|---|
@@ -300,7 +290,7 @@ which open on the verdict and keep the evidence underneath:
 `job-inspector-eval` names its two categories `Instruction following` and `Quality`; a grader
 with other categories renames those bullets and leaves the rest. A report over many runs takes
 the same sections, with the window, the runs skipped and the reasons under `Scope`, and each
-broken instruction states the runs it broke on. One renderer writes both.
+broken instruction states the runs it broke on.
 
 Changing a section the evaluator grades means changing the evaluator too:
 `REQUIRED_SUMMARY_SECTIONS` in `checks.py` holds the inspector's three headings, and the
@@ -663,8 +653,7 @@ What the scheduled path settles:
   of the reasonings, and writes one to three bullets naming the file and the section to
   change.
 
-Pick one path. An agent watched by both the per-run evaluator and the scheduled one is graded
-twice.
+Deploy one or the other. An agent watched by both is graded twice.
 
 ### Triggers that would loop
 
@@ -695,21 +684,12 @@ deterministic results, and every check is a narrow question with a three-value a
 | Google | `google:gemini-3.5-flash` | `gemini` | `gemini-pro` |
 
 Step up only for a check that gives wrong outcomes after its rubric was fixed.
-`loop: claude-agent-sdk` takes Anthropic models only, so naming it in a workspace whose key is
-Azure or Google breaks the run.
 
-The table is about the answers. Whether a model reaches them inside the limits is a separate
-question, and what decides it is how the evidence arrives. A judge handed bounded windows
-answers in two turns on any provider here. A judge left to find the evidence itself searches
-the workspace instead, and on some models never stops: before `job-inspector-eval` prepared its
-source reads, the same evaluation finished on an Azure deployment and passed 1,000,000 tokens
-without an answer on `anthropic:claude-sonnet-5`, opening the inspector's definition at a dozen
-offsets and reading files no check names.
-
-So prepare the reads rather than granting `local` and hoping. Where the task does need `local`,
-grade a known run by hand on the model you mean to pin and read the trace: a file the checks do
-not name, or the same file at several offsets, is budget the run needed for answers. Raise
-`max_tokens` last, since a larger budget buys more of the same behaviour.
+How the evidence arrives decides whether a model answers inside the limits. A judge handed
+bounded windows answers in two turns on every provider in the table. Where an evaluator does
+need `local`, grade a known run by hand on the model you mean to pin and read the trace: a file
+the checks do not name, or the same file at several offsets, is budget the run needed for
+answers. Raise `max_tokens` last, since a larger budget buys more of the same behaviour.
 
 `agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run
 takes all four from the workspace or all four from the runtime. Setting `api_key` alone leaves
