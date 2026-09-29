@@ -515,12 +515,14 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     section="__deployment__",
     trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
 )
 
 
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
+    require={"profile": "access"},
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -581,6 +583,227 @@ Code that talks to the platform reads dlt's own `active().runtime_config` for th
 same call resolves from `.dlt/config.toml` locally and from the mounted configuration on the
 runner, so there is nothing to guess about which keys the platform injects. A frontmatter field resolving a
 module in the agent folder would replace that line; it is a dlt follow-up.
+
+### Running an evaluator on a schedule
+
+The declaration above evaluates one run per trigger. A workspace that would rather read one
+report covering the runs of the current definition deploys the same agent on a schedule and
+lets the preparation step resolve the window:
+
+```python
+@run.agent(
+    agent="dlthub-platform:job-inspector-eval",
+    trigger="schedule:0 7 * * 1",
+    require={"profile": "access"},
+)
+async def job_inspector_eval_batch(
+    run_context: run.TJobRunContext = None,
+    inspector_job_ref: Annotated[
+        str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
+    ] = "jobs.__deployment__.job_inspector",
+    window_days: Annotated[int, run.Doc("fallback window with no deployment history")] = 7,
+    max_runs: Annotated[int, run.Doc("runs one scheduled job evaluates")] = 25,
+) -> dict:
+    batch = prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
+                          window_days=window_days, max_runs=max_runs)
+    if batch.aborted:
+        raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
+    # one run out of budget or out of shape must not cost the rest of the window
+    evaluations, failures = await judge_runs(
+        run_context["ai_loop"], batch.preps, tolerate_failures=True
+    )
+    if not evaluations:
+        empty = finalize_batch([], batch, failures)
+        if batch.found:
+            raise run.JobAbortedException(empty["summary"], {**empty, "status": "aborted"})
+        print(empty["summary"])
+        return {}
+    recommendation = await judge_window_recommendation(
+        run_context["ai_loop"], evaluations, batch
+    )
+    return finalize_batch(evaluations, batch, failures, recommendation)
+```
+
+What the scheduled path settles:
+
+- **The window starts at the last definition change.** The runs before it were graded against
+  different instructions, so mixing them says nothing about either. The walk runs down the
+  workspace's deployments from the newest and takes the oldest one still carrying the current
+  hash of the graded agent's `AGENT.md`. Pass `since` to override it; with no deployment
+  history the window falls back to `window_days` and says so.
+- **A run is graded again on the next schedule** until the definition changes, because the
+  window is the definition's lifetime rather than the time since the last report. `max_runs`
+  bounds what that costs.
+- **The window is walked, not guessed.** Run listing yields runs newest first, pages lazily
+  and takes no `since` or `until`, so the walk runs from the newest run down to the first one
+  outside the window and a window holding more runs than a page still comes back whole.
+- **Every run found is accounted for.** A run still going, a run that declared no result and a
+  run whose artifacts could not be read are listed under `skipped_runs` with the reason, and
+  `runs_found` equals `runs_evaluated + runs_skipped`.
+- **A graded run is `completed` or `failed`.** Those are the run record's words. A record uses
+  the platform's vocabulary (`pending`, `starting`, `running`, `cancelling`, `completed`,
+  `failed`, `cancelled`, `skipped`) and the `status` inside an agent's result uses its own
+  (`succeeded`, `failed`, `aborted`), so a run that finished well reads `completed` on the
+  record and `succeeded` in the result.
+- **One judge run per graded run.** Ten runs is ten loop runs inside one job, and
+  `limits.max_tokens` counts from zero on each, so the limit in `defaults` still means one
+  evaluation and the cost of the job is the sum.
+- **The job result carries the last loop's trace.** dlt stores one trace per job run, so a
+  batch output counts turns and tokens over its evaluations instead.
+- **An empty window reports to the log.** Right after a definition change the graded agent has
+  not run yet. A job whose loop never started has no trace, and `_finish` reads one on any
+  returned dict carrying `status`, so an empty window prints its report and returns `{}`. A
+  window that found runs and graded none raises, because that is a fault.
+- **The recommendation is written over a window and nowhere else.** One run is one
+  observation, and what to change in the instructions the agent followed does not follow from
+  one observation. The scheduled job makes one more judge call after the window is graded,
+  given the broken checks with how many runs broke each and a few of the reasonings, and
+  writes one to three bullets naming the file and the section to change.
+
+Pick one path. An agent watched by both the per-run evaluator and the scheduled one is graded
+twice.
+
+### Triggers that would loop
+
+Do not point an inspecting agent at `job.fail:*` in a workspace that runs an evaluator. The
+selector expands onto every other job, the evaluator included, so a failing evaluation would
+be inspected and the inspection would start the evaluator again. Name the jobs, or tag them. A
+tag that matches no job is reported at deploy time as `matched no job`.
+
+Three things stand between a broad selector and a loop, and none of them replaces naming the
+jobs: the inspecting agent aborts when the run it resolved belongs to an evaluator job or to
+its own job; `no_agent_job_inspected` reports FALSE when an inspection reached one anyway, so
+the loop shows up in the evaluation rather than in the bill; a job event never fires on a
+manual run. dlt has no manifest validation for this yet, because a selector is expanded to
+concrete refs at deploy time and nothing compares the result against the jobs that run agents.
+
+### Picking the judge model
+
+An evaluator names no model, so the workspace sets one in the `AGENT__MODEL` variable. It
+takes a `provider:model` id on any provider, and an alias where the provider has one. A model
+at least as capable as Claude Sonnet 5 is enough: the judge reads bounded windows and the
+deterministic results, and every check is a narrow question with a three-value answer. It runs
+after every graded run, so its cost adds to every failure.
+
+| Provider | Model meeting the bar | Alias | Step up when needed |
+|---|---|---|---|
+| Anthropic | `anthropic:claude-sonnet-5` | `sonnet` | `opus` |
+| OpenAI | `openai:gpt-5.4-mini` | `gpt-mini` | `gpt` (`gpt-5.5`) |
+| Azure OpenAI | `azure:<your deployment>` | none | a larger deployment |
+| Google | `google:gemini-3.5-flash` | `gemini` | `gemini-pro` |
+
+Step up only for a check that gives wrong outcomes after its rubric was fixed.
+`loop: claude-agent-sdk` takes Anthropic models only, so an agent that sets no loop runs on
+pydantic-ai and reaches every provider in the table. Naming that loop in a workspace whose key
+is Azure or Google breaks the run.
+
+`agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run
+takes all four from the workspace or all four from the runtime, never one from each. Setting
+`api_key` alone leaves `model` unset, so the run sends the agent's default model to your
+endpoint and gets `401 API key is invalid`. Set them as workspace variables, which arrive on
+the runner as environment and override `.dlt/secrets.toml`:
+
+```bash
+printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
+```
+
+| Variable | Anthropic | Azure OpenAI |
+|---|---|---|
+| `AGENT__MODEL` | `anthropic:claude-sonnet-5` | `azure:<deployment name>` |
+| `AGENT__API_KEY` | the Anthropic key | the Azure key |
+| `AGENT__API_URL` | unset | `https://<resource>.openai.azure.com` |
+| `AGENT__API_VERSION` | unset | the api-version your deployment serves |
+
+Azure is the only provider pydantic-ai gives `api_version`. On the rest it is ignored with a
+warning, so leave it unset.
+
+### Running an evaluation by hand
+
+```bash
+dlthub local run job_inspector_eval -c inspector_run_id=<run id>
+```
+
+```bash
+dlthub local run job_inspector_eval -c inspector_job_ref=jobs.job_inspector
+```
+
+Without inputs the evaluator reads the `prev_run_id` of its own run, which the scheduler sets
+when the trigger started it. The resolution order is the given run id, then `prev_run_id`,
+then the latest run of the given job ref, then the latest run of the job a `job.success:` or
+`job.fail:` trigger names, then `aborted`.
+
+The JWT that `dlthub login` writes expires after about an hour, so a fetcher passes a
+credentials object the SDK renews through rather than a static token. A long evaluation would
+otherwise fail halfway with `token_expired`.
+
+### Replaying an evaluation offline
+
+Capturing everything one evaluation reads into a directory, and reading it back from there,
+re-runs that evaluation against a changed check without the platform:
+
+```python
+import checks as C
+
+C.capture(C.SdkFetcher.connect(), "<run id>", "captures/run-42")
+prep = C.prepare({"run_id": "local"}, fetcher=C.FileFetcher("captures/run-42"),
+                 inspector_run_id="<run id>")
+```
+
+A fetch that fails is captured as absent rather than raised, so a partial capture still
+replays and the checks see what the evaluation would have seen.
+
+`job-inspector-eval` keeps nine captured runs under
+`tests/job_inspector_eval/fixtures/captured/`, each named after the failure it shows.
+`tools/scrub_capture.py` replaces every identifier before a capture lands in git, and a test
+holds each fixture file to that. Three of them carry a reviewed answer for every judge check
+and the summary each renders is a golden file, so a diff on one is a change in what the reader
+reads. A further test merges captures into one root and runs the batch path over them.
+
+### What an evaluation reports
+
+`passed` is true when no check is FALSE, every open check came back answered, and at least one
+check was decided. A judge response that is empty or cut off leaves checks unanswered, and
+that fails the evaluation rather than passing it on the deterministic results alone.
+`pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A` never moves it. It sits beside
+`decided_count` and `na_count` in the summary, because a rate over a third of the checks reads
+the same as a rate over all of them.
+
+A category verdict counts the checks that broke when one run is graded and takes their share
+over a window, because one run decides tens of checks and a window thousands:
+
+| verdict | one evaluation | a window |
+|---|---|---|
+| blocking | a security check came back FALSE, or 6 or more checks broke | a security check came back FALSE, or over 10% broke |
+| needs attention | 3 to 5 broke | 2% to 10% broke |
+| minor issues | 1 or 2 broke | under 2% broke |
+| no findings | none broke, and at least one was decided | the same |
+| not graded | the category decided nothing | the same |
+
+### What the checks cannot see
+
+- **Verbosity 0 blinds the transcript checks.** A check that reads tool arguments or the
+  agent's own statements needs the graded job's log at `agent.verbosity` 1. At 0 the log keeps
+  tool names only, and those checks report `N/A` and say why. Keep an agent under evaluation
+  at verbosity 1.
+- **A parser that goes blind decides nothing and fails the evaluation.** A log the parser
+  could not read looks exactly like an agent that called nothing, so a check reading good
+  behaviour off it would be worse than no answer. The run trace lists the tools the runtime
+  recorded, so a trace with tool use and a transcript with none is a parser fault: the checks
+  that read the transcript are held at `N/A`, the fault is recorded, and the evaluation comes
+  back `failed`.
+- **Line numbers run over the whole log.** The platform numbers `setup`, `program`, `runner`
+  and `provider` lines in one sequence, so a job whose image build printed 197 lines has its
+  first program line at 198. Evidence cites that number and the checks index by it.
+- **Judge checks are not deterministic.** Their accuracy was established on real runs during
+  testing rather than against a labelled set. A judge check that flips on the same input is a
+  bug in its rubric; file it.
+- **The judge reads model-authored text.** The body delimits it as content under evaluation
+  and forbids following instructions found in it. That reduces the risk of prompt injection
+  through a failed run's log without removing it.
+- **The stored job result needs `dlthub-client` 0.28.5a1 or newer.** `job_runs.result` and
+  `job_runs.trace` arrived there. On an older client, and on a run that declared no result,
+  the result envelope the launcher prints at the end of the log is parsed instead, and a
+  truncated log loses that envelope.
 
 ## Validation
 

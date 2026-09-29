@@ -8,7 +8,8 @@ registered too, with no function, so the registry is the one list of check ids.
 builds the bounded evidence the judge reads. `finalize` writes the computed results over the
 judge's output, so the model cannot alter them.
 
-See README.md in this folder for the check table and the limitations per check.
+Each check's docstring states the instruction it grades and what makes it TRUE, FALSE and
+N/A. `BACKGROUND_AGENTS.md` covers deploying an evaluator and what the checks cannot see.
 """
 
 from __future__ import annotations
@@ -4475,7 +4476,7 @@ class EvalPrep:
 
         Carry it on `run.JobAbortedException` rather than returning it. dlt routes a returned
         dict carrying `status` into `_finish`, which reads a loop trace this path never wrote.
-        See README.md, "The abort path raises".
+        See "Code around the loop" in `BACKGROUND_AGENTS.md`.
         """
         return {
             "status": "aborted",

@@ -1,22 +1,22 @@
-"""The registry is the one list of check ids. The docs and the prompt must agree with it."""
+"""The registry is the one list of check ids. The prompt and the spec must agree with it.
+
+The agent ships its `AGENT.md` and `checks.py` and no prose beside them: a document restating
+the registry drifts from it, and the checks carry their own instruction in the first paragraph
+of each docstring. `BACKGROUND_AGENTS.md` holds what an author or an operator needs.
+"""
 
 import re
+from pathlib import Path
 
 from conftest import AGENT_DIR
 
 import checks as C
 
 AGENT_MD = (AGENT_DIR / "AGENT.md").read_text()
-README = (AGENT_DIR / "README.md").read_text()
+SPEC = (Path(__file__).resolve().parents[2] / "BACKGROUND_AGENTS.md").read_text()
 
-_TABLE_ID = re.compile(r"^\| `([a-z_]+)` \|", re.M)
 _RUBRIC_ID = re.compile(r"^\*\*`([a-z_]+)`\*\*", re.M)
-
-
-def test_readme_tables_list_every_check_once():
-    listed = _TABLE_ID.findall(README)
-    assert sorted(listed) == sorted(C.CHECKS)
-    assert len(listed) == len(set(listed))
+_PYTHON_BLOCK = re.compile(r"```python\n(.*?)```", re.S)
 
 
 def test_a_rubric_is_registered_for_every_check_the_judge_answers():
@@ -66,18 +66,10 @@ def test_every_deterministic_check_documents_its_three_outcomes():
             assert outcome in entry.doc, f"{entry.id} does not document {outcome}"
 
 
-def test_the_counts_the_readme_states_are_the_counts_in_the_registry():
-    kinds = [entry.kind for entry in C.CHECKS.values()]
-    stated = (
-        f"{len(kinds)} checks: {kinds.count(C.DETERMINISTIC)} deterministic,"
-        f" {kinds.count(C.HYBRID)} hybrid, {kinds.count(C.JUDGE)} judge."
-    )
-    assert stated in README
-
-
-def test_readme_documents_every_input_the_agent_declares():
-    for name in ("inspector_run_id", "inspector_job_ref", "max_runs_read"):
-        assert name in README
+def test_the_agent_ships_no_prose_beside_its_definition():
+    """A document restating the registry drifts from it; the docstrings carry the rules."""
+    beside = {path.name for path in AGENT_DIR.glob("*.md")}
+    assert beside == {"AGENT.md"}
 
 
 TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
@@ -135,16 +127,11 @@ def test_every_check_has_a_category_the_summary_renders():
         assert entry.category in C.CATEGORY_TITLES
 
 
-def test_the_readme_names_the_security_checks_the_registry_marks():
-    """A security FALSE fails its section on its own, so the list cannot drift."""
-    marked = sorted(entry.id for entry in C.CHECKS.values() if entry.security)
-    assert f"`security` marks the {len(marked)} checks" in README
-    for check_id in marked:
-        assert f"`{check_id}`" in README
-
-
 def test_every_deploy_snippet_pins_the_read_only_profile():
     """An agent job without a profile runs on `prod`, which `agent_profile_not_prod` fails."""
-    declarations = README.count("run.agent(")
+    declarations = sum(block.count("run.agent(") for block in _PYTHON_BLOCK.findall(SPEC))
     assert declarations
-    assert README.count('require={"profile": "access"}') >= declarations
+    pinned = sum(
+        block.count('require={"profile": "access"}') for block in _PYTHON_BLOCK.findall(SPEC)
+    )
+    assert pinned >= declarations
