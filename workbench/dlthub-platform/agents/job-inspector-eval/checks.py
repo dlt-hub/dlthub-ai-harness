@@ -1691,6 +1691,51 @@ def read_definition(path: str = INSPECTOR_DEFINITION_PATH, root: str = "") -> st
         return ""
 
 
+SOURCE_WINDOW = 6
+"""Lines of workspace source either side of a cited line, in the windows the judge is given."""
+
+MAX_SOURCE_FILES = 5
+"""Distinct files the judge is given source for. Past this the windows cost more than they
+settle, and the checks that read source turn on one file each."""
+
+
+def read_source(path: str, root: str = "") -> str:
+    """A workspace file, empty when it is not there or sits outside the workspace.
+
+    A traceback frame carries the runner's absolute path and the workspace sits at another
+    root here, so an absolute path is retried as each of its suffixes.
+    """
+    base = Path(root or ".").resolve()
+    candidates = [path]
+    if Path(path).is_absolute():
+        parts = Path(path).parts
+        candidates += [str(Path(*parts[index:])) for index in range(1, len(parts))]
+    for candidate in candidates:
+        file = (base / candidate).resolve()
+        if base not in file.parents and file != base:
+            continue
+        try:
+            if file.is_file():
+                return file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+    return ""
+
+
+def definition_sections(path: str = INSPECTOR_DEFINITION_PATH, root: str = "") -> List[str]:
+    """The markdown headings of the installed definition, in order, as `## Name`.
+
+    The recommendation pass names the section it changes and has no file tools, so it is given
+    the outline rather than the file: 25,000 characters of prose to pick a heading out of.
+    """
+    body = read_definition(path, root)
+    return [
+        line.rstrip()
+        for line in body.splitlines()
+        if line.startswith("## ") or line.startswith("### ")
+    ]
+
+
 def parse_access(definition: str) -> Dict[str, List[str]]:
     """The `access` block of a definition's frontmatter, as axis to verbs.
 
@@ -3865,6 +3910,77 @@ def traceback_frames(ctx: EvalContext) -> List[Dict[str, Any]]:
     return frames
 
 
+def _paths_with_lines(text: str) -> List[Tuple[str, int]]:
+    """Every `path:line`, `path line N` and traceback frame in a string, platform paths out."""
+    found: List[Tuple[str, int]] = []
+    for match in WORKSPACE_PATH_WITH_LINE.finditer(text or ""):
+        path = match.group(1) or match.group(3) or ""
+        at = int(match.group(2) or match.group(4) or match.group(5) or 0)
+        if path and at and not _is_platform_path(path):
+            found.append((path, at))
+    return found
+
+
+def _source_targets(ctx: EvalContext) -> List[Tuple[str, int, str]]:
+    """Workspace file and line this evaluation turns on, with the reason it was pulled in.
+
+    Ordered by which check needs it: `code_vs_platform` reads the traceback frames,
+    `fix_actionable` and `fix_field_filled` read what `fix_target` names, `no_invented_cause`
+    reads the evidence sources, and the rest is what the failed run's log pointed at.
+    """
+    targets: List[Tuple[str, int, str]] = []
+    for frame in traceback_frames(ctx):
+        if frame["owner"] == "workspace":
+            targets.append((frame["file"], frame["at"], "workspace traceback frame"))
+    for path, at in _paths_with_lines(ctx.fix_target):
+        targets.append((path, at, "named by `fix_target`"))
+    for position, item in enumerate(ctx.evidence):
+        if str(item.get("provenance") or "") != "workspace_file":
+            continue
+        for path, at in _paths_with_lines(str(item.get("source") or "")):
+            targets.append((path, at, f"source of evidence[{position}]"))
+    for entry in workspace_files_referenced(ctx):
+        targets.append((entry["file"], entry["at"], "named by the failed run's log"))
+    return targets
+
+
+def workspace_sources(ctx: EvalContext, root: str = "") -> List[Dict[str, Any]]:
+    """Source around every workspace line this evaluation turns on, read for the judge.
+
+    The judge has no file tools: source reaches it the way log windows do, fetched here and
+    bounded here. A file the workspace does not hold is reported with `missing` rather than
+    left out, because a `fix_target` pointing at nothing is what `fix_actionable` grades.
+    """
+    windows: List[Dict[str, Any]] = []
+    seen: set = set()
+    files: List[str] = []
+    for path, at, why in _source_targets(ctx):
+        if (path, at) in seen:
+            continue
+        seen.add((path, at))
+        if path not in files:
+            if len(files) >= MAX_SOURCE_FILES:
+                continue
+            files.append(path)
+        text = read_source(path, root)
+        if not text:
+            windows.append({"file": path, "at": at, "why": why, "lines": [],
+                            "missing": "the workspace holds no such file"})
+            continue
+        lines = text.splitlines()
+        if at > len(lines):
+            windows.append({"file": path, "at": at, "why": why, "lines": [],
+                            "missing": f"the file has {len(lines)} line(s)"})
+            continue
+        first = max(at - SOURCE_WINDOW, 1)
+        last = min(at + SOURCE_WINDOW, len(lines))
+        windows.append(
+            {"file": path, "at": at, "why": why,
+             "lines": [{"n": n, "text": lines[n - 1]} for n in range(first, last + 1)]}
+        )
+    return windows
+
+
 def reasoning_before_log(ctx: EvalContext) -> List[Dict[str, Any]]:
     """The inspector's thoughts and statements before its first log read.
 
@@ -4557,6 +4673,8 @@ def prepare_run(
     run_context: Dict[str, Any],
     fetcher: Fetcher,
     max_runs_read: int = DEFAULT_MAX_RUNS_READ,
+    window_days: int = DEFAULT_WINDOW_DAYS,
+    max_runs: int = DEFAULT_BATCH_RUNS,
 ) -> EvalPrep:
     """Everything `prepare` does once the inspector run is known.
 
@@ -4613,6 +4731,7 @@ def prepare_run(
                 "summary_preamble": ctx.summary_sections["preamble"],
                 "dependency_symptoms": dependency_symptoms(ctx),
                 "workspace_files_referenced": workspace_files_referenced(ctx),
+                "workspace_sources": workspace_sources(ctx),
                 "files_read": files_read(ctx),
                 "other_runs_read": other_runs_read(ctx),
                 "open_point_reasons": open_point_reasons(ctx),
@@ -4628,6 +4747,11 @@ def prepare_run(
         ),
         "neighbour_runs": json.dumps(neighbour_summary(ctx), default=str, indent=2),
         "rubrics": rubric_block(judge_ids(results)),
+        # the batch-path names. dlt blanks a placeholder it cannot resolve, so leaving one out
+        # strips the sentence around it: without this the body opened with "Read `` first"
+        "window_findings": "",
+        "window_days": window_days,
+        "max_runs": max_runs,
     }
     return EvalPrep(
         ctx=ctx,
@@ -4795,7 +4919,9 @@ def prepare_batch(
             batch.skipped.append({"run_id": run_id, "reason": reason})
             continue
         try:
-            prep = prepare_run(run_id, run_context, fetcher, max_runs_read)
+            prep = prepare_run(
+                run_id, run_context, fetcher, max_runs_read, window_days, max_runs
+            )
         except Exception as ex:  # one unreadable run must not cost the other evaluations
             batch.skipped.append({"run_id": run_id, "reason": f"{type(ex).__name__}: {ex}"})
             continue
@@ -4882,9 +5008,10 @@ async def judge_runs(
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
     """Run the judge over each prepared inspector run and finalize what it returns.
 
-    Both deployment functions call this, and `tolerate_failures` is what they disagree on. A
-    single evaluation that raises is the run's own failure and propagates; over a window, one
-    run out of budget or out of shape is reported under `skipped_runs` and the rest report.
+    Both deployment functions call this, and `tolerate_failures` is what they disagree on.
+    Over a window, one run out of budget or out of shape is reported under `skipped_runs` and
+    the rest report. On a single run it propagates, and the deployment function turns it into
+    the evaluation the deterministic half supports with `finalize_without_judge`.
     """
     evaluations: List[Dict[str, Any]] = []
     failures: List[Dict[str, str]] = []
@@ -4898,6 +5025,23 @@ async def judge_runs(
                 {"run_id": prep.inspector_run_id, "reason": f"{type(ex).__name__}: {ex}"}
             )
     return evaluations, failures
+
+
+def finalize_without_judge(prep: EvalPrep, reason: str) -> Dict[str, Any]:
+    """The evaluation the deterministic half alone supports, for a judge that never answered.
+
+    A judge out of turns or out of tokens raises after the preparation step decided its 35
+    checks, and discarding those costs the run every result it had. They are reported instead:
+    each judge check `N/A`, `reason` in `summary`, and `status: aborted`.
+
+    `aborted`, not `failed`, because the loop raised before recording a trace, and a returned
+    dict reaches `_finish`, which reads `loop.trace` and fails the run with
+    `AgentTraceNotAvailable`. The deployment function raises `run.JobAbortedException` carrying
+    this output, which stores it and skips the trace.
+    """
+    evaluation = finalize({}, prep, judge_failure=reason)
+    evaluation["status"] = "aborted"
+    return evaluation
 
 
 def window_findings(
@@ -4932,7 +5076,21 @@ def window_findings(
                 "reasonings": reasonings[:_WINDOW_REASONINGS],
             }
         )
+    # every name the body uses, so no placeholder is left unresolved and no sentence loses its
+    # object. The run-specific ones are empty here: this pass grades no run
+    graded = batch.preps[0].judge_inputs if batch.preps else {}
     return {
+        "run_context": graded.get("run_context") or {"trigger": "", "run_id": ""},
+        "inspector_run_id": "",
+        "inspector_job_ref": batch.job_ref,
+        "max_runs_read": graded.get("max_runs_read", DEFAULT_MAX_RUNS_READ),
+        "inspector_output": "",
+        "deterministic_checks": "",
+        "evidence_windows": "",
+        "neighbour_runs": "",
+        "rubrics": "",
+        "window_days": graded.get("window_days", DEFAULT_WINDOW_DAYS),
+        "max_runs": graded.get("max_runs", DEFAULT_BATCH_RUNS),
         "window_findings": json.dumps(
             {
                 "job_ref": batch.job_ref,
@@ -4940,11 +5098,12 @@ def window_findings(
                 "since": batch.window.get("since"),
                 "until": batch.window.get("until"),
                 "definition": INSPECTOR_DEFINITION_PATH,
+                "definition_sections": definition_sections(),
                 "broken_checks": findings,
             },
             default=str,
             indent=2,
-        )
+        ),
     }
 
 
@@ -5118,8 +5277,13 @@ def _judge_checks(value: Any) -> Tuple[List[Any], str]:
     return entries, ""
 
 
-def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
+def finalize(
+    output: Dict[str, Any], prep: EvalPrep, judge_failure: str = ""
+) -> Dict[str, Any]:
     """Writes the computed results over the judge's, recomputes the outcome, adds the metrics.
+
+    `judge_failure` is set when the loop raised instead of returning, and names why; `output`
+    is empty then and every judge check is reported `N/A`.
 
     The deterministic entries are authoritative, so a judge that rewrote one loses. A check id
     the registry does not know is dropped. A judge check with no answer is reported `N/A`,
@@ -5179,9 +5343,14 @@ def finalize(output: Dict[str, Any], prep: EvalPrep) -> Dict[str, Any]:
     decided = true_count + false_count
 
     # an evaluation that lost checks says nothing about the inspector, so it never passes
-    incomplete = bool(unusable or unanswered or prep.errors or prep.problems)
+    incomplete = bool(judge_failure or unusable or unanswered or prep.errors or prep.problems)
 
     notes: List[str] = []
+    if judge_failure:
+        notes.append(
+            f"The judge never answered: {judge_failure}. Every judge check is reported `N/A`"
+            " and only the deterministic results stand."
+        )
     if unusable:
         notes.append(
             f"The judge's answers could not be read: {unusable}. Every judge check is"

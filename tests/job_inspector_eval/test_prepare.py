@@ -1370,3 +1370,92 @@ def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
     results = {}
     C.run_preconditions(no_pipeline, results)
     assert results["pipeline_step_named"].outcome == C.NA
+
+
+# workspace source windows
+
+
+def _source_context(**overrides):
+    log = with_setup(
+        FAILED_LOG[:2]
+        + ['  File "/workspace/pipelines/github.py", line 42, in load']
+        + FAILED_LOG[2:]
+    )
+    return context(failed_log=log, **overrides)
+
+
+def test_read_source_finds_an_absolute_runner_path_under_this_root(tmp_path):
+    (tmp_path / "pipelines").mkdir()
+    (tmp_path / "pipelines" / "github.py").write_text("one\ntwo\n", encoding="utf-8")
+
+    assert C.read_source("/tmp/dlt_run_x/run/pipelines/github.py", str(tmp_path)) == "one\ntwo\n"
+    assert C.read_source("pipelines/github.py", str(tmp_path)) == "one\ntwo\n"
+
+
+def test_read_source_refuses_a_path_outside_the_workspace(tmp_path):
+    (tmp_path / "inside").mkdir()
+    (tmp_path.parent / "outside.py").write_text("secret\n", encoding="utf-8")
+
+    assert C.read_source("../outside.py", str(tmp_path / "inside")) == ""
+
+
+def test_workspace_sources_windows_the_line_a_traceback_frame_names(tmp_path):
+    (tmp_path / "pipelines").mkdir()
+    lines = [f"line {n}" for n in range(1, 61)]
+    (tmp_path / "pipelines" / "github.py").write_text("\n".join(lines), encoding="utf-8")
+
+    windows = C.workspace_sources(_source_context(), root=str(tmp_path))
+
+    frame = next(w for w in windows if w["file"].endswith("pipelines/github.py"))
+    assert frame["at"] == 42
+    assert frame["why"] == "workspace traceback frame"
+    assert [entry["n"] for entry in frame["lines"]] == list(range(36, 49))
+    assert frame["lines"][C.SOURCE_WINDOW]["text"] == "line 42"
+
+
+def test_workspace_sources_reports_a_file_the_workspace_does_not_hold(tmp_path):
+    windows = C.workspace_sources(_source_context(), root=str(tmp_path))
+
+    frame = next(w for w in windows if w["file"].endswith("pipelines/github.py"))
+    assert frame["lines"] == []
+    assert frame["missing"] == "the workspace holds no such file"
+
+
+def test_workspace_sources_reads_the_line_the_fix_target_names(tmp_path):
+    (tmp_path / "jaffle.py").write_text("\n".join(f"row {n}" for n in range(1, 20)),
+                                        encoding="utf-8")
+    ctx = _source_context(output=output(fix_target="jaffle.py line 12 `cursor_path`"))
+
+    windows = C.workspace_sources(ctx, root=str(tmp_path))
+
+    named = next(w for w in windows if w["file"] == "jaffle.py")
+    assert named["at"] == 12
+    assert named["why"] == "named by `fix_target`"
+    assert {"n": 12, "text": "row 12"} in named["lines"]
+
+
+def test_workspace_sources_caps_the_files_it_opens(tmp_path):
+    fix = " ".join(f"pipe{n}.py line 1" for n in range(1, C.MAX_SOURCE_FILES + 4))
+    for n in range(1, C.MAX_SOURCE_FILES + 4):
+        (tmp_path / f"pipe{n}.py").write_text("only line\n", encoding="utf-8")
+    ctx = _source_context(output=output(fix_target=fix))
+
+    windows = C.workspace_sources(ctx, root=str(tmp_path))
+
+    assert len({window["file"] for window in windows}) <= C.MAX_SOURCE_FILES
+
+
+def test_the_judge_inputs_carry_the_source_windows():
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
+    windows = json.loads(prep.judge_inputs["evidence_windows"])
+    assert "workspace_sources" in windows
+
+
+def test_definition_sections_are_the_headings_and_not_the_file(tmp_path):
+    path = tmp_path / "AGENT.md"
+    path.write_text("# Title\n\nprose\n\n## Investigate\n\nmore\n\n### Checking credentials\n",
+                    encoding="utf-8")
+
+    sections = C.definition_sections("AGENT.md", str(tmp_path))
+
+    assert sections == ["## Investigate", "### Checking credentials"]

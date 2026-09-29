@@ -109,12 +109,17 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-The agents this repo ships grant `local: read` and `context: read`, and no `data`. The
-workspace source is evidence: the inspector reads the file a traceback names, and the
-evaluator reads the inspector's definition and the job's source next to the transcript it
-grades. A background diagnosis is built from run records, logs, job definitions, telemetry
-and source. A `data` grant exposes workspace data to a model-driven process and is outside
-the job-inspector/evaluator safety model.
+The agents this repo ships grant `context: read` and no `data`. A background diagnosis is
+built from run records, logs, job definitions, telemetry and source, and a `data` grant
+exposes workspace data to a model-driven process, which is outside the
+job-inspector/evaluator safety model.
+
+`local: read` is the inspector's alone. It investigates an open question and cannot know in
+advance which file answers it, so it reads the file a traceback names. The evaluator answers
+a fixed list of checks, so its preparation step knows every file they turn on and reads them
+first: the judge gets source as windows and has no file tool. Grant `local` where the task
+decides what to open, and prepare the reads where the task is known. A judge with file tools
+searches the workspace instead of answering, and on some models never finishes.
 
 `local` verbs are named after Claude Code's tools, so one declaration means the same on both
 loops. The set each verb wires differs: claude-agent-sdk adds `MultiEdit` and `NotebookEdit`
@@ -496,7 +501,7 @@ from typing import Annotated
 from dlt.hub import run
 
 sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+from checks import DEFAULT_MAX_RUNS_READ, finalize_without_judge, judge_runs, prepare
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -540,8 +545,15 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-    return finalize(output, prep)
+    evaluations, failures = await judge_runs(
+        run_context["ai_loop"], [prep], tolerate_failures=True
+    )
+    if not evaluations:
+        # the judge ran out of turns or tokens after Python decided its checks; report those
+        # rather than lose the run's whole result
+        degraded = finalize_without_judge(prep, failures[0]["reason"])
+        raise run.JobAbortedException(degraded["summary"], degraded)
+    return evaluations[0]
 ```
 
 The function overrides the definition it drives, so watch the signature. Give it **no
@@ -556,7 +568,9 @@ placeholder must be declared.
 
 A path that never started the loop raises rather than returns. dlt reads `loop.trace` on any
 returned dict carrying `status`, so returning one from the abort branch fails the run with
-`AgentTraceNotAvailable` and loses the abort reason.
+`AgentTraceNotAvailable` and loses the abort reason. A loop that started and then raised is
+the same case: it records its trace only on the way out of a normal return, so the degraded
+evaluation goes out through `JobAbortedException` too.
 
 `.success` and `.fail` are read at import time, before the manifest loader stamps the module
 on the factory, so an agent whose triggers are used in the same module sets `section=`
@@ -679,6 +693,19 @@ deterministic results, and every check is a narrow question with a three-value a
 Step up only for a check that gives wrong outcomes after its rubric was fixed.
 `loop: claude-agent-sdk` takes Anthropic models only, so naming it in a workspace whose key is
 Azure or Google breaks the run.
+
+The table is about the answers. Whether a model reaches them inside the limits is a separate
+question, and what decides it is how the evidence arrives. A judge handed bounded windows
+answers in two turns on any provider here. A judge left to find the evidence itself searches
+the workspace instead, and on some models never stops: before `job-inspector-eval` prepared its
+source reads, the same evaluation finished on an Azure deployment and passed 1,000,000 tokens
+without an answer on `anthropic:claude-sonnet-5`, opening the inspector's definition at a dozen
+offsets and reading files no check names.
+
+So prepare the reads rather than granting `local` and hoping. Where the task does need `local`,
+grade a known run by hand on the model you mean to pin and read the trace: a file the checks do
+not name, or the same file at several offsets, is budget the run needed for answers. Raise
+`max_tokens` last, since a larger budget buys more of the same behaviour.
 
 `agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run
 takes all four from the workspace or all four from the runtime. Setting `api_key` alone leaves

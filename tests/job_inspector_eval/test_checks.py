@@ -402,13 +402,17 @@ def test_shipped_job_inspector_does_not_request_destination_or_write_surfaces():
 
 
 @pytest.mark.parametrize("agent", ["job-inspector", "job-inspector-eval"])
-def test_shipped_agents_read_the_workspace_files_and_the_context(agent):
-    """The source code is evidence for the inspector and for the judge grading it."""
+def test_shipped_agents_read_the_context(agent):
     access = _agent_access(SHIPPED_AGENTS / agent / "AGENT.md")
 
-    assert access["local"] == ["read"]
     assert access["context"] == ["read"]
     assert "data" not in access
+
+
+def test_only_the_inspector_reads_the_workspace_files():
+    """The inspector cannot know which file answers its question; the judge's are prepared."""
+    assert _agent_access(SHIPPED_AGENTS / "job-inspector" / "AGENT.md")["local"] == ["read"]
+    assert "local" not in _agent_access(SHIPPED_AGENTS / "job-inspector-eval" / "AGENT.md")
 
 
 def test_agent_profile_not_prod():
