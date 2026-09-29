@@ -105,10 +105,12 @@ def test_data_tool_table_matches_dlt_access_annotations():
 
 
 def test_the_shipped_definitions_declare_read_only_access():
-    """What `inspector_access_read_only` grades at run time must hold in the repository."""
+    """What `inspector_access_read_only` grades at run time must hold in the repository.
+
+    An empty grant passes: the evaluator has one, since everything it reads is fetched for it.
+    """
     for definition in sorted(AGENT_DIR.parent.glob("*/AGENT.md")):
         access = C.parse_access(definition.read_text())
-        assert access, f"{definition} declares no access block"
         for axis, verbs in access.items():
             allowed = C.READ_ONLY_ACCESS.get(axis)
             assert allowed is not None, f"{definition} grants the {axis} axis"

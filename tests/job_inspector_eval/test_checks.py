@@ -401,18 +401,27 @@ def test_shipped_job_inspector_does_not_request_destination_or_write_surfaces():
     assert "execute" not in access.get("local", [])
 
 
-@pytest.mark.parametrize("agent", ["job-inspector", "job-inspector-eval"])
-def test_shipped_agents_read_the_context(agent):
-    access = _agent_access(SHIPPED_AGENTS / agent / "AGENT.md")
+def test_the_inspector_reads_the_workspace_and_the_context():
+    access = _agent_access(SHIPPED_AGENTS / "job-inspector" / "AGENT.md")
 
+    assert access["local"] == ["read"]
     assert access["context"] == ["read"]
     assert "data" not in access
 
 
-def test_only_the_inspector_reads_the_workspace_files():
-    """The inspector cannot know which file answers its question; the judge's are prepared."""
-    assert _agent_access(SHIPPED_AGENTS / "job-inspector" / "AGENT.md")["local"] == ["read"]
-    assert "local" not in _agent_access(SHIPPED_AGENTS / "job-inspector-eval" / "AGENT.md")
+def test_the_evaluator_is_granted_nothing():
+    """It fetches nothing: the preparation step reads every artifact its checks turn on.
+
+    Given tools it used them, on files and then on run records, and spent the budget re-running
+    the inspection it was meant to grade.
+    """
+    assert _agent_access(SHIPPED_AGENTS / "job-inspector-eval" / "AGENT.md") == {}
+
+
+def test_the_evaluator_declares_no_tool_groups():
+    definition = (SHIPPED_AGENTS / "job-inspector-eval" / "AGENT.md").read_text()
+
+    assert "\ntools:" not in definition.split("\n---", 1)[0]
 
 
 def test_agent_profile_not_prod():

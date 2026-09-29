@@ -1488,3 +1488,18 @@ def test_the_recommendation_pass_is_told_what_the_runs_were_graded_under():
     findings = json.loads(C.window_findings(evaluations, batch)["window_findings"])
 
     assert findings["bounds"] == {"max_runs_read": 0, "max_runs": 3}
+
+
+def test_each_pass_is_told_which_task_it_is():
+    """Routing on whether another input came back empty made the judge infer it and get it wrong."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
+    assert prep.judge_inputs["task"] == C.GRADE_ONE_RUN
+
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+
+    assert C.window_findings(evaluations, batch)["task"] == C.WRITE_THE_RECOMMENDATION

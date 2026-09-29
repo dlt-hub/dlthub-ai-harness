@@ -81,6 +81,11 @@ DEFAULT_WINDOW_DAYS = 7
 """How far back the window reaches when no definition change can be found, in days."""
 DEFAULT_DEPLOYMENT_WALK = 20
 """How many deployments back the search for the last definition change reads."""
+GRADE_ONE_RUN = "grade one inspector run"
+WRITE_THE_RECOMMENDATION = "write the window recommendation"
+"""The two tasks, as the `task` input names them. The body routes on the word, not on whether
+some other input came back empty."""
+
 DEFAULT_BATCH_RUNS = 25
 """How many inspector runs one scheduled job evaluates. Each one is a judge run of its own."""
 EXCERPT_MATCH_RATIO = 0.8
@@ -4760,6 +4765,10 @@ def prepare_run(
         ),
         "neighbour_runs": json.dumps(neighbour_summary(ctx), default=str, indent=2),
         "rubrics": rubric_block(judge_ids(results)),
+        # which of the two tasks this is, as a word. Routing on whether a payload is empty made
+        # the judge infer it from a placeholder, and on the recommendation pass that payload is
+        # a JSON blob the routing sentence inlined at the top of the prompt
+        "task": GRADE_ONE_RUN,
         # the batch-path names. dlt blanks a placeholder it cannot resolve, so leaving one out
         # strips the sentence around it: without this the body opened with "Read `` first"
         "window_findings": "",
@@ -5098,6 +5107,7 @@ def window_findings(
     # object. The run-specific ones are empty here: this pass grades no run
     graded = batch.preps[0].judge_inputs if batch.preps else {}
     return {
+        "task": WRITE_THE_RECOMMENDATION,
         "run_context": graded.get("run_context") or {"trigger": "", "run_id": ""},
         "inspector_run_id": "",
         "inspector_job_ref": batch.job_ref,

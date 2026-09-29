@@ -109,17 +109,21 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-The agents this repo ships grant `context: read` and no `data`. A background diagnosis is
-built from run records, logs, job definitions, telemetry and source, and a `data` grant
-exposes workspace data to a model-driven process, which is outside the
-job-inspector/evaluator safety model.
+Neither agent this repo ships grants `data`. A background diagnosis is built from run
+records, logs, job definitions, telemetry and source, and a `data` grant exposes workspace
+data to a model-driven process, which is outside the job-inspector/evaluator safety model.
 
-`local: read` is the inspector's alone. It investigates an open question and cannot know in
-advance which file answers it, so it reads the file a traceback names. The evaluator answers
-a fixed list of checks, so its preparation step knows every file they turn on and reads them
-first: the judge gets source as windows and has no file tool. Grant `local` where the task
-decides what to open, and prepare the reads where the task is known. A judge with file tools
-searches the workspace instead of answering, and on some models never finishes.
+The two split on the rest, and the split is the general rule. `job-inspector` grants
+`local: read` and `context: read`: it investigates an open question and cannot know in advance
+which file or which record answers it. `job-inspector-eval` grants nothing and declares no
+`tools`: it answers a fixed list of checks, so its preparation step knows every artifact they
+turn on and fetches all of it before the loop, handing the judge bounded windows.
+
+Grant access where the task decides what to open, and prepare the reads where the checks are
+fixed. Measured on the evaluator, a judge given tools used them: with file tools it read the
+workspace at a dozen offsets, and with the file tools gone but the context tools left it
+fetched run records, job definitions and traces and re-ran the inspection it was grading. Both
+times it spent the budget and returned nothing. Preparing the reads is what made it finish.
 
 `local` verbs are named after Claude Code's tools, so one declaration means the same on both
 loops. The set each verb wires differs: claude-agent-sdk adds `MultiEdit` and `NotebookEdit`
