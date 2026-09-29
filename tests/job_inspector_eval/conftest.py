@@ -271,8 +271,8 @@ def ctx() -> "C.EvalContext":
 DEPLOYED_RUN_LOG = Path(__file__).parent / "fixtures" / "deployed_inspector_run.log"
 """The `program` output of a real deployed inspector run, ids and workspace name replaced.
 
-Run #3 of `job_inspector`, 2026-09-22. All 11 tool calls sit inside a spoken block, which is
-the shape dlt-hub/dlthub-ai-workbench-internal#83 reported.
+Run #3 of `job_inspector`, 2026-09-22. All 11 tool calls sit inside a spoken block, the shape
+that first left the transcript parser reading none of them.
 """
 
 DEPLOYED_RUN_TOOLS = [

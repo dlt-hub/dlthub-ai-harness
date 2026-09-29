@@ -544,7 +544,7 @@ def test_finalize_reports_the_checks_the_pass_rate_left_out():
 
 
 def deployed_run_fetcher() -> StubFetcher:
-    """The platform as it stood for the run in dlt-hub/dlthub-ai-workbench-internal#83."""
+    """The platform as it stood for the deployed run the log fixture came from."""
     job_ref = "jobs.jaffle_shop.load_jaffle_bad_config"
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(classification="config"), "trace": deployed_run_trace()}

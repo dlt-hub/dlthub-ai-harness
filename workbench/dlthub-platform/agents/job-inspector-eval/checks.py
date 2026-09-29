@@ -2244,7 +2244,7 @@ def _search_root_outside_workspace(command: str) -> str:
     except ValueError:
         tokens = command.rstrip("\u2026").split()
     if truncated and tokens:
-        # the last token of a capped command is a fragment: `find /Users/el` is not a root
+        # the last token of a capped command is a fragment: `find /Users/some` is not a root
         tokens = tokens[:-1]
     walking = False
     for token in tokens:

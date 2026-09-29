@@ -157,7 +157,7 @@ def test_search_root_is_found_wherever_the_command_sits():
         # the workspace itself lives under the home directory on a developer machine
         "find /Users/someone/work/ws -name '*.py'",
         # a command the 200-character cap split mid-path
-        'cat /Users/someone/ws/failing_jobs.py 2>/dev/null || find /Users/el\u2026',
+        'cat /Users/someone/ws/failing_jobs.py 2>/dev/null || find /Users/some\u2026',
     ):
         assert C._search_root_outside_workspace(command) == "", command
 
@@ -249,7 +249,7 @@ def test_transcript_reads_every_call_of_a_deployed_run():
 
 
 def test_a_deployed_run_transcript_reads_every_tool_call():
-    """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
+    """A deployed run whose trace recorded 11 tool calls.
 
     Every call sits under a `says` label, one blank line further down than the block ends.
     The parser read 0 of them and the 17 parser-gated transcript checks went `N/A`.

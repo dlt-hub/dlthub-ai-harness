@@ -1,8 +1,8 @@
 """A skill description over the cap is a warning.
 
 A description is the whole trigger surface, and Codex drops a skill whose description
-passes 1024 chars (dlt-hub/dlthub-ai-workbench-internal#75). Growing one past that point
-also cost `dlthub-router` its cold-start recall once, so the length is worth reporting.
+passes 1024 chars. Growing one past that point also cost `dlthub-router` its cold-start
+recall once, so the length is worth reporting.
 """
 
 from pathlib import Path

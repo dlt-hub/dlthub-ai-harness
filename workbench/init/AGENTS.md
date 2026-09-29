@@ -6,7 +6,7 @@ CRITICAL: never ask for credentials in chat. Always let the user edit secrets di
 
 ## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
 Workflow toolkits are installed on demand. This index is authoritative for shipped toolkits: match the user's intent, run the install command, confirm from its output (`dlthub ai status` only if unclear), then hand over to the entry skill. No discovery call needed for these.
-<!-- This shipped index can drift from the live catalog on a user's machine until runtime refresh lands; tracked in dlt-hub/dlthub-ai-workbench-internal#71. -->
+<!-- This shipped index can drift from the live catalog on a user's machine until runtime refresh lands. -->
 
 ```
 intent                                                  → toolkit                | install                                                            | entry skill
