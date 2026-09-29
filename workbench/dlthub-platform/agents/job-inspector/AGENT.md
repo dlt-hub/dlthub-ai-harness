@@ -139,7 +139,6 @@ output:
       description: True when a person has to act before the job can succeed again.
   required: [status, summary, classification, confidence, evidence, open_points, requires_human]
 defaults:
-  # no `trigger` here: one declared in a definition does nothing. the deployment sets it
   # no `model` here: set `AGENT__MODEL` in your workspace, at least as capable as Claude
   # Sonnet 5. a template that named a provider would hand every installer that provider
   limits:
