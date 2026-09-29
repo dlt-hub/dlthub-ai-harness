@@ -971,6 +971,14 @@ def test_the_window_recommendation_is_asked_for_once_over_every_run():
     assert final["recommendation"] == f"- {named}"
     # one that names it already is left alone
     assert C.name_the_file(named) == named
+    # so is the no-change sentence, which names no file on purpose
+    assert C.name_the_file(C.NO_CHANGE_RECOMMENDATION) == C.NO_CHANGE_RECOMMENDATION
+
+    # a judge that writes it reaches the summary with nothing prepended
+    quiet = C.finalize_batch(evaluations, batch, recommendation=C.NO_CHANGE_RECOMMENDATION)
+    assert quiet["recommendation"] == f"- {C.NO_CHANGE_RECOMMENDATION}"
+    assert f"- {C.NO_CHANGE_RECOMMENDATION}" in quiet["summary"]
+    assert C.INSPECTOR_DEFINITION_PATH not in quiet["recommendation"]
 
 
 def test_a_window_with_nothing_broken_asks_for_no_recommendation():
@@ -995,7 +1003,7 @@ def test_a_window_with_nothing_broken_asks_for_no_recommendation():
 
     final = C.finalize_batch(evaluations, batch)
     assert "## Recommendation" in final["summary"]
-    assert "No change to the inspector's instructions follows" in final["summary"]
+    assert C.NO_CHANGE_RECOMMENDATION in final["summary"]
 
 
 def test_a_judge_run_that_raised_is_reported_as_a_skipped_run():

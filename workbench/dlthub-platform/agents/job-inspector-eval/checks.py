@@ -81,6 +81,9 @@ DEFAULT_WINDOW_DAYS = 7
 """How far back the window reaches when no definition change can be found, in days."""
 DEFAULT_DEPLOYMENT_WALK = 20
 """How many deployments back the search for the last definition change reads."""
+NO_CHANGE_RECOMMENDATION = "No changes to the configuration of the evaluated agent recommended."
+"""What the recommendation says when nothing in a window warrants a change. The prompt asks the
+judge for this sentence, and `name_the_file` leaves a bullet opening `No change` alone."""
 GRADE_ONE_RUN = "grade one inspector run"
 WRITE_THE_RECOMMENDATION = "write the window recommendation"
 """The two tasks, as the `task` input names them. The body routes on the word, not on whether
@@ -5792,17 +5795,20 @@ def recommendation_bullets(checks: List[Dict[str, Any]], written: str) -> List[s
             f"Take the broken instructions above to `{INSPECTOR_DEFINITION_PATH}`: each one"
             " names the rule the inspector did not follow."
         ]
-    return ["No change to the inspector's instructions follows from this window."]
+    return [NO_CHANGE_RECOMMENDATION]
 
 
 def name_the_file(bullet: str) -> str:
     """A recommendation bullet opening with the file it changes.
 
     The prompt asks for it and a judge still drops it, leaving "In `Investigate`, expand
-    `Earliest wrong line first`" over a file the reader has to guess.
+    `Earliest wrong line first`" over a file the reader has to guess. The no-change sentence
+    names no file and is left as written.
     """
     text = bullet.strip()
     if not text or INSPECTOR_DEFINITION_PATH in text:
+        return text
+    if text.lower().startswith("no change"):
         return text
     if text[0].isupper() and (len(text) == 1 or text[1].islower()):
         text = text[0].lower() + text[1:]

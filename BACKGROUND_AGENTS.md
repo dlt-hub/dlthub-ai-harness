@@ -109,19 +109,19 @@ access:
 | `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
-The two agents this repo ships differ in what they need. `job-inspector` grants `local: read`
-and `context: read`: it investigates an open question and cannot know in advance which file or
-which record answers it. `job-inspector-eval` grants nothing and declares no `tools`: it
-answers a fixed list of checks, so its preparation step fetches every artifact those checks
-read before the loop starts and hands the judge bounded windows.
+`job-inspector` grants `local: read` and `context: read`: it investigates an open question
+and cannot know in advance which file or which record answers it. `job-inspector-eval` grants
+nothing and declares no `tools`: it answers a fixed list of checks, so its preparation step
+fetches every artifact those checks read before the loop starts and hands the judge bounded
+windows.
 
-Neither agent grants `data`. Both work from run records, logs, job definitions, telemetry and
-source, and a `data` grant would put workspace data in front of a model-driven process.
+Neither `job-inspector` nor `job-inspector-eval` grants `data`. Both work from run records,
+logs, job definitions, telemetry and source, and a `data` grant would put workspace data in
+front of a model-driven process.
 
-`local` verbs are named after Claude Code's tools, so one declaration means the same on both
-loops, though the exact set each verb wires differs. Credential files (`*secrets.toml`,
-`.env`) are never readable, whatever `local` says. A tool the declaration does not cover is
-not offered to the model, and the trace of every run lists the tools that were wired.
+Credential files (`*secrets.toml`, `.env`) are never readable, whatever `local` says. A tool
+the declaration does not cover is not offered to the model, and the trace of every run lists
+the tools that were wired.
 
 Repeat the policy in the body as explanation: "you are read-only" helps the model understand
 its role, and the `access` block enforces it for the MCP tools. `local: execute` is the

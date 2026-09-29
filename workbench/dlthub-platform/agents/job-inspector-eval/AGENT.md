@@ -291,9 +291,10 @@ open, and an input with no value renders as nothing between its backticks.
   write `summary`, and leave `recommendation` empty. A change to the inspector's instructions
   rests on a pattern across several runs, so a single evaluation recommends nothing.
 - **`write the window recommendation`.** A window of inspector runs was graded before you and
-  you say, once, what to change. Skip to "Writing the window recommendation" at the end of this
-  prompt and follow that section alone. Everything between here and it describes grading one
-  run, so the grading inputs are empty on this pass by design. Return `checks` empty.
+  you say, once, what to change. Skip to "Writing the recommendation from the evaluated runs in
+  the window" at the end of this prompt and follow that section alone. Everything between here
+  and it describes grading one run, so the grading inputs are empty on this pass by design.
+  Return `checks` empty.
 
 ## What counts as success for your run
 
@@ -455,17 +456,17 @@ you see the list, so a check that reaches you on an aborted run is one you answe
 
 {{ rubrics }}
 
-## Writing the window recommendation
+## Writing the recommendation from the evaluated runs in the window
 
-You reach this section only when `task` is `write the window recommendation`. A scheduled job graded
-every inspector run since the inspector's definition last changed, and you are asked, once,
-what to change in that definition so the broken instructions stop recurring.
+You reach this section only when `task` is `write the window recommendation`. A scheduled job
+graded every inspector run since the inspector's definition last changed, and you are asked,
+once, what to change in that definition so the broken instructions stop recurring.
 
 **Your answer goes in `recommendation`, and it is never empty.** A pass that puts it in
 `summary`, or leaves `recommendation` blank, is discarded and replaced with a generic line. It
-takes one of two shapes, both set out below: bullets naming what to change, or a single bullet
-saying no change follows. The runs were graded before you and their findings are already in the
-report, so restating what broke answers nothing. You are asked what to change.
+takes one of two shapes, both set out below: bullets naming what to change, or the one fixed
+sentence that says nothing warrants one. The runs were graded before you and their findings are
+already in the report, so restating what broke answers nothing. You are asked what to change.
 
 `{{ window_findings }}` is JSON: the `job_ref` graded, `runs_evaluated`, the window bounds,
 the `definition` path, its `definition_sections`, the `bounds` the runs were graded under, and
@@ -488,18 +489,17 @@ names a section of a file the reader has to guess. Rank them: a check broken on 
 before one broken once. Where two broken checks have one cause, say it once and name both check
 ids.
 
-**Every bullet asks for a change.** A broken check that warrants none is left out, silently and
-with no bullet of its own: a reader acts on this list, and a line explaining why something needs
-no change is one they have to read and then discard. Leave one out when `bounds` accounts for
-it, the window ran under a tighter limit than usual, or the reasonings show the instruction was
-followed and the check graded it wrong.
+**Every bullet asks for a change.** A broken check that does not warrant a change is left out,
+silently and with no bullet of its own: a reader acts on this list, and a line explaining why
+something needs no change is one they have to read and then discard. Leave one out when
+`bounds` accounts for it, the window ran under a tighter limit than usual, or the reasonings
+show the instruction was followed and the check graded it wrong.
 
-Only where that empties the list does `recommendation` take the other shape: one short bullet,
-saying no change follows and naming the reason in a clause. "No change to `<the definition
-path>` follows: every break came under the configured `max_runs_read: 0`" is the whole bullet.
-Skip the format above for it, since a no-change answer has no section to name.
+Only where that empties the list does `recommendation` take the other shape: the single bullet
+`No changes to the configuration of the evaluated agent recommended.` Write that sentence and
+nothing else, with no reason and no section named.
 
 Fill `status` `succeeded` and return `checks` empty: answer no check here, the runs were
 graded before you and their results stand. `summary` takes one bullet and no more, saying how
 many instructions the window broke and which definition sections your `recommendation` bullets
-change.
+change, or that none do.
