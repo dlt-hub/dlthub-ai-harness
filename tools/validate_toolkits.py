@@ -482,13 +482,10 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
-    # a trigger declared here does nothing: the manifest drops `defaults` and the loop takes
-    # model, limits and loop_run_args from it. it also decides for a workspace the toolkit
-    # knows nothing about, so a shipped one is rejected rather than honoured
+    # the manifest drops `defaults`, so a trigger declared here does nothing
     if node.get("trigger") is not None:
         errors.append(
-            f"[{pname}] {rel} defaults.trigger {node['trigger']!r} is never read and wires"
-            " the agent to jobs the toolkit knows nothing about; leave it out and set"
+            f"[{pname}] {rel} defaults.trigger {node['trigger']!r} is never read; set"
             " trigger= on run.agent (see BACKGROUND_AGENTS.md)"
         )
 
