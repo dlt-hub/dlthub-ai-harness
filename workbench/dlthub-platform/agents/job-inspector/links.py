@@ -36,6 +36,11 @@ def web_ui() -> Tuple[str, str]:
 _MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
 """A link already written. Nothing inside one is linked again, and neither is its target."""
 
+_UNTERMINATED_LINK = re.compile(r"\[[^\]]*\]\([^)]*$|\[[^\]]*$")
+"""A link a quote cut in half. A check truncates the line it quotes, so a link the agent
+already wrote can lose its closing paren; linking inside what is left nests one link in
+another. Everything from the opening bracket on is left alone."""
+
 _CODE_SPAN = re.compile(r"`[^`\n]+`")
 """An inline code span. A link inside one is broken markdown, so the span becomes the text of
 the link instead: the inspector cites a run as `dlthub job runs logs <id>`, and that whole
@@ -91,6 +96,8 @@ def linkify(
 
 def _outside_links(text: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
     """Link the ids in text that sits outside an existing link, spans included."""
+    if cut := _UNTERMINATED_LINK.search(text):
+        return _outside_links(text[:cut.start()], base, workspace, labels) + text[cut.start():]
     written: List[str] = []
     last = 0
     for match in _CODE_SPAN.finditer(text):

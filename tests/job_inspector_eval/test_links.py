@@ -51,6 +51,13 @@ def test_an_id_in_plain_prose_is_linked():
     assert links.linkify(f"plain {RUN} here", WEB) == f"plain [`{RUN}`]({RUN_URL}) here"
 
 
+def test_a_link_a_quote_cut_in_half_is_left_alone():
+    """A check truncates the line it quotes, so a link can lose its closing paren. Linking
+    inside what is left nests one link in another."""
+    cut = f"closes early: '- [`{JOB}`](https://dlthub.example/w/ws-1/jobs/{JOB[:12]}"
+    assert links.linkify(cut, WEB) == cut
+
+
 def test_a_link_already_written_is_left_alone():
     already = f"see [`{RUN}`](https://elsewhere/x)"
     assert links.linkify(already, WEB) == already
