@@ -61,8 +61,64 @@ def test_result_envelope_is_read_from_the_log_tail():
     assert envelope["trace"]["turn_count"] == 3
 
 
+def test_result_envelope_survives_a_brace_inside_a_string_value():
+    """A fix quoting `require={...}` or a summary holding a bare `}` is ordinary output."""
+    result = output()
+    result["summary"] = "## Diagnosis\n\n- the loader closed on } before the batch ended"
+    result["fix_change"] = 'require={"profile": "access"}'
+    result["proposed_fix"] = "set it to {"
+    payload = {"type": "x", "status": "succeeded", "result": result,
+               "trace": {"turn_count": 3}}
+    log = inspector_log(result_json=json.dumps(payload, indent=2))
+
+    envelope = C.parse_result_envelope(log)
+
+    assert envelope is not None
+    assert envelope["result"]["proposed_fix"] == "set it to {"
+    assert envelope["result"]["fix_change"] == 'require={"profile": "access"}'
+    assert envelope["trace"]["turn_count"] == 3
+
+
 def test_result_envelope_is_none_without_one():
     assert C.parse_result_envelope(inspector_log()) is None
+
+
+def test_a_tool_error_attaches_to_its_own_call_across_a_batch():
+    """The captured runs print two calls before either result, so the scan cannot stop at the
+    next call of any tool."""
+    log = inspector_log(events=[
+        "  list_tables (dlt-workspace-mcp)",
+        "  get_row_counts (dlt-workspace-mcp)",
+        "  Error calling tool 'get_row_counts'",
+        "  Error calling tool 'list_tables'",
+    ])
+    ctx = C.EvalContext(
+        inspector_run={}, output={}, trace=None, inspector_log=log,
+        events=C.parse_transcript(log), failed_run=None, failed_log=[], neighbours=[],
+        pipeline_trace=None,
+    )
+
+    assert [C._errored(ctx, call) for call in ctx.tool_calls] == [True, True]
+
+
+def test_token_overlap_counts_whole_tokens_only():
+    """A substring test let short tokens match inside longer words and inflate the share."""
+    assert C.token_overlap("load failed at 38", "load failed at 38") == 1.0
+    # `38` inside `138` and `no` inside `nothing` are not the tokens the excerpt named
+    assert C.token_overlap("38", "row 138 written") == 0.0
+    assert C.token_overlap("no rows", "nothing wrong here") == 0.0
+    assert C.token_overlap("", "anything") == 1.0
+
+
+def test_token_overlap_ignores_punctuation_at_the_end_of_a_token():
+    """`_TOKEN` keeps `.` and `:` inside a token, so a faithful quote of a log line that ends
+    in one would otherwise miss on that word."""
+    assert C.token_overlap("users does not exist", 'relation "users" does not exist.') == 1.0
+    assert C.token_overlap(
+        "connect failed host=db.internal:5432", "connect failed: host=db.internal:5432"
+    ) == 1.0
+    # the whole-token rule still holds: `id` does not match inside `identity`
+    assert C.token_overlap("id", "none identity 100") == 0.0
 
 
 def test_source_line_number():
@@ -157,7 +213,7 @@ def test_search_root_is_found_wherever_the_command_sits():
         # the workspace itself lives under the home directory on a developer machine
         "find /Users/someone/work/ws -name '*.py'",
         # a command the 200-character cap split mid-path
-        'cat /Users/someone/ws/failing_jobs.py 2>/dev/null || find /Users/el\u2026',
+        'cat /Users/someone/ws/failing_jobs.py 2>/dev/null || find /Users/some\u2026',
     ):
         assert C._search_root_outside_workspace(command) == "", command
 
@@ -249,7 +305,7 @@ def test_transcript_reads_every_call_of_a_deployed_run():
 
 
 def test_a_deployed_run_transcript_reads_every_tool_call():
-    """The log from dlt-hub/dlthub-ai-workbench-internal#83, whose trace recorded 11 calls.
+    """A deployed run whose trace recorded 11 tool calls.
 
     Every call sits under a `says` label, one blank line further down than the block ends.
     The parser read 0 of them and the 17 parser-gated transcript checks went `N/A`.

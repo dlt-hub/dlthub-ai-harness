@@ -79,7 +79,8 @@ def test_the_summary_lists_each_broken_instruction_in_words(name):
     final = _finalized(name)
     broken = [entry["id"] for entry in final["checks"] if entry["outcome"] == C.FALSE]
     assert broken, "a run of the earlier definition breaks at least one of the new rules"
-    assert final["summary"].startswith("**Verdict: failed.**")
+    assert final["summary"].startswith("## Findings\n")
+    assert "## Findings\n\n- The inspector broke " in final["summary"]
     for check_id in broken:
         assert f"(`{check_id}`)" in final["summary"]
         assert C.instruction_of(check_id) in final["summary"]
@@ -321,6 +322,7 @@ def test_a_run_that_could_not_establish_the_value_leaves_it_open_and_passes():
     assert outcome(prep, "open_points_declared") == C.TRUE
     assert outcome(prep, "confidence_carries_open_points") == C.TRUE
     reads = [call for call in ctx.file_reads if call.tool == "Read"]
+    assert {C.command_of(call.detail)[:40] for call in reads} or reads
     assert any("utils/dq.py" in call.detail for call in reads)
     assert any("__deployment__.py" in call.detail for call in reads)
 

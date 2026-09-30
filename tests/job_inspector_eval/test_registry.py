@@ -1,22 +1,22 @@
-"""The registry is the one list of check ids. The docs and the prompt must agree with it."""
+"""The registry is the one list of check ids. The prompt and the spec must agree with it.
+
+The agent ships its `AGENT.md` and `checks.py` and no prose beside them: a document restating
+the registry drifts from it, and the checks carry their own instruction in the first paragraph
+of each docstring. `BACKGROUND_AGENTS.md` holds what an author or an operator needs.
+"""
 
 import re
+from pathlib import Path
 
 from conftest import AGENT_DIR
 
 import checks as C
 
 AGENT_MD = (AGENT_DIR / "AGENT.md").read_text()
-README = (AGENT_DIR / "README.md").read_text()
+SPEC = (Path(__file__).resolve().parents[2] / "BACKGROUND_AGENTS.md").read_text()
 
-_TABLE_ID = re.compile(r"^\| `([a-z_]+)` \|", re.M)
 _RUBRIC_ID = re.compile(r"^\*\*`([a-z_]+)`\*\*", re.M)
-
-
-def test_readme_tables_list_every_check_once():
-    listed = _TABLE_ID.findall(README)
-    assert sorted(listed) == sorted(C.CHECKS)
-    assert len(listed) == len(set(listed))
+_PYTHON_BLOCK = re.compile(r"```python\n(.*?)```", re.S)
 
 
 def test_a_rubric_is_registered_for_every_check_the_judge_answers():
@@ -66,23 +66,15 @@ def test_every_deterministic_check_documents_its_three_outcomes():
             assert outcome in entry.doc, f"{entry.id} does not document {outcome}"
 
 
-def test_the_counts_the_readme_states_are_the_counts_in_the_registry():
-    kinds = [entry.kind for entry in C.CHECKS.values()]
-    stated = (
-        f"{len(kinds)} checks: {kinds.count(C.DETERMINISTIC)} deterministic,"
-        f" {kinds.count(C.HYBRID)} hybrid, {kinds.count(C.JUDGE)} judge."
-    )
-    assert stated in README
-
-
-def test_readme_documents_every_input_the_agent_declares():
-    for name in ("inspector_run_id", "inspector_job_ref", "max_runs_read"):
-        assert name in README
+def test_the_agent_ships_no_prose_beside_its_definition():
+    """A document restating the registry drifts from it; the docstrings carry the rules."""
+    beside = {path.name for path in AGENT_DIR.glob("*.md")}
+    assert beside == {"AGENT.md"}
 
 
 TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
                         "events_before_call", "runs_read", "transcript_blind", "ctx.events")
-TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access"}
+TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access", "no_write_tool_used"}
 """Checks that read transcript calls but can still decide from the run trace if parsing fails."""
 
 
@@ -110,3 +102,84 @@ def test_data_tool_table_matches_dlt_access_annotations():
         if "read" in granted_verbs(required_access(tool), "data")
     }
     assert set(C.DATA_TOOLS) == data_read_tools
+
+
+def test_the_shipped_definitions_declare_read_only_access():
+    """What `inspector_access_read_only` grades at run time must hold in the repository.
+
+    An empty grant passes: the evaluator has one, since everything it reads is fetched for it.
+    """
+    for definition in sorted(AGENT_DIR.parent.glob("*/AGENT.md")):
+        access = C.parse_access(definition.read_text())
+        for axis, verbs in access.items():
+            allowed = C.READ_ONLY_ACCESS.get(axis)
+            assert allowed is not None, f"{definition} grants the {axis} axis"
+            assert set(verbs) <= allowed, f"{definition} grants {axis}: {verbs}"
+
+
+def test_the_inspector_definition_sits_where_the_evaluator_looks_for_it():
+    """The path the check reads is where the installer writes the definition."""
+    assert C.INSPECTOR_DEFINITION_PATH == ".claude/dlthub/agents/job-inspector/AGENT.md"
+    assert (AGENT_DIR.parent / "job-inspector" / "AGENT.md").is_file()
+
+
+def test_every_check_has_a_category_the_summary_renders():
+    for entry in C.CHECKS.values():
+        assert entry.category in C.CATEGORIES, entry.id
+        assert entry.category in C.CATEGORY_TITLES
+
+
+def test_every_deploy_snippet_pins_the_read_only_profile():
+    """An agent job without a profile runs on `prod`, which `agent_profile_not_prod` fails."""
+    declarations = sum(block.count("run.agent(") for block in _PYTHON_BLOCK.findall(SPEC))
+    assert declarations
+    pinned = sum(
+        block.count('require={"profile": "access"}') for block in _PYTHON_BLOCK.findall(SPEC)
+    )
+    assert pinned >= declarations
+
+
+def _declared_output() -> dict:
+    """The output schema as a model receives it, read out of the shipped `AGENT.md`."""
+    import yaml
+
+    return yaml.safe_load(AGENT_MD.split("---", 2)[1])["output"]
+
+
+def test_no_declared_object_is_left_without_properties():
+    """A strict validator refuses an object schema with no `properties`, so OpenAI's structured
+    output falls back or rejects it. Every object the judge is shown names its fields."""
+    bare = []
+
+    def walk(node, path="output"):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and "properties" not in node:
+                bare.append(path)
+            for key, value in node.items():
+                walk(value, f"{path}.{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                walk(value, f"{path}[{index}]")
+
+    walk(_declared_output())
+    assert bare == []
+
+
+def test_the_batch_fields_declare_what_checks_py_writes():
+    """`window`, `evaluations` and `skipped_runs` are filled in Python, so the schema is the
+    one place they can drift from the code."""
+    properties = _declared_output()["properties"]
+    batch = C.BatchPrep(job_ref="jobs.x.job_inspector")
+    batch.skipped.append({"run_id": "r", "reason": "still running"})
+    final = C.finalize_batch([{"inspector_run_id": "a", "checks": []}], batch)
+
+    assert set(properties["window"]["properties"]) == set(final["window"])
+    assert set(properties["evaluations"]["items"]["properties"]) == set(final["evaluations"][0])
+    assert set(properties["skipped_runs"]["items"]["properties"]) == set(final["skipped_runs"][0])
+
+
+def test_the_output_schema_stays_small():
+    """The judge reads the whole schema on every run, and a large one has failed to launch."""
+    import json
+
+    assert len(json.dumps(_declared_output())) < 7_800
