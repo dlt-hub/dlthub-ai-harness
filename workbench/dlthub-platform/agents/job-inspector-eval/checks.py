@@ -20,7 +20,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import (Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence,
+                    Tuple)
 
 TRUE = "TRUE"
 FALSE = "FALSE"
@@ -5130,8 +5131,10 @@ def finalize_batch(
             {
                 "inspector_run_id": evaluation.get("inspector_run_id", ""),
                 "inspector_job_ref": evaluation.get("inspector_job_ref", ""),
+                "inspector_run_number": evaluation.get("inspector_run_number"),
                 "failed_run_id": evaluation.get("failed_run_id", ""),
                 "failed_job_ref": evaluation.get("failed_job_ref", ""),
+                "failed_run_number": evaluation.get("failed_run_number"),
                 "inspector_status": evaluation.get("inspector_status", ""),
                 "passed": evaluation.get("passed", False),
                 "pass_rate": evaluation.get("pass_rate", 0.0),
@@ -5514,13 +5517,17 @@ def finalize(
     failed_job_ref = str((ctx.failed_run or {}).get("job_ref")
                          or ctx.output.get("failed_job_ref") or "")
     inspector_job_ref = str(ctx.inspector_run.get("job_ref") or "")
+    inspector_run_number = ctx.inspector_run.get("number")
+    failed_run_number = (ctx.failed_run or {}).get("number")
     summary = render_summary(
         [{
             "checks": checks,
             "inspector_run_id": prep.inspector_run_id,
             "inspector_job_ref": inspector_job_ref,
+            "inspector_run_number": inspector_run_number,
             "failed_run_id": ctx.reported_run_id,
             "failed_job_ref": failed_job_ref,
+            "failed_run_number": failed_run_number,
         }],
         judge_summary=str(output.get("summary") or "").strip(),
         incomplete=incomplete,
@@ -5537,8 +5544,10 @@ def finalize(
         "recommendation": "",
         "inspector_run_id": prep.inspector_run_id,
         "inspector_job_ref": inspector_job_ref,
+        "inspector_run_number": inspector_run_number,
         "failed_run_id": ctx.reported_run_id,
         "failed_job_ref": failed_job_ref,
+        "failed_run_number": failed_run_number,
         "inspector_status": ctx.status or "aborted",
         "passed": false_count == 0 and decided > 0 and not incomplete,
         "pass_rate": (true_count / decided) if decided else 0.0,
@@ -5654,11 +5663,34 @@ _RUN_ID = re.compile(
 _JOB_REF = re.compile(r"(`?)\b(jobs\.[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\b(`?)")
 
 
-def linkify(text: str, links: Tuple[str, str] = ("", "")) -> str:
+def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
+    """Link text per run id: the run number, which the bullet writes the job ref beside.
+
+    A uuid tells a reader nothing, so it goes in the link target and `#27` goes in the text,
+    the way the inspector's "Cite the artifact in the bullet" names an artifact rather than
+    pointing at one. A run whose number the evaluation does not hold keeps its uuid.
+    """
+    labels: Dict[str, str] = {}
+    for entry in entries:
+        for prefix in ("inspector", "failed"):
+            run_id = str(entry.get(f"{prefix}_run_id") or "").lower()
+            number = entry.get(f"{prefix}_run_number")
+            if run_id and number not in (None, ""):
+                labels.setdefault(run_id, f"#{number}")
+    return labels
+
+
+def linkify(
+    text: str,
+    links: Tuple[str, str] = ("", ""),
+    labels: Optional[Mapping[str, str]] = None,
+) -> str:
     """Every run id and job ref in a line, written as a link to its page.
 
     A run id is a link wherever it falls: a bullet, a reasoning the checks wrote, a table
-    cell. Text already inside a link is left alone, and so is the target of one.
+    cell. `labels` gives the link its text, so a reader sees the job and the run number and
+    the uuid stays in the target. Text already inside a link is left alone, and so is the
+    target of one.
     """
     base, workspace = links
     if not base or not workspace or not text:
@@ -5666,16 +5698,18 @@ def linkify(text: str, links: Tuple[str, str] = ("", "")) -> str:
     written: List[str] = []
     last = 0
     for match in _MARKDOWN_LINK.finditer(text):
-        written.append(_linked(text[last:match.start()], base, workspace))
+        written.append(_linked(text[last:match.start()], base, workspace, labels or {}))
         written.append(match.group(0))
         last = match.end()
-    written.append(_linked(text[last:], base, workspace))
+    written.append(_linked(text[last:], base, workspace, labels or {}))
     return "".join(written)
 
 
-def _linked(text: str, base: str, workspace: str) -> str:
+def _linked(text: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
     def run(match: "re.Match[str]") -> str:
-        return f"[`{match.group(2)}`]({base}/w/{workspace}/runs/{match.group(2)})"
+        run_id = match.group(2)
+        shown = labels.get(run_id.lower()) or f"`{run_id}`"
+        return f"[{shown}]({base}/w/{workspace}/runs/{run_id})"
 
     def job(match: "re.Match[str]") -> str:
         return f"[`{match.group(2)}`]({base}/w/{workspace}/jobs/{match.group(2)})"
@@ -5711,6 +5745,7 @@ def section(
     bullets: Sequence[Any],
     table: str = "",
     links: Tuple[str, str] = ("", ""),
+    labels: Optional[Mapping[str, str]] = None,
 ) -> str:
     """One summary section: a heading over short bullets, and a table only at the end.
 
@@ -5721,12 +5756,12 @@ def section(
     lines = [f"## {title}", ""]
     for bullet in bullets:
         if isinstance(bullet, (list, tuple)):
-            lines += [f"  - {linkify(child, links)}" for child in bullet if child]
+            lines += [f"  - {linkify(child, links, labels)}" for child in bullet if child]
             continue
         if bullet:
-            lines.append(f"- {linkify(bullet, links)}")
+            lines.append(f"- {linkify(bullet, links, labels)}")
     if table:
-        lines += ["", "\n".join(linkify(row, links) for row in table.splitlines())]
+        lines += ["", "\n".join(linkify(row, links, labels) for row in table.splitlines())]
     return "\n".join(lines)
 
 
@@ -5735,7 +5770,8 @@ def scope_bullets(entries: Sequence[Dict[str, str]]) -> List[str]:
 
     The inspector run comes first and the job run it inspected follows. Each entry carries
     `inspector_run_id`, `inspector_job_ref`, `failed_run_id` and `failed_job_ref`; `linkify`
-    turns each id into a link when the section is rendered.
+    turns each id into a link whose text `run_labels` writes, so a reader meets the run
+    number rather than the uuid.
     """
     bullets: List[str] = []
     for entry in entries:
@@ -6065,11 +6101,13 @@ def render_summary(
     )
     for category in CATEGORIES:
         findings += category_bullets(evaluations, category, verdicts[category])
-    sections = [section("Findings", findings, links=links)]
+    labels = run_labels(evaluations)
+    sections = [section("Findings", findings, links=links, labels=labels)]
     if recommend:
         sections.append(
             section(
-                "Recommendation", recommendation_bullets(checks, recommendation), links=links
+                "Recommendation", recommendation_bullets(checks, recommendation),
+                links=links, labels=labels,
             )
         )
     sections.append(
@@ -6078,7 +6116,7 @@ def render_summary(
             coverage_bullets(evaluations, incomplete)
             + scope_bullets(evaluations)
             + list(scope_extra or []),
-            links=links,
+            links=links, labels=labels,
         )
     )
     results = [_sentence(note) for note in (notes or [])]
@@ -6091,7 +6129,7 @@ def render_summary(
     else:
         results = ["No check was decided, so there is nothing to tabulate."] + results
     sections.append(
-        section("Detailed evaluation results", results, table, links=links)
+        section("Detailed evaluation results", results, table, links=links, labels=labels)
     )
     return "\n\n".join(sections)
 

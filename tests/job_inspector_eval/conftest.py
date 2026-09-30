@@ -210,6 +210,7 @@ def context(**overrides: Any) -> "C.EvalContext":
     fields: Dict[str, Any] = {
         "inspector_run": {
             "id": INSPECTOR_RUN_ID,
+            "number": 7,
             "job_ref": "jobs.job_inspector",
             "status": "completed",
             "created_at": "2026-09-01T10:05:00Z",

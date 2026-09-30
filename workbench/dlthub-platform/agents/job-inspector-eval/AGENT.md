@@ -128,6 +128,11 @@ output:
       type: string
       description: job ref of the inspector job the evaluated run belongs to
       entity_type: job
+    inspector_run_number:
+      type: integer
+      description: >
+        run number of the evaluated inspector run. It is the text of every link to that run
+        in the summary, so a reader meets `run #114` rather than a uuid
     failed_job_ref:
       type: string
       description: job ref of the failed job the inspector inspected
@@ -136,6 +141,9 @@ output:
       type: string
       description: run id of the failed job run the inspector inspected
       entity_type: job-run
+    failed_run_number:
+      type: integer
+      description: run number of the failed job run, which names it in the summary
     inspector_status:
       enum: [succeeded, failed, aborted]
       description: The status the inspector reported for itself, copied from its output.
@@ -216,11 +224,15 @@ output:
             type: string
           inspector_job_ref:
             type: string
+          inspector_run_number:
+            type: integer
           failed_run_id:
             type: string
             description: run id of the failed job run that inspection inspected
           failed_job_ref:
             type: string
+          failed_run_number:
+            type: integer
           inspector_status:
             type: string
             description: the status the inspector reported for itself on that run

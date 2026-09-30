@@ -1334,7 +1334,8 @@ def test_the_rendered_summary_links_the_ids_the_checks_wrote():
     prep.links = ("https://app.example", "ws-1")
     final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
     summary = final["summary"]
-    assert f"[`{INSPECTOR_RUN_ID}`](https://app.example/w/ws-1/runs/{INSPECTOR_RUN_ID})" in summary
+    # the uuid is the target, the job and the run number the text
+    assert f"[#7](https://app.example/w/ws-1/runs/{INSPECTOR_RUN_ID})" in summary
     # a reasoning that names the inspected run carries the link too
     assert summary.count(f"/runs/{FAILED_RUN_ID}") > 1
     assert_summary_shape(
