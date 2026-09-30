@@ -15,11 +15,11 @@ assert _spec and _spec.loader
 links = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(links)
 
-WEB = ("https://dlthub.dev", "ws-1")
+WEB = ("https://app.example", "ws-1")
 RUN = "3cecd342-6d50-4332-89f1-005276e75d84"
-RUN_URL = f"https://dlthub.dev/w/ws-1/runs/{RUN}"
+RUN_URL = f"https://app.example/w/ws-1/runs/{RUN}"
 JOB = "jobs.__deployment__.jaffle_shop"
-JOB_URL = f"https://dlthub.dev/w/ws-1/jobs/{JOB}"
+JOB_URL = f"https://app.example/w/ws-1/jobs/{JOB}"
 
 
 def test_a_citation_span_becomes_the_link_text():
