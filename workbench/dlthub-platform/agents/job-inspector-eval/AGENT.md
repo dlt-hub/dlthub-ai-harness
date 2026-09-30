@@ -231,6 +231,11 @@ output:
             description: ids of the checks that came back FALSE on that run
             items:
               type: string
+          judge_failure:
+            type: string
+            description: >
+              why the judge never answered on that run; empty when it did. The deterministic
+              checks stand, the judge checks read `N/A`, and the run does not pass.
     skipped_runs:
       type: array
       description: >

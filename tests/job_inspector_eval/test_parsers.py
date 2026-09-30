@@ -110,6 +110,17 @@ def test_token_overlap_counts_whole_tokens_only():
     assert C.token_overlap("", "anything") == 1.0
 
 
+def test_token_overlap_ignores_punctuation_at_the_end_of_a_token():
+    """`_TOKEN` keeps `.` and `:` inside a token, so a faithful quote of a log line that ends
+    in one would otherwise miss on that word."""
+    assert C.token_overlap("users does not exist", 'relation "users" does not exist.') == 1.0
+    assert C.token_overlap(
+        "connect failed host=db.internal:5432", "connect failed: host=db.internal:5432"
+    ) == 1.0
+    # the whole-token rule still holds: `id` does not match inside `identity`
+    assert C.token_overlap("id", "none identity 100") == 0.0
+
+
 def test_source_line_number():
     assert C.source_line_number("`dlthub job runs logs abc` line 38") == 38
     assert C.source_line_number("`dlthub job runs logs abc` lines 38-40") == 38
