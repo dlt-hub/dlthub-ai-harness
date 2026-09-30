@@ -721,8 +721,7 @@ def validate_index_drift(
 
     NOTE: build-time guard only. It keeps the *shipped* index in sync with
     marketplace.json; it does NOT keep a user's *installed* index fresh against the
-    live catalog at runtime. That runtime-freshness gap is tracked in
-    dlt-hub/dlthub-ai-workbench-internal#71.
+    live catalog at runtime.
     """
     expected = marketplace_names - _NON_WORKFLOW_TOOLKITS
 

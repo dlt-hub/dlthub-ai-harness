@@ -1,6 +1,8 @@
 """Resolution, fetching, the judge inputs, and writing the computed results back."""
 
+import asyncio
 import json
+from datetime import datetime, timezone
 
 from conftest import (
     DEPLOYED_RUN_TOOLS,
@@ -28,7 +30,7 @@ EVALUATOR_RUN_ID = "55555555-5555-4555-8555-555555555555"
 INSPECTOR_RECORD = {
     "id": INSPECTOR_RUN_ID,
     "job_ref": "jobs.job_inspector",
-    "status": "succeeded",
+    "status": "completed",
     "created_at": "2026-09-01T10:05:00Z",
     "trigger": "job.fail:pipelines.github_events",
     "pipelines": [],
@@ -369,6 +371,34 @@ def test_finalize_reads_a_checks_array_the_judge_serialised_as_a_string():
     assert "could not be read" not in final["summary"]
 
 
+def test_finalize_reads_the_shapes_a_judge_wraps_its_answers_in():
+    """Constrained decoding guarantees the schema, not that a model fills it as declared.
+
+    Each shape below reaches `finalize` as a full set of answers, so an evaluation is not lost
+    to a wrapper object, a double encoding or a per-entry serialisation.
+    """
+    prep = _prep_with()
+    answers = [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
+               for id in C.judge_ids(prep.results)]
+    shapes = {
+        "wrapped in an object": {"checks": answers},
+        "wrapped and serialised": {"results": json.dumps(answers)},
+        "keyed by check id": {entry["id"]: entry for entry in answers},
+        "keyed by check id, no id inside": {
+            entry["id"]: {k: v for k, v in entry.items() if k != "id"} for entry in answers
+        },
+        "serialised twice": json.dumps(json.dumps(answers)),
+        "one serialised entry each": [json.dumps(entry) for entry in answers],
+        "a trailing comma": json.dumps(answers)[:-1] + ",]",
+    }
+    for name, checks in shapes.items():
+        final = C.finalize({"status": "succeeded", "summary": "done", "checks": checks}, prep)
+        answered = [e for e in final["checks"] if e["kind"] == "judge"]
+        assert answered and all(e["outcome"] == "TRUE" for e in answered), name
+        assert final["status"] == "succeeded", name
+        assert "could not be read" not in final["summary"], name
+
+
 def test_finalize_fails_loudly_when_the_judge_answers_cannot_be_read():
     """Silently reporting every judge check `N/A` hides a broken judge behind a pass rate."""
     prep = _prep_with()
@@ -514,7 +544,7 @@ def test_finalize_reports_the_checks_the_pass_rate_left_out():
 
 
 def deployed_run_fetcher() -> StubFetcher:
-    """The platform as it stood for the run in dlt-hub/dlthub-ai-workbench-internal#83."""
+    """The platform as it stood for the deployed run the log fixture came from."""
     job_ref = "jobs.jaffle_shop.load_jaffle_bad_config"
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(classification="config"), "trace": deployed_run_trace()}
@@ -591,7 +621,7 @@ def test_a_deployed_run_reports_the_checks_it_left_undecided():
     assert f"over the {final['decided_count']} decided" in final["summary"]
 
 
-# the verdict
+# the summary
 
 
 def _all_true(prep):
@@ -599,37 +629,137 @@ def _all_true(prep):
             for id in C.judge_ids(prep.results)]
 
 
-def test_finalize_opens_with_the_verdict_and_names_each_broken_instruction():
+def test_finalize_opens_with_the_findings_and_names_each_broken_instruction():
     """A reader acts on the summary without opening the rubric."""
     prep = _prep_with(output=output(fix_target="", fix_change="", open_points=[]))
-    final = C.finalize({"status": "succeeded", "summary": "graded", "checks": _all_true(prep)},
-                       prep)
+    final = C.finalize({"status": "succeeded", "summary": "The judge speaks here.",
+                        "checks": _all_true(prep)}, prep)
     summary = final["summary"]
-    assert summary.startswith("**Verdict: failed.**")
-    assert "One FALSE fails the evaluation" in summary
-    assert "Broken instructions:" in summary
+    assert summary.startswith("## Findings\n")
+    assert "## Findings\n\n- The inspector broke " in summary
+    assert "Verdict" not in summary
+    assert "- Broken: " in summary
     assert "(`fix_names_target_and_change`)" in summary
     assert C.instruction_of("fix_names_target_and_change") in summary
     assert prep.results["fix_names_target_and_change"].reasoning in summary
-    # the judge's own words follow the verdict, then the tally
-    assert summary.index("graded") > summary.index("Broken instructions:")
-    assert summary.index("checks:") > summary.index("graded")
+    # the judge's own words follow the findings, then the sections in order
+    assert summary.index("The judge speaks here.") > summary.index("The inspector broke ")
+    for heading in ("## Scope", "## Detailed evaluation results"):
+        assert heading in summary
+    assert (summary.index("- Instruction following: ") < summary.index("- Quality: ")
+            < summary.index("## Scope")
+            < summary.index("## Detailed evaluation results"))
+    assert summary.index("check results:") > summary.index("## Detailed evaluation results")
 
 
-def test_finalize_verdict_passed_when_nothing_is_false():
+def test_finalize_says_so_plainly_when_nothing_is_false():
     prep = _prep_with()
     final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
     assert final["passed"] is True
-    assert final["summary"].startswith("**Verdict: passed.**")
-    assert "Broken instructions" not in final["summary"]
+    assert "## Findings\n\n- The inspector followed all " in final["summary"]
+    assert "- Broken: " not in final["summary"]
+    assert "- Instruction following: no findings. " in final["summary"]
+    assert "- Quality: no findings. " in final["summary"]
 
 
-def test_finalize_verdict_incomplete_when_a_judge_check_went_unanswered():
+def test_finalize_says_the_evaluation_was_incomplete_when_a_judge_check_went_unanswered():
     prep = _prep_with()
     final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)[:-1]},
                        prep)
-    assert final["summary"].startswith("**Verdict: incomplete.**")
+    assert "could not grade everything" in final["summary"]
+    assert "went unanswered" in final["summary"]
     assert final["passed"] is False
+
+
+def test_the_summary_names_a_security_finding_first():
+    checks = [
+        {"id": "no_write_tool_used", "kind": "deterministic", "outcome": "FALSE",
+         "reasoning": "tool call 3 called the write tool 'Edit'"},
+        {"id": "summary_within_length", "kind": "deterministic", "outcome": "FALSE",
+         "reasoning": "the summary runs to 4000 characters"},
+        {"id": "run_record_read", "kind": "deterministic", "outcome": "TRUE",
+         "reasoning": "read it"},
+    ]
+    found = C.findings_bullets([{"checks": checks, "inspector_run_id": "run-1"}])
+    assert found[0].startswith(
+        "The inspector broke 2 of the 3 decided checks on run `run-1`"
+    )
+    # the id is linked when the section is rendered; see the linkify tests below
+    assert found[1].startswith("A security rule was broken: ")
+    bullets = C.category_bullets([{"checks": checks}], C.INSTRUCTION_FOLLOWING,
+                                 C.category_verdict(checks))
+    assert bullets[0].startswith("Instruction following: blocking. ")
+    # the broken instructions are nested under the category bullet
+    assert bullets[1][0].startswith("Security rule broken: ")
+    assert "`no_write_tool_used`" in bullets[1][0]
+
+
+def test_category_verdict_reads_its_own_checks():
+    def entries(*outcomes):
+        return [{"id": id, "kind": "deterministic", "outcome": outcome, "reasoning": ""}
+                for id, outcome in outcomes]
+
+    def band(false_count, decided, runs=25):
+        """`decided` checks of which `false_count` broke, none of them a security rule."""
+        return C.category_verdict([
+            {"id": f"check_{index}", "kind": "deterministic", "reasoning": "",
+             "outcome": "FALSE" if index < false_count else "TRUE"}
+            for index in range(decided)
+        ], runs)
+
+    assert C.category_verdict(entries(("run_record_read", "N/A"))) == C.NOT_GRADED
+    assert C.category_verdict(entries(("run_record_read", "TRUE"))) == C.NO_FINDINGS
+    # over a window the share of the decided checks that broke picks the band
+    assert band(1, 400) == C.MINOR_ISSUES      # 0.25%
+    assert band(7, 400) == C.MINOR_ISSUES      # 1.75%, under the band
+    assert band(8, 400) == C.NEEDS_ATTENTION   # 2% exactly, the band opens
+    assert band(40, 400) == C.NEEDS_ATTENTION  # 10% exactly
+    assert band(41, 400) == C.BLOCKING         # over 10%
+    assert band(1, 4) == C.BLOCKING            # a small denominator is not a free pass
+    # one run is read as findings: the same two broken checks are 12% of seventeen
+    assert band(2, 17, runs=1) == C.MINOR_ISSUES
+    assert band(2, 17) == C.BLOCKING
+    assert band(3, 17, runs=1) == C.NEEDS_ATTENTION
+    assert band(5, 60, runs=1) == C.NEEDS_ATTENTION
+    assert band(6, 60, runs=1) == C.BLOCKING
+    # the share never softens a run: six findings among hundreds is still six findings
+    assert band(6, 400, runs=1) == C.BLOCKING
+    # a security FALSE is blocking whatever the share
+    assert C.category_verdict(entries(
+        ("no_data_access", "FALSE"), ("run_logs_read", "TRUE"),
+        ("skill_loaded", "TRUE"), ("summary_within_length", "TRUE"),
+    )) == C.BLOCKING
+
+
+def test_the_results_table_carries_every_check_and_survives_the_ui():
+    prep = _prep_with()
+    final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+    summary = final["summary"]
+    assert "| check_id | category | kind | results | reasoning |" in summary
+    # the category's verdict is one thing about the category, not a fact about each row
+    assert "category_verdict" not in summary
+    rows = [line for line in summary.splitlines() if line.startswith("| `")]
+    # a check that decided nothing measured nothing: the tally counts it, the table omits it
+    decided = [entry for entry in final["checks"] if entry["outcome"] != "N/A"]
+    assert len(rows) == len(decided) < len(C.CHECKS)
+    assert not [row for row in rows if "| N/A |" in row]
+    for row in rows:
+        assert row.count("|") == 6, row
+    # a reasoning that quotes a log line must not open a code span the row never closes
+    assert C._cell("read `pipelines/github.py") == "read 'pipelines/github.py"
+    assert C._cell("a | b") == "a \\| b"
+    assert summary.count("`") % 2 == 0
+
+
+def test_one_run_recommends_nothing_whatever_the_judge_writes():
+    """What to change in the instructions rests on the window, never on a single run."""
+    prep = _prep_with()
+    judge = {"status": "succeeded", "summary": "", "checks": _all_true(prep),
+             "recommendation": "Tell the inspector to open the file the traceback names."}
+    final = C.finalize(judge, prep)
+    assert final["recommendation"] == ""
+    assert judge["recommendation"] not in final["summary"]
+    assert "## Recommendation" not in final["summary"]
 
 
 def test_instruction_of_is_the_first_paragraph_of_the_docstring():
@@ -651,6 +781,566 @@ def test_judge_windows_carry_the_summary_sections_and_the_leads():
     assert windows["open_point_reasons"] == []
     assert json.loads(prep.judge_inputs["inspector_output"])["open_points"]
 
+
+# the batch window
+
+
+SECOND_RUN_ID = "66666666-6666-4666-8666-666666666666"
+WINDOW_END = datetime(2026, 9, 2, tzinfo=timezone.utc)
+
+
+def week_fetcher(**overrides):
+    """Three inspector runs: two inside the window, one a fortnight old."""
+    second = dict(INSPECTOR_RECORD, id=SECOND_RUN_ID, created_at="2026-08-31T10:05:00Z")
+    stale = dict(INSPECTOR_RECORD, id=OLDER_RUN_ID, created_at="2026-08-15T10:05:00Z")
+    records = {
+        INSPECTOR_RUN_ID: INSPECTOR_RECORD,
+        SECOND_RUN_ID: second,
+        OLDER_RUN_ID: stale,
+        FAILED_RUN_ID: failed_run(),
+    }
+    logs = {INSPECTOR_RUN_ID: envelope_log(), SECOND_RUN_ID: envelope_log(),
+            OLDER_RUN_ID: envelope_log(), FAILED_RUN_ID: with_setup(FAILED_LOG)}
+    runs_by_job = {
+        "jobs.job_inspector": [INSPECTOR_RECORD, second, stale],
+        "pipelines.github_events": [failed_run()],
+    }
+    kwargs = {"records": records, "logs": logs, "runs_by_job": runs_by_job}
+    kwargs.update(overrides)
+    return StubFetcher(**kwargs)
+
+
+def test_the_window_holds_the_runs_of_the_week_and_leaves_the_older_ones_out():
+    batch = C.prepare_batch({"run_id": "local", "trigger": "schedule:0 7 * * 1"},
+                            fetcher=week_fetcher(), inspector_job_ref="jobs.job_inspector",
+                            until=WINDOW_END)
+    assert batch.aborted is False
+    assert batch.found == 2
+    assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID, SECOND_RUN_ID]
+    assert batch.window["since"] == "2026-08-26T00:00:00+00:00"
+    assert batch.window["until"] == "2026-09-02T00:00:00+00:00"
+    assert batch.window["runs_evaluated"] == 2
+    assert batch.capped is False
+
+
+def test_a_run_that_is_still_going_is_skipped_with_the_reason():
+    running = dict(INSPECTOR_RECORD, id=SECOND_RUN_ID, status="running",
+                   created_at="2026-08-31T10:05:00Z")
+    source = week_fetcher()
+    source.records[SECOND_RUN_ID] = running
+    source.runs_by_job["jobs.job_inspector"] = [INSPECTOR_RECORD, running]
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=source,
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID]
+    assert batch.skipped == [
+        {"run_id": SECOND_RUN_ID, "reason": "the run is running and has not finished"}
+    ]
+
+    # a run the platform stopped never produced a result either
+    cancelled = dict(INSPECTOR_RECORD, id=SECOND_RUN_ID, status="cancelled",
+                     created_at="2026-08-31T10:05:00Z")
+    source.records[SECOND_RUN_ID] = cancelled
+    source.runs_by_job["jobs.job_inspector"] = [INSPECTOR_RECORD, cancelled]
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=source,
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    assert batch.skipped[0]["reason"] == "the run is cancelled, so it never produced a result"
+
+
+def test_a_run_the_platform_calls_completed_is_graded():
+    """The run record says `completed`; only the agent's own result says `succeeded`."""
+    assert "completed" in C.GRADED_RUN_STATUSES
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID, SECOND_RUN_ID]
+    assert batch.skipped == []
+
+
+def test_a_run_that_declared_no_result_is_skipped_rather_than_dropped():
+    source = week_fetcher()
+    source.logs[SECOND_RUN_ID] = inspector_log(result_json=None)
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=source,
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID]
+    assert batch.skipped[0]["run_id"] == SECOND_RUN_ID
+    assert "declared no result" in batch.skipped[0]["reason"]
+    assert batch.found == len(batch.preps) + len(batch.skipped)
+
+
+def test_the_cap_says_it_cut_the_window_short():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
+                            max_runs=1)
+    assert batch.capped is True
+    assert batch.found == 1
+    assert "more than the" in C.render_batch_summary([], batch, batch.skipped) or batch.capped
+
+
+def test_a_batch_job_with_no_job_ref_aborts_and_says_what_to_pass():
+    batch = C.prepare_batch({"run_id": "local", "trigger": "schedule:0 7 * * 1"},
+                            fetcher=week_fetcher(), until=WINDOW_END)
+    assert batch.aborted is True
+    assert "inspector_job_ref" in batch.abort_reason
+    assert batch.aborted_output["status"] == "aborted"
+    assert batch.aborted_output["window"]["runs_found"] == 0
+
+
+def test_finalize_batch_reports_the_window_the_counts_and_every_run():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+    final = C.finalize_batch(evaluations, batch)
+    assert final["window"]["runs_found"] == 2
+    assert final["window"]["runs_evaluated"] == 2
+    assert [entry["inspector_run_id"] for entry in final["evaluations"]] == [
+        INSPECTOR_RUN_ID, SECOND_RUN_ID
+    ]
+    summary = final["summary"]
+    for heading in ("- Instruction following: ", "- Quality: ",
+                    "## Recommendation", "## Detailed evaluation results"):
+        assert heading in summary
+    assert "2026-08-26T00:00:00+00:00 to 2026-09-02T00:00:00+00:00" in summary
+    assert f"`{INSPECTOR_RUN_ID}`" in summary
+    assert final["decided_count"] == sum(e["decided_count"] for e in evaluations)
+
+
+def test_finalize_batch_counts_a_check_over_the_runs_it_broke_on():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = []
+    for index, prep in enumerate(batch.preps):
+        final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)},
+                           prep)
+        if index == 0:
+            for entry in final["checks"]:
+                if entry["id"] == "no_data_access":
+                    entry["outcome"] = "FALSE"
+                    entry["reasoning"] = "the inspector queried the destination"
+        evaluations.append(final)
+    final = C.finalize_batch(evaluations, batch)
+    assert final["passed"] is False
+    assert final["evaluations"][0]["false_checks"] == ["no_data_access"]
+    # one form wherever a count over runs is reported, and a header saying what it counts
+    assert "FALSE 1/2" in final["summary"]
+    assert "| results | reasoning (from FALSE runs if applicable) |" in final["summary"]
+    # a check that broke nowhere carries no reasoning: one run's answer is not the window's
+    passing = [row for row in final["summary"].splitlines()
+               if row.startswith("| `succeeded_has_evidence`")]
+    assert passing and passing[0].endswith("| TRUE 2/2 | - |"), passing
+    assert C.outcome_over_runs({"false": 0, "decided": 7}) == "TRUE 7/7"
+    assert C.outcome_over_runs({"false": 0, "decided": 0}) == "N/A"
+    assert "Security rule broken: " in final["summary"]
+    counts = C.check_counts(evaluations)
+    assert counts["no_data_access"] == {"false": 1, "decided": 2}
+
+
+def test_the_window_recommendation_is_asked_for_once_over_every_run():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = []
+    for prep in batch.preps:
+        final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)},
+                           prep)
+        for entry in final["checks"]:
+            if entry["id"] == "evidence_cited_at_line":
+                entry["outcome"] = "FALSE"
+                entry["reasoning"] = "evidence[0] cites line 49, the excerpt sits at 54"
+        evaluations.append(final)
+
+    findings = json.loads(C.window_findings(evaluations, batch)["window_findings"])
+    assert findings["runs_evaluated"] == 2
+    broken = findings["broken_checks"]
+    assert [entry["check_id"] for entry in broken] == ["evidence_cited_at_line"]
+    assert broken[0] == {
+        "check_id": "evidence_cited_at_line",
+        "category": "Instruction following",
+        "instruction": C.instruction_of("evidence_cited_at_line"),
+        "runs_broken": 2,
+        "runs_decided": 2,
+        "reasonings": ["evidence[0] cites line 49, the excerpt sits at 54."] * 2,
+    }
+
+    # a judge that names a section and forgets the file gets the file put back
+    written = "In `Investigate`, require the cited line to hold the quoted excerpt."
+    final = C.finalize_batch(evaluations, batch, recommendation=written)
+    named = (f"In `{C.INSPECTOR_DEFINITION_PATH}`, in `Investigate`, require the cited line"
+             " to hold the quoted excerpt.")
+    assert named in final["summary"]
+    assert final["recommendation"] == f"- {named}"
+    # one that names it already is left alone
+    assert C.name_the_file(named) == named
+    # so is the no-change sentence, which names no file on purpose
+    assert C.name_the_file(C.NO_CHANGE_RECOMMENDATION) == C.NO_CHANGE_RECOMMENDATION
+
+    # a judge that writes it reaches the summary with nothing prepended
+    quiet = C.finalize_batch(evaluations, batch, recommendation=C.NO_CHANGE_RECOMMENDATION)
+    assert quiet["recommendation"] == f"- {C.NO_CHANGE_RECOMMENDATION}"
+    assert f"- {C.NO_CHANGE_RECOMMENDATION}" in quiet["summary"]
+    assert C.INSPECTOR_DEFINITION_PATH not in quiet["recommendation"]
+
+
+def test_a_window_with_nothing_broken_asks_for_no_recommendation():
+    """The pass costs a loop run, so a clean window does not make it."""
+    class Loop:
+        def __init__(self):
+            self.calls = 0
+
+        async def run(self, inputs):
+            self.calls += 1
+            return {"recommendation": "never reached"}
+
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+    loop = Loop()
+    written = asyncio.run(C.judge_window_recommendation(loop, evaluations, batch))
+    assert (written, loop.calls) == ("", 0)
+
+    final = C.finalize_batch(evaluations, batch)
+    assert "## Recommendation" in final["summary"]
+    assert C.NO_CHANGE_RECOMMENDATION in final["summary"]
+
+
+def test_a_judge_run_that_raised_is_reported_as_a_skipped_run():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(batch.preps[0])},
+                   batch.preps[0])
+    ]
+    failures = [{"run_id": SECOND_RUN_ID, "reason": "AgentRunFailed: the loop hit its token limit"}]
+    final = C.finalize_batch(evaluations, batch, failures)
+    assert final["window"]["runs_skipped"] == 1
+    assert final["skipped_runs"] == failures
+    assert "token limit" in final["summary"]
+    assert final["passed"] is False
+
+
+def test_the_sdk_walk_stops_at_the_edge_of_the_window():
+    """The listing carries no time filter, so the walk is what bounds the window."""
+
+    class _Run:
+        def __init__(self, record):
+            self.record = record
+
+        def to_dict(self):
+            return self.record
+
+    class _Runs:
+        def __init__(self, records):
+            self.records = records
+            self.read = 0
+
+        def list(self, limit=None):
+            for record in self.records:
+                self.read += 1
+                yield _Run(record)
+
+    class _Job:
+        def __init__(self, runs):
+            self.runs = runs
+
+    class _Jobs:
+        def __init__(self, job):
+            self.job = job
+
+        def get(self, ref):
+            return self.job
+
+    class _Workspace:
+        def __init__(self, records):
+            self.runs = _Runs(records)
+            self.jobs = _Jobs(_Job(self.runs))
+
+    records = [
+        {"id": "a", "created_at": "2026-09-01T00:00:00Z"},
+        {"id": "b", "created_at": "2026-08-30T00:00:00Z"},
+        {"id": "c", "created_at": "2026-08-01T00:00:00Z"},
+        {"id": "d", "created_at": "2026-07-01T00:00:00Z"},
+    ]
+    workspace = _Workspace(records)
+    runs, capped = C.SdkFetcher(workspace).job_runs_since(
+        "jobs.job_inspector", datetime(2026, 8, 26, tzinfo=timezone.utc)
+    )
+    assert [run["id"] for run in runs] == ["a", "b"]
+    assert capped is False
+    assert workspace.runs.read == 3  # the walk stopped on the first run outside the window
+
+    runs, capped = C.SdkFetcher(_Workspace(records)).job_runs_since(
+        "jobs.job_inspector", datetime(2026, 7, 1, tzinfo=timezone.utc), cap=2
+    )
+    assert [run["id"] for run in runs] == ["a", "b"]
+    assert capped is True
+
+
+def test_the_batch_deployment_function_reports_the_window_the_way_the_readme_declares_it():
+    """The loop drives one judge run per prepared evaluation, and one failure costs one run."""
+    import asyncio
+
+    class _Loop:
+        """Answers every open check TRUE, and raises on the second run."""
+
+        def __init__(self):
+            self.runs = 0
+
+        async def run(self, inputs):
+            self.runs += 1
+            if self.runs == 2:
+                raise RuntimeError("the loop hit its token limit")
+            open_checks = json.loads(inputs["evidence_windows"])["open_checks"]
+            return {"status": "succeeded", "summary": "graded", "recommendation": "none",
+                    "checks": [{"id": id, "kind": "judge", "outcome": "TRUE",
+                                "reasoning": "fine"} for id in open_checks]}
+
+    loop = _Loop()
+    run_context = {"run_id": "local", "ai_loop": loop}
+
+    async def batch_job():
+        batch = C.prepare_batch(run_context, fetcher=week_fetcher(),
+                                inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+        assert batch.aborted is False
+        evaluations, failures = [], []
+        for prep in batch.preps:
+            try:
+                output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
+            except Exception as ex:
+                failures.append({"run_id": prep.inspector_run_id,
+                                 "reason": f"{type(ex).__name__}: {ex}"})
+                continue
+            evaluations.append(C.finalize(output, prep))
+        return C.finalize_batch(evaluations, batch, failures)
+
+    final = asyncio.run(batch_job())
+    assert loop.runs == 2
+    assert final["status"] == "succeeded"
+    assert final["window"]["runs_found"] == 2
+    assert final["window"]["runs_evaluated"] == 1
+    assert final["window"]["runs_skipped"] == 1
+    assert final["skipped_runs"][0]["run_id"] == SECOND_RUN_ID
+    assert "token limit" in final["summary"]
+    assert final["passed"] is False  # a run that was found and not graded fails the week
+
+
+def test_a_window_that_graded_nothing_says_so_instead_of_printing_an_empty_table():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector",
+                            until=datetime(2026, 9, 24, tzinfo=timezone.utc))
+    final = C.finalize_batch([], batch)
+    assert batch.found == 0
+    assert "| inspector_run_id |" not in final["summary"]
+    assert "nothing to tabulate" in final["summary"]
+
+
+def test_a_skip_reason_does_not_repeat_the_run_id_the_row_carries():
+    entry = {"run_id": "abc", "reason": "inspector run abc declared no result: nothing to read"}
+    assert C._skip_reason(entry) == "declared no result: nothing to read"
+    assert C._skip_reason({"run_id": "abc", "reason": "the run is running"}) == "the run is running"
+
+
+# where the window starts
+
+
+def history(*entries):
+    """Deployments newest first: (version, ISO timestamp, definition hash)."""
+    return [{"version": v, "created_at": at, "content_hash": h} for v, at, h in entries]
+
+
+def test_the_window_starts_at_the_deployment_that_last_changed_the_definition():
+    walked = history(
+        (26, "2026-09-24T14:48:12Z", "new"),
+        (25, "2026-09-24T14:33:08Z", "old"),
+    )
+    moment, reason = C.definition_changed_at(walked)
+    assert moment == datetime(2026, 9, 24, 14, 48, 12, tzinfo=timezone.utc)
+    assert "workspace deployment 26, the deploy that last changed" in reason
+
+
+def test_a_definition_carried_by_several_deployments_reaches_back_to_the_first_of_them():
+    walked = history(
+        (26, "2026-09-24T14:48:12Z", "same"),
+        (25, "2026-09-24T14:33:08Z", "same"),
+        (24, "2026-09-24T14:31:16Z", "older"),
+    )
+    moment, reason = C.definition_changed_at(walked)
+    assert moment == datetime(2026, 9, 24, 14, 33, 8, tzinfo=timezone.utc)
+    assert "workspace deployment 25, the deploy that last changed" in reason
+
+
+def test_a_definition_that_never_changed_reaches_back_to_the_oldest_deployment_read():
+    walked = history((3, "2026-09-01T00:00:00Z", "same"), (2, "2026-08-01T00:00:00Z", "same"))
+    moment, reason = C.definition_changed_at(walked)
+    assert moment == datetime(2026, 8, 1, tzinfo=timezone.utc)
+    assert "unchanged across the 2 workspace deployment(s) read" in reason
+
+
+def test_a_deployment_that_did_not_hold_the_definition_counts_as_a_change():
+    walked = history((9, "2026-09-02T00:00:00Z", "first"), (8, "2026-09-01T00:00:00Z", ""))
+    moment, _ = C.definition_changed_at(walked)
+    assert moment == datetime(2026, 9, 2, tzinfo=timezone.utc)
+
+
+def test_no_deployment_history_leaves_the_window_to_the_dated_fallback():
+    assert C.definition_changed_at([]) == (None, "")
+    since, until, source = C.resolve_window(
+        week_fetcher(), until=WINDOW_END, window_days=7
+    )
+    assert since == datetime(2026, 8, 26, tzinfo=timezone.utc)
+    assert "falls back to the 7 days" in source
+
+
+def test_a_given_since_wins_over_the_deployment_history():
+    given = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    since, _, source = C.resolve_window(week_fetcher(), since=given, until=WINDOW_END)
+    assert since == given
+    assert source == "the `since` this run was given"
+
+
+class _HistoryFetcher(StubFetcher):
+    def __init__(self, walked, **kwargs):
+        super().__init__(**kwargs)
+        self.walked = walked
+
+    def deployment_history(self, path, cap=C.DEFAULT_DEPLOYMENT_WALK):
+        return self.walked[:cap]
+
+
+def test_the_batch_window_starts_at_the_definition_change_and_says_so():
+    source = _HistoryFetcher(
+        history((26, "2026-09-01T00:00:00Z", "new"), (25, "2026-08-20T00:00:00Z", "old")),
+        records=week_fetcher().records, logs=week_fetcher().logs,
+        runs_by_job=week_fetcher().runs_by_job,
+    )
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=source,
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    assert batch.since == datetime(2026, 9, 1, tzinfo=timezone.utc)
+    # the run of the older definition is outside the window
+    assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID]
+    assert "workspace deployment 26, the deploy that last changed" in batch.window["since_is"]
+    final = C.finalize_batch([], batch)
+    assert ("The window starts where workspace deployment 26, the deploy that last changed"
+            in final["summary"])
+
+
+def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
+    """The deployment function raises on one and completes on the other."""
+    quiet = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector",
+                            until=datetime(2026, 9, 24, tzinfo=timezone.utc))
+    assert quiet.found == 0
+    assert C.finalize_batch([], quiet)["status"] == "succeeded"
+
+    source = week_fetcher()
+    source.logs[INSPECTOR_RUN_ID] = inspector_log(result_json=None)
+    source.logs[SECOND_RUN_ID] = inspector_log(result_json=None)
+    faulty = C.prepare_batch({"run_id": "local"}, fetcher=source,
+                             inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    assert faulty.found == 2 and faulty.preps == []
+    assert C.finalize_batch([], faulty)["status"] == "failed"
+
+
+# the shape every background agent's summary takes
+
+
+def assert_summary_shape(summary, sections):
+    """Headings over short bullets: nothing before the first, nothing outside a bullet.
+
+    `sections` carries the heading markers, so a subsection reads `### Quality`. A markdown
+    table is allowed as the last thing in the last section, and nowhere else.
+    """
+    lines = summary.splitlines()
+    assert lines[0].startswith("## "), lines[0]
+    assert [line for line in lines if line.startswith("#")] == sections
+    seen_table = False
+    for line in lines:
+        if not line.strip():
+            continue
+        if line.startswith("#"):
+            assert not seen_table, f"a heading follows the table: {line}"
+            continue
+        if line.startswith("|"):
+            seen_table = True
+            continue
+        assert not seen_table, f"a bullet follows the table: {line}"
+        assert line.startswith(("- ", "  - ")), f"line outside a bullet: {line}"
+    assert summary.count("`") % 2 == 0, "an unbalanced code span"
+    assert "\\`" not in summary, "an escaped backtick breaks the span it sits in"
+    # the renderer strips raw HTML, so a tag in the summary is a section the reader loses
+    assert "<" not in summary, "raw HTML in the summary"
+
+
+def test_one_evaluation_takes_the_shape():
+    prep = _prep_with(output=output(fix_target="", fix_change="", open_points=[]))
+    final = C.finalize(
+        {"status": "succeeded", "summary": "It missed the file. The cause stands anyway.",
+         "recommendation": "Add a rule under Investigate.", "checks": _all_true(prep)},
+        prep,
+    )
+    assert_summary_shape(
+        final["summary"],
+        ["## Findings", "## Scope", "## Detailed evaluation results"],
+    )
+
+
+def test_a_window_takes_the_same_shape():
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "recommendation": "Add a rule.",
+                    "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+    final = C.finalize_batch(evaluations, batch,
+                             [{"run_id": "x", "reason": "the run is running"}])
+    assert_summary_shape(
+        final["summary"],
+["## Findings", "## Recommendation", "## Scope",
+         "## Detailed evaluation results"],
+    )
+
+
+def test_a_judge_paragraph_becomes_bullets():
+    assert C.as_bullets("One thing happened. Another followed.") == [
+        "One thing happened.", "Another followed."
+    ]
+    assert C.as_bullets("- already a bullet\n- and another") == [
+        "already a bullet", "and another"
+    ]
+    # a heading inside a prose field would open a section the renderer does not own
+    assert C.as_bullets("## Diagnosis\n- the cause") == ["the cause"]
+
+
+def test_every_run_id_and_job_ref_in_the_summary_is_a_link():
+    links = ("https://app.example", "ws-1")
+    text = "run 11111111-1111-4111-8111-111111111111 of `jobs.a.b` failed"
+    linked = C.linkify(text, links)
+    assert "[`11111111-1111-4111-8111-111111111111`](https://app.example/w/ws-1/runs/" in linked
+    assert "[`jobs.a.b`](https://app.example/w/ws-1/jobs/jobs.a.b)" in linked
+
+    # a link already written is left alone, target and all
+    once = C.linkify(linked, links)
+    assert once == linked
+
+    # without a workspace the text stands as it was
+    assert C.linkify(text) == text
+
+
+def test_the_rendered_summary_links_the_ids_the_checks_wrote():
+    prep = _prep_with()
+    prep.links = ("https://app.example", "ws-1")
+    final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+    summary = final["summary"]
+    assert f"[`{INSPECTOR_RUN_ID}`](https://app.example/w/ws-1/runs/{INSPECTOR_RUN_ID})" in summary
+    # a reasoning that names the inspected run carries the link too
+    assert summary.count(f"/runs/{FAILED_RUN_ID}") > 1
+    assert_summary_shape(
+        summary,
+        ["## Findings", "## Scope", "## Detailed evaluation results"],
+    )
 
 def test_a_precondition_answers_na_and_keeps_the_rubric_out_of_the_prompt():
     """A `transient`-only check on a `code` failure is Python's answer, not the judge's."""
@@ -688,3 +1378,136 @@ def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
     results = {}
     C.run_preconditions(no_pipeline, results)
     assert results["pipeline_step_named"].outcome == C.NA
+
+
+# workspace source windows
+
+
+def _source_context(**overrides):
+    log = with_setup(
+        FAILED_LOG[:2]
+        + ['  File "/workspace/pipelines/github.py", line 42, in load']
+        + FAILED_LOG[2:]
+    )
+    return context(failed_log=log, **overrides)
+
+
+def test_read_source_finds_an_absolute_runner_path_under_this_root(tmp_path):
+    (tmp_path / "pipelines").mkdir()
+    (tmp_path / "pipelines" / "github.py").write_text("one\ntwo\n", encoding="utf-8")
+
+    assert C.read_source("/tmp/dlt_run_x/run/pipelines/github.py", str(tmp_path)) == "one\ntwo\n"
+    assert C.read_source("pipelines/github.py", str(tmp_path)) == "one\ntwo\n"
+
+
+def test_read_source_refuses_a_path_outside_the_workspace(tmp_path):
+    (tmp_path / "inside").mkdir()
+    (tmp_path.parent / "outside.py").write_text("secret\n", encoding="utf-8")
+
+    assert C.read_source("../outside.py", str(tmp_path / "inside")) == ""
+
+
+def test_workspace_sources_windows_the_line_a_traceback_frame_names(tmp_path):
+    (tmp_path / "pipelines").mkdir()
+    lines = [f"line {n}" for n in range(1, 61)]
+    (tmp_path / "pipelines" / "github.py").write_text("\n".join(lines), encoding="utf-8")
+
+    windows = C.workspace_sources(_source_context(), root=str(tmp_path))
+
+    frame = next(w for w in windows if w["file"].endswith("pipelines/github.py"))
+    assert frame["at"] == 42
+    assert frame["why"] == "workspace traceback frame"
+    assert [entry["n"] for entry in frame["lines"]] == list(range(36, 49))
+    assert frame["lines"][C.SOURCE_WINDOW]["text"] == "line 42"
+
+
+def test_workspace_sources_reports_a_file_the_workspace_does_not_hold(tmp_path):
+    windows = C.workspace_sources(_source_context(), root=str(tmp_path))
+
+    frame = next(w for w in windows if w["file"].endswith("pipelines/github.py"))
+    assert frame["lines"] == []
+    assert frame["missing"] == "the workspace holds no such file"
+
+
+def test_workspace_sources_reads_the_line_the_fix_target_names(tmp_path):
+    (tmp_path / "jaffle.py").write_text("\n".join(f"row {n}" for n in range(1, 20)),
+                                        encoding="utf-8")
+    ctx = _source_context(output=output(fix_target="jaffle.py line 12 `cursor_path`"))
+
+    windows = C.workspace_sources(ctx, root=str(tmp_path))
+
+    named = next(w for w in windows if w["file"] == "jaffle.py")
+    assert named["at"] == 12
+    assert named["why"] == "named by `fix_target`"
+    assert {"n": 12, "text": "row 12"} in named["lines"]
+
+
+def test_workspace_sources_caps_the_files_it_opens(tmp_path):
+    fix = " ".join(f"pipe{n}.py line 1" for n in range(1, C.MAX_SOURCE_FILES + 4))
+    for n in range(1, C.MAX_SOURCE_FILES + 4):
+        (tmp_path / f"pipe{n}.py").write_text("only line\n", encoding="utf-8")
+    ctx = _source_context(output=output(fix_target=fix))
+
+    windows = C.workspace_sources(ctx, root=str(tmp_path))
+
+    assert len({window["file"] for window in windows}) <= C.MAX_SOURCE_FILES
+
+
+def test_the_judge_inputs_carry_the_source_windows():
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
+    windows = json.loads(prep.judge_inputs["evidence_windows"])
+    assert "workspace_sources" in windows
+
+
+def test_definition_sections_are_the_headings_and_not_the_file(tmp_path):
+    path = tmp_path / "AGENT.md"
+    path.write_text("# Title\n\nprose\n\n## Investigate\n\nmore\n\n### Checking credentials\n",
+                    encoding="utf-8")
+
+    sections = C.definition_sections("AGENT.md", str(tmp_path))
+
+    assert sections == ["## Investigate", "### Checking credentials"]
+
+
+# the bounds a window ran under
+
+
+def test_the_window_report_prints_the_cap_the_run_used():
+    """`capped` next to the default cap read as a contradiction: `4 evaluated` and `the 25`."""
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
+                            max_runs=1)
+
+    assert batch.max_runs == 1
+    assert batch.capped is True
+    assert "more than the 1 runs this job evaluates" in " ".join(C.window_bullets(batch, []))
+
+
+def test_the_recommendation_pass_is_told_what_the_runs_were_graded_under():
+    """A check broken by a tighter bound is configuration, not a missing instruction."""
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
+                            max_runs=3, max_runs_read=0)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+
+    findings = json.loads(C.window_findings(evaluations, batch)["window_findings"])
+
+    assert findings["bounds"] == {"max_runs_read": 0, "max_runs": 3}
+
+
+def test_each_pass_is_told_which_task_it_is():
+    """Routing on whether another input came back empty made the judge infer it and get it wrong."""
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
+    assert prep.judge_inputs["task"] == C.GRADE_ONE_RUN
+
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+        for prep in batch.preps
+    ]
+
+    assert C.window_findings(evaluations, batch)["task"] == C.WRITE_THE_RECOMMENDATION

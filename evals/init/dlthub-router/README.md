@@ -8,7 +8,7 @@ The `dlthub-router` skill must trigger and route correctly on **all three agents
 
 - **Automated trigger eval (all three agents):** the harness below drives each agent headlessly — `claude -p`, `codex exec --json`, `cursor-agent -p` — via `tools/run_trigger_eval.py --agent {claude,cursor,codex}` (or `--agent all`). Claude triggers are detected via the `Skill` tool; Codex/Cursor via a read of the skill's `SKILL.md`. See [EVALS.md](../../../EVALS.md).
 - **Cross-agent install + always-loaded surface (all three):** verified via `dlthub ai toolkit install … --strict` for `--agent claude|cursor|codex` and by inspecting the generated rule / `.mdc` / `AGENTS.md` (the index reaches the always-loaded surface on each).
-- **`dlthub-router` is N/A for automated trigger measurement on Codex:** it's an always-loaded router, and on Codex the routing index lives in `AGENTS.md` (not a skill activation), so there's no discrete trigger event. (It also currently exceeds Codex's 1024-char skill-description cap and is dropped as a skill — tracked in [#75](https://github.com/dlt-hub/dlthub-ai-workbench-internal/issues/75).) Measure it on Claude/Cursor; on Codex, confirm routing in the final answer manually.
+- **`dlthub-router` is N/A for automated trigger measurement on Codex:** it's an always-loaded router, and on Codex the routing index lives in `AGENTS.md` (not a skill activation), so there's no discrete trigger event. (It also currently exceeds Codex's 1024-char skill-description cap and is dropped as a skill there.) Measure it on Claude/Cursor; on Codex, confirm routing in the final answer manually.
 
 ## Status: eval framework bug — skill triggers correctly
 
@@ -65,6 +65,6 @@ Known misses:
 
 ## Description length
 
-The description is 1167 chars, over the 1024 Codex cap that drops it as a skill there (dlt-hub/dlthub-ai-workbench-internal#75). `validate_toolkits.py` warns above that cap.
+The description is 1167 chars, over the 1024 Codex cap that drops it as a skill there. `validate_toolkits.py` warns above that cap.
 
 Trigger rate does not fall off monotonically with length, so treat the cap as a portability limit rather than a quality one. Measured points, all on this skill: 1122 and 1167 and 1176 behave; 1267 took `init-only` recall to 0.154 with ten cold-start queries silent; 1140 took `with-dlthub-platform` to 0.333. Wording moves the number more than length does. Re-measure after any edit to the description.

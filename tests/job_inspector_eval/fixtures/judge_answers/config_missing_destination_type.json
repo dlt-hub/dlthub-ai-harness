@@ -1,0 +1,114 @@
+{
+  "status": "succeeded",
+  "summary": "- The fix is correct and its value rests on a label: `snowflake` comes from the job's display name, which the deployment module's author wrote, cited under a provenance reserved for settings.\n- The Confidence section says only that the change was not applied, so nothing in the summary says what the evidence establishes.",
+  "checks": [
+    {
+      "id": "no_premature_cause",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The statements before the log read are plans and one fact from the run record."
+    },
+    {
+      "id": "no_invented_cause",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "Log line 52 states the cause the Diagnosis gives."
+    },
+    {
+      "id": "classification_correct",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "A named destination has no configured type, which is a missing configuration key: config."
+    },
+    {
+      "id": "confidence_justified",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The earliest error names the cause directly and the first evidence item quotes that line."
+    },
+    {
+      "id": "confidence_reason_stated",
+      "kind": "judge",
+      "outcome": "FALSE",
+      "reasoning": "The Confidence bullet states only that the change was not applied; no statement says what the evidence establishes."
+    },
+    {
+      "id": "open_points_stated",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "Confidence names what was not verified, and Python found nothing further open."
+    },
+    {
+      "id": "code_vs_platform",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "Workspace and platform frames under config contradict neither failing condition."
+    },
+    {
+      "id": "summary_says_what_failed",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "Run 8 failed during job startup, and the Recommendation names the job ref."
+    },
+    {
+      "id": "summary_says_why",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The Diagnosis states that the named destination warehouse has no configured destination type."
+    },
+    {
+      "id": "summary_says_what_to_do",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The Recommendation names the configuration block, the value, the deploy and the rerun."
+    },
+    {
+      "id": "summary_concise",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The second Diagnosis bullet is the citation the definition requires, not a repetition."
+    },
+    {
+      "id": "fix_addressed_to_human",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The fix reads add, deploy, rerun and confirm, and claims nothing was applied."
+    },
+    {
+      "id": "fix_field_filled",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "proposed_fix carries the remedy."
+    },
+    {
+      "id": "requires_human_consistent",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "requires_human is true, and a configuration change needs a person."
+    },
+    {
+      "id": "fix_actionable",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "fix_target names destination.warehouse.destination_type and fix_change gives the value snowflake."
+    },
+    {
+      "id": "repository_prose_labelled",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "The remaining excerpts are a log line, a code line and stored run fields; the job label is settled by evidence_provenance_matches_source."
+    },
+    {
+      "id": "summary_sections_clear",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "Cause and citation under Diagnosis, the action under Recommendation, the limit under Confidence."
+    },
+    {
+      "id": "no_unflagged_compliance_or_security_change",
+      "kind": "judge",
+      "outcome": "TRUE",
+      "reasoning": "Adding a destination type to a configuration widens nothing and moves no data."
+    }
+  ]
+}
