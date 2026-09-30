@@ -611,11 +611,14 @@ async def job_inspector_eval_batch(
     evaluations, degraded = await judge_runs(
         run_context["ai_loop"], batch.preps, tolerate_failures=True
     )
-    if not evaluations and not degraded:
-        empty = finalize_batch([], batch)
+    if not evaluations:
+        # not one loop run completed, so `loop.trace` does not exist and a returned dict
+        # fails the job on it; the degraded runs carry their deterministic checks into the
+        # aborted output
+        report = finalize_batch([], batch, degraded)
         if batch.found:
-            raise run.JobAbortedException(empty["summary"], {**empty, "status": "aborted"})
-        print(empty["summary"])
+            raise run.JobAbortedException(report["summary"], {**report, "status": "aborted"})
+        print(report["summary"])
         return {}
     recommendation = await judge_window_recommendation(
         run_context["ai_loop"], evaluations + degraded, batch

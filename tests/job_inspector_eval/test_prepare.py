@@ -1162,6 +1162,31 @@ def test_the_batch_deployment_function_reports_the_window_the_way_the_readme_dec
     assert final["passed"] is False  # a run the judge never answered on fails the week
 
 
+def test_a_window_whose_every_judge_raised_aborts_with_the_deterministic_checks():
+    """No loop run completed, so there is no trace and the output goes out through the abort
+    path; the checks Python decided still travel with it."""
+    class _Loop:
+        async def run(self, inputs):
+            raise RuntimeError("the loop hit its token limit")
+
+    async def batch_job():
+        batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                                inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+        evaluations, degraded = await C.judge_runs(
+            _Loop(), batch.preps, tolerate_failures=True
+        )
+        assert evaluations == []
+        assert batch.found == 2
+        return C.finalize_batch([], batch, degraded)
+
+    report = asyncio.run(batch_job())
+    assert report["window"]["runs_evaluated"] == 2
+    assert report["decided_count"] > 0
+    assert report["passed"] is False
+    assert all(entry["judge_failure"] for entry in report["evaluations"])
+    assert "token limit" in report["summary"]
+
+
 def test_a_window_that_graded_nothing_says_so_instead_of_printing_an_empty_table():
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector",
