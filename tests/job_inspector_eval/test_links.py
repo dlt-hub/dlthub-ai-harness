@@ -1,0 +1,68 @@
+"""`links.py`, the one helper both agents write their summary links with.
+
+A link inside an inline code span is broken markdown, and the inspector cites a run as
+`dlthub job runs logs <id>`. So a span holding an id becomes the text of the link.
+"""
+
+import importlib.util
+from pathlib import Path
+
+AGENT_DIR = Path(__file__).resolve().parents[2] / "workbench/dlthub-platform/agents"
+_spec = importlib.util.spec_from_file_location(
+    "links", AGENT_DIR / "job-inspector" / "links.py"
+)
+assert _spec and _spec.loader
+links = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(links)
+
+WEB = ("https://dlthub.dev", "ws-1")
+RUN = "3cecd342-6d50-4332-89f1-005276e75d84"
+RUN_URL = f"https://dlthub.dev/w/ws-1/runs/{RUN}"
+JOB = "jobs.__deployment__.jaffle_shop"
+JOB_URL = f"https://dlthub.dev/w/ws-1/jobs/{JOB}"
+
+
+def test_a_citation_span_becomes_the_link_text():
+    """The inspector's own citation form: the command a reader would paste."""
+    out = links.linkify(f"(`dlthub job runs logs {RUN}` line 42)", WEB)
+    assert out == f"([`dlthub job runs logs {RUN}`]({RUN_URL}) line 42)"
+
+
+def test_a_span_holding_only_an_id_gives_way_to_its_label():
+    out = links.linkify(f"run `{RUN}`", WEB, {RUN: "#27"})
+    assert out == f"run [#27]({RUN_URL})"
+
+
+def test_a_span_holding_only_an_id_keeps_the_id_without_a_label():
+    out = links.linkify(f"run `{RUN}`", WEB)
+    assert out == f"run [`{RUN}`]({RUN_URL})"
+
+
+def test_a_job_ref_inside_a_longer_span_keeps_the_span():
+    out = links.linkify(f"let its `job.success:{JOB}` trigger fire", WEB)
+    assert out == f"let its [`job.success:{JOB}`]({JOB_URL}) trigger fire"
+
+
+def test_a_span_with_no_id_is_left_alone():
+    assert links.linkify('set `cursor_path="ordered_at"`', WEB) == 'set `cursor_path="ordered_at"`'
+
+
+def test_an_id_in_plain_prose_is_linked():
+    assert links.linkify(f"plain {RUN} here", WEB) == f"plain [`{RUN}`]({RUN_URL}) here"
+
+
+def test_a_link_already_written_is_left_alone():
+    already = f"see [`{RUN}`](https://elsewhere/x)"
+    assert links.linkify(already, WEB) == already
+
+
+def test_nothing_is_linked_without_a_workspace():
+    assert links.linkify(f"run `{RUN}`", ("", "")) == f"run `{RUN}`"
+
+
+def test_run_labels_take_the_run_number_and_skip_a_run_without_one():
+    labels = links.run_labels([
+        {"inspector_run_id": RUN, "inspector_run_number": 114,
+         "failed_run_id": "f" * 8 + "-1111-4111-8111-111111111111", "failed_run_number": None},
+    ])
+    assert labels == {RUN: "#114"}

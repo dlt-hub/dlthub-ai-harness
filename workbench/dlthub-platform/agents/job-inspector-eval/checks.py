@@ -5639,82 +5639,42 @@ def category_verdicts(checks: List[Dict[str, Any]], runs: int = 1) -> Dict[str, 
     }
 
 
-def web_ui() -> Tuple[str, str]:
-    """The web UI base and the workspace id, both empty when they cannot be resolved.
+def _shared_links() -> Any:
+    """`links.py` from the inspector's folder, the one copy both agents link summaries with.
 
-    `dlt_runtime.urls` turns the API base url into the UI one, the mapping the CLI prints a
-    run link with. A local replay has neither, and the summary then names runs by id.
+    The two agent folders install side by side under `.claude/dlthub/agents/`, so the path
+    is a sibling of this file. A tree without it degrades to plain text rather than failing
+    an evaluation over a cosmetic link.
     """
-    try:
-        from dlt._workspace._workspace_context import active
-        from dlt_runtime import urls
+    import importlib.util
 
-        return urls.web_ui_base(), str(active().runtime_config.workspace_id or "")
-    except Exception:
+    path = Path(__file__).resolve().parent.parent / "job-inspector" / "links.py"
+    spec = importlib.util.spec_from_file_location("dlthub_agent_links", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(str(path))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+try:
+    _links = _shared_links()
+    web_ui = _links.web_ui
+    linkify = _links.linkify
+    run_labels = _links.run_labels
+except Exception:  # the inspector is not installed beside this evaluator
+    def web_ui() -> Tuple[str, str]:  # type: ignore[misc]
         return "", ""
 
-
-_MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
-"""A link already written. Nothing inside one is linked again, and neither is its target."""
-
-_RUN_ID = re.compile(
-    r"(`?)\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b(`?)"
-)
-_JOB_REF = re.compile(r"(`?)\b(jobs\.[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\b(`?)")
-
-
-def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
-    """Link text per run id: the run number, which the bullet writes the job ref beside.
-
-    A uuid tells a reader nothing, so it goes in the link target and `#27` goes in the text,
-    the way the inspector's "Cite the artifact in the bullet" names an artifact rather than
-    pointing at one. A run whose number the evaluation does not hold keeps its uuid.
-    """
-    labels: Dict[str, str] = {}
-    for entry in entries:
-        for prefix in ("inspector", "failed"):
-            run_id = str(entry.get(f"{prefix}_run_id") or "").lower()
-            number = entry.get(f"{prefix}_run_number")
-            if run_id and number not in (None, ""):
-                labels.setdefault(run_id, f"#{number}")
-    return labels
-
-
-def linkify(
-    text: str,
-    links: Tuple[str, str] = ("", ""),
-    labels: Optional[Mapping[str, str]] = None,
-) -> str:
-    """Every run id and job ref in a line, written as a link to its page.
-
-    A run id is a link wherever it falls: a bullet, a reasoning the checks wrote, a table
-    cell. `labels` gives the link its text, so a reader sees the job and the run number and
-    the uuid stays in the target. Text already inside a link is left alone, and so is the
-    target of one.
-    """
-    base, workspace = links
-    if not base or not workspace or not text:
+    def linkify(  # type: ignore[misc]
+        text: str,
+        links: Tuple[str, str] = ("", ""),
+        labels: Optional[Mapping[str, str]] = None,
+    ) -> str:
         return text
-    written: List[str] = []
-    last = 0
-    for match in _MARKDOWN_LINK.finditer(text):
-        written.append(_linked(text[last:match.start()], base, workspace, labels or {}))
-        written.append(match.group(0))
-        last = match.end()
-    written.append(_linked(text[last:], base, workspace, labels or {}))
-    return "".join(written)
 
-
-def _linked(text: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
-    def run(match: "re.Match[str]") -> str:
-        run_id = match.group(2)
-        shown = labels.get(run_id.lower()) or f"`{run_id}`"
-        return f"[{shown}]({base}/w/{workspace}/runs/{run_id})"
-
-    def job(match: "re.Match[str]") -> str:
-        return f"[`{match.group(2)}`]({base}/w/{workspace}/jobs/{match.group(2)})"
-
-    return _JOB_REF.sub(job, _RUN_ID.sub(run, text))
+    def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:  # type: ignore[misc]
+        return {}
 
 
 def as_bullets(text: str) -> List[str]:

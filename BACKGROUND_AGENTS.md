@@ -491,6 +491,29 @@ The evaluator listens on both `job.success` and `job.fail` of the agent it grade
 that reports `status: aborted` raises, so its run fails, and the instructions that only apply
 to an aborted run are graded on exactly those runs.
 
+### Linking the runs and jobs a summary names
+
+An agent writes a run id as a uuid, because that is what a person pastes into
+`dlthub job runs logs`. It cannot write a link: its `run_context` carries the trigger, the
+run id and the interval, and no workspace id or UI base. So the ids become links after the
+loop, in `links.py` under `agents/job-inspector/`. The inspector and the evaluator share
+that one module, so a run reads the same way in both summaries.
+
+```python
+import sys
+
+sys.path.insert(0, ".claude/dlthub/agents/job-inspector")
+from links import linkify, web_ui
+
+output["summary"] = linkify(output["summary"], web_ui())
+```
+
+A span holding an id becomes the text of the link, since `[`x`](url)` renders and
+`` `[x](url)` `` prints the markup. So the inspector's `` `dlthub job runs logs <id>` `` is
+what the reader clicks, and a span that is only the id gives way to a label the caller
+passes, which is how the evaluator writes `#114` in place of a uuid. Wiring it needs the
+decorated form below.
+
 ### Code around the loop
 
 Deterministic checks have to run before the loop and again after it, which the declared form
