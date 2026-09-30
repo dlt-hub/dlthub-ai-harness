@@ -629,6 +629,11 @@ def _all_true(prep):
             for id in C.judge_ids(prep.results)]
 
 
+def _all_false(prep):
+    return [{"id": id, "kind": "judge", "outcome": "FALSE", "reasoning": "broken"}
+            for id in C.judge_ids(prep.results)]
+
+
 def test_finalize_opens_with_the_findings_and_names_each_broken_instruction():
     """A reader acts on the summary without opening the rubric."""
     prep = _prep_with(output=output(fix_target="", fix_change="", open_points=[]))
@@ -1006,19 +1011,55 @@ def test_a_window_with_nothing_broken_asks_for_no_recommendation():
     assert C.NO_CHANGE_RECOMMENDATION in final["summary"]
 
 
-def test_a_judge_run_that_raised_is_reported_as_a_skipped_run():
+def test_a_recommendation_pass_that_raised_does_not_cost_the_graded_window():
+    """The pass runs after every run is graded, so its failure reports in its own place."""
+    class Loop:
+        async def run(self, inputs):
+            raise RuntimeError("the loop hit its token limit")
+
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_false(prep)}, prep)
+        for prep in batch.preps
+    ]
+    written = asyncio.run(C.judge_window_recommendation(Loop(), evaluations, batch))
+    assert "token limit" in written
+
+    final = C.finalize_batch(evaluations, batch, recommendation=written)
+    assert final["status"] == "succeeded"
+    assert final["window"]["runs_evaluated"] == len(evaluations)
+    assert "token limit" in final["recommendation"]
+    # the bullet already names the file, so `name_the_file` leaves it alone
+    assert "In `" not in final["recommendation"]
+
+
+def test_a_judge_run_that_raised_keeps_the_checks_python_decided():
+    """The judge half is lost, the deterministic half is not, and the window says so."""
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
     evaluations = [
         C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(batch.preps[0])},
                    batch.preps[0])
     ]
-    failures = [{"run_id": SECOND_RUN_ID, "reason": "AgentRunFailed: the loop hit its token limit"}]
-    final = C.finalize_batch(evaluations, batch, failures)
-    assert final["window"]["runs_skipped"] == 1
-    assert final["skipped_runs"] == failures
+    degraded = [
+        C.finalize_without_judge(batch.preps[1], "AgentRunFailed: the loop hit its token limit")
+    ]
+    final = C.finalize_batch(evaluations, batch, degraded)
+    assert final["window"]["runs_evaluated"] == 2
+    assert final["window"]["runs_skipped"] == 0
+    assert final["skipped_runs"] == []
+    entry = [e for e in final["evaluations"] if e["inspector_run_id"] == SECOND_RUN_ID][0]
+    assert "token limit" in entry["judge_failure"]
+    assert entry["passed"] is False
     assert "token limit" in final["summary"]
     assert final["passed"] is False
+    # the deterministic checks of the degraded run reach the window's counts
+    deterministic = [
+        check["id"] for check in degraded[0]["checks"] if check["kind"] == C.DETERMINISTIC
+    ]
+    assert deterministic
+    assert final["decided_count"] > len(C._decided(evaluations[0]["checks"]))
 
 
 def test_the_sdk_walk_stops_at_the_edge_of_the_window():
@@ -1104,26 +1145,46 @@ def test_the_batch_deployment_function_reports_the_window_the_way_the_readme_dec
         batch = C.prepare_batch(run_context, fetcher=week_fetcher(),
                                 inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
         assert batch.aborted is False
-        evaluations, failures = [], []
-        for prep in batch.preps:
-            try:
-                output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-            except Exception as ex:
-                failures.append({"run_id": prep.inspector_run_id,
-                                 "reason": f"{type(ex).__name__}: {ex}"})
-                continue
-            evaluations.append(C.finalize(output, prep))
-        return C.finalize_batch(evaluations, batch, failures)
+        evaluations, degraded = await C.judge_runs(
+            run_context["ai_loop"], batch.preps, tolerate_failures=True
+        )
+        return C.finalize_batch(evaluations, batch, degraded)
 
     final = asyncio.run(batch_job())
     assert loop.runs == 2
     assert final["status"] == "succeeded"
     assert final["window"]["runs_found"] == 2
-    assert final["window"]["runs_evaluated"] == 1
-    assert final["window"]["runs_skipped"] == 1
-    assert final["skipped_runs"][0]["run_id"] == SECOND_RUN_ID
+    assert final["window"]["runs_evaluated"] == 2
+    assert final["window"]["runs_skipped"] == 0
+    assert final["evaluations"][1]["inspector_run_id"] == SECOND_RUN_ID
+    assert "token limit" in final["evaluations"][1]["judge_failure"]
     assert "token limit" in final["summary"]
-    assert final["passed"] is False  # a run that was found and not graded fails the week
+    assert final["passed"] is False  # a run the judge never answered on fails the week
+
+
+def test_a_window_whose_every_judge_raised_aborts_with_the_deterministic_checks():
+    """No loop run completed, so there is no trace and the output goes out through the abort
+    path; the checks Python decided still travel with it."""
+    class _Loop:
+        async def run(self, inputs):
+            raise RuntimeError("the loop hit its token limit")
+
+    async def batch_job():
+        batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                                inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+        evaluations, degraded = await C.judge_runs(
+            _Loop(), batch.preps, tolerate_failures=True
+        )
+        assert evaluations == []
+        assert batch.found == 2
+        return C.finalize_batch([], batch, degraded)
+
+    report = asyncio.run(batch_job())
+    assert report["window"]["runs_evaluated"] == 2
+    assert report["decided_count"] > 0
+    assert report["passed"] is False
+    assert all(entry["judge_failure"] for entry in report["evaluations"])
+    assert "token limit" in report["summary"]
 
 
 def test_a_window_that_graded_nothing_says_so_instead_of_printing_an_empty_table():

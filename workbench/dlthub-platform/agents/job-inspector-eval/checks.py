@@ -674,11 +674,17 @@ def token_overlap(excerpt: str, haystack: str) -> float:
     Both sides are tokenised, so a token counts only where it stands as a token of its own.
     A substring test let `0`, `id` and `no` match inside longer words and carried invented
     excerpts over `EXCERPT_MATCH_RATIO`.
+
+    Trailing `.` and `:` come off each token, since `_TOKEN` keeps both inside one. A log
+    ending a sentence in `does not exist.` and a faithful quote of it otherwise disagree on
+    the last word, and the excerpt falls under `EXCERPT_MATCH_RATIO`. Stripping only the end
+    leaves `db.internal:5432` whole and still keeps `id` out of `identity`.
     """
-    tokens = _TOKEN.findall(excerpt.lower())
+    tokens = [token.rstrip(".:") for token in _TOKEN.findall(excerpt.lower())]
+    tokens = [token for token in tokens if token]
     if not tokens:
         return 1.0
-    hay = set(_TOKEN.findall(haystack.lower()))
+    hay = {token.rstrip(".:") for token in _TOKEN.findall(haystack.lower())}
     return sum(1 for token in tokens if token in hay) / len(tokens)
 
 
@@ -5077,53 +5083,56 @@ def prepare_batch(
 def finalize_batch(
     evaluations: List[Dict[str, Any]],
     batch: BatchPrep,
-    failures: Optional[List[Dict[str, str]]] = None,
+    degraded: Optional[List[Dict[str, Any]]] = None,
     recommendation: str = "",
 ) -> Dict[str, Any]:
     """One output for the week: the window, the aggregate, and every evaluation under it.
 
-    `evaluations` are `finalize` results, one per run graded. `failures` are runs whose judge
-    run raised, which the deployment function catches.
+    `evaluations` are `finalize` results, one per run graded. `degraded` are the runs whose
+    judge raised, carrying the deterministic checks `finalize_without_judge` kept. They count
+    as evaluated, never pass, and the window names each one's reason in its scope bullets.
     """
-    skipped = list(batch.skipped) + list(failures or [])
+    graded = list(evaluations) + list(degraded or [])
+    skipped = list(batch.skipped)
     checks: List[Dict[str, Any]] = [
-        entry for evaluation in evaluations for entry in evaluation.get("checks", [])
+        entry for evaluation in graded for entry in evaluation.get("checks", [])
     ]
     true_count = sum(1 for entry in checks if entry["outcome"] == TRUE)
     false_count = sum(1 for entry in checks if entry["outcome"] == FALSE)
     na_count = sum(1 for entry in checks if entry["outcome"] == NA)
     decided = true_count + false_count
     window = batch.window
-    window["runs_evaluated"] = len(evaluations)
+    window["runs_evaluated"] = len(graded)
     window["runs_skipped"] = len(skipped)
     return {
         # `passed` is the green flag. On a window with no evaluation the deployment decides:
         # an empty one prints and returns `{}`, a found-and-none-graded one raises `aborted`
-        "status": "succeeded" if evaluations or not batch.found else "failed",
-        "summary": render_batch_summary(evaluations, batch, skipped, recommendation),
+        "status": "succeeded" if graded or not batch.found else "failed",
+        "summary": render_batch_summary(graded, batch, skipped, recommendation,
+                                        degraded=degraded or []),
         "recommendation": "\n".join(
             f"- {bullet}"
             for bullet in recommendation_bullets(checks, recommendation)
         ),
         # a week passes when every evaluation in it passed and every run found was graded
         "passed": (
-            bool(evaluations)
+            bool(graded)
             and false_count == 0
             and decided > 0
             and not skipped
-            and all(evaluation.get("passed") for evaluation in evaluations)
+            and all(evaluation.get("passed") for evaluation in graded)
         ),
         "pass_rate": (true_count / decided) if decided else 0.0,
         "decided_count": decided,
         "na_count": na_count,
         "checks": [],
         "metrics": {
-            "runs_evaluated": len(evaluations),
+            "runs_evaluated": len(graded),
             "total_tokens": sum(
-                int((e.get("metrics") or {}).get("total_tokens") or 0) for e in evaluations
+                int((e.get("metrics") or {}).get("total_tokens") or 0) for e in graded
             ),
             "turn_count": sum(
-                int((e.get("metrics") or {}).get("turn_count") or 0) for e in evaluations
+                int((e.get("metrics") or {}).get("turn_count") or 0) for e in graded
             ),
         },
         "window": window,
@@ -5142,8 +5151,9 @@ def finalize_batch(
                     entry["id"] for entry in evaluation.get("checks", [])
                     if entry["outcome"] == FALSE
                 ],
+                "judge_failure": evaluation.get("judge_failure", ""),
             }
-            for evaluation in evaluations
+            for evaluation in graded
         ],
         "skipped_runs": skipped,
     }
@@ -5151,26 +5161,25 @@ def finalize_batch(
 
 async def judge_runs(
     loop: Any, preps: Sequence[EvalPrep], *, tolerate_failures: bool = False
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Run the judge over each prepared inspector run and finalize what it returns.
 
-    Both deployment functions call this, and `tolerate_failures` is what they disagree on.
-    Over a window, one run out of budget or out of shape is reported under `skipped_runs` and
-    the rest report. On a single run it propagates, and the deployment function turns it into
-    the evaluation the deterministic half supports with `finalize_without_judge`.
+    Returns the fully graded evaluations and, second, the degraded ones: a run whose judge
+    raised keeps the checks Python already decided, through `finalize_without_judge`. Both
+    deployment functions read the second list, the single-run one for its only entry and the
+    batch one for the runs it still reports. With `tolerate_failures` false the exception
+    propagates instead.
     """
     evaluations: List[Dict[str, Any]] = []
-    failures: List[Dict[str, str]] = []
+    degraded: List[Dict[str, Any]] = []
     for prep in preps:
         try:
             evaluations.append(finalize(await loop.run(inputs=prep.judge_inputs), prep))
         except Exception as ex:
             if not tolerate_failures:
                 raise
-            failures.append(
-                {"run_id": prep.inspector_run_id, "reason": f"{type(ex).__name__}: {ex}"}
-            )
-    return evaluations, failures
+            degraded.append(finalize_without_judge(prep, f"{type(ex).__name__}: {ex}"))
+    return evaluations, degraded
 
 
 def finalize_without_judge(prep: EvalPrep, reason: str) -> Dict[str, Any]:
@@ -5187,6 +5196,9 @@ def finalize_without_judge(prep: EvalPrep, reason: str) -> Dict[str, Any]:
     """
     evaluation = finalize({}, prep, judge_failure=reason)
     evaluation["status"] = "aborted"
+    # the window names the reason in its own bullet; the summary of this evaluation is not
+    # the one a batch renders
+    evaluation["judge_failure"] = reason
     return evaluation
 
 
@@ -5266,6 +5278,10 @@ async def judge_window_recommendation(
 
     A single evaluation recommends nothing: a change to the instructions rests on a pattern
     across runs. A window with nothing broken skips the pass.
+
+    This pass runs after every run in the window is graded, so a judge out of budget here
+    must not cost those results. The failure is returned as the recommendation and the
+    window reports.
     """
     if not any(
         entry["outcome"] == FALSE
@@ -5273,7 +5289,14 @@ async def judge_window_recommendation(
         for entry in evaluation.get("checks", [])
     ):
         return ""
-    output = await loop.run(inputs=window_findings(evaluations, batch))
+    try:
+        output = await loop.run(inputs=window_findings(evaluations, batch))
+    except Exception as ex:
+        # one bullet, so `as_bullets` does not split the exception text into sentences
+        return (
+            f"- The recommendation pass did not finish ({type(ex).__name__}: {ex}), so the"
+            f" broken instructions above are what to take to `{INSPECTOR_DEFINITION_PATH}`."
+        )
     return str((output or {}).get("recommendation") or "").strip()
 
 
@@ -5304,6 +5327,7 @@ def render_batch_summary(
     batch: BatchPrep,
     skipped: List[Dict[str, str]],
     recommendation: str = "",
+    degraded: Sequence[Dict[str, Any]] = (),
 ) -> str:
     """The window through the same renderer one evaluation goes through.
 
@@ -5314,12 +5338,16 @@ def render_batch_summary(
         evaluations,
         recommendation=recommendation,
         recommend=True,
-        scope_extra=window_bullets(batch, skipped),
+        scope_extra=window_bullets(batch, skipped, degraded),
         links=batch.links,
     )
 
 
-def window_bullets(batch: BatchPrep, skipped: List[Dict[str, str]]) -> List[str]:
+def window_bullets(
+    batch: BatchPrep,
+    skipped: List[Dict[str, str]],
+    degraded: Sequence[Dict[str, Any]] = (),
+) -> List[str]:
     """The window under the runs it covered: its bounds, where it starts, what it left out."""
     window = batch.window
     bullets = [
@@ -5333,6 +5361,12 @@ def window_bullets(batch: BatchPrep, skipped: List[Dict[str, str]]) -> List[str]
             f"The window holds more than the {batch.max_runs} runs this job evaluates,"
             " so the oldest ones were left for a shorter window or a higher cap."
         )
+    bullets += [
+        f"The judge never answered on `{evaluation.get('inspector_run_id', '')}`:"
+        f" {_sentence(str(evaluation.get('judge_failure', '')))} Its deterministic checks"
+        " stand and its judge checks are `N/A`, so the run does not pass."
+        for evaluation in degraded
+    ]
     bullets += [
         f"Skipped `{entry.get('run_id', '')}`: {_sentence(_skip_reason(entry))}"
         for entry in skipped

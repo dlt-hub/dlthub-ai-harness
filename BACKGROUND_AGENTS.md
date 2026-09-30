@@ -527,7 +527,7 @@ from typing import Annotated
 from dlt.hub import run
 
 sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize_without_judge, judge_runs, prepare
+from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -571,14 +571,13 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    evaluations, failures = await judge_runs(
+    evaluations, degraded = await judge_runs(
         run_context["ai_loop"], [prep], tolerate_failures=True
     )
     if not evaluations:
-        # the judge ran out of turns or tokens after Python decided its checks; report those
-        # rather than lose the run's whole result
-        degraded = finalize_without_judge(prep, failures[0]["reason"])
-        raise run.JobAbortedException(degraded["summary"], degraded)
+        # the judge ran out of turns or tokens after Python decided its checks; `judge_runs`
+        # kept those rather than lose the run's whole result
+        raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
     return evaluations[0]
 ```
 
@@ -638,19 +637,22 @@ async def job_inspector_eval_batch(
     if batch.aborted:
         raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
     # one run out of budget or out of shape must not cost the rest of the window
-    evaluations, failures = await judge_runs(
+    evaluations, degraded = await judge_runs(
         run_context["ai_loop"], batch.preps, tolerate_failures=True
     )
     if not evaluations:
-        empty = finalize_batch([], batch, failures)
+        # not one loop run completed, so `loop.trace` does not exist and a returned dict
+        # fails the job on it; the degraded runs carry their deterministic checks into the
+        # aborted output
+        report = finalize_batch([], batch, degraded)
         if batch.found:
-            raise run.JobAbortedException(empty["summary"], {**empty, "status": "aborted"})
-        print(empty["summary"])
+            raise run.JobAbortedException(report["summary"], {**report, "status": "aborted"})
+        print(report["summary"])
         return {}
     recommendation = await judge_window_recommendation(
-        run_context["ai_loop"], evaluations, batch
+        run_context["ai_loop"], evaluations + degraded, batch
     )
-    return finalize_batch(evaluations, batch, failures, recommendation)
+    return finalize_batch(evaluations, batch, degraded, recommendation)
 ```
 
 What the scheduled path settles:
@@ -667,6 +669,11 @@ What the scheduled path settles:
 - **Every run found is accounted for.** A run still going, one that declared no result and one
   whose artifacts could not be read are listed under `skipped_runs` with the reason, and
   `runs_found` equals `runs_evaluated + runs_skipped`.
+- **A judge out of budget costs one run its judge checks, not its results.** The deterministic
+  checks Python decided before the loop started are reported, the judge checks read `N/A`, the
+  run counts as evaluated and never passes, and the window names the reason in a scope bullet.
+  The recommendation pass is guarded the same way: a failure there is reported in place of the
+  recommendation and the graded window still reports.
 - **A graded run is `completed` or `failed`.** A run record speaks the platform's vocabulary
   (`pending`, `starting`, `running`, `cancelling`, `completed`, `failed`, `cancelled`,
   `skipped`) and an agent result speaks its own (`succeeded`, `failed`, `aborted`), so a run
