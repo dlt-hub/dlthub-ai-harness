@@ -13,9 +13,6 @@ tools:
   - logs
   - telemetry
   - workspace
-  # `pipeline` serves nothing while `data` is ungranted: every tool in the group needs
-  # `data: read`. kept so a fork that grants `data` gets them without touching this list
-  - pipeline
   # the redacted credential check: `secrets` gives secrets_list and secrets_view_redacted
   # (secrets_update_fragment needs `local: write` and is pruned), `config` gives
   # dlthub_list_variables
