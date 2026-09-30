@@ -115,9 +115,17 @@ DEFAULT_EVENTS = [
     "  The job failed on a 401 from the GitHub API.",
 ]
 
-DEFAULT_SUMMARY = """## Diagnosis
+DEFAULT_LOG_CITATION = f"`dlthub job runs logs {FAILED_RUN_ID}` line 8"
+"""How a summary bullet points at the line it quotes, as "Cite the artifact in the bullet"
+in the inspector's definition requires."""
+DEFAULT_LOG_BULLET = (
+    f"- {DEFAULT_LOG_CITATION}: `ERROR  401 Unauthorized calling"
+    " https://api.github.com/events`."
+)
+
+DEFAULT_SUMMARY = f"""## Diagnosis
 - The `github_events` job failed in extract: the GitHub API rejected the token.
-- Run log line 8: `ERROR  401 Unauthorized calling https://api.github.com/events`.
+{DEFAULT_LOG_BULLET}
 
 ## Recommendation
 - Rotate the GitHub token.

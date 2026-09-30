@@ -916,7 +916,11 @@ def test_no_raw_credential_read_reads_every_part_of_a_command():
 
 # the summary's shape
 
-from conftest import DEFAULT_SUMMARY  # noqa: E402
+from conftest import (  # noqa: E402
+    DEFAULT_LOG_BULLET,
+    DEFAULT_LOG_CITATION,
+    DEFAULT_SUMMARY,
+)
 
 SECTIONED = DEFAULT_SUMMARY
 
@@ -1044,8 +1048,7 @@ def test_diagnosis_quotes_evidence():
     assert run("diagnosis_quotes_evidence").outcome == C.TRUE
 
     paraphrased = output(summary=SECTIONED.replace(
-        "- Run log line 8: `ERROR  401 Unauthorized calling https://api.github.com/events`.",
-        "- The API answered with an authorization error."))
+        DEFAULT_LOG_BULLET, "- The API answered with an authorization error."))
     result = run("diagnosis_quotes_evidence", output=paraphrased)
     assert result.outcome == C.FALSE
     assert "quotes none" in result.reasoning and "401 Unauthorized" in result.reasoning
@@ -1054,6 +1057,59 @@ def test_diagnosis_quotes_evidence():
     assert run("diagnosis_quotes_evidence", output=output(summary="plain")).outcome == C.NA
     assert run("diagnosis_quotes_evidence",
                output=output(status="aborted", summary="no run id")).outcome == C.NA
+
+
+def test_summary_cites_its_evidence():
+    assert run("summary_cites_its_evidence").outcome == C.TRUE
+
+    unnamed = output(summary=SECTIONED.replace(DEFAULT_LOG_CITATION, "the run log"))
+    result = run("summary_cites_its_evidence", output=unnamed)
+    assert result.outcome == C.FALSE
+    assert "cites no run id" in result.reasoning and FAILED_RUN_ID in result.reasoning
+
+    assert run("summary_cites_its_evidence", output=output(evidence=[])).outcome == C.NA
+    assert run("summary_cites_its_evidence", output=output(summary="plain")).outcome == C.NA
+    assert run("summary_cites_its_evidence",
+               output=output(status="aborted", summary="no run id")).outcome == C.NA
+
+
+def _with_file_evidence(**overrides):
+    evidence = output()["evidence"] + [{
+        "source": "pipelines/github_events.py line 31",
+        "excerpt": 'access_token=dlt.secrets["github_token"],',
+        "provenance": "workspace_file",
+    }]
+    return output(evidence=evidence, **overrides)
+
+
+def test_summary_cites_the_file_the_evidence_rests_on():
+    result = run("summary_cites_its_evidence", output=_with_file_evidence())
+    assert result.outcome == C.FALSE
+    assert "pipelines/github_events.py" in result.reasoning
+
+    named = _with_file_evidence(summary=SECTIONED.replace(
+        "- Rotate the GitHub token.",
+        "- Set the token read at `pipelines/github_events.py` line 31."))
+    assert run("summary_cites_its_evidence", output=named).outcome == C.TRUE
+
+
+def test_a_file_cited_by_its_base_name_counts():
+    """A Recommendation names the file the reader opens, often without its directory."""
+    named = _with_file_evidence(summary=SECTIONED.replace(
+        "- Rotate the GitHub token.", "- Set the token read at `github_events.py` line 31."))
+    assert run("summary_cites_its_evidence", output=named).outcome == C.TRUE
+
+
+def test_a_producer_log_the_summary_never_names_is_caught():
+    producer = "66666666-6666-4666-8666-666666666666"
+    evidence = output()["evidence"] + [{
+        "source": f"`dlthub job runs logs {producer}` line 14",
+        "excerpt": "Load package 1 loaded 0 rows into orders",
+        "provenance": "run_log",
+    }]
+    result = run("summary_cites_its_evidence", output=output(evidence=evidence))
+    assert result.outcome == C.FALSE
+    assert producer in result.reasoning
 
 
 def test_quotes_needs_a_verbatim_run_of_tokens():

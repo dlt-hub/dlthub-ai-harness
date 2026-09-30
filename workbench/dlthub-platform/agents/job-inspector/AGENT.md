@@ -337,6 +337,34 @@ bullet, no question or bracketed note beside a heading.
 | `## Recommendation` | What is the next action? The target and the change, or what to check when the value is not established, written as the instruction itself |
 | `## Confidence` | What are the limits of this diagnosis? Every entry of `open_points`, and why this confidence. An empty `open_points` gets one bullet saying nothing was left open |
 
+### Cite the artifact in the bullet
+
+A bullet resting on an artifact ends with that artifact in parentheses, written as the
+`source` of the matching `evidence` item. The reader opens the log, the file or the run from
+the summary alone.
+
+| artifact | how a bullet cites it |
+|---|---|
+| inspected run's log | (`dlthub job runs logs <run id>` line 52) |
+| producer's log or run record | (`dlthub job runs logs <producer run id>` line 9), (`dlthub job runs info <producer job ref>`) |
+| workspace file | (`pipelines/orders.py` line 31) |
+| job definition | (deployed definition for `jobs.pipelines.orders`, field `destination`) |
+| dlt trace | (trace of pipeline `orders`, run `<pipeline run id>`, extract step) |
+| redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables` for profile `prod`) |
+
+- Diagnosis cites the inspected run's log with its run id and line at least once, and cites
+  every further artifact the cause rests on.
+- A run is cited by its id, whichever run it is: the inspected one, the producer's, the
+  pipeline run behind a trace. A bullet naming the producer or its trace without the id
+  leaves the reader nothing to open.
+- A bullet quoting an excerpt carries the `source` of that evidence item, line included, and
+  the two name the same line.
+- A Recommendation bullet names its target as the instruction: the file and line, the config
+  key, the secret or the job ref the change lands on. It takes no second citation.
+- Confidence cites the artifact behind each open point, and the artifact a person should read
+  when nothing you read carries the answer.
+- An artifact you did not read is never cited.
+
 Recommendation bullets:
 
 - Start with the verb of the change: `Set`, `Change`, `Add`, `Unpause`, `Run`. The reader
@@ -374,6 +402,8 @@ Check the output against this list and fix what fails:
 - no location or region change and no data move recommended;
 - no tag, trigger, schedule or gating change recommended, unless the evidence quotes a
   declaration that cannot work as written;
+- every summary bullet resting on an artifact ending with that artifact, and the Diagnosis
+  citing the inspected run's log with the run id and the line;
 - `fix_target` naming one thing, `proposed_fix` naming the target and the change or saying
   what to check;
 - `open_points` holding every tool failure, missing file and inferred value, repeated under

@@ -2963,6 +2963,82 @@ def diagnosis_quotes_evidence(ctx: EvalContext) -> CheckResult:
     )
 
 
+SOURCE_ARTIFACT_PATH = re.compile(r"(?:[\w.-]+/)*[\w.-]+\.(?:py|toml|ya?ml|sql|json)")
+"""A workspace file in an evidence `source`: `transformations/analytics.py`, `.dlt/config.toml`."""
+
+
+def cited_artifacts(ctx: "EvalContext") -> List[Dict[str, Any]]:
+    """Every run and file the evidence sources name, one entry per distinct artifact.
+
+    A run id stands for the log or the record of that run, a path for a workspace file. The
+    job ref, the trace and the redacted views carry no id a reader can look up on its own,
+    so they are left to the judge.
+    """
+    found: Dict[str, Dict[str, Any]] = {}
+    for position, item in enumerate(ctx.evidence):
+        source = str(item.get("source") or "")
+        for run_id in _UUID.findall(source):
+            found.setdefault(run_id.lower(),
+                             {"kind": "run", "name": run_id, "index": position})
+        for path in SOURCE_ARTIFACT_PATH.findall(source):
+            found.setdefault(path.lower(),
+                             {"kind": "file", "name": path, "index": position})
+    return list(found.values())
+
+
+def _named_in(artifact: Dict[str, Any], text: str) -> bool:
+    """Whether the summary names the artifact. A file counts under its path or its base name,
+    which is how a Recommendation bullet usually writes it."""
+    name = str(artifact["name"]).lower()
+    haystack = text.lower()
+    if name in haystack:
+        return True
+    return artifact["kind"] == "file" and Path(name).name in haystack
+
+
+@check("summary_cites_its_evidence")
+def summary_cites_its_evidence(ctx: EvalContext) -> CheckResult:
+    """The summary names the artifacts the diagnosis rests on, so the reader opens the log,
+    the producer's run or the file from the summary alone.
+
+    TRUE  the Diagnosis names the inspected run by its id, and every run and file an evidence
+          source names appears somewhere in the summary
+    FALSE the Diagnosis names no run id, or an artifact is named nowhere; the reasoning
+          lists what the summary leaves out
+    N/A   status is `aborted`, `evidence` is empty, or there is no Diagnosis section
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    if not ctx.evidence:
+        return na("`evidence` is empty")
+    diagnosis = ctx.section("Diagnosis")
+    if diagnosis is None:
+        return na("the summary has no Diagnosis section; `summary_has_required_sections`"
+                  " reports it")
+    inspected = ctx.reported_run_id or str((ctx.failed_run or {}).get("id") or "")
+    text = "\n".join(diagnosis["lines"])
+    if inspected and inspected.lower() not in text.lower():
+        return bad(
+            "the Diagnosis cites no run id, so the reader cannot tell which run's log the"
+            f" cause came from; the inspected run is {inspected}",
+            run_id=inspected,
+        )
+    artifacts = cited_artifacts(ctx)
+    missing = [item for item in artifacts if not _named_in(item, ctx.summary)]
+    if missing:
+        names = ", ".join(repr(str(item["name"])) for item in missing)
+        return bad(
+            f"the summary leaves {len(missing)} artifact(s) the evidence rests on uncited:"
+            f" {names}. A reader cannot open what the summary does not name",
+            missing=missing,
+        )
+    return ok(
+        f"the Diagnosis cites run {inspected or 'the inspected run'} and the summary names"
+        f" all {len(artifacts)} artifact(s) the evidence rests on",
+        artifacts=artifacts,
+    )
+
+
 # deterministic checks: provenance, the fix and the open points
 
 

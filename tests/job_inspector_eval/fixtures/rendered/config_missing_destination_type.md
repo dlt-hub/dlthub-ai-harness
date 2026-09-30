@@ -1,9 +1,9 @@
 ## Findings
 
-- The inspector broke 4 of the 59 decided checks on run `6622b4d7-8aaa-4ce0-82f4-00005b4ac657`: 2 under instruction following and 2 under quality.
+- The inspector broke 4 of the 60 decided checks on run `6622b4d7-8aaa-4ce0-82f4-00005b4ac657`: 2 under instruction following and 2 under quality.
 - The fix is correct and its value rests on a label: `snowflake` comes from the job's display name, which the deployment module's author wrote, cited under a provenance reserved for settings.
 - The Confidence section says only that the change was not applied, so nothing in the summary says what the evidence establishes.
-- Instruction following: minor issues. 40 of the 42 decided checks came back TRUE, 2 FALSE.
+- Instruction following: minor issues. 41 of the 43 decided checks came back TRUE, 2 FALSE.
   - Broken: The provenance of an item fits what its source names: a log line is `run_log`, a file is `workspace_file` or `repository_comment`, and so on. (`evidence_provenance_matches_source`) evidence[2] cites 'deployed definition for jobs.__deployment__.analytics_marts, field name', the job's own name or description, which its author wrote, under provenance 'job_definition'; that source is 'job_description'.
   - Broken: The summary says what the evidence establishes, and so why this confidence. (`confidence_reason_stated`) The Confidence bullet states only that the change was not applied; no statement says what the evidence establishes.
 - Quality: minor issues. 15 of the 17 decided checks came back TRUE, 2 FALSE.
@@ -12,12 +12,12 @@
 
 ## Scope
 
-- 31 of the 90 checks did not apply to this run.
+- 31 of the 91 checks did not apply to this run.
 - `jobs.__deployment__.job_inspector` run `6622b4d7-8aaa-4ce0-82f4-00005b4ac657`, which inspected `jobs.__deployment__.analytics_marts` run `691bd0f7-b5c7-426a-8f11-00005d3f3045`.
 
 ## Detailed evaluation results
 
-- 90 check results: 55 TRUE, 4 FALSE, 31 `N/A`. `pass_rate` 0.93 over the 59 decided.
+- 91 check results: 56 TRUE, 4 FALSE, 31 `N/A`. `pass_rate` 0.93 over the 60 decided.
 - One row per decided check below.
 
 | check_id | category | kind | results | reasoning |
@@ -52,6 +52,7 @@
 | `summary_code_spans_balanced` | Instruction following | deterministic | TRUE | every inline code span in the summary closes on its line |
 | `summary_within_length` | Instruction following | deterministic | TRUE | 137 words, every bullet and section within budget |
 | `diagnosis_quotes_evidence` | Instruction following | deterministic | TRUE | the Diagnosis quotes evidence[0]: "dlt.common.destination.exceptions.UnknownDestinationModule: Destination 'warehou" |
+| `summary_cites_its_evidence` | Instruction following | deterministic | TRUE | the Diagnosis cites run 691bd0f7-b5c7-426a-8f11-00005d3f3045 and the summary names all 2 artifact(s) the evidence rests on |
 | `evidence_has_provenance` | Instruction following | deterministic | TRUE | all 4 evidence item(s) carry a provenance |
 | `code_excerpt_free_of_prose` | Instruction following | deterministic | TRUE | all 1 `workspace_file` excerpt(s) hold code lines only |
 | `confidence_carries_open_points` | Instruction following | deterministic | TRUE | all 1 open point(s) are stated under Confidence |
