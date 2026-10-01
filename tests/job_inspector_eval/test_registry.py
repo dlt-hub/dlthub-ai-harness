@@ -2,7 +2,8 @@
 
 The agent ships its `AGENT.md` and `checks.py` and no prose beside them: a document restating
 the registry drifts from it, and the checks carry their own instruction in the first paragraph
-of each docstring. `BACKGROUND_AGENTS.md` holds what an author or an operator needs.
+of each docstring. What an author or an operator needs is in the `create-background-agent` and
+`evaluate-background-agent` skills, which the last three tests here hold to their own rules.
 """
 
 import re
@@ -13,10 +14,21 @@ from conftest import AGENT_DIR
 import checks as C
 
 AGENT_MD = (AGENT_DIR / "AGENT.md").read_text()
-SPEC = (Path(__file__).resolve().parents[2] / "BACKGROUND_AGENTS.md").read_text()
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SKILLS_ROOT = REPO_ROOT / "workbench" / "init" / "skills"
+CREATE_SKILL = SKILLS_ROOT / "create-background-agent"
+EVALUATE_SKILL = SKILLS_ROOT / "evaluate-background-agent"
+AGENT_SKILL_FILES = sorted(
+    path for skill in (CREATE_SKILL, EVALUATE_SKILL) for path in skill.glob("*.md")
+)
+"""Everything the two skills ship. `create-background-agent` owns what is true of any agent and
+`evaluate-background-agent` only what is true of a grader, so the rules below run over both."""
 
 _RUBRIC_ID = re.compile(r"^\*\*`([a-z_]+)`\*\*", re.M)
 _PYTHON_BLOCK = re.compile(r"```python\n(.*?)```", re.S)
+_FENCED_BLOCK = re.compile(r"```[\w-]*\n(.*?)```", re.S)
+_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
 
 
 def test_a_rubric_is_registered_for_every_check_the_judge_answers():
@@ -131,12 +143,50 @@ def test_every_check_has_a_category_the_summary_renders():
 
 def test_every_deploy_snippet_pins_the_read_only_profile():
     """An agent job without a profile runs on `prod`, which `agent_profile_not_prod` fails."""
-    declarations = sum(block.count("run.agent(") for block in _PYTHON_BLOCK.findall(SPEC))
+    blocks = [
+        block
+        for path in AGENT_SKILL_FILES
+        for block in _PYTHON_BLOCK.findall(path.read_text())
+    ]
+    declarations = sum(block.count("run.agent(") for block in blocks)
     assert declarations
-    pinned = sum(
-        block.count('require={"profile": "access"}') for block in _PYTHON_BLOCK.findall(SPEC)
-    )
+    pinned = sum(block.count('require={"profile": "access"}') for block in blocks)
     assert pinned >= declarations
+
+
+def test_no_code_block_is_copied_between_the_agent_skill_files():
+    """The two skills are cut by ownership, so the same snippet belongs to one of them.
+
+    Copied frontmatter and copied `run.agent` snippets are where that split gives way first,
+    and an exact comparison is cheap. A paraphrase in prose goes uncaught, which is what the
+    line each reference file opens with guards.
+    """
+    seen: dict[str, Path] = {}
+    for path in AGENT_SKILL_FILES:
+        for body in _FENCED_BLOCK.findall(path.read_text()):
+            normalised = " ".join(body.split())
+            if not normalised:
+                continue
+            assert normalised not in seen, (
+                f"{path.name} repeats a code block from {seen[normalised].name}"
+            )
+            seen[normalised] = path
+
+
+def test_every_skill_reference_in_the_agent_skills_resolves():
+    """The validator reads `(`name`)` references in `rules/workflow.md` only, and `init` ships
+    none, so the handover between these two skills is checked here."""
+    shipped = {
+        path.name
+        for path in (REPO_ROOT / "workbench").glob("*/skills/*")
+        if (path / "SKILL.md").is_file()
+    }
+    referenced = set()
+    for path in AGENT_SKILL_FILES:
+        referenced |= set(_SKILL_REF.findall(path.read_text()))
+    assert "create-background-agent" in referenced
+    assert "evaluate-background-agent" in referenced
+    assert referenced <= shipped, sorted(referenced - shipped)
 
 
 def _declared_output() -> dict:

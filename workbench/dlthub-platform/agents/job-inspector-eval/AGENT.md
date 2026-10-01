@@ -18,8 +18,8 @@ rules:
 access: {}
 # Two deployments run this agent: a triggered one grading a single inspector run, and a
 # scheduled one grading a window of runs. "Inputs and where a default lives" in
-# `BACKGROUND_AGENTS.md` maps every input below to the deployments that use it and to where
-# its default is set
+# `evaluator-deployment.md`, beside the `evaluate-background-agent` skill, maps every input
+# below to the deployments that use it and to where its default is set
 inputs:
   type: object
   properties:
@@ -425,8 +425,8 @@ So write `summary` as bullets, one fact each:
   question, and a recommendation written from one run presents a single reading as a
   pattern.
 - It is rendered as markdown in the platform UI. Close every code span you open, never
-  escape a backtick with a backslash, and write no `|` outside a table. See "The shape of
-  `summary`" in `BACKGROUND_AGENTS.md`: every agent writes it this way.
+  escape a backtick with a backslash, and write no `|` outside a table. See `summary-format.md`
+  beside the `create-background-agent` skill: every agent writes it this way.
 
 ## Rules
 
