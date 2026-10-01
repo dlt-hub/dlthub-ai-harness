@@ -106,6 +106,29 @@ fixed, and grant the axis where it is open.
 Neither grants `data`. Both work from run records, logs, job definitions, telemetry and source,
 and a `data` grant would put workspace data in front of a model-driven process.
 
+### Hold the grant narrow
+
+The declaration is the guardrail. dlt wires only what `access` and `tools` name, so a verb you
+leave out is a tool the model is never offered. Four rules carry most of it.
+
+- **Stay on the `pydantic-ai` loop.** The shipped agents are written and graded against it, and
+  the wiring described here is its wiring. Another loop brings its own toolset, which none of
+  this has been checked against.
+- **Leave `local: execute` out.** The shell and `RunPython` run in the job's own process under
+  the job's credentials, and the rules that keep the file tools out of `*secrets.toml` and
+  `.env` do not reach them. Workspace variables arrive as process environment, so an agent
+  without `execute` has no way to read one. Grant it where the task has no other route, and
+  write into the body what it may run.
+- **Take the smallest destination access.** Leave `data` out where run records, logs, job
+  definitions, telemetry and source answer the question. Where rows are the task, `data: read`
+  against a read-only credential in the `access` profile is the whole grant.
+- **List the fewest feature groups.** A group brings every tool it holds that the access covers.
+  A dependency added to the workspace can contribute tools to a group the agent already lists,
+  so keep the workspace to what it needs.
+
+The same four apply to an agent you adapt from a shipped definition. Copying an `AGENT.md` and
+widening `access` or `tools` is the point where the grant stops being the one that was graded.
+
 ## 4. Declare `inputs` and `output`
 
 `inputs` is a JSON Schema and every property is a job configuration key. An input that names a
@@ -194,6 +217,8 @@ axis to drop. A turn count at the limit is a body that did not say where to stop
 
 - The folder name is the agent's name; `description` says when to run it.
 - `tools` lists only the feature groups the task needs; `access` only the verbs it needs.
+- `access` holds no `local: execute` and no `data` the task does not read, and the job leaves the
+  loop at `pydantic-ai`.
 - Every input has a `description`, entity inputs have `entity_type`, and the body names every
   input and says what to do when it is empty.
 - `output` keeps `status` and `summary` as declared, and describes every field of its own; an
