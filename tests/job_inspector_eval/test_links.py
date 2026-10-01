@@ -25,13 +25,29 @@ JOB_URL = f"https://app.example/w/ws-1/jobs/{JOB}"
 def test_a_citation_span_becomes_the_link_text():
     """The inspector's own citation form: the command a reader would paste."""
     out = links.linkify(f"(`dlthub job runs logs {RUN}` line 42)", WEB)
-    assert out == f"([`dlthub job runs logs {RUN}`]({RUN_URL}) line 42)"
+    assert out == f"([`dlthub job runs logs {RUN}`]({RUN_URL}?output=logs&line=42) line 42)"
+
+
+def test_a_log_citation_opens_the_logs_tab_at_the_line_it_names():
+    out = links.linkify(f"(`dlthub job runs logs {RUN}` line 20)", WEB)
+    assert out == f"([`dlthub job runs logs {RUN}`]({RUN_URL}?output=logs&line=20) line 20)"
+
+
+def test_a_log_citation_without_a_line_opens_the_logs_tab():
+    out = links.linkify(f"(`dlthub job runs logs {RUN}`)", WEB)
+    assert out == f"([`dlthub job runs logs {RUN}`]({RUN_URL}?output=logs))"
+
+
+def test_a_record_citation_opens_the_run_page():
+    """`info` names the record, so the link lands on the overview rather than the logs."""
+    out = links.linkify(f"(`dlthub job runs info {RUN}`, field `trigger`)", WEB)
+    assert out == f"([`dlthub job runs info {RUN}`]({RUN_URL}), field `trigger`)"
 
 
 def test_a_command_span_takes_the_run_number_beside_it():
     """The command stays pasteable and the reader still sees which run it opens."""
     out = links.linkify(f"(`dlthub job runs logs {RUN}` line 42)", WEB, {RUN: "#19"})
-    assert out == f"([`dlthub job runs logs {RUN}` #19]({RUN_URL}) line 42)"
+    assert out == f"([`dlthub job runs logs {RUN}` #19]({RUN_URL}?output=logs&line=42) line 42)"
 
 
 def test_a_span_holding_only_an_id_gives_way_to_its_label():

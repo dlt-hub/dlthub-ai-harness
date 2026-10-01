@@ -51,6 +51,14 @@ _BARE_RUN_ID = re.compile(
 )
 _BARE_JOB_REF = re.compile(r"\b(jobs\.[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\b")
 
+_LOG_COMMAND = re.compile(r"\bjob\s+(?:runs\s+)?logs\b")
+"""A citation that opens a log rather than a run record. The run page defaults to its
+overview, so a log citation carries `?output=logs` and lands the reader on the lines it
+quotes."""
+
+_CITED_LINE = re.compile(r"^\s*(?:,\s*)?lines?\s+(\d+)")
+"""The line a citation names, which sits after the command span: `` `... <run id>` line 20``."""
+
 
 def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
     """Link text per run id: the run number, which the bullet writes the job ref beside.
@@ -142,17 +150,23 @@ def _outside_links(text: str, base: str, workspace: str, labels: Mapping[str, st
     last = 0
     for match in _CODE_SPAN.finditer(text):
         written.append(_bare(text[last:match.start()], base, workspace, labels))
-        written.append(_span(match.group(0), base, workspace, labels))
+        line = _CITED_LINE.match(text[match.end():])
+        written.append(
+            _span(match.group(0), base, workspace, labels, line.group(1) if line else "")
+        )
         last = match.end()
     written.append(_bare(text[last:], base, workspace, labels))
     return "".join(written)
 
 
-def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
+def _span(
+    span: str, base: str, workspace: str, labels: Mapping[str, str], line: str = ""
+) -> str:
     """A code span holding an id, written as the text of a link to that id's page.
 
     The span is the text and never the target of the link: `[`x`](url)` renders, `` `[x](url)` ``
-    prints the markup. A span carrying no id is left as it stands.
+    prints the markup. A span carrying no id is left as it stands. `line` is the line the
+    citation names, carried into a log link so the reader lands on it.
     """
     inner = span[1:-1]
     if run_match := _BARE_RUN_ID.search(inner):
@@ -164,10 +178,22 @@ def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> st
             shown = label or span
         else:
             shown = f"{span} {label}" if label else span
-        return f"[{shown}]({base}/w/{workspace}/runs/{run_id})"
+        return f"[{shown}]({base}/w/{workspace}/runs/{run_id}{_run_query(inner, line)})"
     if job_match := _BARE_JOB_REF.search(inner):
         return f"[{span}]({base}/w/{workspace}/jobs/{job_match.group(1)})"
     return span
+
+
+def _run_query(inner: str, line: str) -> str:
+    """What a run link carries beyond its id: the logs tab, and the line cited there.
+
+    `output=logs` is the tab the platform prints in its own run links. `line` follows the
+    name the web app reads; a name it does not read is ignored and the link still opens the
+    logs.
+    """
+    if not _LOG_COMMAND.search(inner):
+        return ""
+    return f"?output=logs&line={line}" if line else "?output=logs"
 
 
 def _bare(text: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
