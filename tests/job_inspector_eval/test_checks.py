@@ -603,6 +603,22 @@ def test_single_run_scope():
     assert run("single_run_scope", output=output(status="aborted")).outcome == C.NA
 
 
+def test_a_second_other_job_run_leaves_the_free_slot_unnamed():
+    """Which of two reads is the producer's does not follow from their order."""
+    symptom = with_setup_lines(MISSING_TABLE_LOG)
+    both = log_with(RECORD_CALL, LOG_CALL, UPSTREAM_LOG,
+                    f'  dlthub_get_run_logs (dlthub)  {{"run_id": "{OTHER_RUN_ID}"}}')
+
+    result = run("single_run_scope", failed_log=symptom, inspector_log=both, max_runs_read=1)
+    assert result.outcome == C.TRUE
+    assert result.metadata["producer_run"] == []
+    assert "one read of another job's run free" in result.reasoning
+
+    tight = run("single_run_scope", failed_log=symptom, inspector_log=both, max_runs_read=0)
+    assert tight.outcome == C.FALSE
+    assert UPSTREAM_RUN_ID in tight.reasoning and OTHER_RUN_ID in tight.reasoning
+
+
 def test_the_inspected_run_does_not_count_against_the_bound():
     """`run_record_read` and `run_logs_read` require reading it, so `0` has to be reachable."""
     result = run("single_run_scope", max_runs_read=0)
@@ -1098,6 +1114,27 @@ def test_a_file_cited_by_its_base_name_counts():
     named = _with_file_evidence(summary=SECTIONED.replace(
         "- Rotate the GitHub token.", "- Set the token read at `github_events.py` line 31."))
     assert run("summary_cites_its_evidence", output=named).outcome == C.TRUE
+
+
+def test_two_cited_files_sharing_a_base_name_need_their_paths():
+    """One `config.toml` in the summary cannot stand for both of them."""
+    evidence = output()["evidence"] + [
+        {"source": "transformations/config.toml line 4", "excerpt": "schema = 'raw'",
+         "provenance": "workspace_file"},
+        {"source": "pipelines/config.toml line 9", "excerpt": "dataset = 'staging'",
+         "provenance": "workspace_file"},
+    ]
+    base_only = output(evidence=evidence, summary=SECTIONED.replace(
+        "- Rotate the GitHub token.", "- Set the dataset in `config.toml`."))
+    result = run("summary_cites_its_evidence", output=base_only)
+    assert result.outcome == C.FALSE
+    assert "transformations/config.toml" in result.reasoning
+
+    paths = output(evidence=evidence, summary=SECTIONED.replace(
+        "- Rotate the GitHub token.",
+        "- Set the dataset in `pipelines/config.toml`, read beside"
+        " `transformations/config.toml`."))
+    assert run("summary_cites_its_evidence", output=paths).outcome == C.TRUE
 
 
 def test_a_producer_log_the_summary_never_names_is_caught():

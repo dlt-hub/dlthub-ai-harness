@@ -250,10 +250,10 @@ reader sees without opening the result. Every agent writes it the same way:
 - **A markdown table only as the last thing in the last section**, when the agent reports
   rows. Its headers are lowercase and name the field in the row. A row that measured nothing
   stays out; how many there were belongs in `Scope` or in the tally above the table.
-- **Every run id and job ref is a link**, wherever it falls.
-  `[`<id>`](<web ui base>/w/<workspace id>/runs/<id>)` for a run, `/jobs/<job ref>` for a job.
-  `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints a run
-  link.
+- **Every run id and job ref is a link**, wherever it falls. The text is the id in a code span
+  and the target is `<web ui base>/w/<workspace id>/runs/<id>` for a run, `/jobs/<job ref>` for
+  a job. `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints
+  a run link.
 - **Markdown only, no raw HTML.** The summary renderer in the web UI strips tags, so a
   `<details>` element folding a long list arrives as an empty section. A long list goes in as
   plain bullets.
@@ -500,25 +500,34 @@ loop, in `links.py` under `agents/job-inspector/`. The inspector and the evaluat
 that one module, so a run reads the same way in both summaries.
 
 ```python
-import sys
+import importlib.util
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector")
-from links import labels_from_platform, linkify, web_ui
+# loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
+# entry pointing at the agent folder would shadow or be shadowed by another one
+spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
+)
+links = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(links)
 
 summary = output["summary"]
-output["summary"] = linkify(summary, web_ui(), labels_from_platform(summary))
+output["summary"] = links.linkify(
+    summary, links.web_ui(), links.labels_from_platform(summary)
+)
 ```
+
+The evaluator loads the same file the same way, in `_shared_links` in its `checks.py`.
 
 The decorated function below takes no docstring. `reflection.py` reads one as the agent's
 system prompt, so a wrapper that carries one replaces the referenced definition's body and
 the agent runs without its instructions. Put the explanation in a comment.
 
-A span holding an id becomes the text of the link, since `[`x`](url)` renders and
-`` `[x](url)` `` prints the markup. So the inspector's `` `dlthub job runs logs <id>` `` is
-what the reader clicks. `labels_from_platform` reads the run number behind each id and makes
-it the link text, so a reader meets `#114` rather than a uuid; the evaluator passes
-`run_labels` instead, built from the runs it already holds. Wiring it needs the decorated
-form below.
+A span holding an id becomes the text of the link, since a link wrapped around a code span
+renders and a link written inside one prints its markup. So the inspector's
+`` `dlthub job runs logs <id>` `` is what the reader clicks. `labels_from_platform` reads the
+run number behind each id and makes it the link text, so a reader meets `#114` rather than a
+uuid; the evaluator passes `run_labels` instead, built from the runs it already holds. Wiring
+it needs the decorated form below.
 
 ### Code around the loop
 

@@ -1,9 +1,10 @@
-"""Run ids and job refs in an agent summary, written as links to their platform pages.
+"""Run ids and job refs in an agent summary, written as links to their web UI pages.
 
 An agent names a run by its uuid, because that is what a person pastes into
 `dlthub job runs logs`. A uuid in prose is unreadable, so the summary goes through
-`linkify` after the loop: the uuid stays in the link target and the text becomes what the
-reader needs, a run number where the caller knows one.
+`linkify` after the loop: the uuid stays in the link target, which is the run's page in the
+platform web UI, and the text becomes what the reader needs, a run number where the caller
+knows one.
 
 The inspector and the evaluator both use this module, so a run reads the same way in both
 summaries. It ships in the inspector's folder and the evaluator loads it from there; the
@@ -157,8 +158,9 @@ def _outside_links(text: str, base: str, workspace: str, labels: Mapping[str, st
 def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
     """A code span holding an id, written as the text of a link to that id's page.
 
-    The span is the text and never the target of the link: `[`x`](url)` renders, `` `[x](url)` ``
-    prints the markup. A span carrying no id is left as it stands.
+    The span is the text and never the target of the link: a link wrapped around a code span
+    renders, a link written inside one prints its markup. A span carrying no id is left as it
+    stands.
     """
     inner = span[1:-1]
     if run_match := _BARE_RUN_ID.search(inner):

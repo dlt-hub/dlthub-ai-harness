@@ -40,7 +40,7 @@ inputs:
       description: >
         Both deployments. How many runs beyond the one it inspected the inspector may read
         before `single_run_scope` fails. The inspected run is never counted, so `0` means
-        that run alone, and the producer's run does not count when the failed run's log
+        that run alone, and one read of another job's run is free when the failed run's log
         carries a dependency symptom. Default `DEFAULT_MAX_RUNS_READ` in `checks.py`, which
         is 5.
     window_days:

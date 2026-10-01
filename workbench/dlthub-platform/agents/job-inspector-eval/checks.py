@@ -2189,31 +2189,41 @@ def single_run_scope(ctx: EvalContext) -> CheckResult:
 
     The bound covers the runs beyond the inspected one. Counting the inspected run against it
     makes `max_runs_read = 0` unreachable, since `run_record_read` and `run_logs_read` require
-    reading it. On a dependency symptom the producer's run is free too: "Follow the
-    dependency" tells the inspector to read it and `upstream_inspected_on_dependency_symptoms`
-    fails a run that does not, so counting it would make the two checks contradict each other.
+    reading it. On a dependency symptom one read of another job's run is free: "Follow the
+    dependency" tells the inspector to read the producer and
+    `upstream_inspected_on_dependency_symptoms` fails a run that does not, so counting it
+    would make the two checks contradict each other.
 
-    TRUE  at most `max_runs_read` runs beyond the inspected one were fetched, the producer's
-          aside
+    What is free is the slot, not a named run. Which read is the producer's follows from the
+    transcript only when there is a single read of another job's run, so the reasoning names
+    the run in that case and reports the free slot in every other.
+
+    TRUE  at most `max_runs_read` runs beyond the inspected one were fetched, plus the free
+          slot on a dependency symptom
     FALSE more; the reasoning lists them
     N/A   status is `aborted`
     """
     if ctx.status == "aborted":
         return na("the inspection aborted before reading anything")
-    producer = other_runs_read(ctx)[:1] if dependency_symptoms(ctx) else []
-    beyond = [
-        run_id for run_id in ctx.runs_read_beyond_the_inspected if run_id not in producer
-    ]
-    free = f", and {producer[0]} free as the producer's" if producer else ""
-    if len(beyond) <= ctx.max_runs_read:
+    others = other_runs_read(ctx) if dependency_symptoms(ctx) else []
+    producer = others[:1] if len(others) == 1 else []
+    allowed = ctx.max_runs_read + (1 if others else 0)
+    beyond = ctx.runs_read_beyond_the_inspected
+    if producer:
+        free = f", and {producer[0]} free as the producer's"
+    elif others:
+        free = ", and one read of another job's run free as the producer's"
+    else:
+        free = ""
+    if len(beyond) <= allowed:
         return ok(
             f"the inspector read {len(beyond)} run(s) beyond the one it inspected, at most"
-            f" {ctx.max_runs_read} allowed{free}",
+            f" {allowed} allowed{free}",
             runs_read=ctx.runs_read, producer_run=producer,
         )
     return bad(
         f"the inspector read {len(beyond)} runs beyond the one it inspected, more than the"
-        f" {ctx.max_runs_read} allowed: {', '.join(beyond)}{free}",
+        f" {allowed} allowed: {', '.join(beyond)}{free}",
         runs_read=ctx.runs_read, producer_run=producer,
     )
 
@@ -2993,14 +3003,29 @@ def cited_artifacts(ctx: "EvalContext") -> List[Dict[str, Any]]:
     return list(found.values())
 
 
-def _named_in(artifact: Dict[str, Any], text: str) -> bool:
+def _named_in(
+    artifact: Dict[str, Any], text: str, artifacts: Sequence[Dict[str, Any]] = ()
+) -> bool:
     """Whether the summary names the artifact. A file counts under its path or its base name,
-    which is how a Recommendation bullet usually writes it."""
+    which is how a Recommendation bullet usually writes it.
+
+    The base name settles nothing when a second cited file carries it: one `config.toml` in
+    the summary would pass both `a/config.toml` and `b/config.toml`, so those two count under
+    their path alone."""
     name = str(artifact["name"]).lower()
     haystack = text.lower()
     if name in haystack:
         return True
-    return artifact["kind"] == "file" and Path(name).name in haystack
+    if artifact["kind"] != "file":
+        return False
+    base = Path(name).name
+    shared = any(
+        other is not artifact
+        and other["kind"] == "file"
+        and Path(str(other["name"]).lower()).name == base
+        for other in artifacts
+    )
+    return not shared and base in haystack
 
 
 @check("summary_cites_its_evidence")
@@ -3031,7 +3056,7 @@ def summary_cites_its_evidence(ctx: EvalContext) -> CheckResult:
             run_id=inspected,
         )
     artifacts = cited_artifacts(ctx)
-    missing = [item for item in artifacts if not _named_in(item, ctx.summary)]
+    missing = [item for item in artifacts if not _named_in(item, ctx.summary, artifacts)]
     if missing:
         names = ", ".join(repr(str(item["name"])) for item in missing)
         return bad(
