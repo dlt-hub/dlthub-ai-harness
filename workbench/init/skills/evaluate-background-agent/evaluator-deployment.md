@@ -74,7 +74,8 @@ async def job_inspector_eval(
     return evaluations[0]
 ```
 
-The signature rules, and why an abort raises instead of returning, are in `deployment.md`.
+The signature rules, why an abort raises instead of returning, and what this function overrides in
+the evaluator's own `AGENT.md` are in `deployment.md`.
 
 ## On a schedule
 

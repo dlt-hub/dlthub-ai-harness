@@ -32,16 +32,39 @@ never onto the job that declares it; read "Triggers that would loop" below befor
 started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was given,
 which is why the body must say what to do with empty input.
 
-Every decorator argument overrides the matching `defaults`, and configuration overrides both;
-`instructions` is the user turn of every run. The job takes the definition's name,
-`job_inspector` here. Instead of a `<toolkit>:<name>` reference the workspace may point at a
-folder holding an `AGENT.md` by its workspace-relative path.
+`instructions` is the user turn of every run. The job takes the definition's name, `job_inspector`
+here. Instead of a `<toolkit>:<name>` reference the workspace may point at a folder holding an
+`AGENT.md` by its workspace-relative path.
 
-`access`, `tools`, `skills` and `rules` are not defaults. A referenced agent keeps the
-definition's lists and the decorator drops its arguments for them. A decorated function driving a
-referenced agent replaces the definition's list with the argument, so `access={"local": ["read"]}`
-on such a function removes `context: read`. Pass every axis the agent needs, or leave the block to
-the definition.
+## What the Python definition overrides
+
+Four layers settle every field, each written over the one before it: the `AGENT.md`, the
+`run.agent(...)` arguments, the decorated function's own name, docstring, signature and return
+type, and job configuration under `[jobs.<module>.<job>.agent]` with inputs one level up in
+`[jobs.<module>.<job>]`. The Python wins wherever it and the file both say something, and the
+file's value is then never read. The `AGENT.md` is the agent as shipped and the deployment module
+is the agent as it runs, so read the module to see what a run was given.
+
+| `AGENT.md` field | `run.agent("<ref>", ...)` | `@run.agent(agent="<ref>", ...)` on a function |
+|---|---|---|
+| body (system prompt) | no argument for it, the file stands | the docstring replaces it |
+| `description` | the file stands | the docstring's first line replaces it |
+| `name` | the job takes the agent's name | the job takes the function's name |
+| `inputs` | the file stands | the signature's parameters are written over the file's |
+| `output` | the file stands | a return type deriving from `TAgentOutput` replaces it, `dict` leaves the file's |
+| `access`, `tools`, `skills`, `rules` | the argument is dropped, the file stands | the argument replaces the file's list |
+| `defaults` (`model`, `limits`, `loop_run_args`) | the matching argument overrides that key | the matching argument overrides that key |
+
+`access`, `tools`, `skills` and `rules` are not `defaults`, which is why the two forms differ on
+them. On a decorated function the argument replaces the whole list, so `access={"local": ["read"]}`
+removes `context: read`. Pass every axis the agent needs, or leave the block out and let the
+definition hold it. `status` and `summary` are written over whatever `output` ends up being, in
+both forms.
+
+A decorated function needs no `agent=` at all. With none the function is the whole definition and
+there is no `AGENT.md`: the docstring is the system prompt, the parameters are the inputs, the
+return type is the output, and the agent is referred to as `<module>:<function>`. The agents in
+this repo keep a file so a toolkit can install the definition and a grader can read it.
 
 ## Profile
 
@@ -123,7 +146,8 @@ async def graded_agent(
     return after(answer, prep)
 ```
 
-The function overrides the definition it drives, so watch the signature. Give it **no docstring**,
+The function overrides the definition it drives, as "What the Python definition overrides" sets
+out above, so watch the signature. Give it **no docstring**,
 since a docstring replaces the body. Return **`dict` rather than `TAgentOutput`**, since a return
 type deriving from `TAgentOutput` replaces the output schema with the bare `status` and `summary`.
 Take **a parameter for every input a caller may set**, since configured inputs reach a decorated

@@ -109,7 +109,7 @@ and a `data` grant would put workspace data in front of a model-driven process.
 ### Hold the grant narrow
 
 The declaration is the guardrail. dlt wires only what `access` and `tools` name, so a verb you
-leave out is a tool the model is never offered. Four rules carry most of it.
+leave out is a tool the model is never offered. Five rules carry most of it.
 
 - **Stay on the `pydantic-ai` loop.** The shipped agents are written and graded against it, and
   the wiring described here is its wiring. Another loop brings its own toolset, which none of
@@ -125,8 +125,14 @@ leave out is a tool the model is never offered. Four rules carry most of it.
 - **List the fewest feature groups.** A group brings every tool it holds that the access covers.
   A dependency added to the workspace can contribute tools to a group the agent already lists,
   so keep the workspace to what it needs.
+- **A deployment argument replaces the grant.** `access=` on a decorated function driving a
+  definition through `agent=` replaces the whole block rather than merging it, so an argument
+  naming one axis drops the others. Leave those arguments off and let the `AGENT.md` hold the
+  grant, or repeat every axis the agent needs. A reference with no function behind it keeps the
+  definition's lists and the same arguments are dropped. Step 6 and
+  [deployment.md](deployment.md) have the rest of what the Python overrides.
 
-The same four apply to an agent you adapt from a shipped definition. Copying an `AGENT.md` and
+The same five apply to an agent you adapt from a shipped definition. Copying an `AGENT.md` and
 widening `access` or `tools` is the point where the grant stops being the one that was graded.
 
 ## 4. Declare `inputs` and `output`
@@ -190,6 +196,12 @@ the decorated form for code around the loop, the trigger strings and the `AGENT_
 The minimum: `run.agent("<toolkit>:<name>", trigger=..., require={"profile": "access"})`, and
 `AGENT__MODEL` set once in the workspace.
 
+The Python overrides the file. A `run.agent(...)` argument overrides the matching `AGENT.md`
+field, a decorated function overrides both through its name, docstring, signature and return
+type, and job configuration overrides all three. `deployment.md` has the table of what each form
+takes. Write the `AGENT.md` as the whole definition and put in the deployment only what this
+workspace changes, so the file stays the thing that was reviewed and graded.
+
 Three stops apply to every agent job:
 
 - **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
@@ -227,6 +239,8 @@ axis to drop. A turn count at the limit is a body that did not say where to stop
   defines every enum.
 - `defaults` holds sensible limits and no `model` and no `trigger`; the `AGENT.md` says what model
   to pin and the deployment sets the trigger. Nothing in `defaults` is a requirement.
+- The deployment changes only what this workspace needs, since every argument it passes overrides
+  the file.
 - For an agent shipped in a toolkit: `make validate-toolkits` passes. It checks the frontmatter,
   the placeholders in the body, the `access` vocabulary, the `status` and `summary` contract, the
   component refs and the `defaults` keys. dlthub validates again when the deployment manifest is
