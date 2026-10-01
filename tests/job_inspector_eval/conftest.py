@@ -1,8 +1,11 @@
 """Fixtures for the job-inspector-eval deterministic checks.
 
-`checks.py` ships inside the agent folder, which the toolkit installer copies verbatim into a
-workspace. It is not a package, so the tests put its folder on the path the same way the
-deployment module does.
+`checks.py` ships inside the agent folder and is not a package, so the tests put its folder on
+the path the way the deployment module does.
+
+`fixtures/captured/` holds whole evaluations read off a live workspace, written by `C.capture`
+and read back by `C.FileFetcher`. `fixtures/judge_answers/` holds a reviewed answer per judge
+check, `fixtures/rendered/` the golden summaries.
 """
 
 import sys

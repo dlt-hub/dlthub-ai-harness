@@ -1,0 +1,82 @@
+[
+  {
+    "query": "whenever one of my deployed jobs fails I want something to look at the logs and tell me what broke, without me having to open the UI every morning",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I write an AGENT.md? I've seen the job-inspector one but I need my own that summarises what loaded over the weekend",
+    "should_trigger": true
+  },
+  {
+    "query": "what goes in the access block of a dlthub agent? I want it to read the workspace files and the run records but definitely not touch any data",
+    "should_trigger": true
+  },
+  {
+    "query": "I wrote agents/weekly_report/AGENT.md but I have no idea how to actually deploy it. do I put the trigger in the frontmatter or somewhere in __deployment__.py?",
+    "should_trigger": true
+  },
+  {
+    "query": "my agent job keeps picking up prod credentials, is that expected? I just used run.agent with a schedule trigger and nothing else",
+    "should_trigger": true
+  },
+  {
+    "query": "I need the agent to take a run id as input and report back which pipeline it belonged to — how do I declare that so the web UI offers it from the run page?",
+    "should_trigger": true
+  },
+  {
+    "query": "set AGENT__MODEL for my workspace, we're on Azure OpenAI not Anthropic and I can't work out which variables I need",
+    "should_trigger": true
+  },
+  {
+    "query": "can I ship a background agent inside a toolkit so everyone who installs it gets the agent too? where does the folder go in the repo",
+    "should_trigger": true
+  },
+  {
+    "query": "the output schema of my agent gets rejected when the job launches, something about the object having no properties. it's a nested field the python code fills in afterwards, not the model",
+    "should_trigger": true
+  },
+  {
+    "query": "I want a thing that runs every monday at 7 and writes a markdown summary of the week's loads, reads the run records itself and decides what's worth mentioning",
+    "should_trigger": true
+  },
+  {
+    "query": "my job_inspector run gave a diagnosis but I don't trust it — is there a way to score whether it actually followed the instructions in its own AGENT.md?",
+    "should_trigger": false
+  },
+  {
+    "query": "write me a rubric with TRUE/FALSE/N/A per instruction so I can grade the agent's last 20 runs in one report",
+    "should_trigger": false
+  },
+  {
+    "query": "the jaffle_shop load job failed about an hour ago, can you pull the logs and tell me why",
+    "should_trigger": false
+  },
+  {
+    "query": "I want my github pipeline to run every 6 hours on the platform instead of me kicking it off by hand",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a subagent in .claude/agents that reviews my PRs before I push them",
+    "should_trigger": false
+  },
+  {
+    "query": "deploy my workspace to dlthub platform, I've got two pipelines and a transformation script ready",
+    "should_trigger": false
+  },
+  {
+    "query": "add row count and null checks on the customers table so a bad load doesn't make it into prod",
+    "should_trigger": false
+  },
+  {
+    "query": "the deployed stripe job has been running 40 minutes and used to take 5, where's the time going",
+    "should_trigger": false
+  },
+  {
+    "query": "my prod secrets and dev secrets are in the same file and I want to split them before deploying",
+    "should_trigger": false
+  },
+  {
+    "query": "write a skill that walks a user through adding a new endpoint to a rest api pipeline",
+    "should_trigger": false
+  }
+]

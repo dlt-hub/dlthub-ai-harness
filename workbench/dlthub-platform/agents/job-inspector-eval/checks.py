@@ -7,8 +7,8 @@ list of check ids.
 `prepare` resolves the inspector run, fetches everything, runs the deterministic checks and
 builds the evidence the judge reads. `finalize` writes the computed results over the judge's
 output. A check docstring opens with the instruction it grades, which is the sentence the
-summary reports, and then states TRUE, FALSE and N/A. `BACKGROUND_AGENTS.md` covers
-deployment.
+summary reports, and then states TRUE, FALSE and N/A. The `evaluate-background-agent` skill
+covers deployment.
 """
 
 from __future__ import annotations
@@ -909,7 +909,8 @@ def parse_result_envelope(log_lines: Sequence[LogLine]) -> Optional[Dict[str, An
     """The job result the launcher printed at the end of the log.
 
     The fallback while `dlthub_get_run_result` is not deployable: `print_job_result` dumps
-    the agent output as pretty JSON after the `Result [...]` banner.
+    the agent output as pretty JSON after the `Result [...]` banner. `job_runs.result` arrived
+    in `dlthub-client` 0.28.5a1, so an older client or a run with no stored result lands here.
     """
     stripped = [strip_ansi(line.content).rstrip() for line in program_lines(list(log_lines))]
     # the pretty dump puts the outermost brace at column 0; everything nested is indented.
@@ -1884,8 +1885,8 @@ def no_data_access(ctx: EvalContext) -> CheckResult:
 def agent_profile_not_prod(ctx: EvalContext) -> CheckResult:
     """The inspector job runs on a read-only profile, never `prod`.
 
-    Catches an agent job declared without `require={"profile": ...}`: it runs as a batch job
-    on `prod`, with production credentials in the process environment.
+    Catches a deployment that overrode the default `access` profile with `prod`, putting
+    production credentials in the process environment.
 
     TRUE  the run record names a profile other than `prod`
     FALSE it names `prod`
@@ -4612,7 +4613,15 @@ def capture(source: Fetcher, inspector_run_id: str, directory: str) -> str:
     """Writes everything an evaluation of `inspector_run_id` reads into `directory`.
 
     The inverse of `FileFetcher`. A fetch failure is recorded as absent rather than raised, so
-    a partial capture still replays.
+    a partial capture still replays. To replay an evaluation against a changed check:
+
+        import checks as C
+
+        C.capture(C.SdkFetcher.connect(), "<run id>", "captures/run-42")
+        prep = C.prepare({"run_id": "local"}, fetcher=C.FileFetcher("captures/run-42"),
+                         inspector_run_id="<run id>")
+
+    `tools/scrub_capture.py` replaces every identifier before a capture lands in git.
     """
     root = Path(directory)
 
@@ -6133,7 +6142,7 @@ def render_summary(
     `Recommendation` section; a window states what broke and how often, which is what a change
     to the instructions rests on.
 
-    The shape is the one every background agent writes, as `BACKGROUND_AGENTS.md` sets it out:
+    The shape is the one `summary-format.md` in the `create-background-agent` skill sets out:
     no text before the first heading, nothing outside a bullet, and a table only as the last
     thing in the last section.
     """

@@ -69,8 +69,13 @@ grade an inspector diagnosis against the inspector's instructions → dlthub-pla
 
 * `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
 * `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., tags=["ingest"])`. Name the jobs to watch, or tag them; `job.fail:*` also watches the evaluator and the two then start each other.
-* Neither agent names a model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5. "Evaluating an agent" in `BACKGROUND_AGENTS.md` carries the full snippet and the model per provider.
+* Neither agent names a model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5. `deployment.md` beside the `create-background-agent` skill carries the full snippet and the model per provider.
 * Keep `agent.verbosity` at 1, the default. At 0 the job log drops the tool arguments and thoughts the evaluator reads.
+
+**Writing a new agent, not installing a shipped one.** Both skills ship with `init`, so they are already present in every workspace and need no install:
+
+* Write and deploy one → `create-background-agent`. It covers the `AGENT.md` fields, the `access` decision, the summary shape, `run.agent`, the profile pin and the trigger strings.
+* Grade one that already runs → `evaluate-background-agent`. It covers turning the graded agent's instructions into checks, the rubric, and the per-run and scheduled deployments.
 
 <!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. -->
 

@@ -1,23 +1,40 @@
-"""The committed captures carry no identifier from the workspace they were taken on.
+"""No committed file carries an identifier from the workspace it was taken on.
 
-This repository is public, so `tools/scrub_capture.py` rewrites every identifier before a
-capture lands in git and marks each pseudonym it writes. These tests read the mark, so they
-check the fixtures without the originals, which stay out of the repository.
+`tools/scrub_capture.py` rewrites every identifier before a capture lands in git and marks each
+pseudonym it writes. These tests read the mark, so they run without the originals.
 """
 
 import importlib.util
+import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
+REPO = Path(__file__).resolve().parents[2]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
-SCRUBBER = Path(__file__).resolve().parents[2] / "tools" / "scrub_capture.py"
+SCRUBBER = REPO / "tools" / "scrub_capture.py"
 
 spec = importlib.util.spec_from_file_location("scrub_capture", SCRUBBER)
 scrub_capture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(scrub_capture)
 
 FILES = [path for path in sorted(FIXTURES.rglob("*")) if path.is_file()]
+
+# a file rather than a constant: a value named here would be reported by the sweep below.
+# entries are exact, so a new identifier in those files still fails
+REGISTRY = Path(__file__).resolve().parent / "allowed_identifiers.json"
+ALLOWED = {name: set(values) for name, values in json.loads(REGISTRY.read_text()).items()}
+
+
+def _tracked() -> list[Path]:
+    listing = subprocess.run(
+        ["git", "-C", str(REPO), "ls-files", "-z"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return [REPO / name for name in listing.split("\0") if name]
 
 
 def test_the_captures_are_present():
@@ -33,6 +50,29 @@ def test_a_fixture_holds_no_unscrubbed_identifier(path):
 @pytest.mark.parametrize("path", FILES, ids=lambda p: str(p.relative_to(FIXTURES)))
 def test_a_fixture_is_named_after_a_scrubbed_id(path):
     assert scrub_capture.residuals(path.stem) == []
+
+
+def test_no_other_tracked_file_holds_an_unscrubbed_identifier():
+    offenders = {}
+    for path in _tracked():
+        if FIXTURES in path.parents or path == REGISTRY or not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        name = path.relative_to(REPO).as_posix()
+        found = set(scrub_capture.residuals(text)) - ALLOWED.get(name, set())
+        if found:
+            offenders[name] = sorted(found)
+    assert offenders == {}, f"unscrubbed identifiers: {offenders}"
+
+
+@pytest.mark.parametrize("name", sorted(ALLOWED), ids=lambda n: n.rsplit("/", 1)[1])
+def test_an_allowed_identifier_is_still_in_the_file_that_claims_it(name):
+    """A stale entry widens the sweep silently."""
+    found = set(scrub_capture.residuals((REPO / name).read_text(encoding="utf-8")))
+    assert ALLOWED[name] <= found, f"{name} no longer carries {sorted(ALLOWED[name] - found)}"
 
 
 def test_the_scrubber_ships_no_original():

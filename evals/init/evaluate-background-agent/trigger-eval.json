@@ -1,0 +1,82 @@
+[
+  {
+    "query": "my job_inspector run gave a diagnosis but I don't trust it — is there a way to score whether it actually followed the instructions in its own AGENT.md?",
+    "should_trigger": true
+  },
+  {
+    "query": "the agent has been running unattended for three weeks and nobody has read a single report. how do I find out if it's any good",
+    "should_trigger": true
+  },
+  {
+    "query": "I want a rubric with TRUE/FALSE/N/A per instruction so I can grade the inspector's last 20 runs in one report",
+    "should_trigger": true
+  },
+  {
+    "query": "set up an agent that grades another agent. which parts should be python checks and which should the model decide?",
+    "should_trigger": true
+  },
+  {
+    "query": "job-inspector-eval keeps answering N/A on half the checks, what am I doing wrong with the deployment",
+    "should_trigger": true
+  },
+  {
+    "query": "can I run the evaluator weekly over all the runs instead of once per run? I'd rather read one report than twenty",
+    "should_trigger": true
+  },
+  {
+    "query": "how do I stop the judge from following instructions that end up in the failed job's log it's reading",
+    "should_trigger": true
+  },
+  {
+    "query": "my evaluator says passed: false but every check I can see is TRUE. where does the pass_rate come from",
+    "should_trigger": true
+  },
+  {
+    "query": "I changed the inspector's instructions yesterday, will the scheduled grader still count the runs from before that",
+    "should_trigger": true
+  },
+  {
+    "query": "is sonnet enough for the judge or do I need opus? one check keeps flipping on the same input",
+    "should_trigger": true
+  },
+  {
+    "query": "check my data quality before the load, I want to know if the amounts column has nulls or negative values",
+    "should_trigger": false
+  },
+  {
+    "query": "add column expectations to the orders table so a bad upstream change fails the pipeline instead of landing",
+    "should_trigger": false
+  },
+  {
+    "query": "whenever one of my deployed jobs fails I want something to look at the logs and tell me what broke",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I write an AGENT.md? I need my own agent that summarises what loaded over the weekend",
+    "should_trigger": false
+  },
+  {
+    "query": "is my pipeline slow? the stripe load went from 5 minutes to 40 and I want to know where the time goes",
+    "should_trigger": false
+  },
+  {
+    "query": "the jaffle_shop load job failed about an hour ago, can you pull the logs and tell me why",
+    "should_trigger": false
+  },
+  {
+    "query": "validate the data I just loaded into duckdb — row counts per table and whether the primary keys are unique",
+    "should_trigger": false
+  },
+  {
+    "query": "review the data quality report from last night's run and tell me which checks failed",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to test whether my new skill description actually triggers when a user asks about pagination",
+    "should_trigger": false
+  },
+  {
+    "query": "compare the row counts in the source postgres table against what landed in bigquery, something got dropped",
+    "should_trigger": false
+  }
+]

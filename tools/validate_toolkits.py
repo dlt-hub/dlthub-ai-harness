@@ -98,7 +98,7 @@ _WORKFLOW_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
 # **toolkit-name** references in handover section
 _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 
-# --- background agents (see BACKGROUND_AGENTS.md) ---
+# --- background agents ---
 # Agents are folders, like skills: `agents/<name>/AGENT.md`, the path the installer reads.
 # They land under `dlthub/` in the *host* folder (`.claude/dlthub/agents/`) so they never mix
 # with a host's native agents (`.claude/agents/`, `.codex/agents/`).
@@ -245,7 +245,7 @@ def validate_agents(
     errors: list[str],
     warnings: list[str],
 ) -> set[str]:
-    """Validate agents/<name>/AGENT.md manifests. See BACKGROUND_AGENTS.md."""
+    """Validate agents/<name>/AGENT.md manifests. See the `create-background-agent` skill."""
     agent_names: set[str] = set()
     agents_dir = plugin_dir.joinpath(*_AGENTS_DIR)
     if not agents_dir.is_dir():
@@ -255,7 +255,7 @@ def validate_agents(
         if not entry.is_dir():
             errors.append(
                 f"[{pname}] {_AGENTS_PATH}/{entry.name}: agents are folders containing"
-                f" {_AGENT_FILE} (see BACKGROUND_AGENTS.md)"
+                f" {_AGENT_FILE}, so a definition can carry supporting files"
             )
             continue
         manifest = entry / _AGENT_FILE
@@ -482,11 +482,11 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
-    # the manifest drops `defaults`, so a trigger declared here does nothing
+    # the manifest drops `defaults`, and the workspace owns which jobs an agent watches
     if node.get("trigger") is not None:
         errors.append(
             f"[{pname}] {rel} defaults.trigger {node['trigger']!r} is never read; set"
-            " trigger= on run.agent (see BACKGROUND_AGENTS.md)"
+            " trigger= on run.agent"
         )
 
     # a shipped definition names no provider: the aliases resolve on Anthropic, OpenAI
@@ -494,8 +494,9 @@ def _validate_defaults(
     if node.get("model") is not None:
         errors.append(
             f"[{pname}] {rel} defaults.model {node['model']!r} pins a provider on every"
-            " workspace that installs the toolkit; leave it out and say in the AGENT.md"
-            " what to pin (see BACKGROUND_AGENTS.md)"
+            " workspace that installs the toolkit; leave it out, say in the AGENT.md what"
+            " class of model the instructions were written for, and let the workspace set"
+            " AGENT__MODEL"
         )
 
     limits = node.get("limits") or {}
@@ -696,7 +697,7 @@ def validate_toolkit_content(
                     f"[{pname}] {rel} has frontmatter — rules must be catch-all (no frontmatter)"
                 )
 
-    # --- agents (see BACKGROUND_AGENTS.md) ---
+    # --- agents ---
     agent_names = validate_agents(pname, plugin_dir, inventory, errors, warnings)
 
     # --- workflow.md ---

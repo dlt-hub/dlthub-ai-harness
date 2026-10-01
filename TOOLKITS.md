@@ -153,7 +153,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | passthrough | passthrough | passthrough |
 | command | passthrough | passthrough | wrapped with `name`/`description` frontmatter |
 | rule | non-Claude frontmatter stripped (keeps `name`, `description`) | `alwaysApply: true` added, `description` derived from first heading if missing | wrapped with `name`/`description` frontmatter |
-| agent | passthrough (dlt reads it, not the host; see [BACKGROUND_AGENTS.md](BACKGROUND_AGENTS.md)) | passthrough | passthrough |
+| agent | passthrough (dlt reads it, not the host; see [create-background-agent](workbench/init/skills/create-background-agent/SKILL.md)) | passthrough | passthrough |
 | mcp | passthrough (`type` field kept) | `type` field stripped | `type` field stripped, converted to TOML |
 | ignore | passthrough (file renamed) | passthrough (file renamed) | passthrough (file renamed) |
 
