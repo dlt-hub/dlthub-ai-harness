@@ -7,8 +7,8 @@ list of check ids.
 `prepare` resolves the inspector run, fetches everything, runs the deterministic checks and
 builds the evidence the judge reads. `finalize` writes the computed results over the judge's
 output. A check docstring opens with the instruction it grades, which is the sentence the
-summary reports, and then states TRUE, FALSE and N/A. `BACKGROUND_AGENTS.md` covers
-deployment.
+summary reports, and then states TRUE, FALSE and N/A. The `evaluate-background-agent` skill
+covers deployment.
 """
 
 from __future__ import annotations
@@ -520,6 +520,8 @@ class EvalContext:
 
         The trace comes from the runtime, so a disagreement is a parser fault rather than an
         inspector that called nothing, and `prepare` reports it instead of scoring the run.
+        Every check that reads the transcript is held at `N/A`, the fault is recorded, and the
+        evaluation comes back `failed`.
         """
         return bool(self.tools_recorded) and not self.tool_calls
 
@@ -910,6 +912,10 @@ def parse_result_envelope(log_lines: Sequence[LogLine]) -> Optional[Dict[str, An
 
     The fallback while `dlthub_get_run_result` is not deployable: `print_job_result` dumps
     the agent output as pretty JSON after the `Result [...]` banner.
+
+    The stored result is read instead wherever it exists. `job_runs.result` and
+    `job_runs.trace` arrived in `dlthub-client` 0.28.5a1, so an older client, or a run that
+    declared no result, lands here, and a truncated log loses this envelope too.
     """
     stripped = [strip_ansi(line.content).rstrip() for line in program_lines(list(log_lines))]
     # the pretty dump puts the outermost brace at column 0; everything nested is indented.
@@ -4612,7 +4618,17 @@ def capture(source: Fetcher, inspector_run_id: str, directory: str) -> str:
     """Writes everything an evaluation of `inspector_run_id` reads into `directory`.
 
     The inverse of `FileFetcher`. A fetch failure is recorded as absent rather than raised, so
-    a partial capture still replays.
+    a partial capture still replays and the checks see what the evaluation would have seen.
+
+    Together they replay one evaluation against a changed check without the platform:
+
+        import checks as C
+
+        C.capture(C.SdkFetcher.connect(), "<run id>", "captures/run-42")
+        prep = C.prepare({"run_id": "local"}, fetcher=C.FileFetcher("captures/run-42"),
+                         inspector_run_id="<run id>")
+
+    `tools/scrub_capture.py` replaces every identifier before a capture lands in git.
     """
     root = Path(directory)
 
@@ -6133,9 +6149,9 @@ def render_summary(
     `Recommendation` section; a window states what broke and how often, which is what a change
     to the instructions rests on.
 
-    The shape is the one every background agent writes, as `BACKGROUND_AGENTS.md` sets it out:
-    no text before the first heading, nothing outside a bullet, and a table only as the last
-    thing in the last section.
+    The shape is the one every background agent writes, as `summary-format.md` in the
+    `create-background-agent` skill sets it out: no text before the first heading, nothing
+    outside a bullet, and a table only as the last thing in the last section.
     """
     evaluations = list(evaluations)
     checks = all_checks(evaluations)

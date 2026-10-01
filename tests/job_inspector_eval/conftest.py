@@ -3,6 +3,14 @@
 `checks.py` ships inside the agent folder, which the toolkit installer copies verbatim into a
 workspace. It is not a package, so the tests put its folder on the path the same way the
 deployment module does.
+
+The nine directories under `fixtures/captured/` are whole evaluations read off a live
+workspace, each named after the failure it shows. `C.capture` writes one, `C.FileFetcher`
+reads it back, and `tools/scrub_capture.py` replaces every identifier before one lands in git;
+a test holds each file to that. Three carry a reviewed answer for every judge check under
+`fixtures/judge_answers/`, and the summary each renders is a golden file under
+`fixtures/rendered/`, so a diff on one is a change in what the reader reads. A further test
+merges captures into one root and runs the batch path over them.
 """
 
 import sys
