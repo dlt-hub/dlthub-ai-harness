@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
-__all__ = ["web_ui", "linkify", "run_labels"]
+__all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform"]
 
 
 def web_ui() -> Tuple[str, str]:
@@ -66,6 +66,46 @@ def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
             number = entry.get(f"{prefix}_run_number")
             if run_id and number not in (None, ""):
                 labels.setdefault(run_id, f"#{number}")
+    return labels
+
+
+def labels_from_platform(text: str) -> Dict[str, str]:
+    """`#<number>` per run id the text names, read from the platform.
+
+    The evaluator builds its labels from the runs it already holds. An agent summary names
+    runs the caller never fetched, the producer's among them, so they are looked up here, one
+    call per distinct id. A lookup that fails leaves that id as its uuid, which is what the
+    citation carries anyway: the label is a readability gain, not evidence.
+
+    The token is read once rather than renewed. A runner holds a service `api_key` that does
+    not expire; a developer machine holds a JWT that does, and an expired one costs the
+    labels and nothing else.
+    """
+    found = {match.group(1).lower() for match in _BARE_RUN_ID.finditer(text or "")}
+    if not found:
+        return {}
+    try:
+        import dlthub_sdk
+        from dlt._workspace._workspace_context import active
+
+        config = active().runtime_config
+        token = str(config.api_key or config.auth_token or "")
+        if not token or not config.workspace_id:
+            return {}
+        runtime = dlthub_sdk.connect(
+            token=token, base_url=config.api_base_url or "https://api.dlthub.com"
+        )
+        workspace = runtime.workspaces.get(id=config.workspace_id)
+    except Exception:
+        return {}
+    labels: Dict[str, str] = {}
+    for run_id in found:
+        try:
+            number = workspace.job_runs.get(id=run_id).number
+        except Exception:
+            continue
+        if number not in (None, ""):
+            labels[run_id] = f"#{number}"
     return labels
 
 

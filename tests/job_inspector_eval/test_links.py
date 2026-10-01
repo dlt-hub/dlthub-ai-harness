@@ -73,3 +73,12 @@ def test_run_labels_take_the_run_number_and_skip_a_run_without_one():
          "failed_run_id": "f" * 8 + "-1111-4111-8111-111111111111", "failed_run_number": None},
     ])
     assert labels == {RUN: "#114"}
+
+
+def test_a_platform_lookup_that_cannot_connect_yields_no_labels():
+    """Outside a connected workspace there is nothing to read, and the ids keep their uuids."""
+    assert links.labels_from_platform(f"run `{RUN}`") == {}
+
+
+def test_a_text_naming_no_run_asks_the_platform_nothing():
+    assert links.labels_from_platform("no ids here") == {}

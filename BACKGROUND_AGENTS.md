@@ -503,16 +503,22 @@ that one module, so a run reads the same way in both summaries.
 import sys
 
 sys.path.insert(0, ".claude/dlthub/agents/job-inspector")
-from links import linkify, web_ui
+from links import labels_from_platform, linkify, web_ui
 
-output["summary"] = linkify(output["summary"], web_ui())
+summary = output["summary"]
+output["summary"] = linkify(summary, web_ui(), labels_from_platform(summary))
 ```
+
+The decorated function below takes no docstring. `reflection.py` reads one as the agent's
+system prompt, so a wrapper that carries one replaces the referenced definition's body and
+the agent runs without its instructions. Put the explanation in a comment.
 
 A span holding an id becomes the text of the link, since `[`x`](url)` renders and
 `` `[x](url)` `` prints the markup. So the inspector's `` `dlthub job runs logs <id>` `` is
-what the reader clicks, and a span that is only the id gives way to a label the caller
-passes, which is how the evaluator writes `#114` in place of a uuid. Wiring it needs the
-decorated form below.
+what the reader clicks. `labels_from_platform` reads the run number behind each id and makes
+it the link text, so a reader meets `#114` rather than a uuid; the evaluator passes
+`run_labels` instead, built from the runs it already holds. Wiring it needs the decorated
+form below.
 
 ### Code around the loop
 
