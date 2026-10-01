@@ -5929,10 +5929,35 @@ def category_bullets(
     return bullets + ([broken_bullets] if broken_bullets else [])
 
 
+GUARDRAIL_WEAKENED = re.compile(
+    r"(?i)\b(?:remove|removing|drop|dropping|delete|deleting|relax|relaxing|loosen|loosening"
+    r"|soften|softening|weaken|weakening|lift|lifting|waive|waiving|narrow|narrowing)\s+"
+    r"(?:the|a|an|its|this|that)?\s*(?:`[^`\n]*`\s*)?"
+    r"(?:constraints?|guardrails?|restrictions?|bans?|prohibitions?|redaction|read-only)\b"
+    r"|\badd\s+(?:an?\s+)?exceptions?\b"
+    r"|\bmake\s+(?:the\s+)?[^.\n]{0,30}?\boptional\b"
+    r"|\ballow\s+(?:the\s+)?(?:inspector|agent|it)\s+to\s+"
+    r"(?:edit|write|redeploy|re-?run|cancel|move|change)\b"
+)
+"""A bullet asking for a guardrail of the graded agent to be weakened. The verb has to take the
+guardrail as its object, so "remove the ambiguity in `Constraints`" is left alone."""
+
+
+def weakens_a_guardrail(bullet: str) -> str:
+    """The phrase in `bullet` asking for a guardrail to be weakened, empty when there is none.
+
+    The body bans such a bullet and a judge still writes one. A reader acts on this list, so it
+    is dropped rather than reported.
+    """
+    match = GUARDRAIL_WEAKENED.search(str(bullet or ""))
+    return match.group(0) if match else ""
+
+
 def recommendation_bullets(checks: List[Dict[str, Any]], written: str) -> List[str]:
     """The judge's recommendation as bullets, or what stands in its place."""
-    if written.strip():
-        return [name_the_file(bullet) for bullet in as_bullets(written)]
+    kept = [bullet for bullet in as_bullets(written) if not weakens_a_guardrail(bullet)]
+    if kept:
+        return [name_the_file(bullet) for bullet in kept]
     if any(entry["outcome"] == FALSE for entry in checks):
         return [
             f"Take the broken instructions above to `{INSPECTOR_DEFINITION_PATH}`: each one"

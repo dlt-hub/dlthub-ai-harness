@@ -697,6 +697,9 @@ What the scheduled path settles:
   after the window is graded, given the broken checks with how many runs broke each and a few
   of the reasonings, and writes one to three bullets naming the file and the section to
   change.
+- **A recommendation never weakens a guardrail.** The graded agent's constraints, its `access`
+  and `tools` blocks and the bans its definition states stand whatever the window shows, so a
+  broken check that turns on one of them is answered by sharpening that instruction.
 
 Deploy one or the other. An agent watched by both is graded twice.
 
@@ -898,6 +901,9 @@ that does not resolve in the workspace is skipped with a warning.
   own; an entity the agent may resolve itself is an output property too.
 - The body defines succeeded, failed and aborted for this agent, gives the first steps, and
   defines every enum.
+- An evaluator's recommendation pass asks for no change that weakens a guardrail of the graded
+  agent: its constraints, its `access` and `tools` blocks, and the bans its definition states.
+  A broken check that turns on one of them is answered by sharpening that instruction.
 - `defaults` holds sensible limits and no `model` and no `trigger`; the `AGENT.md` says
   what model to pin and the deployment sets the trigger. Nothing in `defaults` is a
   requirement.

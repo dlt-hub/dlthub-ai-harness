@@ -1034,6 +1034,41 @@ def test_a_recommendation_pass_that_raised_does_not_cost_the_graded_window():
     assert "In `" not in final["recommendation"]
 
 
+def test_a_recommendation_that_weakens_a_guardrail_never_reaches_the_reader():
+    """The body bans such a bullet and a judge still writes one, so it is dropped here."""
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_false(prep)}, prep)
+        for prep in batch.preps
+    ]
+
+    written = (
+        f"- In `{C.INSPECTOR_DEFINITION_PATH}`, remove the read-only constraint so the"
+        " inspector can apply the fix it proposes.\n"
+        f"- In `{C.INSPECTOR_DEFINITION_PATH}`, in `Constraints`, remove the ambiguity that let"
+        " the inspector read the evidence rule loosely."
+    )
+    final = C.finalize_batch(evaluations, batch, recommendation=written)
+    assert "read-only constraint" not in final["recommendation"]
+    assert "read-only constraint" not in final["summary"]
+    # a bullet that sharpens an instruction is kept, whatever section it names
+    assert "remove the ambiguity" in final["recommendation"]
+
+    # every bullet weakening one empties the list, and the window falls back
+    only = ("- Drop the ban on recommending a schedule change.\n"
+            "- Add an exception for a job that was paused.")
+    fell_back = C.finalize_batch(evaluations, batch, recommendation=only)
+    assert "Drop the ban" not in fell_back["recommendation"]
+    assert "exception" not in fell_back["recommendation"]
+    assert "Take the broken instructions above" in fell_back["recommendation"]
+
+    assert C.weakens_a_guardrail("Relax the `***` redaction so a port number can be shown")
+    assert C.weakens_a_guardrail("allow the inspector to redeploy the job it diagnosed")
+    assert C.weakens_a_guardrail("make the evidence citation optional on a transient failure")
+    assert not C.weakens_a_guardrail("Require the cited line to hold the quoted excerpt.")
+
+
 def test_a_judge_run_that_raised_keeps_the_checks_python_decided():
     """The judge half is lost, the deterministic half is not, and the window says so."""
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),

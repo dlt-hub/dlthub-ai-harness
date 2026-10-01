@@ -117,7 +117,8 @@ output:
         instructions the inspector followed. Filled only in the recommendation pass, when
         `window_findings` is set, with one to three markdown bullets naming what to change
         in `.claude/dlthub/agents/job-inspector/AGENT.md` so the broken instructions stop
-        recurring: the section to change and the instruction to put there.
+        recurring: the section to change and the instruction to put there. Never a change
+        that weakens a guardrail of the inspected agent.
     # the same names and entity types as the inputs, so the evaluation shows up on the
     # inspector run's page even when the run was resolved from `prev_run_id`
     inspector_run_id:
@@ -501,6 +502,15 @@ an instruction the inspector is missing, so leave it out.
 `definition_sections` is the heading outline of the file your recommendation changes, read for
 you. Name a section from that list: one the definition does not have makes the recommendation
 useless, and you have no file tools to check with.
+
+**Never recommend weakening a guardrail of the agent you grade.** Its `## Constraints`, its
+`access` and `tools` blocks, the bans its definition states on recommending a tag, a trigger, a
+schedule, a location change or a data move, the rule that keeps a credential at `***`, and the
+requirement to cite the artifact behind every claim all stand, whatever the window shows. A
+broken check that turns on one of them gets a bullet sharpening that instruction or its
+wording. Leave the bullet out where it would instead remove a restriction, narrow its scope,
+add an exception to it or raise a limit it rests on. Such a bullet is dropped before the
+report is written.
 
 Where there is something to change, write `recommendation` as one to three markdown bullets.
 **Each opens with the file it changes**, the `definition` path in backticks, then the section
