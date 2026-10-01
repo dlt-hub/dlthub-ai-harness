@@ -43,9 +43,10 @@ overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `ski
 `rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
 for them, and on a decorated function the argument replaces the list, every axis included.
 
-**An agent job must never run on the `prod` profile.** Pin `require={"profile": "access"}` on
-every one of them. Without it the job runs as a batch job on `prod` and the production
-credentials land in its environment. The agent's `access` block decides which tools the model is
+**An agent job must never run on the `prod` profile.** The runtime gives an agent job the
+`access` profile when the deployment declares none. Pin `require={"profile": "access"}` on every
+one of them so the declaration says so, and never override it with `prod`: production credentials
+would land in the job process. The agent's `access` block decides which tools the model is
 offered. The profile decides which credentials the job process holds. Declare both. Work that
 needs production write credentials belongs in a pipeline or a plain job that a person wrote.
 

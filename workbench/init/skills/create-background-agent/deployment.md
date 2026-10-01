@@ -73,11 +73,15 @@ this repo keep a file so a toolkit can install the definition and a grader can r
 
 ## Profile
 
-**An agent job must never run on the `prod` profile.** Pin the read-only profile on every one of
-them with `require={"profile": "access"}`. Without the pin the job takes the profile the
-deployment runs on, which on the platform is `prod`, and the job process holds production
-credentials. Declare the profile beside the `access` block. `access` decides which tools the model
-is offered. The profile decides which credentials the job process holds.
+**An agent job must never run on the `prod` profile.** The runtime gives an agent job the
+read-only `access` profile when the deployment declares none. A deployment can override that with
+`require={"profile": ...}`, and pointing it at `prod` puts production credentials in the job
+process, so leave it at `access`.
+
+Pin `require={"profile": "access"}` anyway. The declaration then says which profile the job runs
+on, and `dlthub local run` reports a mismatch with the active one. Declare it beside the `access`
+block. `access` decides which tools the model is offered. The profile decides which credentials
+the job process holds.
 
 The pin governs profile-scoped credentials: `prod.secrets.toml`, `prod.config.toml`, and a
 variable set with `dlthub variable set --profile prod`. A variable set with `--workspace` has no
@@ -88,10 +92,10 @@ scope of each one in its `Profile` column.
 Work that needs production write credentials belongs in a pipeline or a plain job, which a person
 wrote and reviewed, and an agent proposes it rather than performing it.
 
-Nothing at deploy time enforces this. Manifest validation rejects a local-only profile (`dev`,
-`tests`) and otherwise takes the name as given: `prod` passes, and so does a typo like `acess`,
-which then surfaces as missing credentials at run time. The rule holds because authors apply it,
-and an evaluator catches a break after the fact by reading the profile off the run record.
+Nothing at deploy time rejects an explicit `prod`. Manifest validation rejects a local-only
+profile (`dev`, `tests`) and otherwise takes the name as given, so a typo like `acess` passes too
+and surfaces as missing credentials at run time. An evaluator catches a break after the fact by
+reading the profile off the run record.
 
 The profile has to be `configured` in the workspace; workspace info lists which ones are. On
 `dlthub local run` the declaration is a warning rather than a switch: the run uses the active
