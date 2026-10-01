@@ -1,11 +1,7 @@
 """No committed file carries an identifier from the workspace it was taken on.
 
-This repository is public, so `tools/scrub_capture.py` rewrites every identifier before a
-capture lands in git and marks each pseudonym it writes. These tests read the mark, so they
-check the committed tree without the originals, which stay out of the repository.
-
-The fixtures are swept file by file. Every other tracked file is swept together, because a raw
-id pasted into a test module is as public as one left in a capture.
+`tools/scrub_capture.py` rewrites every identifier before a capture lands in git and marks each
+pseudonym it writes. These tests read the mark, so they run without the originals.
 """
 
 import importlib.util
@@ -25,9 +21,8 @@ spec.loader.exec_module(scrub_capture)
 
 FILES = [path for path in sorted(FIXTURES.rglob("*")) if path.is_file()]
 
-# the raw inputs that prove the scrubber rewrites them, and a run dir too short to carry a
-# pseudonym. a registry rather than a constant: naming a value here would plant it in this file
-# and the sweep would report it. entries are exact, so a new identifier in those files still fails.
+# a file rather than a constant: a value named here would be reported by the sweep below.
+# entries are exact, so a new identifier in those files still fails
 REGISTRY = Path(__file__).resolve().parent / "allowed_identifiers.json"
 ALLOWED = {name: set(values) for name, values in json.loads(REGISTRY.read_text()).items()}
 
@@ -58,7 +53,6 @@ def test_a_fixture_is_named_after_a_scrubbed_id(path):
 
 
 def test_no_other_tracked_file_holds_an_unscrubbed_identifier():
-    """The sweep above reads the fixtures only, so an id pasted into a module went unseen."""
     offenders = {}
     for path in _tracked():
         if FIXTURES in path.parents or path == REGISTRY or not path.is_file():
@@ -76,7 +70,7 @@ def test_no_other_tracked_file_holds_an_unscrubbed_identifier():
 
 @pytest.mark.parametrize("name", sorted(ALLOWED), ids=lambda n: n.rsplit("/", 1)[1])
 def test_an_allowed_identifier_is_still_in_the_file_that_claims_it(name):
-    """A stale entry would widen the sweep without anything saying so."""
+    """A stale entry widens the sweep silently."""
     found = set(scrub_capture.residuals((REPO / name).read_text(encoding="utf-8")))
     assert ALLOWED[name] <= found, f"{name} no longer carries {sorted(ALLOWED[name] - found)}"
 

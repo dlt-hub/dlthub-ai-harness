@@ -1,9 +1,8 @@
 """The registry is the one list of check ids. The prompt and the spec must agree with it.
 
 The agent ships its `AGENT.md` and `checks.py` and no prose beside them: a document restating
-the registry drifts from it, and the checks carry their own instruction in the first paragraph
-of each docstring. What an author or an operator needs is in the `create-background-agent` and
-`evaluate-background-agent` skills, which the last three tests here hold to their own rules.
+the registry drifts from it. The last three tests hold the `create-background-agent` and
+`evaluate-background-agent` skills to their own rules.
 """
 
 import re
@@ -22,8 +21,6 @@ EVALUATE_SKILL = SKILLS_ROOT / "evaluate-background-agent"
 AGENT_SKILL_FILES = sorted(
     path for skill in (CREATE_SKILL, EVALUATE_SKILL) for path in skill.glob("*.md")
 )
-"""Everything the two skills ship. `create-background-agent` owns what is true of any agent and
-`evaluate-background-agent` only what is true of a grader, so the rules below run over both."""
 
 _RUBRIC_ID = re.compile(r"^\*\*`([a-z_]+)`\*\*", re.M)
 _PYTHON_BLOCK = re.compile(r"```python\n(.*?)```", re.S)
@@ -155,12 +152,7 @@ def test_every_deploy_snippet_pins_the_read_only_profile():
 
 
 def test_no_code_block_is_copied_between_the_agent_skill_files():
-    """The two skills are cut by ownership, so the same snippet belongs to one of them.
-
-    Copied frontmatter and copied `run.agent` snippets are where that split gives way first,
-    and an exact comparison is cheap. A paraphrase in prose goes uncaught, which is what the
-    line each reference file opens with guards.
-    """
+    """The two skills are cut by ownership, so a snippet belongs to one of them."""
     seen: dict[str, Path] = {}
     for path in AGENT_SKILL_FILES:
         for body in _FENCED_BLOCK.findall(path.read_text()):
@@ -174,8 +166,7 @@ def test_no_code_block_is_copied_between_the_agent_skill_files():
 
 
 def test_every_skill_reference_in_the_agent_skills_resolves():
-    """The validator reads `(`name`)` references in `rules/workflow.md` only, and `init` ships
-    none, so the handover between these two skills is checked here."""
+    """The validator reads `(`name`)` only in `rules/workflow.md`, and `init` ships none."""
     shipped = {
         path.name
         for path in (REPO_ROOT / "workbench").glob("*/skills/*")

@@ -520,8 +520,6 @@ class EvalContext:
 
         The trace comes from the runtime, so a disagreement is a parser fault rather than an
         inspector that called nothing, and `prepare` reports it instead of scoring the run.
-        Every check that reads the transcript is held at `N/A`, the fault is recorded, and the
-        evaluation comes back `failed`.
         """
         return bool(self.tools_recorded) and not self.tool_calls
 
@@ -911,11 +909,8 @@ def parse_result_envelope(log_lines: Sequence[LogLine]) -> Optional[Dict[str, An
     """The job result the launcher printed at the end of the log.
 
     The fallback while `dlthub_get_run_result` is not deployable: `print_job_result` dumps
-    the agent output as pretty JSON after the `Result [...]` banner.
-
-    The stored result is read instead wherever it exists. `job_runs.result` and
-    `job_runs.trace` arrived in `dlthub-client` 0.28.5a1, so an older client, or a run that
-    declared no result, lands here, and a truncated log loses this envelope too.
+    the agent output as pretty JSON after the `Result [...]` banner. `job_runs.result` arrived
+    in `dlthub-client` 0.28.5a1, so an older client or a run with no stored result lands here.
     """
     stripped = [strip_ansi(line.content).rstrip() for line in program_lines(list(log_lines))]
     # the pretty dump puts the outermost brace at column 0; everything nested is indented.
@@ -4618,9 +4613,7 @@ def capture(source: Fetcher, inspector_run_id: str, directory: str) -> str:
     """Writes everything an evaluation of `inspector_run_id` reads into `directory`.
 
     The inverse of `FileFetcher`. A fetch failure is recorded as absent rather than raised, so
-    a partial capture still replays and the checks see what the evaluation would have seen.
-
-    Together they replay one evaluation against a changed check without the platform:
+    a partial capture still replays. To replay an evaluation against a changed check:
 
         import checks as C
 
@@ -6149,9 +6142,9 @@ def render_summary(
     `Recommendation` section; a window states what broke and how often, which is what a change
     to the instructions rests on.
 
-    The shape is the one every background agent writes, as `summary-format.md` in the
-    `create-background-agent` skill sets it out: no text before the first heading, nothing
-    outside a bullet, and a table only as the last thing in the last section.
+    The shape is the one `summary-format.md` in the `create-background-agent` skill sets out:
+    no text before the first heading, nothing outside a bullet, and a table only as the last
+    thing in the last section.
     """
     evaluations = list(evaluations)
     checks = all_checks(evaluations)
