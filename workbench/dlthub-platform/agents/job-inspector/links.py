@@ -157,8 +157,13 @@ def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> st
     inner = span[1:-1]
     if run_match := _BARE_RUN_ID.search(inner):
         run_id = run_match.group(1)
-        # a span that is only the id gives way to the label; one that is a command stays
-        shown = labels[run_id.lower()] if inner == run_id and run_id.lower() in labels else span
+        label = labels.get(run_id.lower(), "")
+        # a span that is only the id gives way to the label; a command keeps the text a
+        # reader pastes and takes the number beside it
+        if inner == run_id:
+            shown = label or span
+        else:
+            shown = f"{span} {label}" if label else span
         return f"[{shown}]({base}/w/{workspace}/runs/{run_id})"
     if job_match := _BARE_JOB_REF.search(inner):
         return f"[{span}]({base}/w/{workspace}/jobs/{job_match.group(1)})"

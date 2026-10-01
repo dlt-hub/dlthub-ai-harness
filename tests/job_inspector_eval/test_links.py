@@ -28,6 +28,12 @@ def test_a_citation_span_becomes_the_link_text():
     assert out == f"([`dlthub job runs logs {RUN}`]({RUN_URL}) line 42)"
 
 
+def test_a_command_span_takes_the_run_number_beside_it():
+    """The command stays pasteable and the reader still sees which run it opens."""
+    out = links.linkify(f"(`dlthub job runs logs {RUN}` line 42)", WEB, {RUN: "#19"})
+    assert out == f"([`dlthub job runs logs {RUN}` #19]({RUN_URL}) line 42)"
+
+
 def test_a_span_holding_only_an_id_gives_way_to_its_label():
     out = links.linkify(f"run `{RUN}`", WEB, {RUN: "#27"})
     assert out == f"run [#27]({RUN_URL})"
