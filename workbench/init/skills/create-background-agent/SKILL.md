@@ -46,8 +46,8 @@ wants:
   host, runs inside a conversation. A dltHub agent runs on the platform with no conversation
   around it, which is why it installs under `.claude/dlthub/agents/`.
 
-An agent is right when the decision needs a model, the work runs with nobody watching, and the
-output stands on its own.
+A background agent is right when the decision needs a model, the work runs with nobody watching,
+and the output stands on its own.
 
 ## 2. Scaffold the folder
 
@@ -108,8 +108,8 @@ and a `data` grant would put workspace data in front of a model-driven process.
 
 ### Hold the grant narrow
 
-The declaration is the guardrail. dlt wires only what `access` and `tools` name, so a verb you
-leave out is a tool the model is never offered. Five rules carry most of it.
+The declaration contains important guardrails. dlt wires only what `access` and `tools` name, so
+a verb you leave out is a tool the model is never offered. Five rules carry most of it.
 
 - **Stay on the `pydantic-ai` loop.** The shipped agents are written and graded against it, and
   the wiring described here is its wiring. Another loop brings its own toolset, which none of
@@ -196,20 +196,17 @@ the decorated form for code around the loop, the trigger strings and the `AGENT_
 The minimum: `run.agent("<toolkit>:<name>", trigger=..., require={"profile": "access"})`, and
 `AGENT__MODEL` set once in the workspace.
 
-The Python overrides the file. A `run.agent(...)` argument overrides the matching `AGENT.md`
-field, a decorated function overrides both through its name, docstring, signature and return
-type, and job configuration overrides all three. `deployment.md` has the table of what each form
-takes. Write the `AGENT.md` as the whole definition and put in the deployment only what this
+The Python overrides the file, and [deployment.md](deployment.md) has the table of what each form
+overrides. Write the `AGENT.md` as the whole definition and put in the deployment only what this
 workspace changes, so the file stays the thing that was reviewed and graded.
 
-Three stops apply to every agent job:
+Three stops apply to every agent job. [deployment.md](deployment.md) has the mechanics behind
+each:
 
-- **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
-  them. Without it the job gets production credentials in its environment. This is rule 4 of the
-  always-loaded `dlthub-platform` profiles rule; `deployment.md` says what the pin governs.
-- **`job.fail:*` with an evaluator in the workspace starts a loop.** The selector expands onto
-  every other job, the evaluator included, so a failing evaluation is inspected and the inspection
-  starts the evaluator again. Name the jobs to watch, or tag them.
+- **An agent job must never run on the `prod` profile.** Pin `require={"profile": "access"}`. This
+  is rule 4 of the always-loaded `dlthub-platform` profiles rule.
+- **`job.fail:*` with an evaluator in the workspace starts a loop.** Name the jobs to watch, or
+  tag them.
 - **`agent.verbosity` stays at 1**, the default. At 0 the job log keeps tool names only, and every
   check that reads tool arguments or the agent's own statements goes blind.
 
@@ -217,10 +214,8 @@ Three stops apply to every agent job:
 
 Check the active profile first: on `dlthub local run` the `require` declaration is a warning
 rather than a switch, so the run uses the active profile and reports the mismatch. Then run the
-job with its inputs as configuration keys, as `deployment.md` shows, and read the job result:
-`status` and `summary` lifted to the top, `result` as the output schema declares it, `object`
-with the entities the run acted on, and a `trace` of model, limits, inputs, tools used, turns and
-tokens.
+job with its inputs as configuration keys and read the job result it prints, both shown in
+[deployment.md](deployment.md).
 
 Read the trace against what you declared. A tool in it that the task does not need is an `access`
 axis to drop. A turn count at the limit is a body that did not say where to stop.

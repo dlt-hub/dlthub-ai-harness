@@ -5,7 +5,9 @@ the ids in it become links. The field itself is declared in
 [agent-md-reference.md](agent-md-reference.md).
 
 The platform renders `summary` as markdown on the run page, and it is the only field a reader sees
-without opening the result. Every agent writes it the same way:
+without opening the result. Every agent writes it the same way. Each agent's body states these
+rules again under "Summary format", since the model reads the body and never this file, so a
+change here is a change in every body that states them.
 
 - **Markdown headings over short bullets, and nothing else.** No text before the first heading, no
   text outside a bullet, no question or bracketed note next to a heading.

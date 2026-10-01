@@ -1,17 +1,18 @@
 # Deploying an evaluator
 
 This file owns the prepare, judge and finalize shape, the two deployments an evaluator takes, and
-the rules of a scheduled window. The general deployment surface, `run.agent`, the profile pin,
-triggers and the `AGENT__` variables, is in `deployment.md` beside (`create-background-agent`).
-The checks themselves are in [check-registry.md](check-registry.md).
+the rules of a scheduled window. Everything it leaves out is in `deployment.md` beside
+(`create-background-agent`): `run.agent`, what a decorated function overrides, the signature
+rules, why an abort raises instead of returning, the profile pin, the trigger strings, `section=`
+and the `AGENT__` variables. Read that file first. The checks themselves are in
+[check-registry.md](check-registry.md).
 
 ## Prepare, judge, finalize
 
-Deterministic checks have to run before the loop and again after it, so an evaluator is deployed
-as a decorated function rather than a bare reference. `prepare` resolves the graded run, fetches
-every artifact the checks read, runs the deterministic checks and builds the evidence windows.
-The loop judges. `finalize` writes the computed results over the judge's output and assembles the
-summary.
+Deterministic checks have to run before the loop and again after it, so an evaluator takes the
+decorated form. `prepare` resolves the graded run, fetches every artifact the checks read, runs
+the deterministic checks and builds the evidence windows. The loop judges. `finalize` writes the
+computed results over the judge's output and assembles the summary.
 
 ## Per run
 
@@ -24,8 +25,8 @@ from dlt.hub import run
 sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
 from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
 
-# `section` is explicit because `.success` and `.fail` are read at import time, before the
-# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
+# `section` is explicit because this module uses the inspector's own triggers; see
+# `deployment.md`
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     section="__deployment__",
@@ -73,9 +74,6 @@ async def job_inspector_eval(
         raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
     return evaluations[0]
 ```
-
-The signature rules, why an abort raises instead of returning, and what this function overrides in
-the evaluator's own `AGENT.md` are in `deployment.md`.
 
 ## On a schedule
 

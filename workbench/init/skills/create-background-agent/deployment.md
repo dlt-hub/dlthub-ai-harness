@@ -38,12 +38,17 @@ here. Instead of a `<toolkit>:<name>` reference the workspace may point at a fol
 
 ## What the Python definition overrides
 
-Four layers settle every field, each written over the one before it: the `AGENT.md`, the
-`run.agent(...)` arguments, the decorated function's own name, docstring, signature and return
-type, and job configuration under `[jobs.<module>.<job>.agent]` with inputs one level up in
-`[jobs.<module>.<job>]`. The Python wins wherever it and the file both say something, and the
-file's value is then never read. The `AGENT.md` is the agent as shipped and the deployment module
-is the agent as it runs, so read the module to see what a run was given.
+Four places set a field. Each one overrides the one before it:
+
+1. the `AGENT.md`
+2. the `run.agent(...)` arguments
+3. the decorated function's name, docstring, signature and return type
+4. job configuration under `[jobs.<module>.<job>.agent]`, with inputs one level up in
+   `[jobs.<module>.<job>]`
+
+Where the Python and the file both set a field, the Python wins and the file's value is never
+read. The `AGENT.md` is the agent as shipped and the deployment module is the agent as it runs,
+so read the module to see what a run was given.
 
 | `AGENT.md` field | `run.agent("<ref>", ...)` | `@run.agent(agent="<ref>", ...)` on a function |
 |---|---|---|
@@ -68,11 +73,11 @@ this repo keep a file so a toolkit can install the definition and a grader can r
 
 ## Profile
 
-**An agent job never runs on `prod`.** Pin the read-only profile on every one of them with
-`require={"profile": "access"}`. Without this pin, an agent job is a batch job on `prod` and gets
-production credentials in its environment. Declare the profile alongside the `access` block:
-`access` decides which tools the model is offered; the profile decides which credentials the job
-process holds.
+**An agent job must never run on the `prod` profile.** Pin the read-only profile on every one of
+them with `require={"profile": "access"}`. Without the pin the job takes the profile the
+deployment runs on, which on the platform is `prod`, and the job process holds production
+credentials. Declare the profile beside the `access` block. `access` decides which tools the model
+is offered. The profile decides which credentials the job process holds.
 
 The pin governs profile-scoped credentials: `prod.secrets.toml`, `prod.config.toml`, and a
 variable set with `dlthub variable set --profile prod`. A variable set with `--workspace` has no
@@ -92,7 +97,7 @@ The profile has to be `configured` in the workspace; workspace info lists which 
 `dlthub local run` the declaration is a warning rather than a switch: the run uses the active
 profile and reports the mismatch, so check the active profile before running an agent job by hand.
 
-## Running a job by hand
+## Running an agent job by hand
 
 ```bash
 dlthub local run job_inspector -c failed_run_id=89826ee6-... -c agent.instructions="explain, do not fix"
@@ -110,9 +115,9 @@ the agent's tool arguments or statements afterwards goes blind.
 
 ## Code around the loop
 
-Work that has to happen before the loop and again after it has no seam in the declared form. A
-function decorated with `run.agent(agent="<toolkit>:<agent>")` does: it keeps the referenced
-definition's prompt and schemas, and owns the run.
+The declared form leaves no place for code that has to run before the loop and again after it.
+Decorate a function with `run.agent(agent="<toolkit>:<agent>")` instead. The function owns the run
+and keeps the referenced definition's prompt and schemas.
 
 ```python
 import sys
@@ -156,11 +161,10 @@ signature is warned about at deploy time and nothing passes it. Inputs the code 
 stay out of the signature and travel through `loop.run(inputs=...)`; the `AGENT.md` declares them
 because a body placeholder must be declared.
 
-A path that never started the loop raises rather than returns. dlt reads `loop.trace` on any
-returned dict carrying `status`, so returning one from the abort branch fails the run with
-`AgentTraceNotAvailable` and loses the abort reason. A loop that started and then raised is the
-same case: it records its trace only on the way out of a normal return, so a degraded result goes
-out through `JobAbortedException` too.
+Raise `JobAbortedException` on any path that did not complete a loop run. dlt reads `loop.trace`
+on every returned dict carrying `status`, so returning from the abort branch fails the run with
+`AgentTraceNotAvailable` and loses the abort reason. The loop records its trace on the way out of
+a normal return, so a loop that started and then raised takes the same path.
 
 `.success` and `.fail` are read at import time, before the manifest loader stamps the module on
 the factory, so an agent whose triggers are used in the same module sets `section=` itself.
@@ -195,11 +199,11 @@ nothing compares the result against the jobs that run agents.
 
 ## Pinning the model
 
-An agent names no model, so the workspace sets one. `agent.model`, `agent.api_key`, `agent.api_url`
-and `agent.api_version` are one set: a run takes all four from the workspace or all four from the
-runtime. Setting `api_key` alone leaves `model` unset, so the run sends the agent's default model
-to your endpoint and gets `401 API key is invalid`. Set them as workspace variables, which arrive
-on the runner as environment and override `.dlt/secrets.toml`:
+An agent definition names no model, so the workspace sets one. `agent.model`, `agent.api_key`,
+`agent.api_url` and `agent.api_version` are one set: a run takes all four from the workspace or
+all four from the runtime. Setting `api_key` alone leaves `model` unset, so the run sends the
+agent's default model to your endpoint and gets `401 API key is invalid`. Set them as workspace
+variables, which arrive on the runner as environment and override `.dlt/secrets.toml`:
 
 ```bash
 printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
@@ -216,11 +220,10 @@ Azure is the only provider pydantic-ai gives `api_version`. On the rest it is ig
 warning, so leave it unset.
 
 `AGENT__MODEL` takes a `provider:model` id on any provider, and an alias where the provider has
-one. Which model meets the bar is a property of the instructions: say in the `AGENT.md` what class
-of model they were written for. The agents in this repo were written for a model at least as
-capable as Claude Sonnet 5.
+one. Instructions are written for a class of model, so say in the `AGENT.md` which class. The
+agents in this repo need a model at least as capable as Claude Sonnet 5.
 
-| Provider | Model meeting that bar | Alias | Step up when needed |
+| Provider | Smallest model that fits | Alias | Larger model |
 |---|---|---|---|
 | Anthropic | `anthropic:claude-sonnet-5` | `sonnet` | `opus` |
 | OpenAI | `openai:gpt-5.4-mini` | `gpt-mini` | `gpt` (`gpt-5.5`) |
