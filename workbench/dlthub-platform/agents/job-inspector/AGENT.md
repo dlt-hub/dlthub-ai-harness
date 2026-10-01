@@ -342,8 +342,8 @@ the summary alone.
 
 | artifact | how a bullet cites it |
 |---|---|
-| inspected run's log | (`dlthub job runs logs <run id>` line 52) |
-| producer's log or run record | (`dlthub job runs logs <producer run id>` line 9), (`dlthub job runs info <producer job ref>`) |
+| run log, inspected or producer's | (`dlthub job runs logs <run id>` line 52) |
+| run record, inspected or producer's | (`dlthub job runs info <run id>`, field `trigger`) |
 | workspace file | (`pipelines/orders.py` line 31) |
 | job definition | (deployed definition for `jobs.pipelines.orders`, field `destination`) |
 | dlt trace | (trace of pipeline `orders`, run `<pipeline run id>`, extract step) |
@@ -354,6 +354,10 @@ the summary alone.
 - A run is cited by its id, whichever run it is: the inspected one, the producer's, the
   pipeline run behind a trace. A bullet naming the producer or its trace without the id
   leaves the reader nothing to open.
+- A run id sits inside the command that opens it, in one code span, so the same run reads the
+  same way everywhere: `` `dlthub job runs logs <run id>` `` for the log and
+  `` `dlthub job runs info <run id>` `` for the record. "stored run `<run id>`" is the same
+  citation written two ways, which costs the reader a comparison.
 - A bullet quoting an excerpt carries the `source` of that evidence item, line included, and
   the two name the same line.
 - A Recommendation bullet names its target as the instruction: the file and line, the config
