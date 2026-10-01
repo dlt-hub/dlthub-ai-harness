@@ -1,9 +1,8 @@
 """The committed captures carry no identifier from the workspace they were taken on.
 
-A capture is a verbatim copy of what one evaluation read from a live workspace, and this
-repository is public, so `tools/scrub_capture.py` rewrites every identifier before the files
-land in git. Each pseudonym it writes carries a mark, which is what these tests read: they
-hold the fixtures to account without the originals, which stay out of the repository.
+This repository is public, so `tools/scrub_capture.py` rewrites every identifier before a
+capture lands in git and marks each pseudonym it writes. These tests read the mark, so they
+check the fixtures without the originals, which stay out of the repository.
 """
 
 import importlib.util
@@ -55,7 +54,7 @@ def test_a_hand_written_placeholder_survives_the_scrubber():
 
 
 def test_a_scrubbed_load_id_is_still_in_the_load_id_match_band():
-    """`--verify` must be able to recognize every load id the scrubber writes."""
+    """`--verify` must recognize every load id the scrubber writes."""
     raw = "load_id=1695312345.123456"
     scrubbed = scrub_capture.scrub(raw, {})
     assert scrubbed != raw
