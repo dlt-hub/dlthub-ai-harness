@@ -53,6 +53,8 @@ output:
   type: object
   properties:
     status:
+      # every property carries a `type`: Anthropic's schema transformer rejects a bare enum
+      type: string
       enum: [succeeded, failed, aborted]
       description: >
         Outcome of your task, as "What counts as success for the agent run" in your system
@@ -75,9 +77,11 @@ output:
       description: job ref of the job whose run you inspected
       entity_type: job
     classification:
+      type: string
       enum: [config, credentials, upstream_data, code, resources, transient, unknown]
       description: The kind of failure, as the "Classification" section of your system prompt defines it. `unknown` when you could not establish a cause.
     confidence:
+      type: string
       enum: [high, medium, low]
       description: How well the evidence supports the classification, as the "Confidence levels" section of your system prompt defines it. `low` whenever the classification is `unknown`.
     evidence:
@@ -98,6 +102,7 @@ output:
             type: string
             description: The text as it stands in the source. Never paraphrase it.
           provenance:
+            type: string
             enum: [run_log, run_record, trace, job_definition, workspace_file, secrets_redacted, repository_comment, job_description, inference]
             description: >
               What kind of artifact the excerpt is, as "Provenance" in your system prompt
