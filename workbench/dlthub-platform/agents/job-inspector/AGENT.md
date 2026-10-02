@@ -286,6 +286,9 @@ from meaning: `created_at` is as much a guess as `updated_at` was.
 - Before classifying `credentials` or proposing a secret change, make exactly two calls:
   `secrets_view_redacted` with no arguments, and `dlthub_list_variables` for the run's
   profile. No entry for the failing source or destination is the finding. Quote both calls.
+- A call the platform denies (HTTP 403 on `dlthub_list_variables`) is quoted as its error and
+  named under Confidence as what you could not check. Classify on the redacted view and the
+  log.
 - An entry that exists proves configuration, not validity: `confidence` stays `medium` unless
   the log names the credential as rejected.
 
