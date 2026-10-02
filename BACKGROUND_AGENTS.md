@@ -499,6 +499,10 @@ run id and the interval, and no workspace id or UI base. So the ids become links
 loop, in `links.py` under `agents/job-inspector/`. The inspector and the evaluator share
 that one module, so a run reads the same way in both summaries.
 
+The reference form runs no code of its own after the loop, so it passes `link_summary` as the
+`outputs_validator` of `run.agent`. The launcher calls it with the model's output before
+`summary` is read off it and stores what it returns.
+
 ```python
 import importlib.util
 
@@ -510,13 +514,17 @@ spec = importlib.util.spec_from_file_location(
 links = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(links)
 
-summary = output["summary"]
-output["summary"] = links.linkify(
-    summary, links.web_ui(), links.labels_from_platform(summary)
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
+    outputs_validator=links.link_summary,
 )
 ```
 
-The evaluator loads the same file the same way, in `_shared_links` in its `checks.py`.
+`link_summary` runs `linkify(summary, web_ui(), labels_from_platform(summary))` over the
+output's summary and returns the output. The evaluator loads the same file the same way, in
+`_shared_links` in its `checks.py`, and links while it renders its own summary.
 
 The decorated function below takes no docstring. `reflection.py` reads one as the agent's
 system prompt, so a wrapper that carries one replaces the referenced definition's body and

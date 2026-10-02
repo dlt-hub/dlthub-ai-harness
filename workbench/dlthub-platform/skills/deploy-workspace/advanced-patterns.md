@@ -30,11 +30,25 @@ def transform(run_context: TJobRunContext):
 An installed agent definition becomes a job by naming it:
 
 ```python
+import importlib.util
+
+from dlt.hub import run
+
+# loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
+# entry pointing at the agent folder would shadow or be shadowed by another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
+)
+links = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(links)
+
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     # `ingest` is a tag this workspace puts on its own jobs
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},
+    # the summary names runs by uuid; this writes each one as a link to its page
+    outputs_validator=links.link_summary,
 )
 ```
 
@@ -42,6 +56,14 @@ The job is named after the definition (`job_inspector`), and every decorator arg
 overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `skills` and
 `rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
 for them, and on a decorated function the argument replaces the list, every axis included.
+
+`outputs_validator` is called with the model's output before `summary` is read off it, on a
+referenced agent and a decorated function alike. `link_summary` in the inspector's `links.py`
+returns the output with every run id and job ref in the summary written as a link to its web
+UI page, labelled with the run number. Without it the summary is stored as the model wrote
+it, a uuid inside a code span. The import fails when `.claude/dlthub/agents/job-inspector/`
+is missing, and so does the `"dlthub-platform:job-inspector"` reference beside it: both mean
+the toolkit is not installed in the workspace.
 
 **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
 them. Without it the job runs as a batch job on `prod` and the production credentials land
@@ -97,6 +119,8 @@ inspector = run.agent(
     section="__deployment__",
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},
+    # `links` is the module the first snippet loads
+    outputs_validator=links.link_summary,
 )
 
 

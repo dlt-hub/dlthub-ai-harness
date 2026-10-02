@@ -99,3 +99,30 @@ def test_a_platform_lookup_that_cannot_connect_yields_no_labels():
 
 def test_a_text_naming_no_run_asks_the_platform_nothing():
     assert links.labels_from_platform("no ids here") == {}
+
+
+def test_link_summary_links_the_summary_and_keeps_the_rest(monkeypatch):
+    """The `outputs_validator` of the reference form: the launcher stores what it returns."""
+    monkeypatch.setattr(links, "web_ui", lambda: WEB)
+    monkeypatch.setattr(links, "labels_from_platform", lambda text: {RUN: "#45"})
+    output = {
+        "status": "succeeded",
+        "summary": f"(`dlthub job runs logs {RUN}` line 36)",
+        "classification": "config",
+    }
+
+    out = links.link_summary(output)
+
+    assert out["summary"] == f"([`dlthub job runs logs {RUN}` #45]({RUN_URL}?output=logs) line 36)"
+    assert out["status"] == "succeeded" and out["classification"] == "config"
+    assert output["summary"] == f"(`dlthub job runs logs {RUN}` line 36)"
+
+
+def test_link_summary_returns_an_output_without_a_summary_as_it_came():
+    output = {"status": "aborted", "summary": ""}
+    assert links.link_summary(output) is output
+
+
+def test_link_summary_outside_a_workspace_keeps_the_text():
+    """`web_ui` resolves nothing on a local replay, so the ids stay as the model wrote them."""
+    assert links.link_summary({"summary": f"run `{RUN}`"})["summary"] == f"run `{RUN}`"

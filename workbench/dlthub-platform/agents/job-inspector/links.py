@@ -6,9 +6,12 @@ An agent names a run by its uuid, because that is what a person pastes into
 platform web UI, and the text becomes what the reader needs, a run number where the caller
 knows one.
 
-The inspector and the evaluator both use this module, so a run reads the same way in both
-summaries. It ships in the inspector's folder and the evaluator loads it from there; the
-two install side by side as one toolkit.
+The loop stores the summary as the model wrote it, so the deployment calls this module. The
+inspector, declared by reference, passes `link_summary` as the `outputs_validator` of
+`run.agent`; the launcher calls it with the output before it reads `summary` off it. The
+evaluator, a decorated function, loads this file in `_shared_links` in its `checks.py` and
+links while it renders its own summary. The module ships in the inspector's folder and the
+two agents install side by side as one toolkit, so a run reads the same way in both summaries.
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
-__all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform"]
+__all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform", "link_summary"]
 
 
 def web_ui() -> Tuple[str, str]:
@@ -141,6 +144,20 @@ def linkify(
     return "".join(written)
 
 
+def link_summary(output: Dict[str, Any]) -> Dict[str, Any]:
+    """`outputs_validator` for an agent declared by reference: the output, its summary linked.
+
+    `run.agent(..., outputs_validator=link_summary)` is the seam the reference form has after
+    the loop: the launcher calls it with the model's output and stores what comes back, so the
+    summary is linked before the platform reads it. The run numbers come from the platform,
+    one lookup per run the summary names. An output without a summary is returned as it came.
+    """
+    summary = output.get("summary", "")
+    if not summary or not isinstance(summary, str):
+        return output
+    return {**output, "summary": linkify(summary, web_ui(), labels_from_platform(summary))}
+
+
 def _outside_links(text: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
     """Link the ids in text that sits outside an existing link, spans included."""
     if cut := _UNTERMINATED_LINK.search(text):
@@ -179,12 +196,12 @@ def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> st
 
 
 def _run_query(inner: str) -> str:
-    """What a run link carries beyond its id: the logs tab, and the line cited there.
+    """What a run link carries beyond its id: the logs tab, for a citation that quotes a log.
 
-    `output=logs` is the tab the platform prints in its own run links. The line the citation
-    names is printed beside the link, since the web app reads no parameter for it that this
-    repository can see: `dlt_runtime.urls` builds workspace, pipeline, job and run URLs and
-    stops there.
+    The run page opens on its overview and `output=logs` opens its logs tab, where the quoted
+    line is. The CLI prints the bare run URL, so the parameter is added here. The line itself
+    is printed beside the link: `dlt_runtime.urls` builds workspace, pipeline, job and run URLs
+    and takes no line parameter, and the web app reads none this repository can see.
     """
     if not _LOG_COMMAND.search(inner):
         return ""
