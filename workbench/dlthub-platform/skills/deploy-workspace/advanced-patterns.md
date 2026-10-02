@@ -49,6 +49,34 @@ in its environment. The agent's `access` block decides which tools the model is 
 profile decides which credentials the job process holds, so declare both. Work that needs
 production write credentials belongs in a pipeline or a plain job that a person wrote.
 
+### Model, credentials and verbosity
+
+A shipped definition names no model, so the workspace sets one for every agent job it runs.
+Set these as workspace variables, which reach the runner as environment and override
+`.dlt/secrets.toml`:
+
+| Variable | Anthropic | Azure OpenAI |
+|---|---|---|
+| `AGENT__MODEL` | `anthropic:claude-sonnet-5` | `azure:<deployment name>` |
+| `AGENT__API_KEY` | the Anthropic key | the Azure key |
+| `AGENT__API_URL` | unset | `https://<resource>.openai.azure.com` |
+| `AGENT__API_VERSION` | unset | the api-version your deployment serves |
+
+```bash
+printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
+```
+
+Pick a model at least as capable as Claude Sonnet 5: `anthropic:claude-sonnet-5` (`sonnet`),
+`openai:gpt-5.4-mini` (`gpt-mini`), `google:gemini-3.5-flash` (`gemini`), or your own Azure
+deployment. Step up to `opus`, `gpt` or `gemini-pro` for a check that keeps coming back wrong
+after its rubric was fixed. `run.agent` takes `model=` too and configuration outranks it, so
+leave it out of the deployment code and the two cannot disagree.
+
+Leave `agent.verbosity` at 1, its default. At 0 the job log drops the tool calls and thoughts
+the evaluator reads.
+
+### Code around the loop
+
 Decorate a function instead when code has to run around the loop. The evaluator for the
 inspector does that: it computes its deterministic checks before the loop and writes them
 over the model's output after it.

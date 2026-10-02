@@ -17,9 +17,8 @@ rules:
 # as a window, so the judge needs no tool and cannot spend a turn looking for one
 access: {}
 # Two deployments run this agent: a triggered one grading a single inspector run, and a
-# scheduled one grading a window of runs. "Inputs and where a default lives" in
-# `BACKGROUND_AGENTS.md` maps every input below to the deployments that use it and to where
-# its default is set
+# scheduled one grading a window of runs. Each input below names the deployments that set it
+# and where its default lives
 inputs:
   type: object
   properties:
@@ -425,8 +424,8 @@ So write `summary` as bullets, one fact each:
   question, and a recommendation written from one run presents a single reading as a
   pattern.
 - It is rendered as markdown in the platform UI. Close every code span you open, never
-  escape a backtick with a backslash, and write no `|` outside a table. See "The shape of
-  `summary`" in `BACKGROUND_AGENTS.md`: every agent writes it this way.
+  escape a backtick with a backslash, and write no `|` outside a table. Every background agent
+  writes its summary this way.
 
 ## Rules
 

@@ -22,6 +22,7 @@ Checks:
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
 - Agent `defaults` sets no `model` and no `trigger`; the deployment sets both
+- No toolkit file names a repo-root document; no install brings those into a workspace
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
@@ -585,6 +586,28 @@ def validate_workflow(
                 )
 
 
+_URL_LINK = re.compile(r"\[[^\]]*\]\(https?://[^)]*\)")
+_URL = re.compile(r"https?://\S+")
+# `README.md` and `CLAUDE.md` are names a skill may legitimately discuss in a user's project
+_GENERIC_DOCS = {"README.md", "CLAUDE.md"}
+
+
+def root_doc_refs(plugin_dir: Path, root: Path) -> list[tuple[str, str]]:
+    """(file, document) per repo-root document a toolkit file names outside a URL.
+
+    An install copies the toolkit directory and nothing above it, so a workspace following
+    such a reference finds no file. A URL resolves anywhere, link text included.
+    """
+    docs = {path.name for path in root.glob("*.md")} - _GENERIC_DOCS
+    found: list[tuple[str, str]] = []
+    for path in sorted(plugin_dir.rglob("*")):
+        if path.suffix not in (".md", ".py") or not path.is_file():
+            continue
+        text = _URL.sub("", _URL_LINK.sub("", path.read_text(encoding="utf-8", errors="ignore")))
+        found += [(str(path.relative_to(plugin_dir)), doc) for doc in sorted(docs) if doc in text]
+    return found
+
+
 def validate_toolkit_content(
     pname: str,
     plugin_dir: Path,
@@ -594,6 +617,12 @@ def validate_toolkit_content(
     warnings: list[str],
 ) -> set[str]:
     """Validate skills, commands, rules, agents, and workflow. Returns skill names."""
+    for naming_file, doc in root_doc_refs(plugin_dir, plugin_dir.parents[1]):
+        errors.append(
+            f"[{pname}] {naming_file} names '{doc}', which sits at the repo root and no install"
+            " brings into a workspace; point at a file in the toolkit or at the document's URL"
+        )
+
     # --- skills ---
     skills_dir = plugin_dir / "skills"
     skill_names: set[str] = set()

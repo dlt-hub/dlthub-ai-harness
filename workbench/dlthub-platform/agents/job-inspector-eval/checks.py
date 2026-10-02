@@ -7,8 +7,8 @@ list of check ids.
 `prepare` resolves the inspector run, fetches everything, runs the deterministic checks and
 builds the evidence the judge reads. `finalize` writes the computed results over the judge's
 output. A check docstring opens with the instruction it grades, which is the sentence the
-summary reports, and then states TRUE, FALSE and N/A. `BACKGROUND_AGENTS.md` covers
-deployment.
+summary reports, and then states TRUE, FALSE and N/A. `advanced-patterns.md` in the
+`deploy-workspace` skill covers deployment.
 """
 
 from __future__ import annotations
@@ -6133,9 +6133,8 @@ def render_summary(
     `Recommendation` section; a window states what broke and how often, which is what a change
     to the instructions rests on.
 
-    The shape is the one every background agent writes, as `BACKGROUND_AGENTS.md` sets it out:
-    no text before the first heading, nothing outside a bullet, and a table only as the last
-    thing in the last section.
+    The shape is the one every background agent writes: no text before the first heading,
+    nothing outside a bullet, and a table only as the last thing in the last section.
     """
     evaluations = list(evaluations)
     checks = all_checks(evaluations)
