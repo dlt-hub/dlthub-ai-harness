@@ -29,7 +29,7 @@ inputs:
       description: >
         run id of the job-inspector run to evaluate. Empty on a trigger; then the
         `prev_run_id` of your own run is used.
-      entity_type: job-run
+      entity_type: job-runs
     inspector_job_ref:
       type: string
       description: job ref of the inspector job; its latest run is evaluated when no run id is given
@@ -125,7 +125,7 @@ output:
     inspector_run_id:
       type: string
       description: run id of the job-inspector run you evaluated
-      entity_type: job-run
+      entity_type: job-runs
     inspector_job_ref:
       type: string
       description: job ref of the inspector job the evaluated run belongs to
@@ -142,7 +142,7 @@ output:
     failed_run_id:
       type: string
       description: run id of the failed job run the inspector inspected
-      entity_type: job-run
+      entity_type: job-runs
     failed_run_number:
       type: integer
       description: run number of the failed job run, which names it in the summary

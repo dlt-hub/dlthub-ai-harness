@@ -27,7 +27,7 @@ test = [
 ]
 
 [tool.uv.sources]
-dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=7" }
+dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=8" }
 
 [tool.ruff]
 preview = true

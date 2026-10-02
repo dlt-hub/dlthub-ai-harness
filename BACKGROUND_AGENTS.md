@@ -147,7 +147,7 @@ inputs:
     failed_run_id:
       type: string
       description: run id of the failed job run to inspect
-      entity_type: job-run
+      entity_type: job-runs
   required: {}
 ```
 
@@ -160,9 +160,9 @@ inputs:
 
 ### Entities: `entity_type`
 
-An input that names a workspace entity carries `entity_type`: `job-run`, `job`, `pipeline`,
+An input that names a workspace entity carries `entity_type`: `job-runs`, `job`, `pipeline`,
 `dataset` or `workspace`. The agent receives the bare id (a run id, a job ref, a pipeline
-name); dlt composes the entity reference `job-run/<id>` when it reports.
+name); dlt composes the entity reference `job-runs/<id>` when it reports.
 
 Declaring it does two things:
 
@@ -571,7 +571,7 @@ async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_run_id: Annotated[
         str,
-        run.Entity("job-run"),
+        run.Entity("job-runs"),
         run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
     ] = "",
     inspector_job_ref: Annotated[

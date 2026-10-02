@@ -133,7 +133,7 @@ async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_run_id: Annotated[
         str,
-        run.Entity("job-run"),
+        run.Entity("job-runs"),
         run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
     ] = "",
     inspector_job_ref: Annotated[

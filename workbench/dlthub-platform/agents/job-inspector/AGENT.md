@@ -43,7 +43,7 @@ inputs:
     failed_run_id:
       type: string
       description: run id of the failed job run to inspect
-      entity_type: job-run
+      entity_type: job-runs
     failed_job_ref:
       type: string
       description: job ref of the failed job; its latest failed run is inspected when no run id is given
@@ -71,7 +71,7 @@ output:
     failed_run_id:
       type: string
       description: run id of the job run you inspected
-      entity_type: job-run
+      entity_type: job-runs
     failed_job_ref:
       type: string
       description: job ref of the job whose run you inspected
