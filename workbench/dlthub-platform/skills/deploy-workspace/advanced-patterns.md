@@ -30,25 +30,13 @@ def transform(run_context: TJobRunContext):
 An installed agent definition becomes a job by naming it:
 
 ```python
-import importlib.util
-
 from dlt.hub import run
-
-# loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
-# entry pointing at the agent folder would shadow or be shadowed by another one
-_spec = importlib.util.spec_from_file_location(
-    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
-)
-links = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(links)
 
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     # `ingest` is a tag this workspace puts on its own jobs
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},
-    # the summary names runs by uuid; this writes each one as a link to its page
-    outputs_validator=links.link_summary,
 )
 ```
 
@@ -57,13 +45,12 @@ overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `ski
 `rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
 for them, and on a decorated function the argument replaces the list, every axis included.
 
-`outputs_validator` is called with the model's output before `summary` is read off it, on a
-referenced agent and a decorated function alike. `link_summary` in the inspector's `links.py`
-returns the output with every run id and job ref in the summary written as a link to its web
-UI page, labelled with the run number. Without it the summary is stored as the model wrote
-it, a uuid inside a code span. The import fails when `.claude/dlthub/agents/job-inspector/`
-is missing, and so does the `"dlthub-platform:job-inspector"` reference beside it: both mean
-the toolkit is not installed in the workspace.
+An agent folder can ship an `agent.py`, which dlt runs around the loop of a job that
+references the agent: `validate_input(inputs)` before it and `validate_output(output)` after
+it. The inspector's `agent.py` writes every run id and job ref in its summary as a link to its
+web UI page, labelled with the run number. The reference fails when
+`.claude/dlthub/agents/job-inspector/` is missing, which means the toolkit is not installed in
+the workspace.
 
 **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
 them. Without it the job runs as a batch job on `prod` and the production credentials land
@@ -99,18 +86,12 @@ the evaluator reads.
 
 ### Code around the loop
 
-Decorate a function instead when code has to run around the loop. The evaluator for the
-inspector does that: it computes its deterministic checks before the loop and writes them
-over the model's output after it.
+The evaluator for the inspector computes its deterministic checks before the loop and writes
+them over the model's output after it. Its `agent.py` does both, so it is declared by
+reference too:
 
 ```python
-import sys
-from typing import Annotated
-
 from dlt.hub import run
-
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -119,45 +100,13 @@ inspector = run.agent(
     section="__deployment__",
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},
-    # `links` is the module the first snippet loads
-    outputs_validator=links.link_summary,
 )
 
-
-@run.agent(
-    agent="dlthub-platform:job-inspector-eval",
+job_inspector_eval = run.agent(
+    "dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
     require={"profile": "access"},
 )
-async def job_inspector_eval(
-    run_context: run.TJobRunContext = None,
-    inspector_run_id: Annotated[
-        str,
-        run.Entity("job-runs"),
-        run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
-    ] = "",
-    inspector_job_ref: Annotated[
-        str,
-        run.Entity("job"),
-        run.Doc("job ref of the inspector job; its latest run is evaluated without a run id"),
-    ] = "",
-    max_runs_read: Annotated[
-        int,
-        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
-) -> dict:
-    prep = prepare(
-        run_context,
-        inspector_run_id=inspector_run_id,
-        inspector_job_ref=inspector_job_ref,
-        max_runs_read=max_runs_read,
-    )
-    if prep.aborted:
-        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
-        # and this path never started the loop
-        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-    return finalize(output, prep)
 ```
 
 A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.
@@ -167,17 +116,17 @@ module on the factory, so a factory whose triggers are used in the same module p
 `section=` itself; without it the manifest is rejected with `triggers referencing unknown
 jobs`.
 
-Four constraints on the function form, because the function overrides the `AGENT.md` it
-drives:
+The evaluator takes `inspector_run_id`, `inspector_job_ref` and `max_runs_read` as inputs.
+Set one for a single run with `-c inspector_run_id=<run id>`.
+
+To drive the loop yourself, decorate a function with
+`run.agent(agent="<toolkit>:<agent>")`; it finds the loop in `run_context["ai_loop"]`, and dlt
+does not run the folder's `agent.py` for it. The function overrides the `AGENT.md` it drives:
 
 - No docstring, or it replaces the body of the `AGENT.md`.
 - Return `dict`, not `TAgentOutput`, or it replaces the declared output schema.
-- Declare a parameter for every input a caller may set. Configured inputs reach a decorated
-  function through its signature only, and `dlthub deploy` warns about a declared input the
-  signature does not accept.
-- Raise `run.JobAbortedException` on a path that never started the loop. dlt reads
-  `loop.trace` on any returned dict carrying `status`, so returning one there fails the run
-  with `AgentTraceNotAvailable` and loses the abort reason.
+- Declare a parameter for every input a caller may set, with a default or
+  `dlt.config.value`: configured inputs reach a decorated function through its signature.
 
 A shipped agent definition names no model, so set one for the workspace:
 
