@@ -44,6 +44,40 @@ dlthub job list "schedule:*"                       # jobs with a schedule trigge
 dlthub job runs list [name_or_selector] --running  # only active runs
 ```
 
+## Read an agent run's result
+
+`dlthub job runs info` prints the run record: status, trigger, profile and timings. An agent
+job also returns a structured output, and the run log is where that lands. Read the log and
+go to the end:
+
+```bash
+dlthub job runs logs <name> [run#]
+```
+
+The last thing a finished agent run prints is its result:
+
+```
+Result  [<toolkit>:<agent>]
+  status:     succeeded
+  summary:    <the agent's summary, one line>
+  job-run: job-run/<run id>
+  loop:       pydantic-ai on anthropic:claude-sonnet-5, 6 turns, 48,120 tokens
+{ ... the declared output as JSON ... }
+```
+
+The banner carries `status` and `summary`, one line per entity the run is filed under, and
+the loop, model, turn and token counts. The JSON under it is every field the agent's
+`output` declares, which is where the diagnosis, the evidence and the proposed fix sit. Jump
+straight to it:
+
+```bash
+dlthub job runs logs <name> <run#> | sed -n '/^Result  \[/,$p'
+```
+
+A run that aborted prints the same banner with `status: aborted` and the abort reason as the
+summary. A run that failed before the agent returned prints no banner, and the traceback
+above it is the failure.
+
 ## Web dashboard (for humans)
 
 ```bash
