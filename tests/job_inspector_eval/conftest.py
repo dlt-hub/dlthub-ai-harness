@@ -1,8 +1,8 @@
 """Fixtures for the job-inspector-eval deterministic checks.
 
 `checks.py` ships inside the agent folder, which the toolkit installer copies verbatim into a
-workspace. It is not a package, so the tests put its folder on the path the same way the
-deployment module does.
+workspace. dlt imports the folder as a package for `agent.py`; the tests put the folder on the
+path instead, as the scheduled job's deployment function does, and `checks.py` works either way.
 """
 
 import sys

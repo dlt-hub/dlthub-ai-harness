@@ -53,7 +53,7 @@ inputs:
       description: >
         Scheduled deployment only. How many inspector runs one scheduled job evaluates.
         Default 25.
-    # filled by the preparation step in `checks.py`, never set by hand or by configuration
+    # filled by `agent.py` with the preparation step in `checks.py`, never set by hand or by configuration
     deterministic_checks:
       type: string
       description: >

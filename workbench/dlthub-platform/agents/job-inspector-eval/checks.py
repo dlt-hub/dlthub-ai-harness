@@ -6,9 +6,9 @@ list of check ids.
 
 `prepare` resolves the inspector run, fetches everything, runs the deterministic checks and
 builds the evidence the judge reads. `finalize` writes the computed results over the judge's
-output. A check docstring opens with the instruction it grades, which is the sentence the
-summary reports, and then states TRUE, FALSE and N/A. `advanced-patterns.md` in the
-`deploy-workspace` skill covers deployment.
+output. `agent.py` calls both around the loop of a single-run evaluation; the batch job calls
+them from its own function. A check docstring opens with the instruction it grades, which is
+the sentence the summary reports, and then states TRUE, FALSE and N/A.
 """
 
 from __future__ import annotations
@@ -4608,6 +4608,13 @@ class FileFetcher(Fetcher):
         return self._read("pipeline_traces", f"{run_id}.json")
 
 
+def fetcher_for(run_context: Mapping[str, Any]) -> Fetcher:
+    """`FileFetcher` over a capture when the run carries a `replay_dir` run argument, else the
+    platform."""
+    replay_dir = (run_context.get("run_args") or {}).get("replay_dir")
+    return FileFetcher(replay_dir) if replay_dir else SdkFetcher.connect()
+
+
 def capture(source: Fetcher, inspector_run_id: str, directory: str) -> str:
     """Writes everything an evaluation of `inspector_run_id` reads into `directory`.
 
@@ -4669,7 +4676,7 @@ def capture(source: Fetcher, inspector_run_id: str, directory: str) -> str:
 
 @dataclass
 class EvalPrep:
-    """What `prepare` hands the deployment function."""
+    """What `prepare` hands `agent.py`, or the batch job's function."""
 
     ctx: Optional[EvalContext] = None
     results: Dict[str, CheckResult] = field(default_factory=dict)
@@ -4690,8 +4697,8 @@ class EvalPrep:
     def aborted_output(self) -> Dict[str, Any]:
         """An `aborted` agent output, produced without starting the loop.
 
-        Carry it on `run.JobAbortedException` rather than returning it: dlt routes a returned
-        dict carrying `status` into `_finish`, which reads a loop trace this path never wrote.
+        `agent.py` raises it on `run.JobAbortedException` from `validate_input`, so the model
+        is never called and the output is delivered as the run's result.
         """
         return {
             "status": "aborted",
@@ -5190,10 +5197,9 @@ async def judge_runs(
     """Run the judge over each prepared inspector run and finalize what it returns.
 
     Returns the fully graded evaluations and, second, the degraded ones: a run whose judge
-    raised keeps the checks Python already decided, through `finalize_without_judge`. Both
-    deployment functions read the second list, the single-run one for its only entry and the
-    batch one for the runs it still reports. With `tolerate_failures` false the exception
-    propagates instead.
+    raised keeps the checks Python already decided, through `finalize_without_judge`. The batch
+    job reads the second list for the runs it still reports. With `tolerate_failures` false the
+    exception propagates instead.
     """
     evaluations: List[Dict[str, Any]] = []
     degraded: List[Dict[str, Any]] = []
@@ -5216,8 +5222,9 @@ def finalize_without_judge(prep: EvalPrep, reason: str) -> Dict[str, Any]:
 
     `aborted`, not `failed`, because the loop raised before recording a trace, and a returned
     dict reaches `_finish`, which reads `loop.trace` and fails the run with
-    `AgentTraceNotAvailable`. The deployment function raises `run.JobAbortedException` carrying
-    this output, which stores it and skips the trace.
+    `AgentTraceNotAvailable`. The batch job raises `run.JobAbortedException` carrying this
+    output, which stores it and skips the trace. A single-run evaluation, run through
+    `agent.py`, fails with the judge's exception instead.
     """
     evaluation = finalize({}, prep, judge_failure=reason)
     evaluation["status"] = "aborted"
@@ -5698,42 +5705,11 @@ def category_verdicts(checks: List[Dict[str, Any]], runs: int = 1) -> Dict[str, 
     }
 
 
-def _shared_links() -> Any:
-    """`links.py` from the inspector's folder, the one copy both agents link summaries with.
-
-    The two agent folders install side by side under `.claude/dlthub/agents/`, so the path
-    is a sibling of this file. A tree without it degrades to plain text rather than failing
-    an evaluation over a cosmetic link.
-    """
-    import importlib.util
-
-    path = Path(__file__).resolve().parent.parent / "job-inspector" / "links.py"
-    spec = importlib.util.spec_from_file_location("dlthub_agent_links", path)
-    if spec is None or spec.loader is None:
-        raise ImportError(str(path))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-try:
-    _links = _shared_links()
-    web_ui = _links.web_ui
-    linkify = _links.linkify
-    run_labels = _links.run_labels
-except Exception:  # the inspector is not installed beside this evaluator
-    def web_ui() -> Tuple[str, str]:  # type: ignore[misc]
-        return "", ""
-
-    def linkify(  # type: ignore[misc]
-        text: str,
-        links: Tuple[str, str] = ("", ""),
-        labels: Optional[Mapping[str, str]] = None,
-    ) -> str:
-        return text
-
-    def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:  # type: ignore[misc]
-        return {}
+# `links.py` in this folder is a symlink to the inspector's, so both summaries link alike
+try:  # imported as the agent folder's package, by dlt
+    from .links import linkify, run_labels, web_ui
+except ImportError:  # imported as a top-level module, by the tests and the batch job
+    from links import linkify, run_labels, web_ui  # type: ignore[no-redef]
 
 
 def as_bullets(text: str) -> List[str]:

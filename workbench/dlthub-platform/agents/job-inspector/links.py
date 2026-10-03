@@ -6,12 +6,10 @@ An agent names a run by its uuid, because that is what a person pastes into
 platform web UI, and the text becomes what the reader needs, a run number where the caller
 knows one.
 
-The loop stores the summary as the model wrote it, so the deployment calls this module. The
-inspector, declared by reference, passes `link_summary` as the `outputs_validator` of
-`run.agent`; the launcher calls it with the output before it reads `summary` off it. The
-evaluator, a decorated function, loads this file in `_shared_links` in its `checks.py` and
-links while it renders its own summary. The module ships in the inspector's folder and the
-two agents install side by side as one toolkit, so a run reads the same way in both summaries.
+The loop stores the summary as the model wrote it. The inspector's `agent.py` passes its output
+to `link_summary` in `validate_output`, before the launcher reads `summary` off it. The
+evaluator's folder holds a symlink to this file, so its `checks.py` links the summary it
+renders the same way, and each agent folder imports only its own files.
 """
 
 from __future__ import annotations
@@ -145,12 +143,10 @@ def linkify(
 
 
 def link_summary(output: Dict[str, Any]) -> Dict[str, Any]:
-    """`outputs_validator` for an agent declared by reference: the output, its summary linked.
+    """The agent output with its summary linked, for `validate_output` in `agent.py`.
 
-    `run.agent(..., outputs_validator=link_summary)` is the seam the reference form has after
-    the loop: the launcher calls it with the model's output and stores what comes back, so the
-    summary is linked before the platform reads it. The run numbers come from the platform,
-    one lookup per run the summary names. An output without a summary is returned as it came.
+    The run numbers come from the platform, one lookup per run the summary names. An output
+    without a summary is returned as it came.
     """
     summary = output.get("summary", "")
     if not summary or not isinstance(summary, str):

@@ -102,7 +102,7 @@ def test_a_text_naming_no_run_asks_the_platform_nothing():
 
 
 def test_link_summary_links_the_summary_and_keeps_the_rest(monkeypatch):
-    """The `outputs_validator` of the reference form: the launcher stores what it returns."""
+    """What the inspector's `validate_output` returns: the launcher stores it."""
     monkeypatch.setattr(links, "web_ui", lambda: WEB)
     monkeypatch.setattr(links, "labels_from_platform", lambda text: {RUN: "#45"})
     output = {

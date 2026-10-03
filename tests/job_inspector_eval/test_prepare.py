@@ -689,7 +689,7 @@ def test_the_summary_names_a_security_finding_first():
     assert found[0].startswith(
         "The inspector broke 2 of the 3 decided checks on run `run-1`"
     )
-    # the id is linked when the section is rendered; see the linkify tests below
+    # the id is linked when the section is rendered; `linkify` is tested in test_links.py
     assert found[1].startswith("A security rule was broken: ")
     bullets = C.category_bullets([{"checks": checks}], C.INSTRUCTION_FOLLOWING,
                                  C.category_verdict(checks))
@@ -1323,7 +1323,7 @@ def test_the_batch_window_starts_at_the_definition_change_and_says_so():
 
 
 def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
-    """The deployment function raises on one and completes on the other."""
+    """The scheduled job's function raises on one and completes on the other."""
     quiet = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector",
                             until=datetime(2026, 9, 24, tzinfo=timezone.utc))
@@ -1408,21 +1408,6 @@ def test_a_judge_paragraph_becomes_bullets():
     ]
     # a heading inside a prose field would open a section the renderer does not own
     assert C.as_bullets("## Diagnosis\n- the cause") == ["the cause"]
-
-
-def test_every_run_id_and_job_ref_in_the_summary_is_a_link():
-    links = ("https://app.example", "ws-1")
-    text = "run 11111111-1111-4111-8111-111111111111 of `jobs.a.b` failed"
-    linked = C.linkify(text, links)
-    assert "[`11111111-1111-4111-8111-111111111111`](https://app.example/w/ws-1/runs/" in linked
-    assert "[`jobs.a.b`](https://app.example/w/ws-1/jobs/jobs.a.b)" in linked
-
-    # a link already written is left alone, target and all
-    once = C.linkify(linked, links)
-    assert once == linked
-
-    # without a workspace the text stands as it was
-    assert C.linkify(text) == text
 
 
 def test_the_rendered_summary_links_the_ids_the_checks_wrote():
