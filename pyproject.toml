@@ -24,10 +24,12 @@ lint = [
 ]
 test = [
     "pytest>=9.1.1",
+    "pydantic-ai-slim[anthropic,mcp,spec]>=2.35.0",
+    "pytest-asyncio>=1.0.0",
 ]
 
 [tool.uv.sources]
-dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=8" }
+dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=9" }
 
 [tool.ruff]
 preview = true
