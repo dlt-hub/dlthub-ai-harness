@@ -326,8 +326,8 @@ Every `evidence` item says what kind of artifact it is.
   Only the `description` prose is `job_description`, and only that is a claim.
 - A claim you cite is something you did not verify. Every `repository_comment`,
   `job_description` and `inference` item gets an entry in `open_points` naming the claim and
-  the artifact that would settle it, and that entry is repeated under Confidence. An
-  inspection citing a claim never reports that nothing was left open.
+  the artifact that would settle it, and that entry is stated under Confidence as its own
+  bullet. An inspection citing a claim never reports that nothing was left open.
 - A `workspace_file` excerpt holds code lines only. An excerpt spanning a decorator or a `def`
   stops before the docstring. A comment or docstring carrying the point is its own
   `repository_comment` item.
@@ -363,6 +363,25 @@ bullet, no question or bracketed note beside a heading.
 | `## Diagnosis` | What was the root cause? What failed, where and why; one bullet quotes the evidence line carrying the cause, with its source and line. For a pipeline job the first bullet names the step: `extract`, `normalize` or `load`. The trigger, profile and tags appear only as part of the cause |
 | `## Recommendation` | What is the next action? The target and the change, or what to check when the value is not established, written as the instruction itself |
 | `## Confidence` | What are the limits of this diagnosis? Every entry of `open_points`, and why this confidence. An empty `open_points` gets one bullet saying nothing was left open |
+
+### Length
+
+The whole `summary` runs to at most 400 words, each section to at most 8 bullets, each bullet
+to at most 70 words. Count the words of the draft before you write the output. A draft over
+any of the three budgets does not go out: cut the longest bullets and count again.
+
+### Say it once
+
+- Each fact sits in one section. The cause goes under Diagnosis, the action under
+  Recommendation, the limit under Confidence, and no section restates what another already
+  says in other words.
+- A claim you cite as cause appears twice at most: under Diagnosis as the cause, under
+  Confidence as the open point, named by its artifact and by what would settle it. The
+  Confidence bullet does not repeat what the claim says.
+- A Recommendation bullet carries the action and its target. The reason for the action is the
+  Diagnosis bullet above it and is not written again.
+- Before you write, read the three sections side by side and delete the second statement of
+  any fact.
 
 ### Cite the artifact in the bullet
 
@@ -439,13 +458,17 @@ Check the output against this list and fix what fails:
 - `fix_target` naming one thing, `proposed_fix` naming the target and the change or saying
   what to check;
 - `requires_human` true wherever `proposed_fix` asks a person to act;
-- `open_points` holding every tool failure, missing file, inferred value and cited claim,
-  repeated under Confidence;
+- `open_points` holding every tool failure, missing file, inferred value and cited claim, each
+  one stated under Confidence in its own bullet and its own words;
+- no fact stated in two sections, and no Recommendation bullet repeating the Diagnosis reason;
+- `summary` counted: at most 400 words over all of it, 8 bullets per section, 70 words per
+  bullet;
 - `summary` carrying the three headings, bullets under each, no instruction text.
 
 ## Budget
 
-Turns are limited, and the output exists only once you write it.
+Turns are limited, and the output exists only once you write it. The summary has a word
+budget of its own, counted under "Length".
 
 - The earliest error naming a cause ends the investigation, once you followed it into the file
   it names and, on a dependency symptom, to the producer. An auth failure still owes the two
@@ -501,3 +524,16 @@ Turns are limited, and the output exists only once you write it.
 | `high` | the earliest error names the cause directly, `evidence` quotes it, and at least one item is a fact under "Provenance". A producer state the job definition or run list shows as a fact (paused, no runs, latest run failed) counts as naming the cause when the consumer's error is its direct symptom. An error that asserts a cause in another system, such as a data-quality message saying the source returned no rows, is the raising code's own claim about something it did not read: check the producer's run or definition before calling it `high` |
 | `medium` | the cause is inferred from surrounding evidence, such as neighbouring runs, the job definition or a comment, and a plausible alternative remains |
 | `low` | the classification is a guess or `unknown`; `Confidence` says what you could not establish |
+
+### Confidence carries every open point
+
+- `open_points` and the Confidence section hold the same points. Write one Confidence bullet
+  per entry, in that entry's own words: the same artifact, the same file, field or value, the
+  same question left open. A bullet that gathers several entries into one sentence drops the
+  ones it compresses.
+- Walk the list before you write the output: take each entry of `open_points` in turn and
+  point at the Confidence bullet that states it. An entry with no bullet means the summary is
+  not finished.
+- Confidence takes at most 8 bullets, one of which gives the reason for the confidence level.
+  Where `open_points` would run past that, keep the entries that change what the reader does
+  next and drop the rest from both fields, so the two stay the same list.
