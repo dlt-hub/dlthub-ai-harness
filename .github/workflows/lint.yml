@@ -52,29 +52,43 @@ jobs:
         run: make validate-toolkits test
 
   # the dlt a release has not shipped yet. a red run here names a change the next release will
-  # demand, which is why it reports without blocking the branch. it runs only where the
-  # repository variable `DLT_PRERELEASE` holds the requirement to install, which keeps that
-  # value out of a public repository
+  # demand, which is why it reports without blocking the branch. the archive lives in the
+  # `DLT_PRERELEASE_URL` Actions secret: a secret rather than a variable because this
+  # repository is public and GitHub masks a secret where it appears in a build log. the job
+  # idles where the secret is unset
   dlt-prerelease:
     runs-on: ubuntu-latest
-    if: vars.DLT_PRERELEASE != ''
     continue-on-error: true
     env:
       UV_NO_SYNC: "1"
-      DLT_PRERELEASE: ${{ vars.DLT_PRERELEASE }}
+      DLT_PRERELEASE_URL: ${{ secrets.DLT_PRERELEASE_URL }}
     steps:
+      - name: Check the archive is configured
+        id: gate
+        run: |
+          if [ -n "$DLT_PRERELEASE_URL" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "DLT_PRERELEASE_URL is unset; nothing to check against"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.configured == 'true'
 
       - uses: astral-sh/setup-uv@v4
+        if: steps.gate.outputs.configured == 'true'
         with:
           version: "latest"
 
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.configured == 'true'
         with:
           python-version: "3.12"
 
       - name: Install the prerelease dlt
+        if: steps.gate.outputs.configured == 'true'
         run: make dev-dlt-prerelease
 
       - name: Validate and test
+        if: steps.gate.outputs.configured == 'true'
         run: make validate-toolkits test

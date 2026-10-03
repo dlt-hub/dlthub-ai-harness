@@ -4,9 +4,12 @@
 # the version lives in one place
 DLT_FLOOR = $(shell sed -n 's/.*"dlt\[hub\]>=\(.*\)",/\1/p' pyproject.toml)
 
-# the prerelease dlt to test against, as a pip requirement. supplied by the environment and
-# never committed: this repo is public and the archive it points at may not be
-DLT_PRERELEASE ?=
+# the archive of the dlt a release has not shipped yet. supplied by the environment and never
+# committed: this repository is public and the archive it points at may not be. locally it
+# goes in `.env.local`, which git ignores; in CI it is an Actions secret, so the url stays out
+# of a public build log
+-include .env.local
+DLT_PRERELEASE_URL ?=
 
 # an install copies an agent folder verbatim, so bytecode written beside a shipped module
 # travels into every workspace
@@ -22,13 +25,12 @@ dev:
 dev-dlt-floor: dev
 	uv pip install "dlt[hub]==$(DLT_FLOOR)"
 
-# the dlt a release has not shipped yet. what it demands here is what the next release will
-# demand. set `DLT_PRERELEASE` to the archive or the version, and the install is forced
+# what the prerelease demands here is what the next release will demand. the install is forced
 # because an archive url carries no version for uv to compare
 dev-dlt-prerelease: dev
-	@test -n "$(DLT_PRERELEASE)" || { \
-		echo "set DLT_PRERELEASE to the dlt requirement to test against"; exit 1; }
-	uv pip install --reinstall-package dlt "$(DLT_PRERELEASE)"
+	@test -n "$(DLT_PRERELEASE_URL)" || { \
+		echo "set DLT_PRERELEASE_URL to the dlt archive to test against"; exit 1; }
+	uv pip install --reinstall-package dlt "dlt[hub] @ $(DLT_PRERELEASE_URL)"
 
 validate-toolkits:
 	uv run python tools/validate_toolkits.py
