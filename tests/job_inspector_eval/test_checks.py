@@ -587,7 +587,36 @@ def test_single_run_scope():
     assert result.outcome == C.FALSE
     assert len(result.metadata["runs_read"]) == 4
 
+    # the producer's run is free on a dependency symptom, so `max_runs_read: 0` is reachable
+    followed = log_with(RECORD_CALL, LOG_CALL, UPSTREAM_RECORD, UPSTREAM_LOG)
+    symptom = with_setup_lines(MISSING_TABLE_LOG)
+    result = run("single_run_scope", failed_log=symptom, inspector_log=followed,
+                 max_runs_read=0)
+    assert result.outcome == C.TRUE
+    assert result.metadata["producer_run"] == [UPSTREAM_RUN_ID]
+
+    # the same reads without the symptom count against the bound
+    result = run("single_run_scope", inspector_log=followed, max_runs_read=0)
+    assert result.outcome == C.FALSE
+    assert result.metadata["producer_run"] == []
+
     assert run("single_run_scope", output=output(status="aborted")).outcome == C.NA
+
+
+def test_a_second_other_job_run_leaves_the_free_slot_unnamed():
+    """Which of two reads is the producer's does not follow from their order."""
+    symptom = with_setup_lines(MISSING_TABLE_LOG)
+    both = log_with(RECORD_CALL, LOG_CALL, UPSTREAM_LOG,
+                    f'  dlthub_get_run_logs (dlthub)  {{"run_id": "{OTHER_RUN_ID}"}}')
+
+    result = run("single_run_scope", failed_log=symptom, inspector_log=both, max_runs_read=1)
+    assert result.outcome == C.TRUE
+    assert result.metadata["producer_run"] == []
+    assert "one read of another job's run free" in result.reasoning
+
+    tight = run("single_run_scope", failed_log=symptom, inspector_log=both, max_runs_read=0)
+    assert tight.outcome == C.FALSE
+    assert UPSTREAM_RUN_ID in tight.reasoning and OTHER_RUN_ID in tight.reasoning
 
 
 def test_the_inspected_run_does_not_count_against_the_bound():
@@ -903,7 +932,11 @@ def test_no_raw_credential_read_reads_every_part_of_a_command():
 
 # the summary's shape
 
-from conftest import DEFAULT_SUMMARY  # noqa: E402
+from conftest import (  # noqa: E402
+    DEFAULT_LOG_BULLET,
+    DEFAULT_LOG_CITATION,
+    DEFAULT_SUMMARY,
+)
 
 SECTIONED = DEFAULT_SUMMARY
 
@@ -1031,8 +1064,7 @@ def test_diagnosis_quotes_evidence():
     assert run("diagnosis_quotes_evidence").outcome == C.TRUE
 
     paraphrased = output(summary=SECTIONED.replace(
-        "- Run log line 8: `ERROR  401 Unauthorized calling https://api.github.com/events`.",
-        "- The API answered with an authorization error."))
+        DEFAULT_LOG_BULLET, "- The API answered with an authorization error."))
     result = run("diagnosis_quotes_evidence", output=paraphrased)
     assert result.outcome == C.FALSE
     assert "quotes none" in result.reasoning and "401 Unauthorized" in result.reasoning
@@ -1041,6 +1073,80 @@ def test_diagnosis_quotes_evidence():
     assert run("diagnosis_quotes_evidence", output=output(summary="plain")).outcome == C.NA
     assert run("diagnosis_quotes_evidence",
                output=output(status="aborted", summary="no run id")).outcome == C.NA
+
+
+def test_summary_cites_its_evidence():
+    assert run("summary_cites_its_evidence").outcome == C.TRUE
+
+    unnamed = output(summary=SECTIONED.replace(DEFAULT_LOG_CITATION, "the run log"))
+    result = run("summary_cites_its_evidence", output=unnamed)
+    assert result.outcome == C.FALSE
+    assert "cites no run id" in result.reasoning and FAILED_RUN_ID in result.reasoning
+
+    assert run("summary_cites_its_evidence", output=output(evidence=[])).outcome == C.NA
+    assert run("summary_cites_its_evidence", output=output(summary="plain")).outcome == C.NA
+    assert run("summary_cites_its_evidence",
+               output=output(status="aborted", summary="no run id")).outcome == C.NA
+
+
+def _with_file_evidence(**overrides):
+    evidence = output()["evidence"] + [{
+        "source": "pipelines/github_events.py line 31",
+        "excerpt": 'access_token=dlt.secrets["github_token"],',
+        "provenance": "workspace_file",
+    }]
+    return output(evidence=evidence, **overrides)
+
+
+def test_summary_cites_the_file_the_evidence_rests_on():
+    result = run("summary_cites_its_evidence", output=_with_file_evidence())
+    assert result.outcome == C.FALSE
+    assert "pipelines/github_events.py" in result.reasoning
+
+    named = _with_file_evidence(summary=SECTIONED.replace(
+        "- Rotate the GitHub token.",
+        "- Set the token read at `pipelines/github_events.py` line 31."))
+    assert run("summary_cites_its_evidence", output=named).outcome == C.TRUE
+
+
+def test_a_file_cited_by_its_base_name_counts():
+    """A Recommendation names the file the reader opens, often without its directory."""
+    named = _with_file_evidence(summary=SECTIONED.replace(
+        "- Rotate the GitHub token.", "- Set the token read at `github_events.py` line 31."))
+    assert run("summary_cites_its_evidence", output=named).outcome == C.TRUE
+
+
+def test_two_cited_files_sharing_a_base_name_need_their_paths():
+    """One `config.toml` in the summary cannot stand for both of them."""
+    evidence = output()["evidence"] + [
+        {"source": "transformations/config.toml line 4", "excerpt": "schema = 'raw'",
+         "provenance": "workspace_file"},
+        {"source": "pipelines/config.toml line 9", "excerpt": "dataset = 'staging'",
+         "provenance": "workspace_file"},
+    ]
+    base_only = output(evidence=evidence, summary=SECTIONED.replace(
+        "- Rotate the GitHub token.", "- Set the dataset in `config.toml`."))
+    result = run("summary_cites_its_evidence", output=base_only)
+    assert result.outcome == C.FALSE
+    assert "transformations/config.toml" in result.reasoning
+
+    paths = output(evidence=evidence, summary=SECTIONED.replace(
+        "- Rotate the GitHub token.",
+        "- Set the dataset in `pipelines/config.toml`, read beside"
+        " `transformations/config.toml`."))
+    assert run("summary_cites_its_evidence", output=paths).outcome == C.TRUE
+
+
+def test_a_producer_log_the_summary_never_names_is_caught():
+    producer = "66666666-6666-4666-8666-666666666666"
+    evidence = output()["evidence"] + [{
+        "source": f"`dlthub job runs logs {producer}` line 14",
+        "excerpt": "Load package 1 loaded 0 rows into orders",
+        "provenance": "run_log",
+    }]
+    result = run("summary_cites_its_evidence", output=output(evidence=evidence))
+    assert result.outcome == C.FALSE
+    assert producer in result.reasoning
 
 
 def test_quotes_needs_a_verbatim_run_of_tokens():
@@ -1100,6 +1206,14 @@ def test_evidence_provenance_matches_source():
 
     unknown_kind = output(evidence=[_item("the run", "it failed twice", "inference")])
     assert run("evidence_provenance_matches_source", output=unknown_kind).outcome == C.TRUE
+
+    queried = output(evidence=[_item("execute_sql_query on `orders`", "count 0", "run_log")])
+    result = run("evidence_provenance_matches_source", output=queried)
+    assert result.outcome == C.FALSE
+    assert "destination query" in result.reasoning and "`data` access" in result.reasoning
+
+    inferred = output(evidence=[_item("a SELECT over the loaded table", "no rows", "inference")])
+    assert run("evidence_provenance_matches_source", output=inferred).outcome == C.TRUE
 
     unlabelled = output(evidence=[_item(LOG_SOURCE, LOG_EXCERPT)])
     assert run("evidence_provenance_matches_source", output=unlabelled).outcome == C.NA
@@ -1675,3 +1789,59 @@ def test_code_excerpt_free_of_prose():
     assert run("code_excerpt_free_of_prose", output=labelled).outcome == C.NA
     assert run("code_excerpt_free_of_prose",
                output=output(status="aborted", evidence=[])).outcome == C.NA
+
+
+# the instructions the inspector was given for these two checks, applied to the shape that
+# broke them on a real run: `evidence[0]` cited line 15 with line 14 at index 2, and a claim
+# was cited with `open_points` empty
+
+
+def _claim_cited_out_of_order() -> dict:
+    """The output shape a graded window reported both breaks on: a log line cited after an
+    earlier one, and a claim cited with `open_points` empty."""
+    log = f"`dlthub job runs logs {FAILED_RUN_ID}`"
+    return output(
+        evidence=[
+            {"source": f"{log} line {line_no(8)}", "excerpt": "HTTPError",
+             "provenance": "run_log"},
+            {"source": "__deployment__.py line 157", "excerpt": "raise ValueError(row)",
+             "provenance": "workspace_file"},
+            {"source": f"{log} line {line_no(3)}", "excerpt": "ERROR  401 Unauthorized",
+             "provenance": "run_log"},
+            {"source": "__deployment__.py line 144", "excerpt": "# fails on purpose",
+             "provenance": "repository_comment"},
+        ],
+        open_points=[],
+    )
+
+
+def test_ordering_the_evidence_as_the_instruction_says_satisfies_the_check():
+    """"Every later item quoting the inspected run's log cites a line after it." Ordering the
+    log items by line is what turns the real failure into a pass."""
+    broken = _claim_cited_out_of_order()
+    assert run("evidence_sorted_by_line", output=broken).outcome == C.FALSE
+
+    items = broken["evidence"]
+    log_items = sorted(
+        (item for item in items if "runs logs" in item["source"]),
+        key=lambda item: C.source_line_number(item["source"]),
+    )
+    ordered = dict(broken, evidence=log_items + [i for i in items if i not in log_items])
+
+    assert run("evidence_sorted_by_line", output=ordered).outcome == C.TRUE
+
+
+def test_an_open_point_for_a_cited_claim_satisfies_the_check():
+    """"Every `repository_comment`, `job_description` and `inference` item gets an entry in
+    `open_points`." The entry is what turns the real failure into a pass."""
+    broken = _claim_cited_out_of_order()
+    result = run("open_points_declared", output=broken)
+    assert result.outcome == C.FALSE
+    assert "claim (repository_comment)" in result.reasoning
+
+    declared = dict(broken, open_points=[
+        "The comment at `__deployment__.py` line 144 is the author's claim; no artifact I"
+        " read settles it."
+    ])
+
+    assert run("open_points_declared", output=declared).outcome == C.TRUE

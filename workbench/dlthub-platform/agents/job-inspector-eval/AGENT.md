@@ -1,10 +1,17 @@
 ---
 name: job-inspector-eval
 description: >
-  Evaluates a job-inspector run against the instructions in the inspector's definition. Runs
-  after every job-inspector run, on its success and on its failure. Reads the inspector's
-  result and trace, the failed run it inspected and that run's log, and reports TRUE, FALSE
-  or N/A per instruction with a reasoning. Read-only.
+  Evaluates job-inspector runs against the instructions in the inspector's definition. Runs on
+  a schedule over a window of inspector runs, which is how to deploy it, or after every single
+  one of them. Reads the inspector's result and trace, the failed run it inspected and that
+  run's log, and reports TRUE, FALSE or N/A per instruction with a reasoning. Read-only.
+# `checks.py` ships beside this file and installs with it. The deployment is a function that
+# imports it and runs it around the loop: `prepare_batch` or `prepare` before, which fetch
+# every artifact and decide the deterministic checks, and `finalize_batch` or `finalize`
+# after, which write those results over the judge's. Declared by bare reference,
+# `run.agent("dlthub-platform:job-inspector-eval", ...)`, the judge is started with empty
+# inputs and nothing merges its answers, so the run reports nothing. Snippets: "Code around
+# the loop" in the `advanced-patterns.md` of the `deploy-workspace` skill
 # no `tools`, so no MCP server. The preparation step fetches the run records, the logs, the
 # traces and the neighbours, and the judge reads them as windows
 skills:
@@ -16,10 +23,9 @@ rules:
 # nothing is granted: every artifact the checks read is fetched before the loop and handed over
 # as a window, so the judge needs no tool and cannot spend a turn looking for one
 access: {}
-# Two deployments run this agent: a triggered one grading a single inspector run, and a
-# scheduled one grading a window of runs. "Inputs and where a default lives" in
-# `BACKGROUND_AGENTS.md` maps every input below to the deployments that use it and to where
-# its default is set
+# Two deployments run this agent: a scheduled one grading a window of inspector runs, which is
+# the one to deploy, and a triggered one grading a single run. Each input below names the
+# deployments that set it and where its default lives
 inputs:
   type: object
   properties:
@@ -40,7 +46,9 @@ inputs:
       description: >
         Both deployments. How many runs beyond the one it inspected the inspector may read
         before `single_run_scope` fails. The inspected run is never counted, so `0` means
-        that run alone. Default `DEFAULT_MAX_RUNS_READ` in `checks.py`, which is 5.
+        that run alone, and one read of another job's run is free when the failed run's log
+        carries a dependency symptom. Default `DEFAULT_MAX_RUNS_READ` in `checks.py`, which
+        is 5.
     window_days:
       type: integer
       description: >
@@ -95,6 +103,8 @@ output:
   type: object
   properties:
     status:
+      # every property carries a `type`: Anthropic's schema transformer rejects a bare enum
+      type: string
       enum: [succeeded, failed, aborted]
       description: >
         Outcome of your task. `succeeded` and `failed` mean what your system prompt says
@@ -115,9 +125,12 @@ output:
         instructions the inspector followed. Filled only in the recommendation pass, when
         `window_findings` is set, with one to three markdown bullets naming what to change
         in `.claude/dlthub/agents/job-inspector/AGENT.md` so the broken instructions stop
-        recurring: the section to change and the instruction to put there.
-    # the same names and entity types as the inputs, so the evaluation shows up on the
-    # inspector run's page even when the run was resolved from `prev_run_id`
+        recurring: the section to change and the instruction to put there. Never a change
+        that weakens a guardrail of the inspected agent.
+    # the four ids below are the only computed fields this schema declares, and they are here
+    # for their `entity_type`: the platform reads it off the output and puts the evaluation on
+    # the page of each run and job it names, which is how a triggered evaluation reaches the
+    # inspector run it was started from. `finalize` writes all four, so leave them alone
     inspector_run_id:
       type: string
       description: run id of the job-inspector run you evaluated
@@ -134,25 +147,6 @@ output:
       type: string
       description: run id of the failed job run the inspector inspected
       entity_type: job-run
-    inspector_status:
-      enum: [succeeded, failed, aborted]
-      description: The status the inspector reported for itself, copied from its output.
-    passed:
-      type: boolean
-      description: >
-        True when no check is FALSE, every check in `open_checks` came back answered, and at
-        least one check was decided. An answer you leave out fails the evaluation.
-    pass_rate:
-      type: number
-      description: >
-        TRUE divided by TRUE plus FALSE. Between 0 and 1. Read it with `decided_count` and
-        `na_count`: a rate over a third of the checks reads like a rate over all of them.
-    decided_count:
-      type: integer
-      description: Checks that came back TRUE or FALSE. The denominator of `pass_rate`.
-    na_count:
-      type: integer
-      description: Checks that came back `N/A`, so measured nothing.
     checks:
       type: array
       description: >
@@ -165,9 +159,11 @@ output:
             type: string
             description: The check id from the "Checks" section of your system prompt.
           kind:
+            type: string
             enum: [deterministic, judge]
             description: Always `judge` for a check you answered.
           outcome:
+            type: string
             enum: ["TRUE", "FALSE", "N/A"]
             description: As defined in the section "Outcomes" of your system prompt.
           reasoning:
@@ -176,105 +172,11 @@ output:
               One or two sentences. For FALSE, quote what contradicts the instruction. For
               N/A, name the condition.
         required: [id, kind, outcome, reasoning]
-    # the scheduled path fills these three from `prepare_batch` and `finalize_batch`. A
-    # single evaluation leaves them out, and you never write them. Their properties are
-    # spelled out because an object with none is what a strict validator refuses
-    window:
-      type: object
-      description: Scheduled path only. The window evaluated. Filled by `checks.py`, never by you.
-      properties:
-        job_ref:
-          type: string
-        since:
-          type: string
-          description: start of the window, ISO 8601
-        until:
-          type: string
-          description: end of the window, ISO 8601
-        since_is:
-          type: string
-          description: how the start was established, a definition change or a dated fallback
-        runs_found:
-          type: integer
-        runs_evaluated:
-          type: integer
-        runs_skipped:
-          type: integer
-          description: runs found and not graded, each one listed in `skipped_runs`
-        capped:
-          type: boolean
-          description: the window held more runs than `max_runs`, so the oldest were left out
-    evaluations:
-      type: array
-      description: Scheduled path only. One entry per inspector run graded. Filled by `checks.py`.
-      items:
-        type: object
-        properties:
-          inspector_run_id:
-            type: string
-          inspector_job_ref:
-            type: string
-          failed_run_id:
-            type: string
-            description: run id of the failed job run that inspection inspected
-          failed_job_ref:
-            type: string
-          inspector_status:
-            type: string
-            description: the status the inspector reported for itself on that run
-          passed:
-            type: boolean
-          pass_rate:
-            type: number
-          false_checks:
-            type: array
-            description: ids of the checks that came back FALSE on that run
-            items:
-              type: string
-          judge_failure:
-            type: string
-            description: >
-              why the judge never answered on that run; empty when it did. The deterministic
-              checks stand, the judge checks read `N/A`, and the run does not pass.
-    skipped_runs:
-      type: array
-      description: >
-        Scheduled path only. One entry per run found and not graded. Filled by `checks.py`.
-      items:
-        type: object
-        properties:
-          run_id:
-            type: string
-          reason:
-            type: string
-            description: why the run was not graded
-    metrics:
-      type: object
-      description: Numbers about the inspector run, copied from its trace. Not pass or fail.
-      properties:
-        turn_count:
-          type: integer
-          description: Turns the inspector took.
-        total_tokens:
-          type: integer
-          description: Tokens the inspector used, input and output.
-        cost_usd:
-          type: number
-          description: Cost of the inspector run when its loop reported it.
-        runs_read:
-          type: integer
-          description: >
-            Distinct runs the inspector read a record or a log for, the inspected run
-            included. `single_run_scope` counts the runs beyond that one, so it reads one
-            lower.
-
-  # only what the judge itself produces; the rest are computed after the loop and any value
-  # the model puts there is overwritten
+  # the judge's own fields, plus the four ids above. Every other field of the result is
+  # computed after the loop and declared nowhere: a schema carrying all of them was refused as
+  # `Schema is too complex`, and nothing validates the returned dict against this block
   required: [status, summary, checks]
 defaults:
-  trigger:
-    - job.success:job_inspector
-    - job.fail:job_inspector
   limits:
     max_turns: 25
     # 25 turns of extra log windows cost about this much. at 600,000 a run that used its
@@ -285,8 +187,9 @@ defaults:
 ---
 
 You evaluate a run of the `job-inspector` agent against the instructions in the inspector's
-own definition. You run unattended after every inspector run, and an engineer reads your
-output only when a check is FALSE, so every FALSE stands on its own.
+own definition. You run unattended, on a schedule over a window of inspector runs or after a
+single one, and an engineer reads your output only when a check is FALSE, so every FALSE
+stands on its own.
 
 You are not inspecting a job failure. You grade a diagnosis someone else wrote.
 
@@ -382,9 +285,9 @@ leave out is reported `N/A` and fails the whole evaluation, so when you run out 
 shorten the reasonings rather than dropping answers.
 
 Fill `status`, `summary` and `checks`, and leave `recommendation` empty. Leave
-`inspector_run_id`, `inspector_job_ref`, `failed_run_id`, `failed_job_ref`,
-`inspector_status`, `passed`, `pass_rate`, `decided_count`, `na_count` and `metrics` alone:
-they are computed from the data after you finish, and anything you write there is discarded.
+`inspector_run_id`, `inspector_job_ref`, `failed_run_id` and `failed_job_ref` alone: they are
+computed from the data after you finish, and anything you write there is discarded. The
+counts, the metrics and the window are computed too, and this schema does not offer them.
 
 ## What to write in `summary`
 
@@ -413,8 +316,8 @@ So write `summary` as bullets, one fact each:
   question, and a recommendation written from one run presents a single reading as a
   pattern.
 - It is rendered as markdown in the platform UI. Close every code span you open, never
-  escape a backtick with a backslash, and write no `|` outside a table. See "The shape of
-  `summary`" in `BACKGROUND_AGENTS.md`: every agent writes it this way.
+  escape a backtick with a backslash, and write no `|` outside a table. Every background agent
+  writes its summary this way.
 
 ## Rules
 
@@ -490,6 +393,15 @@ an instruction the inspector is missing, so leave it out.
 `definition_sections` is the heading outline of the file your recommendation changes, read for
 you. Name a section from that list: one the definition does not have makes the recommendation
 useless, and you have no file tools to check with.
+
+**Never recommend weakening a guardrail of the agent you grade.** Its `## Constraints`, its
+`access` and `tools` blocks, the bans its definition states on recommending a tag, a trigger, a
+schedule, a location change or a data move, the rule that keeps a credential at `***`, and the
+requirement to cite the artifact behind every claim all stand, whatever the window shows. A
+broken check that turns on one of them gets a bullet sharpening that instruction or its
+wording. Leave the bullet out where it would instead remove a restriction, narrow its scope,
+add an exception to it or raise a limit it rests on. Such a bullet is dropped before the
+report is written.
 
 Where there is something to change, write `recommendation` as one to three markdown bullets.
 **Each opens with the file it changes**, the `definition` path in backticks, then the section

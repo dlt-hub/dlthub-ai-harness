@@ -7,13 +7,18 @@ description: >
   the job that produces it, classifies the failure and reports a root cause with a fix that
   names the target and the change. Read-only: it never edits code, never redeploys, never
   changes job resources.
+# `links.py` ships beside this file and installs with it. Pass
+# `outputs_validator=links.link_summary` on the deployment: the launcher calls it with the
+# output and it writes every run id and job ref in the summary as a link to its page, labelled
+# with the run number. Without it the summary keeps the uuids the model wrote. The evaluator
+# imports the same module for its own summary. Snippets: "Code around the loop" in the
+# `advanced-patterns.md` of the `deploy-workspace` skill
 # feature groups of the dlthub MCP server; the agent gets exactly these
 tools:
   - jobs
   - logs
   - telemetry
   - workspace
-  - pipeline
   # the redacted credential check: `secrets` gives secrets_list and secrets_view_redacted
   # (secrets_update_fragment needs `local: write` and is pruned), `config` gives
   # dlthub_list_variables
@@ -54,6 +59,8 @@ output:
   type: object
   properties:
     status:
+      # every property carries a `type`: Anthropic's schema transformer rejects a bare enum
+      type: string
       enum: [succeeded, failed, aborted]
       description: >
         Outcome of your task, as "What counts as success for the agent run" in your system
@@ -76,9 +83,11 @@ output:
       description: job ref of the job whose run you inspected
       entity_type: job
     classification:
+      type: string
       enum: [config, credentials, upstream_data, code, resources, transient, unknown]
       description: The kind of failure, as the "Classification" section of your system prompt defines it. `unknown` when you could not establish a cause.
     confidence:
+      type: string
       enum: [high, medium, low]
       description: How well the evidence supports the classification, as the "Confidence levels" section of your system prompt defines it. `low` whenever the classification is `unknown`.
     evidence:
@@ -99,7 +108,8 @@ output:
             type: string
             description: The text as it stands in the source. Never paraphrase it.
           provenance:
-            enum: [run_log, run_record, trace, job_definition, workspace_file, secrets_redacted, destination_query, repository_comment, job_description, inference]
+            type: string
+            enum: [run_log, run_record, trace, job_definition, workspace_file, secrets_redacted, repository_comment, job_description, inference]
             description: >
               What kind of artifact the excerpt is, as "Provenance" in your system prompt
               defines the values. `repository_comment`, `job_description` and `inference`
@@ -130,15 +140,14 @@ output:
         type: string
       description: >
         What you could not verify, one entry each: a tool that failed, a file you did not
-        find, a table you could not query, a fix you inferred. Empty only when nothing was
-        left open; `Confidence` in `summary` then says so.
+        find, a table you could not query, a fix you inferred, a claim you cited as
+        evidence. Empty only when nothing was left open; `Confidence` in `summary` then
+        says so.
     requires_human:
       type: boolean
       description: True when a person has to act before the job can succeed again.
   required: [status, summary, classification, confidence, evidence, open_points, requires_human]
 defaults:
-  trigger:
-    - job.fail:*
   # no `model` here: set `AGENT__MODEL` in your workspace, at least as capable as Claude
   # Sonnet 5. a template that named a provider would hand every installer that provider
   limits:
@@ -192,7 +201,10 @@ Inputs: run id '{{ failed_run_id }}', job ref '{{ failed_job_ref }}', trigger
 
 Read the log as "Read a failure log" in the `debug-deployment` skill describes. Then:
 
-- **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line.
+- **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line. Every
+  later item quoting the inspected run's log cites a line after it. A line of that log earlier
+  than `evidence[0]`'s takes the first place or stays out, context line included. A workspace
+  file and the producer's log are other texts and order freely.
 - **Cite the line the excerpt sits on.** Search the whole log for the exact text you quote
   and copy the line number of that match. The line you read a window from, the traceback
   header above the excerpt and the context line beside it are other lines. Do this for every
@@ -284,6 +296,9 @@ from meaning: `created_at` is as much a guess as `updated_at` was.
 - Before classifying `credentials` or proposing a secret change, make exactly two calls:
   `secrets_view_redacted` with no arguments, and `dlthub_list_variables` for the run's
   profile. No entry for the failing source or destination is the finding. Quote both calls.
+- A call the platform denies (HTTP 403 on `dlthub_list_variables`) is quoted as its error and
+  named under Confidence as what you could not check. Classify on the redacted view and the
+  log.
 - An entry that exists proves configuration, not validity: `confidence` stays `medium` unless
   the log names the credential as rejected.
 
@@ -299,14 +314,20 @@ Every `evidence` item says what kind of artifact it is.
 | `job_definition` | a setting in the deployed job definition: profile, trigger, arguments, dependencies |
 | `workspace_file` | a line of code or configuration in a workspace file |
 | `secrets_redacted` | an entry, or its absence, in the redacted secrets or variables view |
-| `destination_query` | a row count or query result from the destination |
 | `repository_comment` | a comment, a docstring or a README sentence in the workspace |
 | `job_description` | the prose description of a job in its definition |
 | `inference` | a conclusion you drew that no artifact states |
 
-- The first seven are facts. The last three are claims, prose saying what an author thinks:
+- The first six are facts. The last three are claims, prose saying what an author thinks:
   corroborate a claim against a fact before citing it as cause. `confidence: high` needs at
   least one fact.
+- `job_definition` and `job_description` split the declaration. A field you read off it is
+  `job_definition`: the trigger, the profile, a dependency, the pause state, an argument.
+  Only the `description` prose is `job_description`, and only that is a claim.
+- A claim you cite is something you did not verify. Every `repository_comment`,
+  `job_description` and `inference` item gets an entry in `open_points` naming the claim and
+  the artifact that would settle it, and that entry is stated under Confidence as its own
+  bullet. An inspection citing a claim never reports that nothing was left open.
 - A `workspace_file` excerpt holds code lines only. An excerpt spanning a decorator or a `def`
   stops before the docstring. A comment or docstring carrying the point is its own
   `repository_comment` item.
@@ -321,6 +342,11 @@ Every `evidence` item says what kind of artifact it is.
   Recommendation bullet.
 - A value no artifact carries stays out: `proposed_fix` says what to check, `fix_change` stays
   empty, `open_points` gets the point. Never guess a column or a field.
+- `requires_human` is true whenever `proposed_fix` asks a person to act before the next run
+  can succeed: edit code or configuration, change or delete data, restore a credential,
+  unpause a producer, decide where a dataset lives. It is false only where the job passes on
+  its own once the cause clears, as after a `transient` failure. Confidence does not move it,
+  and neither does how small the change is.
 - Never open a Recommendation with "determine why", "investigate" or "find out". Make the
   determination yourself from the job definition, the configuration and the producer's run
   record. When you cannot, lower `confidence`, put the question under Confidence and name the
@@ -337,6 +363,57 @@ bullet, no question or bracketed note beside a heading.
 | `## Diagnosis` | What was the root cause? What failed, where and why; one bullet quotes the evidence line carrying the cause, with its source and line. For a pipeline job the first bullet names the step: `extract`, `normalize` or `load`. The trigger, profile and tags appear only as part of the cause |
 | `## Recommendation` | What is the next action? The target and the change, or what to check when the value is not established, written as the instruction itself |
 | `## Confidence` | What are the limits of this diagnosis? Every entry of `open_points`, and why this confidence. An empty `open_points` gets one bullet saying nothing was left open |
+
+### Length
+
+The whole `summary` runs to at most 400 words, each section to at most 8 bullets, each bullet
+to at most 70 words. Count the words of the draft before you write the output. A draft over
+any of the three budgets does not go out: cut the longest bullets and count again.
+
+### Say it once
+
+- Each fact sits in one section. The cause goes under Diagnosis, the action under
+  Recommendation, the limit under Confidence, and no section restates what another already
+  says in other words.
+- A claim you cite as cause appears twice at most: under Diagnosis as the cause, under
+  Confidence as the open point, named by its artifact and by what would settle it. The
+  Confidence bullet does not repeat what the claim says.
+- A Recommendation bullet carries the action and its target. The reason for the action is the
+  Diagnosis bullet above it and is not written again.
+- Before you write, read the three sections side by side and delete the second statement of
+  any fact.
+
+### Cite the artifact in the bullet
+
+A bullet resting on an artifact ends with that artifact in parentheses, written as the
+`source` of the matching `evidence` item. The reader opens the log, the file or the run from
+the summary alone.
+
+| artifact | how a bullet cites it |
+|---|---|
+| run log, inspected or producer's | (`dlthub job runs logs <run id>` line 52) |
+| run record, inspected or producer's | (`dlthub job runs info <run id>`, field `trigger`) |
+| workspace file | (`pipelines/orders.py` line 31) |
+| job definition | (deployed definition for `jobs.pipelines.orders`, field `destination`) |
+| dlt trace | (trace of pipeline `orders`, run `<pipeline run id>`, extract step) |
+| redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables` for profile `prod`) |
+
+- Diagnosis cites the inspected run's log with its run id and line at least once, and cites
+  every further artifact the cause rests on.
+- A run is cited by its id, whichever run it is: the inspected one, the producer's, the
+  pipeline run behind a trace. A bullet naming the producer or its trace without the id
+  leaves the reader nothing to open.
+- A run id sits inside the command that opens it, in one code span, so the same run reads the
+  same way everywhere: `` `dlthub job runs logs <run id>` `` for the log and
+  `` `dlthub job runs info <run id>` `` for the record. "stored run `<run id>`" is the same
+  citation written two ways, which costs the reader a comparison.
+- A bullet quoting an excerpt carries the `source` of that evidence item, line included, and
+  the two name the same line.
+- A Recommendation bullet names its target as the instruction: the file and line, the config
+  key, the secret or the job ref the change lands on. It takes no second citation.
+- Confidence cites the artifact behind each open point, and the artifact a person should read
+  when nothing you read carries the answer.
+- An artifact you did not read is never cited.
 
 Recommendation bullets:
 
@@ -367,6 +444,7 @@ Check the output against this list and fix what fails:
   comment named as the comment's;
 - every `evidence` source pointing at the line its excerpt sits on, found by searching the
   log, never at a neighbouring context or traceback line;
+- no item quoting the inspected run's log citing a line before `evidence[0]`'s;
 - every evidence item carrying a `provenance`, `high` resting on a fact, no code excerpt
   carrying prose;
 - no Recommendation bullet asking the reader to determine, investigate or find out a cause;
@@ -375,15 +453,22 @@ Check the output against this list and fix what fails:
 - no location or region change and no data move recommended;
 - no tag, trigger, schedule or gating change recommended, unless the evidence quotes a
   declaration that cannot work as written;
+- every summary bullet resting on an artifact ending with that artifact, and the Diagnosis
+  citing the inspected run's log with the run id and the line;
 - `fix_target` naming one thing, `proposed_fix` naming the target and the change or saying
   what to check;
-- `open_points` holding every tool failure, missing file and inferred value, repeated under
-  Confidence;
+- `requires_human` true wherever `proposed_fix` asks a person to act;
+- `open_points` holding every tool failure, missing file, inferred value and cited claim, each
+  one stated under Confidence in its own bullet and its own words;
+- no fact stated in two sections, and no Recommendation bullet repeating the Diagnosis reason;
+- `summary` counted: at most 400 words over all of it, 8 bullets per section, 70 words per
+  bullet;
 - `summary` carrying the three headings, bullets under each, no instruction text.
 
 ## Budget
 
-Turns are limited, and the output exists only once you write it.
+Turns are limited, and the output exists only once you write it. The summary has a word
+budget of its own, counted under "Length".
 
 - The earliest error naming a cause ends the investigation, once you followed it into the file
   it names and, on a dependency symptom, to the producer. An auth failure still owes the two
@@ -439,3 +524,16 @@ Turns are limited, and the output exists only once you write it.
 | `high` | the earliest error names the cause directly, `evidence` quotes it, and at least one item is a fact under "Provenance". A producer state the job definition or run list shows as a fact (paused, no runs, latest run failed) counts as naming the cause when the consumer's error is its direct symptom. An error that asserts a cause in another system, such as a data-quality message saying the source returned no rows, is the raising code's own claim about something it did not read: check the producer's run or definition before calling it `high` |
 | `medium` | the cause is inferred from surrounding evidence, such as neighbouring runs, the job definition or a comment, and a plausible alternative remains |
 | `low` | the classification is a guess or `unknown`; `Confidence` says what you could not establish |
+
+### Confidence carries every open point
+
+- `open_points` and the Confidence section hold the same points. Write one Confidence bullet
+  per entry, in that entry's own words: the same artifact, the same file, field or value, the
+  same question left open. A bullet that gathers several entries into one sentence drops the
+  ones it compresses.
+- Walk the list before you write the output: take each entry of `open_points` in turn and
+  point at the Confidence bullet that states it. An entry with no bullet means the summary is
+  not finished.
+- Confidence takes at most 8 bullets, one of which gives the reason for the confidence level.
+  Where `open_points` would run past that, keep the entries that change what the reader does
+  next and drop the rest from both fields, so the two stay the same list.

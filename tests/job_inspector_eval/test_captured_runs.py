@@ -29,9 +29,11 @@ CURRENT_DEFINITION = ("config_missing_destination_type",
                       "cursor_value_from_a_comment")
 """Runs of the definition that carries the provenance, fix and summary rules."""
 CLEAN = CURRENT_DEFINITION[:2]
-"""The runs among them with no deterministic FALSE beyond two rules added after they ran:
-their Recommendation opens with "Ask a coding agent to" (`recommendation_is_the_action`) and
-chains a second action onto the first with a comma (`recommendation_one_action_per_bullet`)."""
+"""The runs among them with no deterministic FALSE beyond rules added after they ran: their
+Recommendation opens with "Ask a coding agent to" (`recommendation_is_the_action`), chains a
+second action onto the first with a comma (`recommendation_one_action_per_bullet`), and the
+second one names a file its evidence rests on nowhere in the summary
+(`summary_cites_its_evidence`)."""
 EARLIER_DEFINITION = tuple(name for name in CASES if name not in CURRENT_DEFINITION)
 POST_HOC_RECOMMENDATION_FALSES = {
     "recommendation_one_action_per_bullet",

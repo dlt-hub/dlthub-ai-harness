@@ -6,10 +6,16 @@ deployment module does.
 """
 
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-import pytest
+# the installer copies the agent folder with `shutil.copytree` and filters nothing, so a
+# `__pycache__` these imports leave behind would travel into every workspace installed from
+# this checkout
+sys.dont_write_bytecode = True
+
+from pathlib import Path  # noqa: E402
+from typing import Any, Dict, List, Optional  # noqa: E402
+
+import pytest  # noqa: E402
 
 AGENT_DIR = (
     Path(__file__).resolve().parents[2]
@@ -91,7 +97,7 @@ def inspector_log(
             "Result  [dlthub-platform:job-inspector]",
             "  status:     succeeded",
             "  summary:    the job could not authenticate",
-            f"  job-run: {FAILED_RUN_ID}",
+            f"  job-run: job-run/{FAILED_RUN_ID}",
             "  loop:       claude-agent-sdk on anthropic:claude-sonnet-5, 3 turns, 12,000 tokens",
         ]
         lines += result_json.splitlines()
@@ -115,9 +121,17 @@ DEFAULT_EVENTS = [
     "  The job failed on a 401 from the GitHub API.",
 ]
 
-DEFAULT_SUMMARY = """## Diagnosis
+DEFAULT_LOG_CITATION = f"`dlthub job runs logs {FAILED_RUN_ID}` line 8"
+"""How a summary bullet points at the line it quotes, as "Cite the artifact in the bullet"
+in the inspector's definition requires."""
+DEFAULT_LOG_BULLET = (
+    f"- {DEFAULT_LOG_CITATION}: `ERROR  401 Unauthorized calling"
+    " https://api.github.com/events`."
+)
+
+DEFAULT_SUMMARY = f"""## Diagnosis
 - The `github_events` job failed in extract: the GitHub API rejected the token.
-- Run log line 8: `ERROR  401 Unauthorized calling https://api.github.com/events`.
+{DEFAULT_LOG_BULLET}
 
 ## Recommendation
 - Rotate the GitHub token.
@@ -202,6 +216,7 @@ def context(**overrides: Any) -> "C.EvalContext":
     fields: Dict[str, Any] = {
         "inspector_run": {
             "id": INSPECTOR_RUN_ID,
+            "number": 7,
             "job_ref": "jobs.job_inspector",
             "status": "completed",
             "created_at": "2026-09-01T10:05:00Z",

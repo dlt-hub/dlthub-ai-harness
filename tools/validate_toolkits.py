@@ -20,8 +20,11 @@ Checks:
 - Agent `access` axes/verbs are known; the body's placeholders are declared inputs
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
+- Agent `inputs` / `output` properties each name a `type`; an enum without one breaks Anthropic
+- Agent `output` stays under 24 optional properties, which is Anthropic's cap
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
-- Agent `defaults` sets no `model`; the workspace deploying the agent pins it
+- Agent `defaults` sets no `model` and no `trigger`; the deployment sets both
+- No toolkit file names a repo-root document; no install brings those into a workspace
 - workflow.md (`skill-name`) references point to real skill or agent directories
 - workflow.md has required sections (Core workflow, Handover to other toolkits)
 - workflow.md handover references point to real toolkits in marketplace
@@ -98,7 +101,7 @@ _WORKFLOW_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
 # **toolkit-name** references in handover section
 _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 
-# --- background agents (see BACKGROUND_AGENTS.md) ---
+# --- background agents ---
 # Agents are folders, like skills: `agents/<name>/AGENT.md`, the path the installer reads.
 # They land under `dlthub/` in the *host* folder (`.claude/dlthub/agents/`) so they never mix
 # with a host's native agents (`.claude/agents/`, `.codex/agents/`).
@@ -245,7 +248,7 @@ def validate_agents(
     errors: list[str],
     warnings: list[str],
 ) -> set[str]:
-    """Validate agents/<name>/AGENT.md manifests. See BACKGROUND_AGENTS.md."""
+    """Validate agents/<name>/AGENT.md manifests."""
     agent_names: set[str] = set()
     agents_dir = plugin_dir.joinpath(*_AGENTS_DIR)
     if not agents_dir.is_dir():
@@ -255,7 +258,7 @@ def validate_agents(
         if not entry.is_dir():
             errors.append(
                 f"[{pname}] {_AGENTS_PATH}/{entry.name}: agents are folders containing"
-                f" {_AGENT_FILE} (see BACKGROUND_AGENTS.md)"
+                f" {_AGENT_FILE}"
             )
             continue
         manifest = entry / _AGENT_FILE
@@ -296,9 +299,52 @@ def validate_agents(
                     errors.append(f"[{pname}] {rel} {msg}")
         _validate_entity_types(pname, rel, fm, errors, warnings)
         _validate_output(pname, rel, fm, errors, warnings)
+        _validate_schema_types(pname, rel, fm, errors, warnings)
+        _validate_optional_count(pname, rel, fm, errors, warnings)
+        _validate_schema_size(pname, rel, fm, errors, warnings)
+        _validate_shipped_modules(pname, rel, entry, manifest, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
 
     return agent_names
+
+
+def _validate_shipped_modules(
+    pname: str,
+    rel: str,
+    agent_dir: Path,
+    manifest: Path,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Every module in the agent folder is named by the `AGENT.md` beside it.
+
+    An install copies the folder whole, so the module reaches a workspace. Nothing in the
+    definition calls it: dlt's agent spec has no field for code, and the deployment function
+    imports it. The definition is then the one installed file that can tell a reader the
+    module is there and what the deployment owes it, which is why it has to name it.
+    """
+    modules = sorted(path.name for path in agent_dir.glob("*.py") if path.is_file())
+    stray = sorted(
+        path.name
+        for path in agent_dir.iterdir()
+        if path.name != _AGENT_FILE and path.name not in modules
+    )
+    if stray:
+        errors.append(
+            f"[{pname}] {rel.rsplit('/', 1)[0]} holds {', '.join(stray)}; an install copies"
+            " the folder verbatim, so anything here lands in every workspace. Keep the"
+            f" {_AGENT_FILE} and the modules the deployment imports"
+        )
+    if not modules:
+        return
+    text = manifest.read_text(encoding="utf-8")
+    missing = [name for name in modules if name not in text]
+    if missing:
+        errors.append(
+            f"[{pname}] {rel} does not name {', '.join(missing)}, which ships in the same"
+            " folder; name the module and say what the deployment calls in it, or drop the"
+            " file"
+        )
 
 
 def _validate_agent_body(
@@ -339,7 +385,10 @@ def _validate_entity_types(
     """Check `entity_type` on input and output properties.
 
     dlt's `entity_properties` rejects an unknown value, so the vocabulary is never
-    restated here. What it does not check is the two ways a *valid* value still misleads:
+    restated here. That makes the answer only as good as the installed dlt, which is why
+    `.github/workflows/lint.yml` runs this against the declared floor as well.
+
+    What it does not check is the two ways a *valid* value still misleads:
     a non-string property, and an output that renames the kind of an input.
 
     Worth catching at all because the damage is invisible at runtime.
@@ -465,13 +514,143 @@ def _validate_output(
                 )
 
 
+MAX_OPTIONAL_PROPERTIES = 24
+"""Anthropic refuses a structured output schema with more optional properties than this, nested
+ones counted, and the agent run fails on its first model call."""
+
+
+def _validate_optional_count(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """The output schema stays inside the provider's cap on optional properties.
+
+    A property in its object's `required` does not count, and `required` inside a nested object
+    binds only when the model writes that object, so the nested properties of a field Python
+    fills after the loop belong in one.
+    """
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    optional = _optional_properties(output)
+    if len(optional) > MAX_OPTIONAL_PROPERTIES:
+        errors.append(
+            f"[{pname}] {rel} output declares {len(optional)} optional properties, over the"
+            f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; list the ones the model never"
+            f" writes in their object's `required` ({', '.join(optional[:6])}, ...)"
+        )
+
+
+SCHEMA_PROPERTY_BUDGET = 20
+"""Properties, nested ones counted, above which a model-facing output schema is reported.
+
+Anthropic refuses a large schema with `400 invalid_request_error: Schema is too complex`
+before the first turn, and publishes no limit to check against. The observed points are an
+evaluator at 48 properties and 6,943 characters refused, and an inspector at 15 and 3,943
+accepted, both on anthropic 1.11.0.
+"""
+
+SCHEMA_CHARACTER_BUDGET = 5_000
+"""Serialized length of the output schema above which it is reported. See the budget above."""
+
+
+def _validate_schema_size(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """The output schema stays small enough for a provider to accept it.
+
+    A field Python fills after the loop belongs out of the schema: nothing validates the
+    returned dict against it, so declaring it spends the model's grammar on a value that is
+    overwritten.
+    """
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    count = len(_optional_properties(output)) + _required_properties(output)
+    size = len(json.dumps(output))
+    if count > SCHEMA_PROPERTY_BUDGET or size > SCHEMA_CHARACTER_BUDGET:
+        warnings.append(
+            f"[{pname}] {rel} output declares {count} properties in {size} characters, over"
+            f" the {SCHEMA_PROPERTY_BUDGET} and {SCHEMA_CHARACTER_BUDGET} a provider has"
+            " accepted; drop the fields the model never writes, keeping any that carries an"
+            " entity_type"
+        )
+
+
+def _required_properties(schema: dict) -> int:
+    """Properties listed in their object's `required`, nested ones counted."""
+    count = 0
+    props = schema.get("properties")
+    required = schema.get("required")
+    required = set(required) if isinstance(required, list) else set()
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        if name in required:
+            count += 1
+        count += _required_properties(spec)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            count += _required_properties(items)
+    return count
+
+
+def _optional_properties(schema: dict, path: str = "") -> list[str]:
+    optional: list[str] = []
+    props = schema.get("properties")
+    required = schema.get("required")
+    required = set(required) if isinstance(required, list) else set()
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        here = f"{path}.{name}" if path else name
+        if name not in required:
+            optional.append(here)
+        optional += _optional_properties(spec, here)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            optional += _optional_properties(items, f"{here}[]")
+    return optional
+
+
+def _validate_schema_types(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Every property of `inputs` and `output` names a `type`.
+
+    Anthropic's schema transformer refuses a property carrying `enum` and no `type` with
+    "Schema must have a 'type', 'anyOf', 'oneOf', or 'allOf' field", and the agent run fails
+    on its first model call. dlt fills the type on `status` alone, so every other enum has to
+    carry its own.
+    """
+    for field in ("inputs", "output"):
+        node = fm.get(field)
+        if isinstance(node, dict):
+            _walk_properties(pname, f"{rel} {field}", node, errors)
+
+
+def _walk_properties(pname: str, where: str, schema: dict, errors: list[str]) -> None:
+    props = schema.get("properties")
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        if not any(key in spec for key in ("type", "anyOf", "oneOf", "allOf", "$ref")):
+            errors.append(
+                f"[{pname}] {where}.{name} names no type; a property carrying an enum alone"
+                " is refused by Anthropic's structured output. Add `type: string`"
+            )
+        _walk_properties(pname, f"{where}.{name}", spec, errors)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            _walk_properties(pname, f"{where}.{name}[]", items, errors)
+
+
 def _validate_defaults(
     pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
 ) -> None:
     """`defaults` holds everything the runtime may override."""
     node = fm.get("defaults")
     if node is None:
-        warnings.append(f"[{pname}] {rel} has no defaults — no trigger, model or limits")
+        warnings.append(f"[{pname}] {rel} has no defaults — no model or limits")
         return
     if not isinstance(node, dict):
         errors.append(f"[{pname}] {rel} defaults must be a mapping")
@@ -482,13 +661,20 @@ def _validate_defaults(
                 f"[{pname}] {rel} unknown defaults key '{key}'; expected:"
                 f" {', '.join(sorted(_DEFAULTS_KEYS))}"
             )
+    # the manifest drops `defaults`, so a trigger declared here does nothing
+    if node.get("trigger") is not None:
+        errors.append(
+            f"[{pname}] {rel} defaults.trigger {node['trigger']!r} is never read; set"
+            " trigger= on run.agent, where the workspace names its own jobs"
+        )
+
     # a shipped definition names no provider: the aliases resolve on Anthropic, OpenAI
     # and Google, and an Azure workspace has none. the deployment pins the model.
     if node.get("model") is not None:
         errors.append(
             f"[{pname}] {rel} defaults.model {node['model']!r} pins a provider on every"
             " workspace that installs the toolkit; leave it out and say in the AGENT.md"
-            " what to pin (see BACKGROUND_AGENTS.md)"
+            " what to pin"
         )
 
     limits = node.get("limits") or {}
@@ -578,6 +764,28 @@ def validate_workflow(
                 )
 
 
+_URL_LINK = re.compile(r"\[[^\]]*\]\(https?://[^)]*\)")
+_URL = re.compile(r"https?://\S+")
+# `README.md` and `CLAUDE.md` are names a skill may legitimately discuss in a user's project
+_GENERIC_DOCS = {"README.md", "CLAUDE.md"}
+
+
+def root_doc_refs(plugin_dir: Path, root: Path) -> list[tuple[str, str]]:
+    """(file, document) per repo-root document a toolkit file names outside a URL.
+
+    An install copies the toolkit directory and nothing above it, so a workspace following
+    such a reference finds no file. A URL resolves anywhere, link text included.
+    """
+    docs = {path.name for path in root.glob("*.md")} - _GENERIC_DOCS
+    found: list[tuple[str, str]] = []
+    for path in sorted(plugin_dir.rglob("*")):
+        if path.suffix not in (".md", ".py") or not path.is_file():
+            continue
+        text = _URL.sub("", _URL_LINK.sub("", path.read_text(encoding="utf-8", errors="ignore")))
+        found += [(str(path.relative_to(plugin_dir)), doc) for doc in sorted(docs) if doc in text]
+    return found
+
+
 def validate_toolkit_content(
     pname: str,
     plugin_dir: Path,
@@ -587,6 +795,12 @@ def validate_toolkit_content(
     warnings: list[str],
 ) -> set[str]:
     """Validate skills, commands, rules, agents, and workflow. Returns skill names."""
+    for naming_file, doc in root_doc_refs(plugin_dir, plugin_dir.parents[1]):
+        errors.append(
+            f"[{pname}] {naming_file} names '{doc}', which sits at the repo root and no install"
+            " brings into a workspace; point at a file in the toolkit or at the document's URL"
+        )
+
     # --- skills ---
     skills_dir = plugin_dir / "skills"
     skill_names: set[str] = set()
@@ -689,7 +903,7 @@ def validate_toolkit_content(
                     f"[{pname}] {rel} has frontmatter — rules must be catch-all (no frontmatter)"
                 )
 
-    # --- agents (see BACKGROUND_AGENTS.md) ---
+    # --- agents ---
     agent_names = validate_agents(pname, plugin_dir, inventory, errors, warnings)
 
     # --- workflow.md ---

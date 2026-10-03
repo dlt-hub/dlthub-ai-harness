@@ -7,8 +7,8 @@ list of check ids.
 `prepare` resolves the inspector run, fetches everything, runs the deterministic checks and
 builds the evidence the judge reads. `finalize` writes the computed results over the judge's
 output. A check docstring opens with the instruction it grades, which is the sentence the
-summary reports, and then states TRUE, FALSE and N/A. `BACKGROUND_AGENTS.md` covers
-deployment.
+summary reports, and then states TRUE, FALSE and N/A. `advanced-patterns.md` in the
+`deploy-workspace` skill covers deployment.
 """
 
 from __future__ import annotations
@@ -20,7 +20,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import (Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence,
+                    Tuple)
 
 TRUE = "TRUE"
 FALSE = "FALSE"
@@ -123,10 +124,12 @@ FILE_READ_COMMANDS = ("cat ", "sed ", "head ", "tail ", "less ", "grep ", "rg ")
 SHELL_TOOLS = ("Bash", "PowerShell", "RunPython")
 
 PROVENANCE_FACTS = ("run_log", "run_record", "trace", "job_definition", "workspace_file",
-                    "secrets_redacted", "destination_query")
+                    "secrets_redacted")
 PROVENANCE_CLAIMS = ("repository_comment", "job_description", "inference")
 """The `provenance` enum of an evidence item, split as the inspector's "Provenance" section
-splits it: a fact is an artifact the run produced or code the job runs, a claim is prose."""
+splits it: a fact is an artifact the run produced or code the job runs, a claim is prose.
+A destination query is absent from both: the definition grants no `data` axis, so the
+inspector has no tool that produces one."""
 PROVENANCE = PROVENANCE_FACTS + PROVENANCE_CLAIMS
 
 REQUIRED_SUMMARY_SECTIONS = ("Diagnosis", "Recommendation", "Confidence")
@@ -2186,25 +2189,42 @@ def single_run_scope(ctx: EvalContext) -> CheckResult:
 
     The bound covers the runs beyond the inspected one. Counting the inspected run against it
     makes `max_runs_read = 0` unreachable, since `run_record_read` and `run_logs_read` require
-    reading it.
+    reading it. On a dependency symptom one read of another job's run is free: "Follow the
+    dependency" tells the inspector to read the producer and
+    `upstream_inspected_on_dependency_symptoms` fails a run that does not, so counting it
+    would make the two checks contradict each other.
 
-    TRUE  at most `max_runs_read` runs beyond the inspected one were fetched
+    What is free is the slot, not a named run. Which read is the producer's follows from the
+    transcript only when there is a single read of another job's run, so the reasoning names
+    the run in that case and reports the free slot in every other.
+
+    TRUE  at most `max_runs_read` runs beyond the inspected one were fetched, plus the free
+          slot on a dependency symptom
     FALSE more; the reasoning lists them
     N/A   status is `aborted`
     """
     if ctx.status == "aborted":
         return na("the inspection aborted before reading anything")
+    others = other_runs_read(ctx) if dependency_symptoms(ctx) else []
+    producer = others[:1] if len(others) == 1 else []
+    allowed = ctx.max_runs_read + (1 if others else 0)
     beyond = ctx.runs_read_beyond_the_inspected
-    if len(beyond) <= ctx.max_runs_read:
+    if producer:
+        free = f", and {producer[0]} free as the producer's"
+    elif others:
+        free = ", and one read of another job's run free as the producer's"
+    else:
+        free = ""
+    if len(beyond) <= allowed:
         return ok(
             f"the inspector read {len(beyond)} run(s) beyond the one it inspected, at most"
-            f" {ctx.max_runs_read} allowed",
-            runs_read=ctx.runs_read,
+            f" {allowed} allowed{free}",
+            runs_read=ctx.runs_read, producer_run=producer,
         )
     return bad(
         f"the inspector read {len(beyond)} runs beyond the one it inspected, more than the"
-        f" {ctx.max_runs_read} allowed: {', '.join(beyond)}",
-        runs_read=ctx.runs_read,
+        f" {allowed} allowed: {', '.join(beyond)}{free}",
+        runs_read=ctx.runs_read, producer_run=producer,
     )
 
 
@@ -2960,6 +2980,97 @@ def diagnosis_quotes_evidence(ctx: EvalContext) -> CheckResult:
     )
 
 
+SOURCE_ARTIFACT_PATH = re.compile(r"(?:[\w.-]+/)*[\w.-]+\.(?:py|toml|ya?ml|sql|json)")
+"""A workspace file in an evidence `source`: `transformations/analytics.py`, `.dlt/config.toml`."""
+
+
+def cited_artifacts(ctx: "EvalContext") -> List[Dict[str, Any]]:
+    """Every run and file the evidence sources name, one entry per distinct artifact.
+
+    A run id stands for the log or the record of that run, a path for a workspace file. The
+    job ref, the trace and the redacted views carry no id a reader can look up on its own,
+    so they are left to the judge.
+    """
+    found: Dict[str, Dict[str, Any]] = {}
+    for position, item in enumerate(ctx.evidence):
+        source = str(item.get("source") or "")
+        for run_id in _UUID.findall(source):
+            found.setdefault(run_id.lower(),
+                             {"kind": "run", "name": run_id, "index": position})
+        for path in SOURCE_ARTIFACT_PATH.findall(source):
+            found.setdefault(path.lower(),
+                             {"kind": "file", "name": path, "index": position})
+    return list(found.values())
+
+
+def _named_in(
+    artifact: Dict[str, Any], text: str, artifacts: Sequence[Dict[str, Any]] = ()
+) -> bool:
+    """Whether the summary names the artifact. A file counts under its path or its base name,
+    which is how a Recommendation bullet usually writes it.
+
+    The base name settles nothing when a second cited file carries it: one `config.toml` in
+    the summary would pass both `a/config.toml` and `b/config.toml`, so those two count under
+    their path alone."""
+    name = str(artifact["name"]).lower()
+    haystack = text.lower()
+    if name in haystack:
+        return True
+    if artifact["kind"] != "file":
+        return False
+    base = Path(name).name
+    shared = any(
+        other is not artifact
+        and other["kind"] == "file"
+        and Path(str(other["name"]).lower()).name == base
+        for other in artifacts
+    )
+    return not shared and base in haystack
+
+
+@check("summary_cites_its_evidence")
+def summary_cites_its_evidence(ctx: EvalContext) -> CheckResult:
+    """The summary names the artifacts the diagnosis rests on, so the reader opens the log,
+    the producer's run or the file from the summary alone.
+
+    TRUE  the Diagnosis names the inspected run by its id, and every run and file an evidence
+          source names appears somewhere in the summary
+    FALSE the Diagnosis names no run id, or an artifact is named nowhere; the reasoning
+          lists what the summary leaves out
+    N/A   status is `aborted`, `evidence` is empty, or there is no Diagnosis section
+    """
+    if skipped := _aborted_summary(ctx):
+        return skipped
+    if not ctx.evidence:
+        return na("`evidence` is empty")
+    diagnosis = ctx.section("Diagnosis")
+    if diagnosis is None:
+        return na("the summary has no Diagnosis section; `summary_has_required_sections`"
+                  " reports it")
+    inspected = ctx.reported_run_id or str((ctx.failed_run or {}).get("id") or "")
+    text = "\n".join(diagnosis["lines"])
+    if inspected and inspected.lower() not in text.lower():
+        return bad(
+            "the Diagnosis cites no run id, so the reader cannot tell which run's log the"
+            f" cause came from; the inspected run is {inspected}",
+            run_id=inspected,
+        )
+    artifacts = cited_artifacts(ctx)
+    missing = [item for item in artifacts if not _named_in(item, ctx.summary, artifacts)]
+    if missing:
+        names = ", ".join(repr(str(item["name"])) for item in missing)
+        return bad(
+            f"the summary leaves {len(missing)} artifact(s) the evidence rests on uncited:"
+            f" {names}. A reader cannot open what the summary does not name",
+            missing=missing,
+        )
+    return ok(
+        f"the Diagnosis cites run {inspected or 'the inspected run'} and the summary names"
+        f" all {len(artifacts)} artifact(s) the evidence rests on",
+        artifacts=artifacts,
+    )
+
+
 # deterministic checks: provenance, the fix and the open points
 
 
@@ -3007,7 +3118,8 @@ is set, the description itself, so an excerpt of it is prose wherever it is read
 _SOURCE_KINDS: Tuple[Tuple[str, "re.Pattern[str]", Tuple[str, ...]], ...] = (
     ("a workspace file", _SOURCE_FILE, ("workspace_file", "repository_comment")),
     ("the redacted secrets view", _SOURCE_SECRETS, ("secrets_redacted",)),
-    ("a destination query", _SOURCE_DATA, ("destination_query",)),
+    # no provenance fits: the source is out of reach, so citing it is a fabrication
+    ("a destination query", _SOURCE_DATA, ()),
     ("the pipeline trace", _SOURCE_TRACE, ("trace",)),
     ("the job's own name or description, which its author wrote", _SOURCE_JOB_LABEL,
      ("job_description",)),
@@ -3016,11 +3128,13 @@ _SOURCE_KINDS: Tuple[Tuple[str, "re.Pattern[str]", Tuple[str, ...]], ...] = (
     ("the run record", _SOURCE_RECORD, ("run_record",)),
 )
 """What a `source` names, and the provenance values that fit it. First match wins, so a file
-path beats the word `log` inside it."""
+path beats the word `log` inside it. An empty tuple marks a source the access profile puts
+out of reach."""
 
 
 def provenance_allowed_for(source: str) -> Tuple[str, Tuple[str, ...]]:
-    """What the source names and which provenance values fit; empty when it names nothing known."""
+    """What the source names and which provenance values fit; the name is empty when the
+    source names nothing known, and the values are empty when it names an unreachable one."""
     for name, pattern, allowed in _SOURCE_KINDS:
         if pattern.search(source):
             return name, allowed
@@ -3032,8 +3146,13 @@ def evidence_provenance_matches_source(ctx: EvalContext) -> CheckResult:
     """The provenance of an item fits what its source names: a log line is `run_log`, a file
     is `workspace_file` or `repository_comment`, and so on.
 
+    A source naming a destination query fails under any provenance but `inference`: the
+    definition grants no `data` axis, so the inspector reached it out of profile or made it
+    up. An inference is exempt because it cites the artifact it was drawn from.
+
     TRUE  every item with a provenance fits its source, or names a source of no known kind
-    FALSE one does not; the reasoning names the item, the source and the value
+    FALSE one does not, or cites a source the access profile puts out of reach; the reasoning
+          names the item, the source and the value
     N/A   no item declares a provenance
     """
     declared = [
@@ -3044,10 +3163,18 @@ def evidence_provenance_matches_source(ctx: EvalContext) -> CheckResult:
         return na("no evidence item declares a provenance")
     for position, item in declared:
         value = str(item.get("provenance")).strip()
+        # an inference cites whatever it was drawn from, so its source names no one kind
         if value == "inference":
             continue
         source = str(item.get("source") or "")
         kind, allowed = provenance_allowed_for(source)
+        if kind and not allowed:
+            return bad(
+                f"evidence[{position}] cites {source[:80]!r}, {kind}, under provenance"
+                f" {value!r}; the definition grants no `data` access, so no provenance fits"
+                " that source",
+                index=position, provenance=value, allowed=[],
+            )
         if allowed and value not in allowed:
             return bad(
                 f"evidence[{position}] cites {source[:80]!r}, {kind}, under provenance"
@@ -4938,8 +5065,10 @@ def prepare_batch(
             abort_reason=(
                 "no inspector job could be resolved: the batch evaluator takes"
                 " `inspector_job_ref`, and trigger"
-                f" {str(run_context.get('trigger') or '')!r} names no job. Pass"
-                " `-c inspector_job_ref=jobs.<module>.<job>`."
+                f" {str(run_context.get('trigger') or '')!r} names no job. A deployed job"
+                " reads it from the default of its `inspector_job_ref` parameter, so set"
+                " that to `jobs.<module>.<job>` and deploy again. Locally, `dlthub local run"
+                " <job> -c inspector_job_ref=jobs.<module>.<job>` passes it for one run."
             ),
         )
 
@@ -4978,7 +5107,7 @@ def prepare_batch(
     return batch
 
 
-def finalize_batch(
+def batch_report(
     evaluations: List[Dict[str, Any]],
     batch: BatchPrep,
     degraded: Optional[List[Dict[str, Any]]] = None,
@@ -4989,6 +5118,24 @@ def finalize_batch(
     `evaluations` are `finalize` results, one per run graded. `degraded` are the runs whose
     judge raised, carrying the deterministic checks `finalize_without_judge` kept. They count
     as evaluated, never pass, and the window names each one's reason in its scope bullets.
+
+    The report alone. `finalize_batch` wraps it and decides what the job does with it.
+
+    Beyond `status`, `summary`, `recommendation` and an empty `checks`, the report carries
+    the fields below. The `AGENT.md` declares none of them: a schema holding them too was
+    refused with `400 invalid_request_error: Schema is too complex`, and nothing validates a
+    returned dict against the declaration, so this docstring is their contract.
+
+    - `passed`, `pass_rate`, `decided_count`, `na_count`: the outcome over every check of
+      every run in the window.
+    - `metrics`: `runs_evaluated`, `total_tokens` and `turn_count` summed over the
+      evaluations. dlt stores one trace per job run, so the window counts them itself.
+    - `window`: `job_ref`, `since`, `until`, `since_is`, `runs_found`, `runs_evaluated`,
+      `runs_skipped`, `capped`.
+    - `evaluations`: per graded run, `inspector_run_id`, `inspector_job_ref`,
+      `inspector_run_number`, `failed_run_id`, `failed_job_ref`, `failed_run_number`,
+      `inspector_status`, `passed`, `pass_rate`, `false_checks`, `judge_failure`.
+    - `skipped_runs`: `run_id` and `reason` per run the window found and did not grade.
     """
     graded = list(evaluations) + list(degraded or [])
     skipped = list(batch.skipped)
@@ -5003,8 +5150,6 @@ def finalize_batch(
     window["runs_evaluated"] = len(graded)
     window["runs_skipped"] = len(skipped)
     return {
-        # `passed` is the green flag. On a window with no evaluation the deployment decides:
-        # an empty one prints and returns `{}`, a found-and-none-graded one raises `aborted`
         "status": "succeeded" if graded or not batch.found else "failed",
         "summary": render_batch_summary(graded, batch, skipped, recommendation,
                                         degraded=degraded or []),
@@ -5038,8 +5183,10 @@ def finalize_batch(
             {
                 "inspector_run_id": evaluation.get("inspector_run_id", ""),
                 "inspector_job_ref": evaluation.get("inspector_job_ref", ""),
+                "inspector_run_number": evaluation.get("inspector_run_number"),
                 "failed_run_id": evaluation.get("failed_run_id", ""),
                 "failed_job_ref": evaluation.get("failed_job_ref", ""),
+                "failed_run_number": evaluation.get("failed_run_number"),
                 "inspector_status": evaluation.get("inspector_status", ""),
                 "passed": evaluation.get("passed", False),
                 "pass_rate": evaluation.get("pass_rate", 0.0),
@@ -5055,6 +5202,47 @@ def finalize_batch(
     }
 
 
+def job_aborted(summary: str, output: Dict[str, Any]) -> Exception:
+    """`run.JobAbortedException` carrying `output`, for a path the launcher must not read.
+
+    Falls back to `RuntimeError` where dlt is absent, so `checks.py` stays importable on its
+    own.
+    """
+    try:
+        from dlt.hub.run import JobAbortedException
+    except ImportError:
+        return RuntimeError(f"Job aborted: {summary}")
+    return JobAbortedException(summary, output)
+
+
+def finalize_batch(
+    evaluations: List[Dict[str, Any]],
+    batch: BatchPrep,
+    degraded: Optional[List[Dict[str, Any]]] = None,
+    recommendation: str = "",
+) -> Dict[str, Any]:
+    """What the batch deployment function returns, and where the window's outcome is decided.
+
+    The arguments are `batch_report`'s. Three outcomes, so the deployment function hands the
+    report over rather than reading it:
+
+    - A judge run completed: the report comes back and the job returns it.
+    - The window found runs and no judge run completed: raises `run.JobAbortedException`
+      carrying the report, so the deterministic checks of the degraded runs still reach the
+      run page. A loop that completed no run records no trace, and a returned dict carrying
+      `status` is read against one.
+    - The window found nothing: the report goes to the job log and `{}` comes back. Right
+      after a definition change the graded agent has not run yet, which is not a fault.
+    """
+    report = batch_report(evaluations, batch, degraded, recommendation)
+    if evaluations:
+        return report
+    if batch.found:
+        raise job_aborted(report["summary"], {**report, "status": "aborted"})
+    print(report["summary"])
+    return {}
+
+
 async def judge_runs(
     loop: Any, preps: Sequence[EvalPrep], *, tolerate_failures: bool = False
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -5065,6 +5253,9 @@ async def judge_runs(
     deployment functions read the second list, the single-run one for its only entry and the
     batch one for the runs it still reports. With `tolerate_failures` false the exception
     propagates instead.
+
+    Each tolerated failure is printed as it happens. The report names it too, and a window
+    that then raises on a later run leaves the job log as the only place it was written.
     """
     evaluations: List[Dict[str, Any]] = []
     degraded: List[Dict[str, Any]] = []
@@ -5074,7 +5265,12 @@ async def judge_runs(
         except Exception as ex:
             if not tolerate_failures:
                 raise
-            degraded.append(finalize_without_judge(prep, f"{type(ex).__name__}: {ex}"))
+            reason = f"{type(ex).__name__}: {ex}"
+            print(
+                f"the judge never answered on inspector run {prep.inspector_run_id}:"
+                f" {reason}. Its deterministic checks stand and it does not pass."
+            )
+            degraded.append(finalize_without_judge(prep, reason))
     return evaluations, degraded
 
 
@@ -5085,10 +5281,11 @@ def finalize_without_judge(prep: EvalPrep, reason: str) -> Dict[str, Any]:
     checks, and discarding those costs the run every result it had. They are reported instead:
     each judge check `N/A`, `reason` in `summary`, and `status: aborted`.
 
-    `aborted`, not `failed`, because the loop raised before recording a trace, and a returned
-    dict reaches `_finish`, which reads `loop.trace` and fails the run with
-    `AgentTraceNotAvailable`. The deployment function raises `run.JobAbortedException` carrying
-    this output, which stores it and skips the trace.
+    `aborted`, not `failed`, because the loop raised before recording a trace and the launcher
+    reads one off any returned dict carrying `status`. The output travels through
+    `run.JobAbortedException` instead, which stores it and skips the trace: the single-run
+    deployment raises it, and `finalize_batch` raises it for a window whose every judge
+    failed.
     """
     evaluation = finalize({}, prep, judge_failure=reason)
     evaluation["status"] = "aborted"
@@ -5371,6 +5568,19 @@ def finalize(
 
     `pass_rate` divides by the decided checks, so `decided_count` and `na_count` sit beside it
     and the tally goes into `summary`.
+
+    The evaluation carries more fields than the `AGENT.md` declares, and this docstring is
+    their contract: a schema declaring them too was refused with `400 invalid_request_error:
+    Schema is too complex`, and nothing validates a returned dict against the declaration.
+    Beyond `status`, `summary`, `recommendation` and `checks`, which the judge writes, and
+    the four ids the schema keeps for their `entity_type`:
+
+    - `inspector_run_number` and `failed_run_number`, which name those runs in the summary.
+    - `inspector_status`, the status the inspector reported for itself.
+    - `passed`, `pass_rate`, `decided_count`, `na_count`.
+    - `judge_failure`, why the judge never answered on this run, empty where it did.
+    - `metrics`: `turn_count`, `total_tokens`, `cost_usd` and `runs_read`, off the inspector
+      run's trace.
     """
     ctx = prep.ctx
     if ctx is None:
@@ -5447,13 +5657,17 @@ def finalize(
     failed_job_ref = str((ctx.failed_run or {}).get("job_ref")
                          or ctx.output.get("failed_job_ref") or "")
     inspector_job_ref = str(ctx.inspector_run.get("job_ref") or "")
+    inspector_run_number = ctx.inspector_run.get("number")
+    failed_run_number = (ctx.failed_run or {}).get("number")
     summary = render_summary(
         [{
             "checks": checks,
             "inspector_run_id": prep.inspector_run_id,
             "inspector_job_ref": inspector_job_ref,
+            "inspector_run_number": inspector_run_number,
             "failed_run_id": ctx.reported_run_id,
             "failed_job_ref": failed_job_ref,
+            "failed_run_number": failed_run_number,
         }],
         judge_summary=str(output.get("summary") or "").strip(),
         incomplete=incomplete,
@@ -5470,8 +5684,10 @@ def finalize(
         "recommendation": "",
         "inspector_run_id": prep.inspector_run_id,
         "inspector_job_ref": inspector_job_ref,
+        "inspector_run_number": inspector_run_number,
         "failed_run_id": ctx.reported_run_id,
         "failed_job_ref": failed_job_ref,
+        "failed_run_number": failed_run_number,
         "inspector_status": ctx.status or "aborted",
         "passed": false_count == 0 and decided > 0 and not incomplete,
         "pass_rate": (true_count / decided) if decided else 0.0,
@@ -5563,57 +5779,42 @@ def category_verdicts(checks: List[Dict[str, Any]], runs: int = 1) -> Dict[str, 
     }
 
 
-def web_ui() -> Tuple[str, str]:
-    """The web UI base and the workspace id, both empty when they cannot be resolved.
+def _shared_links() -> Any:
+    """`links.py` from the inspector's folder, the one copy both agents link summaries with.
 
-    `dlt_runtime.urls` turns the API base url into the UI one, the mapping the CLI prints a
-    run link with. A local replay has neither, and the summary then names runs by id.
+    The two agent folders install side by side under `.claude/dlthub/agents/`, so the path
+    is a sibling of this file. A tree without it degrades to plain text rather than failing
+    an evaluation over a cosmetic link.
     """
-    try:
-        from dlt._workspace._workspace_context import active
-        from dlt_runtime import urls
+    import importlib.util
 
-        return urls.web_ui_base(), str(active().runtime_config.workspace_id or "")
-    except Exception:
+    path = Path(__file__).resolve().parent.parent / "job-inspector" / "links.py"
+    spec = importlib.util.spec_from_file_location("dlthub_agent_links", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(str(path))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+try:
+    _links = _shared_links()
+    web_ui = _links.web_ui
+    linkify = _links.linkify
+    run_labels = _links.run_labels
+except Exception:  # the inspector is not installed beside this evaluator
+    def web_ui() -> Tuple[str, str]:  # type: ignore[misc]
         return "", ""
 
-
-_MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
-"""A link already written. Nothing inside one is linked again, and neither is its target."""
-
-_RUN_ID = re.compile(
-    r"(`?)\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b(`?)"
-)
-_JOB_REF = re.compile(r"(`?)\b(jobs\.[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\b(`?)")
-
-
-def linkify(text: str, links: Tuple[str, str] = ("", "")) -> str:
-    """Every run id and job ref in a line, written as a link to its page.
-
-    A run id is a link wherever it falls: a bullet, a reasoning the checks wrote, a table
-    cell. Text already inside a link is left alone, and so is the target of one.
-    """
-    base, workspace = links
-    if not base or not workspace or not text:
+    def linkify(  # type: ignore[misc]
+        text: str,
+        links: Tuple[str, str] = ("", ""),
+        labels: Optional[Mapping[str, str]] = None,
+    ) -> str:
         return text
-    written: List[str] = []
-    last = 0
-    for match in _MARKDOWN_LINK.finditer(text):
-        written.append(_linked(text[last:match.start()], base, workspace))
-        written.append(match.group(0))
-        last = match.end()
-    written.append(_linked(text[last:], base, workspace))
-    return "".join(written)
 
-
-def _linked(text: str, base: str, workspace: str) -> str:
-    def run(match: "re.Match[str]") -> str:
-        return f"[`{match.group(2)}`]({base}/w/{workspace}/runs/{match.group(2)})"
-
-    def job(match: "re.Match[str]") -> str:
-        return f"[`{match.group(2)}`]({base}/w/{workspace}/jobs/{match.group(2)})"
-
-    return _JOB_REF.sub(job, _RUN_ID.sub(run, text))
+    def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:  # type: ignore[misc]
+        return {}
 
 
 def as_bullets(text: str) -> List[str]:
@@ -5644,6 +5845,7 @@ def section(
     bullets: Sequence[Any],
     table: str = "",
     links: Tuple[str, str] = ("", ""),
+    labels: Optional[Mapping[str, str]] = None,
 ) -> str:
     """One summary section: a heading over short bullets, and a table only at the end.
 
@@ -5654,12 +5856,12 @@ def section(
     lines = [f"## {title}", ""]
     for bullet in bullets:
         if isinstance(bullet, (list, tuple)):
-            lines += [f"  - {linkify(child, links)}" for child in bullet if child]
+            lines += [f"  - {linkify(child, links, labels)}" for child in bullet if child]
             continue
         if bullet:
-            lines.append(f"- {linkify(bullet, links)}")
+            lines.append(f"- {linkify(bullet, links, labels)}")
     if table:
-        lines += ["", "\n".join(linkify(row, links) for row in table.splitlines())]
+        lines += ["", "\n".join(linkify(row, links, labels) for row in table.splitlines())]
     return "\n".join(lines)
 
 
@@ -5668,7 +5870,8 @@ def scope_bullets(entries: Sequence[Dict[str, str]]) -> List[str]:
 
     The inspector run comes first and the job run it inspected follows. Each entry carries
     `inspector_run_id`, `inspector_job_ref`, `failed_run_id` and `failed_job_ref`; `linkify`
-    turns each id into a link when the section is rendered.
+    turns each id into a link whose text `run_labels` writes, so a reader meets the run
+    number rather than the uuid.
     """
     bullets: List[str] = []
     for entry in entries:
@@ -5832,10 +6035,35 @@ def category_bullets(
     return bullets + ([broken_bullets] if broken_bullets else [])
 
 
+GUARDRAIL_WEAKENED = re.compile(
+    r"(?i)\b(?:remove|removing|drop|dropping|delete|deleting|relax|relaxing|loosen|loosening"
+    r"|soften|softening|weaken|weakening|lift|lifting|waive|waiving|narrow|narrowing)\s+"
+    r"(?:the|a|an|its|this|that)?\s*(?:`[^`\n]*`\s*)?"
+    r"(?:constraints?|guardrails?|restrictions?|bans?|prohibitions?|redaction|read-only)\b"
+    r"|\badd\s+(?:an?\s+)?exceptions?\b"
+    r"|\bmake\s+(?:the\s+)?[^.\n]{0,30}?\boptional\b"
+    r"|\ballow\s+(?:the\s+)?(?:inspector|agent|it)\s+to\s+"
+    r"(?:edit|write|redeploy|re-?run|cancel|move|change)\b"
+)
+"""A bullet asking for a guardrail of the graded agent to be weakened. The verb has to take the
+guardrail as its object, so "remove the ambiguity in `Constraints`" is left alone."""
+
+
+def weakens_a_guardrail(bullet: str) -> str:
+    """The phrase in `bullet` asking for a guardrail to be weakened, empty when there is none.
+
+    The body bans such a bullet and a judge still writes one. A reader acts on this list, so it
+    is dropped rather than reported.
+    """
+    match = GUARDRAIL_WEAKENED.search(str(bullet or ""))
+    return match.group(0) if match else ""
+
+
 def recommendation_bullets(checks: List[Dict[str, Any]], written: str) -> List[str]:
     """The judge's recommendation as bullets, or what stands in its place."""
-    if written.strip():
-        return [name_the_file(bullet) for bullet in as_bullets(written)]
+    kept = [bullet for bullet in as_bullets(written) if not weakens_a_guardrail(bullet)]
+    if kept:
+        return [name_the_file(bullet) for bullet in kept]
     if any(entry["outcome"] == FALSE for entry in checks):
         return [
             f"Take the broken instructions above to `{INSPECTOR_DEFINITION_PATH}`: each one"
@@ -5986,9 +6214,8 @@ def render_summary(
     `Recommendation` section; a window states what broke and how often, which is what a change
     to the instructions rests on.
 
-    The shape is the one every background agent writes, as `BACKGROUND_AGENTS.md` sets it out:
-    no text before the first heading, nothing outside a bullet, and a table only as the last
-    thing in the last section.
+    The shape is the one every background agent writes: no text before the first heading,
+    nothing outside a bullet, and a table only as the last thing in the last section.
     """
     evaluations = list(evaluations)
     checks = all_checks(evaluations)
@@ -5998,11 +6225,13 @@ def render_summary(
     )
     for category in CATEGORIES:
         findings += category_bullets(evaluations, category, verdicts[category])
-    sections = [section("Findings", findings, links=links)]
+    labels = run_labels(evaluations)
+    sections = [section("Findings", findings, links=links, labels=labels)]
     if recommend:
         sections.append(
             section(
-                "Recommendation", recommendation_bullets(checks, recommendation), links=links
+                "Recommendation", recommendation_bullets(checks, recommendation),
+                links=links, labels=labels,
             )
         )
     sections.append(
@@ -6011,7 +6240,7 @@ def render_summary(
             coverage_bullets(evaluations, incomplete)
             + scope_bullets(evaluations)
             + list(scope_extra or []),
-            links=links,
+            links=links, labels=labels,
         )
     )
     results = [_sentence(note) for note in (notes or [])]
@@ -6024,7 +6253,7 @@ def render_summary(
     else:
         results = ["No check was decided, so there is nothing to tabulate."] + results
     sections.append(
-        section("Detailed evaluation results", results, table, links=links)
+        section("Detailed evaluation results", results, table, links=links, labels=labels)
     )
     return "\n\n".join(sections)
 

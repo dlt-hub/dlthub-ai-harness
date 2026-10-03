@@ -4,6 +4,9 @@ import asyncio
 import json
 from datetime import datetime, timezone
 
+import pytest
+from dlt.hub.run import JobAbortedException
+
 from conftest import (
     DEPLOYED_RUN_TOOLS,
     FAILED_LOG,
@@ -1034,6 +1037,41 @@ def test_a_recommendation_pass_that_raised_does_not_cost_the_graded_window():
     assert "In `" not in final["recommendation"]
 
 
+def test_a_recommendation_that_weakens_a_guardrail_never_reaches_the_reader():
+    """The body bans such a bullet and a judge still writes one, so it is dropped here."""
+    batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                            inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+    evaluations = [
+        C.finalize({"status": "succeeded", "summary": "", "checks": _all_false(prep)}, prep)
+        for prep in batch.preps
+    ]
+
+    written = (
+        f"- In `{C.INSPECTOR_DEFINITION_PATH}`, remove the read-only constraint so the"
+        " inspector can apply the fix it proposes.\n"
+        f"- In `{C.INSPECTOR_DEFINITION_PATH}`, in `Constraints`, remove the ambiguity that let"
+        " the inspector read the evidence rule loosely."
+    )
+    final = C.finalize_batch(evaluations, batch, recommendation=written)
+    assert "read-only constraint" not in final["recommendation"]
+    assert "read-only constraint" not in final["summary"]
+    # a bullet that sharpens an instruction is kept, whatever section it names
+    assert "remove the ambiguity" in final["recommendation"]
+
+    # every bullet weakening one empties the list, and the window falls back
+    only = ("- Drop the ban on recommending a schedule change.\n"
+            "- Add an exception for a job that was paused.")
+    fell_back = C.finalize_batch(evaluations, batch, recommendation=only)
+    assert "Drop the ban" not in fell_back["recommendation"]
+    assert "exception" not in fell_back["recommendation"]
+    assert "Take the broken instructions above" in fell_back["recommendation"]
+
+    assert C.weakens_a_guardrail("Relax the `***` redaction so a port number can be shown")
+    assert C.weakens_a_guardrail("allow the inspector to redeploy the job it diagnosed")
+    assert C.weakens_a_guardrail("make the evidence citation optional on a transient failure")
+    assert not C.weakens_a_guardrail("Require the cited line to hold the quoted excerpt.")
+
+
 def test_a_judge_run_that_raised_keeps_the_checks_python_decided():
     """The judge half is lost, the deterministic half is not, and the window says so."""
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
@@ -1164,7 +1202,8 @@ def test_the_batch_deployment_function_reports_the_window_the_way_the_readme_dec
 
 def test_a_window_whose_every_judge_raised_aborts_with_the_deterministic_checks():
     """No loop run completed, so there is no trace and the output goes out through the abort
-    path; the checks Python decided still travel with it."""
+    path; the checks Python decided still travel with it. `finalize_batch` raises it, so a
+    deployment cannot return the dict instead."""
     class _Loop:
         async def run(self, inputs):
             raise RuntimeError("the loop hit its token limit")
@@ -1179,7 +1218,11 @@ def test_a_window_whose_every_judge_raised_aborts_with_the_deterministic_checks(
         assert batch.found == 2
         return C.finalize_batch([], batch, degraded)
 
-    report = asyncio.run(batch_job())
+    with pytest.raises(JobAbortedException) as raised:
+        asyncio.run(batch_job())
+
+    report = raised.value.result
+    assert report["status"] == "aborted"
     assert report["window"]["runs_evaluated"] == 2
     assert report["decided_count"] > 0
     assert report["passed"] is False
@@ -1187,11 +1230,30 @@ def test_a_window_whose_every_judge_raised_aborts_with_the_deterministic_checks(
     assert "token limit" in report["summary"]
 
 
+def test_every_judge_failure_is_printed_as_it_happens(capsys):
+    """The report names them too, and a window that raises later leaves only the job log."""
+    class _Loop:
+        async def run(self, inputs):
+            raise RuntimeError("the loop hit its token limit")
+
+    async def judged():
+        batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
+                                inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
+        return await C.judge_runs(_Loop(), batch.preps, tolerate_failures=True)
+
+    asyncio.run(judged())
+
+    printed = capsys.readouterr().out
+    assert printed.count("the judge never answered on inspector run") == 2
+    assert INSPECTOR_RUN_ID in printed
+    assert "the loop hit its token limit" in printed
+
+
 def test_a_window_that_graded_nothing_says_so_instead_of_printing_an_empty_table():
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector",
                             until=datetime(2026, 9, 24, tzinfo=timezone.utc))
-    final = C.finalize_batch([], batch)
+    final = C.batch_report([], batch)
     assert batch.found == 0
     assert "| inspector_run_id |" not in final["summary"]
     assert "nothing to tabulate" in final["summary"]
@@ -1282,18 +1344,21 @@ def test_the_batch_window_starts_at_the_definition_change_and_says_so():
     # the run of the older definition is outside the window
     assert [prep.inspector_run_id for prep in batch.preps] == [INSPECTOR_RUN_ID]
     assert "workspace deployment 26, the deploy that last changed" in batch.window["since_is"]
-    final = C.finalize_batch([], batch)
+    final = C.batch_report([], batch)
     assert ("The window starts where workspace deployment 26, the deploy that last changed"
             in final["summary"])
 
 
-def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
-    """The deployment function raises on one and completes on the other."""
+def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault(capsys):
+    """`finalize_batch` raises on one and returns `{}` on the other, so the deployment
+    function hands the report over rather than deciding."""
     quiet = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector",
                             until=datetime(2026, 9, 24, tzinfo=timezone.utc))
     assert quiet.found == 0
-    assert C.finalize_batch([], quiet)["status"] == "succeeded"
+    assert C.batch_report([], quiet)["status"] == "succeeded"
+    assert C.finalize_batch([], quiet) == {}
+    assert "0 inspector run(s) found" in capsys.readouterr().out
 
     source = week_fetcher()
     source.logs[INSPECTOR_RUN_ID] = inspector_log(result_json=None)
@@ -1301,7 +1366,11 @@ def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
     faulty = C.prepare_batch({"run_id": "local"}, fetcher=source,
                              inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
     assert faulty.found == 2 and faulty.preps == []
-    assert C.finalize_batch([], faulty)["status"] == "failed"
+    assert C.batch_report([], faulty)["status"] == "failed"
+    with pytest.raises(JobAbortedException) as raised:
+        C.finalize_batch([], faulty)
+    assert raised.value.result["status"] == "aborted"
+    assert raised.value.result["window"]["runs_skipped"] == 2
 
 
 # the shape every background agent's summary takes
@@ -1395,7 +1464,8 @@ def test_the_rendered_summary_links_the_ids_the_checks_wrote():
     prep.links = ("https://app.example", "ws-1")
     final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
     summary = final["summary"]
-    assert f"[`{INSPECTOR_RUN_ID}`](https://app.example/w/ws-1/runs/{INSPECTOR_RUN_ID})" in summary
+    # the uuid is the target, the job and the run number the text
+    assert f"[#7](https://app.example/w/ws-1/runs/{INSPECTOR_RUN_ID})" in summary
     # a reasoning that names the inspected run carries the link too
     assert summary.count(f"/runs/{FAILED_RUN_ID}") > 1
     assert_summary_shape(

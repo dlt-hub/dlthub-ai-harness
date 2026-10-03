@@ -30,12 +30,30 @@ def transform(run_context: TJobRunContext):
 An installed agent definition becomes a job by naming it:
 
 ```python
+import importlib.util
+
+from dlt.hub import run
+
+# loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
+# entry pointing at the agent folder would shadow or be shadowed by another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
+)
+links = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(links)
+
 inspector = run.agent(
     "dlthub-platform:job-inspector",
-    # `ingest` is a tag this workspace puts on its own jobs, narrower than the default
+    # `ingest` is a tag this workspace puts on its own jobs
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},
+    # the summary names runs by uuid; this writes each one as a link to its page
+    outputs_validator=links.link_summary,
 )
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector"]
 ```
 
 The job is named after the definition (`job_inspector`), and every decorator argument
@@ -43,24 +61,176 @@ overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `ski
 `rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
 for them, and on a decorated function the argument replaces the list, every axis included.
 
+`outputs_validator` is called with the model's output before `summary` is read off it, on a
+referenced agent and a decorated function alike. `link_summary` in the inspector's `links.py`
+returns the output with every run id and job ref in the summary written as a link to its web
+UI page, labelled with the run number. Without it the summary is stored as the model wrote
+it, a uuid inside a code span. The import fails when `.claude/dlthub/agents/job-inspector/`
+is missing, and so does the `"dlthub-platform:job-inspector"` reference beside it: both mean
+the toolkit is not installed in the workspace.
+
 **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
 them. Without it the job runs as a batch job on `prod` and the production credentials land
 in its environment. The agent's `access` block decides which tools the model is offered; the
 profile decides which credentials the job process holds, so declare both. Work that needs
 production write credentials belongs in a pipeline or a plain job that a person wrote.
 
+### Model, credentials and verbosity
+
+A shipped definition names no model, so the workspace sets one for every agent job it runs.
+Set these as workspace variables, which reach the runner as environment and override
+`.dlt/secrets.toml`:
+
+| Variable | Anthropic | Azure OpenAI |
+|---|---|---|
+| `AGENT__MODEL` | `anthropic:claude-sonnet-5` | `azure:<deployment name>` |
+| `AGENT__API_KEY` | the Anthropic key | the Azure key |
+| `AGENT__API_URL` | unset | `https://<resource>.openai.azure.com` |
+| `AGENT__API_VERSION` | unset | the api-version your deployment serves |
+
+```bash
+printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
+```
+
+Pick a model at least as capable as Claude Sonnet 5: `anthropic:claude-sonnet-5` (`sonnet`),
+`openai:gpt-5.4-mini` (`gpt-mini`), `google:gemini-3.5-flash` (`gemini`), or your own Azure
+deployment. Step up to `opus`, `gpt` or `gemini-pro` for a check that keeps coming back wrong
+after its rubric was fixed. `run.agent` takes `model=` too and configuration outranks it, so
+leave it out of the deployment code and the two cannot disagree.
+
+Leave `agent.verbosity` at 1, its default. At 0 the job log drops the tool calls and thoughts
+the evaluator reads.
+
+### Code around the loop
+
 Decorate a function instead when code has to run around the loop. The evaluator for the
 inspector does that: it computes its deterministic checks before the loop and writes them
 over the model's output after it.
 
+Two deployments drive the one definition:
+
+| deployment | trigger | what one job run produces |
+|---|---|---|
+| scheduled | `schedule:0 7 * * 1` | one report over a window of inspector runs, with a recommendation |
+| triggered | `inspector.success`, `inspector.fail` | one grade for the inspector run that just finished |
+
+Deploy the scheduled one unless a grade has to land on each inspection as it happens. Both
+make one judge call per graded run, and the schedule caps how many a job run makes at
+`max_runs`, grades the window in a single job run, and is the only form that reads a pattern
+across runs and recommends a change to the inspector's definition. The triggered form starts
+a job run per inspection, with no cap on what a busy day costs. Deploy one or the other: an
+inspector watched by both is graded twice.
+
+Both snippets name the function `job_inspector_eval`, because the job is named after it.
+Switching from one form to the other replaces the job, keeping its history and its page.
+Renaming the function instead leaves the first job deployed, trigger and all, beside the
+second.
+
+#### One report over a window
+
 ```python
+import importlib.util
 import sys
 from typing import Annotated
 
 from dlt.hub import run
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
+
+# `section` pins the module the job ref names, which is the default `inspector_job_ref` below
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    section="__deployment__",
+    trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
+    # `links` is the module the first snippet loads
+    outputs_validator=links.link_summary,
+)
+
+
+@run.agent(
+    agent="dlthub-platform:job-inspector-eval",
+    trigger="schedule:0 7 * * 1",
+    require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
+)
+async def job_inspector_eval(
+    run_context: run.TJobRunContext = None,
+    inspector_job_ref: Annotated[
+        str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
+    ] = "jobs.__deployment__.job_inspector",
+    window_days: Annotated[
+        int, run.Doc("fallback window with no deployment history")
+    ] = checks.DEFAULT_WINDOW_DAYS,
+    max_runs: Annotated[
+        int, run.Doc("inspector runs one scheduled job grades")
+    ] = checks.DEFAULT_BATCH_RUNS,
+    max_runs_read: Annotated[
+        int,
+        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
+    ] = checks.DEFAULT_MAX_RUNS_READ,
+) -> dict:
+    batch = checks.prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
+                                 window_days=window_days, max_runs=max_runs,
+                                 max_runs_read=max_runs_read)
+    if batch.aborted:
+        raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
+    # one run out of budget or out of shape must not cost the rest of the window, and
+    # `judge_runs` prints each failure as it happens
+    evaluations, degraded = await checks.judge_runs(
+        run_context["ai_loop"], batch.preps, tolerate_failures=True
+    )
+    recommendation = ""
+    if evaluations:
+        recommendation = await checks.judge_window_recommendation(
+            run_context["ai_loop"], evaluations + degraded, batch
+        )
+    return checks.finalize_batch(evaluations, batch, degraded, recommendation)
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector", "job_inspector_eval"]
+```
+
+The window starts where the inspector's definition last changed, so every run in the report
+was graded against the instructions it ran under. With no deployment history it falls back to
+`window_days`.
+
+`finalize_batch` decides what the job does with the report, so the deployment hands it over
+rather than reading it. It returns the report where a judge run completed, prints the report
+and returns `{}` on an empty window, and raises `run.JobAbortedException` carrying the report
+where the window found runs and no judge run completed.
+
+#### One grade per inspector run
+
+```python
+import importlib.util
+import sys
+from typing import Annotated
+
+from dlt.hub import run
+
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -69,6 +239,8 @@ inspector = run.agent(
     section="__deployment__",
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},
+    # `links` is the module the first snippet loads
+    outputs_validator=links.link_summary,
 )
 
 
@@ -76,6 +248,7 @@ inspector = run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
     require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
@@ -92,9 +265,9 @@ async def job_inspector_eval(
     max_runs_read: Annotated[
         int,
         run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
+    ] = checks.DEFAULT_MAX_RUNS_READ,
 ) -> dict:
-    prep = prepare(
+    prep = checks.prepare(
         run_context,
         inspector_run_id=inspector_run_id,
         inspector_job_ref=inspector_job_ref,
@@ -104,8 +277,18 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-    return finalize(output, prep)
+    evaluations, degraded = await checks.judge_runs(
+        run_context["ai_loop"], [prep], tolerate_failures=True
+    )
+    if not evaluations:
+        # the judge ran out of turns or tokens after Python decided its checks;
+        # `judge_runs` kept those rather than lose the run's whole result
+        raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
+    return evaluations[0]
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector", "job_inspector_eval"]
 ```
 
 A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.
@@ -115,8 +298,9 @@ module on the factory, so a factory whose triggers are used in the same module p
 `section=` itself; without it the manifest is rejected with `triggers referencing unknown
 jobs`.
 
-Four constraints on the function form, because the function overrides the `AGENT.md` it
-drives:
+#### Four constraints on the function form
+
+The function overrides the `AGENT.md` it drives, on both deployments:
 
 - No docstring, or it replaces the body of the `AGENT.md`.
 - Return `dict`, not `TAgentOutput`, or it replaces the declared output schema.

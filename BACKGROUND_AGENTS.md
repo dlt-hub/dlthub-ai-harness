@@ -60,16 +60,16 @@ valid definition, named after its folder, with the standard output.
 | `access` | what the agent may touch: `local`, `data`, `context` (§ access) |
 | `inputs` | JSON Schema of what the agent takes; every input is a job configuration key (§ inputs) |
 | `output` | JSON Schema of what the agent returns; `status` and `summary` are always in it (§ output) |
-| `defaults` | settings the agent job and the run may override: `trigger`, `model`, `limits`, `loop_run_args` (§ defaults) |
+| `defaults` | settings the agent job and the run may override: `model`, `limits`, `loop_run_args` (§ defaults) |
 | body | the system prompt, a template over `inputs` (§ the body) |
 
 ### `tools`
 
 Feature groups of the dlthub MCP server, the platform-side tools: `jobs`, `logs`,
-`telemetry`, `workspace`, `pipeline`, `toolkit`, `secrets`, `context`, plus whatever other
-plugins contribute. The agent gets exactly the groups listed, not the server's interactive
-defaults, and within a group only the tools its `access` covers (§ access). No `tools`, no
-server.
+`telemetry`, `workspace`, `pipeline`, `toolkit`, `secrets`, `context`, `config`, plus
+whatever other plugins contribute. The agent gets exactly the groups listed, not the
+server's interactive defaults, and within a group only the tools its `access` covers
+(§ access). No `tools`, no server.
 
 ```yaml
 tools: [jobs, logs, telemetry]
@@ -164,6 +164,12 @@ An input that names a workspace entity carries `entity_type`: `job-run`, `job`, 
 `dataset` or `workspace`. The agent receives the bare id (a run id, a job ref, a pipeline
 name); dlt composes the entity reference `job-run/<id>` when it reports.
 
+dlt owns this vocabulary. A value outside it fails manifest generation, and every job in the
+manifest goes down with it. The spelling here is the one the dlt floor in `pyproject.toml`
+accepts. Take a rename only once it is in a released dlt the floor can move to: a value read
+off a prerelease dlt validates locally and breaks for whoever installs from PyPI. The
+`dlt-floor` leg in `.github/workflows/lint.yml` runs the validator against that floor.
+
 Declaring it does two things:
 
 1. The run reports the entity in its job result's `object` list, so the run shows up on
@@ -217,11 +223,17 @@ Add the agent's own fields next to them. What to know about the schema:
   Anthropic's structured output rejects `minimum`, `maximum` and `minLength`. Put numeric
   bounds in the description.
 - **Every object names its `properties`.** A bare `type: object` means "any object", which a
-  strict validator refuses, so OpenAI's structured output falls back or rejects the schema. A
-  field Python fills after the loop is declared as fully as one the model writes.
-- **Keep the schema small.** The model reads all of it on every run, and a large one has
-  stopped a job launching. `job-inspector-eval` declares 17 properties in about 5,600
-  characters, and a test holds it under 7,800.
+  strict validator refuses, so OpenAI's structured output falls back or rejects the schema.
+- **Declare what the model writes, and nothing else.** A field Python fills after the loop
+  reaches the job result either way: nothing validates the returned dict against this block
+  unless the deployment passes an `outputs_validator` that rewrites it. Declaring one spends
+  the model's grammar on a value that is overwritten. The exception is a field carrying an
+  `entity_type`, which the platform reads off the output to file the run under that entity.
+- **Keep the schema small.** The model reads all of it on every run. `job-inspector` declares
+  15 properties in about 3,900 characters and launches. `job-inspector-eval` declaring 48 in
+  6,900 was refused by Anthropic with `400 invalid_request_error: Schema is too complex`,
+  before any judge pass ran and with the optional-parameter count already inside the cap. It
+  declares 12 in about 2,700 now, and a test holds it under 3,500.
 
 The agent run's `status` decides what the job does: `succeeded` and `failed` complete the
 run; `aborted` raises with `summary` as the message and the run fails, after the result and
@@ -250,10 +262,10 @@ reader sees without opening the result. Every agent writes it the same way:
 - **A markdown table only as the last thing in the last section**, when the agent reports
   rows. Its headers are lowercase and name the field in the row. A row that measured nothing
   stays out; how many there were belongs in `Scope` or in the tally above the table.
-- **Every run id and job ref is a link**, wherever it falls.
-  `[`<id>`](<web ui base>/w/<workspace id>/runs/<id>)` for a run, `/jobs/<job ref>` for a job.
-  `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints a run
-  link.
+- **Every run id and job ref is a link**, wherever it falls. The text is the id in a code span
+  and the target is `<web ui base>/w/<workspace id>/runs/<id>` for a run, `/jobs/<job ref>` for
+  a job. `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints
+  a run link.
 - **Markdown only, no raw HTML.** The summary renderer in the web UI strips tags, so a
   `<details>` element folding a long list arrives as an empty section. A long list goes in as
   plain bullets.
@@ -304,19 +316,19 @@ Settings the agent job may set differently and a run may override again:
 
 ```yaml
 defaults:
-  trigger: [job.fail:*]                 # trigger strings, selectors allowed
   limits: {max_turns: 30, max_tokens: 1000000}
   loop_run_args: {retries: 1}           # framework-specific; unknown keys are reported, not fatal
 ```
 
-`trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
-`job.success:...`. `job.fail:*` watches every job in the workspace and expands at manifest
-time, never onto the job that declares it; see "Triggers that would loop" before using it. A
-run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it
-was given, which is why the body must say what to do with empty input. `limits.max_tokens` is
-counted by dlt after every turn, so it means the same on every loop. `loop_run_args` are
-handed to the framework: `retries` is how often pydantic-ai lets the model correct a failing
-tool call, and keys a loop does not know are listed in the trace as ignored.
+`limits.max_tokens` is counted by dlt after every turn.
+`loop_run_args` are handed to the framework: `retries` is how often pydantic-ai lets the model
+correct a failing tool call; keys the loop does not know are listed in the trace as ignored.
+
+A definition sets no `trigger`. `to_agent_definition` drops `defaults` from the manifest
+and the loop takes `model`, `limits` and `loop_run_args` from it, so a trigger declared here
+does nothing. The trigger belongs to `run.agent(trigger=...)`, where the workspace declares
+which of its own jobs the agent watches. `make validate-toolkits` rejects a
+`defaults.trigger`.
 
 Precedence, lowest first: loop default, `defaults` here, the agent job's arguments,
 configuration at run time. A runtime value always wins, so put here what should hold when
@@ -391,12 +403,18 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     # access comes from the definition: local: [read], context: [read]. an `access=`
     # argument on a referenced agent is dropped; see below
-    # `ingest` is a tag this workspace puts on its own jobs, narrower than the default
+    # `ingest` is a tag this workspace puts on its own jobs
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},       # see "Profile"
     instructions="focus on the loader step",
 )
 ```
+
+`trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
+`job.success:...`. `job.fail:*` watches every job in the workspace and expands at manifest
+time, never onto the job that declares it; see "Triggers that would loop" before using it. A
+run started by hand or from the UI arrives with a `manual:` trigger and only the inputs it
+was given, which is why the body must say what to do with empty input.
 
 Every decorator argument overrides the matching `defaults`, and configuration overrides both;
 `instructions` is the user turn of every run. The job is named after the definition (`job_inspector`). Instead of a
@@ -459,9 +477,9 @@ run prints to the job's log at the configured verbosity.
 
 An agent that runs unattended is read by a person only when its output matters, so nothing
 tells you whether it followed its own instructions. An **evaluator agent** answers that: it
-runs as a follow-up job after every run of the agent it grades, reads that run's result,
-trace and log together with whatever the run acted on, and reports one outcome per
-instruction. The working example is
+reads a graded run's result, trace and log together with whatever that run acted on, and
+reports one outcome per instruction. It deploys on a schedule over a window of runs or as a
+follow-up job after every run, and the scheduled form is the default. The working example is
 [`job-inspector-eval`](workbench/dlthub-platform/agents/job-inspector-eval/AGENT.md),
 which grades `job-inspector`.
 
@@ -481,9 +499,60 @@ An evaluator has four parts:
 - **The computed results are written back over the judge's output**, so a judge answer that
   contradicts a computed one is discarded.
 
-The evaluator listens on both `job.success` and `job.fail` of the agent it grades. An agent
-that reports `status: aborted` raises, so its run fails, and the instructions that only apply
-to an aborted run are graded on exactly those runs.
+Both deployments grade a run that succeeded and a run that failed. An agent that reports
+`status: aborted` raises, so its run fails, and the instructions that only apply to an aborted
+run are graded on exactly those runs. The scheduled job takes every finished run in its
+window; the triggered one listens on both `job.success` and `job.fail` of the agent it grades.
+
+### Linking the runs and jobs a summary names
+
+An agent writes a run id as a uuid, because that is what a person pastes into
+`dlthub job runs logs`. It cannot write a link: its `run_context` carries the trigger, the
+run id and the interval, and no workspace id or UI base. So the ids become links after the
+loop, in `links.py` under `agents/job-inspector/`. The inspector and the evaluator share
+that one module, so a run reads the same way in both summaries.
+
+The reference form runs no code of its own after the loop, so it passes `link_summary` as the
+`outputs_validator` of `run.agent`. The launcher calls it with the model's output before
+`summary` is read off it and stores what it returns.
+
+```python
+import importlib.util
+
+# loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
+# entry pointing at the agent folder would shadow or be shadowed by another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
+)
+links = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(links)
+
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
+    outputs_validator=links.link_summary,
+)
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector"]
+```
+
+`link_summary` runs `linkify(summary, web_ui(), labels_from_platform(summary))` over the
+output's summary and returns the output. The evaluator loads the same file the same way, in
+`_shared_links` in its `checks.py`, and links while it renders its own summary.
+
+The decorated function below takes no docstring. `reflection.py` reads one as the agent's
+system prompt, so a wrapper that carries one replaces the referenced definition's body and
+the agent runs without its instructions. Put the explanation in a comment.
+
+A span holding an id becomes the text of the link, since a link wrapped around a code span
+renders and a link written inside one prints its markup. So the inspector's
+`` `dlthub job runs logs <id>` `` is what the reader clicks. `labels_from_platform` reads the
+run number behind each id and makes it the link text, so a reader meets `#114` rather than a
+uuid; the evaluator passes `run_labels` instead, built from the runs it already holds. Wiring
+it needs the decorated form below.
 
 ### Code around the loop
 
@@ -491,66 +560,24 @@ Deterministic checks have to run before the loop and again after it, which the d
 has no seam for. A function decorated with `run.agent(agent="<toolkit>:<agent>")` does: it
 keeps the referenced definition's prompt and schemas, and owns the run.
 
-```python
-import sys
-from typing import Annotated
+Two deployments drive the same definition:
 
-from dlt.hub import run
+| deployment | trigger | what one job run produces |
+|---|---|---|
+| scheduled | `schedule:0 7 * * 1` | one report over a window of graded runs, with a recommendation |
+| triggered | `inspector.success`, `inspector.fail` | one grade for the run that just finished |
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
+Deploy the scheduled one unless a grade has to land on each run as it happens. Both make one
+judge call per graded run, and the schedule caps how many a job run makes at `max_runs`,
+grades the window in a single job run, and is the only form that reads a pattern across runs
+and recommends a change to the graded agent's definition. The triggered form starts a job run
+per graded run, with no cap on what a busy day costs. Deploy one or the other: an agent
+watched by both is graded twice.
 
-# `section` is explicit because `.success` and `.fail` are read at import time, before the
-# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
-inspector = run.agent(
-    "dlthub-platform:job-inspector",
-    section="__deployment__",
-    trigger="job.fail:tag:ingest",
-    require={"profile": "access"},
-)
-
-
-@run.agent(
-    agent="dlthub-platform:job-inspector-eval",
-    trigger=[inspector.success, inspector.fail],
-    require={"profile": "access"},
-)
-async def job_inspector_eval(
-    run_context: run.TJobRunContext = None,
-    inspector_run_id: Annotated[
-        str,
-        run.Entity("job-run"),
-        run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
-    ] = "",
-    inspector_job_ref: Annotated[
-        str,
-        run.Entity("job"),
-        run.Doc("job ref of the inspector job; its latest run is evaluated without a run id"),
-    ] = "",
-    max_runs_read: Annotated[
-        int,
-        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
-) -> dict:
-    prep = prepare(
-        run_context,
-        inspector_run_id=inspector_run_id,
-        inspector_job_ref=inspector_job_ref,
-        max_runs_read=max_runs_read,
-    )
-    if prep.aborted:
-        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
-        # and this path never started the loop
-        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    evaluations, degraded = await judge_runs(
-        run_context["ai_loop"], [prep], tolerate_failures=True
-    )
-    if not evaluations:
-        # the judge ran out of turns or tokens after Python decided its checks; `judge_runs`
-        # kept those rather than lose the run's whole result
-        raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
-    return evaluations[0]
-```
+Both snippets below name the function `job_inspector_eval`, because the job is named after
+it. Switching from one form to the other replaces the job, keeping its history and its page.
+Renaming the function instead leaves the first job deployed, trigger and all, beside the
+second.
 
 The function overrides the definition it drives, so watch the signature. Give it **no
 docstring**, since a docstring replaces the body. Return **`dict` rather than
@@ -566,16 +593,19 @@ A path that never started the loop raises rather than returns. dlt reads `loop.t
 returned dict carrying `status`, so returning one from the abort branch fails the run with
 `AgentTraceNotAvailable` and loses the abort reason. A loop that started and then raised is
 the same case: it records its trace only on the way out of a normal return, so the degraded
-evaluation goes out through `JobAbortedException` too.
-
-`.success` and `.fail` are read at import time, before the manifest loader stamps the module
-on the factory, so an agent whose triggers are used in the same module sets `section=`
-itself. Without it the trigger names `jobs.job_inspector` and the manifest is rejected with
-`triggers referencing unknown jobs`.
+evaluation goes out through `JobAbortedException` too. The window form hands that decision to
+`finalize_batch`.
 
 An agent folder travels as ordinary workspace files, so supporting code sits next to the
-`AGENT.md` and the deployment reaches it through `sys.path`. The runner unpacks it under the
-run directory, so the same relative path works there.
+`AGENT.md` and the deployment reaches it through `sys.path`. The install copies the folder
+whole and the runner unpacks it under the run directory, so the same relative path works in
+both places.
+
+Nothing in the definition calls that code: the agent spec has no field for a module, and the
+deployment function does the importing. So the `AGENT.md` names every module beside it and
+says what a deployment owes it, which `make validate-toolkits` enforces. It is the one
+installed file a reader meets first, and an evaluator declared by bare reference starts its
+judge with no prepared inputs and merges no results.
 
 Code that talks to the platform reads dlt's own `active().runtime_config` for the credential
 (`api_key` or `auth_token`, `workspace_id`, `api_base_url`) rather than the environment. The
@@ -583,48 +613,82 @@ same call resolves from `.dlt/config.toml` locally and from the mounted configur
 runner, so there is nothing to guess about which keys the platform injects. A frontmatter field resolving a
 module in the agent folder would replace that line; it is a dlt follow-up.
 
-### Running an evaluator on a schedule
+#### One report over a window
 
-The declaration above evaluates one run per trigger. A workspace that would rather read one
-report covering the runs of the current definition deploys the same agent on a schedule and
-lets the preparation step resolve the window:
+The scheduled deployment grades every run of the graded agent since its definition last
+changed and writes one report with a recommendation. The preparation step resolves the
+window:
 
 ```python
+import importlib.util
+import sys
+from typing import Annotated
+
+from dlt.hub import run
+
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
+
+
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger="schedule:0 7 * * 1",
     require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
 )
-async def job_inspector_eval_batch(
+async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_job_ref: Annotated[
         str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
     ] = "jobs.__deployment__.job_inspector",
-    window_days: Annotated[int, run.Doc("fallback window with no deployment history")] = 7,
-    max_runs: Annotated[int, run.Doc("runs one scheduled job evaluates")] = 25,
+    window_days: Annotated[
+        int, run.Doc("fallback window with no deployment history")
+    ] = checks.DEFAULT_WINDOW_DAYS,
+    max_runs: Annotated[
+        int, run.Doc("runs one scheduled job evaluates")
+    ] = checks.DEFAULT_BATCH_RUNS,
+    max_runs_read: Annotated[
+        int,
+        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
+    ] = checks.DEFAULT_MAX_RUNS_READ,
 ) -> dict:
-    batch = prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
-                          window_days=window_days, max_runs=max_runs)
+    batch = checks.prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
+                                 window_days=window_days, max_runs=max_runs,
+                                 max_runs_read=max_runs_read)
     if batch.aborted:
         raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
-    # one run out of budget or out of shape must not cost the rest of the window
-    evaluations, degraded = await judge_runs(
+    # one run out of budget or out of shape must not cost the rest of the window, and
+    # `judge_runs` prints each failure as it happens
+    evaluations, degraded = await checks.judge_runs(
         run_context["ai_loop"], batch.preps, tolerate_failures=True
     )
-    if not evaluations:
-        # not one loop run completed, so `loop.trace` does not exist and a returned dict
-        # fails the job on it; the degraded runs carry their deterministic checks into the
-        # aborted output
-        report = finalize_batch([], batch, degraded)
-        if batch.found:
-            raise run.JobAbortedException(report["summary"], {**report, "status": "aborted"})
-        print(report["summary"])
-        return {}
-    recommendation = await judge_window_recommendation(
-        run_context["ai_loop"], evaluations + degraded, batch
-    )
-    return finalize_batch(evaluations, batch, degraded, recommendation)
+    recommendation = ""
+    if evaluations:
+        recommendation = await checks.judge_window_recommendation(
+            run_context["ai_loop"], evaluations + degraded, batch
+        )
+    return checks.finalize_batch(evaluations, batch, degraded, recommendation)
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["job_inspector_eval"]
 ```
+
+`finalize_batch` owns what the job does with the report, so the three endings of a window are
+settled in one place rather than in every deployment that copies this snippet. It returns the
+report where a judge run completed. It prints the report and returns `{}` on an empty window.
+It raises `run.JobAbortedException` carrying the report where the window found runs and no
+judge run completed, since a loop that completed no run records no trace and a returned dict
+carrying `status` is read against one.
 
 What the scheduled path settles:
 
@@ -654,30 +718,116 @@ What the scheduled path settles:
 - **The job result carries the last loop's trace.** dlt stores one trace per job run, so a
   batch output counts turns and tokens over its evaluations instead.
 - **An empty window reports to the log.** Right after a definition change the graded agent
-  has not run yet. A job whose loop never started has no trace, and `_finish` reads one on any
-  returned dict carrying `status`, so an empty window prints its report and returns `{}`. A
-  window that found runs and graded none raises.
+  has not run yet, which is not a fault: `finalize_batch` prints the report and returns `{}`.
+  A window that found runs and graded none raises instead, carrying the report.
 - **The recommendation is written over a window only.** A change to the instructions the
   agent followed rests on a pattern across runs. The scheduled job makes one more judge call
   after the window is graded, given the broken checks with how many runs broke each and a few
   of the reasonings, and writes one to three bullets naming the file and the section to
   change.
+- **A recommendation never weakens a guardrail.** The graded agent's constraints, its `access`
+  and `tools` blocks and the bans its definition states stand whatever the window shows, so a
+  broken check that turns on one of them is answered by sharpening that instruction.
 
-Deploy one or the other. An agent watched by both is graded twice.
+#### One grade per run
+
+The triggered deployment grades the run that just finished and recommends nothing: a change
+to the instructions rests on a pattern across runs, which one evaluation does not show.
+
+```python
+import importlib.util
+import sys
+from typing import Annotated
+
+from dlt.hub import run
+
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
+
+# `section` is explicit because `.success` and `.fail` are read at import time, before the
+# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    section="__deployment__",
+    trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
+)
+
+
+@run.agent(
+    agent="dlthub-platform:job-inspector-eval",
+    trigger=[inspector.success, inspector.fail],
+    require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
+)
+async def job_inspector_eval(
+    run_context: run.TJobRunContext = None,
+    inspector_run_id: Annotated[
+        str,
+        run.Entity("job-run"),
+        run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
+    ] = "",
+    inspector_job_ref: Annotated[
+        str,
+        run.Entity("job"),
+        run.Doc("job ref of the inspector job; its latest run is evaluated without a run id"),
+    ] = "",
+    max_runs_read: Annotated[
+        int,
+        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
+    ] = checks.DEFAULT_MAX_RUNS_READ,
+) -> dict:
+    prep = checks.prepare(
+        run_context,
+        inspector_run_id=inspector_run_id,
+        inspector_job_ref=inspector_job_ref,
+        max_runs_read=max_runs_read,
+    )
+    if prep.aborted:
+        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
+        # and this path never started the loop
+        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
+    evaluations, degraded = await checks.judge_runs(
+        run_context["ai_loop"], [prep], tolerate_failures=True
+    )
+    if not evaluations:
+        # the judge ran out of turns or tokens after Python decided its checks;
+        # `judge_runs` kept those rather than lose the run's whole result
+        raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
+    return evaluations[0]
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector", "job_inspector_eval"]
+```
+
+`.success` and `.fail` are read at import time, before the manifest loader stamps the module
+on the factory, so an agent whose triggers are used in the same module sets `section=`
+itself. Without it the trigger names `jobs.job_inspector` and the manifest is rejected with
+`triggers referencing unknown jobs`.
 
 #### Inputs and where a default lives
 
-Every input is a parameter of the deployment function above. A workspace changes a default by
+Every input is a parameter of the deployment functions above. A workspace changes a default by
 editing that parameter; a single run overrides one with `-c <name>=...`, and a job section in
 `config.toml` overrides it for every run of that job.
 
-| input | per-run deployment | scheduled deployment | default |
+| input | scheduled deployment | per-run deployment | default |
 |---|---|---|---|
-| `inspector_run_id` | the run graded; empty on a trigger, then `prev_run_id` | unused | `""` |
-| `inspector_job_ref` | the job whose latest run is graded when no run id is given | the job whose window is graded | `""`, and the inspector's job ref on the scheduled one |
-| `max_runs_read` | bounds `single_run_scope` | the same, on every run in the window | `DEFAULT_MAX_RUNS_READ` in `checks.py`, 5 |
-| `window_days` | unused | how far back the window reaches with no deployment history | `DEFAULT_WINDOW_DAYS` in `checks.py`, 7 |
-| `max_runs` | unused | inspector runs one scheduled job grades | `DEFAULT_BATCH_RUNS` in `checks.py`, 25 |
+| `inspector_job_ref` | the job whose window is graded | the job whose latest run is graded when no run id is given | `""`, and the inspector's job ref on the scheduled one |
+| `max_runs` | inspector runs one scheduled job grades | unused | `DEFAULT_BATCH_RUNS` in `checks.py`, 25 |
+| `window_days` | how far back the window reaches with no deployment history | unused | `DEFAULT_WINDOW_DAYS` in `checks.py`, 7 |
+| `max_runs_read` | bounds `single_run_scope` on every run in the window | the same, on the one run graded | `DEFAULT_MAX_RUNS_READ` in `checks.py`, 5 |
+| `inspector_run_id` | unused | the run graded; empty on a trigger, then `prev_run_id` | `""` |
 
 `prepare_batch` also takes `since` to pin the window start. It is an argument of the function,
 not a declared input, so a deployment that exposes it as a parameter gets a manifest warning
@@ -741,15 +891,25 @@ warning, so leave it unset.
 
 ### Running an evaluation by hand
 
+The scheduled form grades its window:
+
+```bash
+dlthub local run job_inspector_eval -c inspector_job_ref=jobs.__deployment__.job_inspector
+```
+
+The triggered form grades one run:
+
 ```bash
 dlthub local run job_inspector_eval -c inspector_run_id=<run id>
 ```
+
+Or its latest run:
 
 ```bash
 dlthub local run job_inspector_eval -c inspector_job_ref=jobs.job_inspector
 ```
 
-Without inputs the evaluator reads the `prev_run_id` of its own run, which the scheduler sets
+Without inputs the triggered evaluator reads the `prev_run_id` of its own run, which the scheduler sets
 when the trigger started it. The resolution order is the given run id, then `prev_run_id`,
 then the latest run of the given job ref, then the latest run of the job a `job.success:` or
 `job.fail:` trigger names, then `aborted`.
@@ -782,6 +942,22 @@ summary each renders is a golden file, so a diff on one is a change in what the 
 A further test merges captures into one root and runs the batch path over them.
 
 ### What an evaluation reports
+
+The declared `output` is the four fields the judge writes and the four ids that carry an
+`entity_type`. Every other field of the result is computed after the loop and declared
+nowhere: a schema holding all of them was refused with `400 invalid_request_error: Schema is
+too complex`, and nothing validates a returned dict against the declaration unless the
+deployment passes an `outputs_validator` that rewrites it.
+
+The docstrings of `finalize` and `batch_report` in `checks.py` list those fields, and a test
+walks the real output against them. They sit there rather than here because the agent folder
+is what an install copies into a workspace, so a deployment reads the shape of its own result
+off the code it imports.
+
+The four declared ids are declared for their `entity_type` alone. The platform reads it off
+the output and puts the evaluation on the page of each run and job it names, which is how a
+triggered evaluation reaches the inspector run that started it when the run was resolved from
+`prev_run_id`.
 
 `passed` is true when no check is FALSE, every open check came back answered, and at least
 one check was decided. A judge response that is empty or cut off leaves checks unanswered and
@@ -844,8 +1020,14 @@ over a window, because one run decides tens of checks and a window thousands:
   only at the end of the last section (§ the shape of `summary`)
 - `output` declares `status` and `summary`, described and required, with the standard
   values; a contradicting declaration is an error, a missing one a warning
+- every property of `inputs` and `output` names a `type`, an enum included, and the optional
+  properties stay inside Anthropic's cap of 24
+- the output schema stays inside the property and character budget a provider has accepted,
+  as a warning: the limit behind `Schema is too complex` is not published
 - `skills` and `rules` refs resolve in the toolkit or a declared dependency
-- `defaults` and `defaults.limits` keys are known, and `defaults` sets no `model`
+- `defaults` and `defaults.limits` keys are known, and `defaults` sets no `model` and no
+  `trigger`
+- every `.py` in the agent folder is named by the `AGENT.md` beside it
 
 dlthub validates again when the deployment manifest is generated: the body is required, the
 name falls back to the folder, `access` is checked, an unknown `entity_type` is refused, a
@@ -858,10 +1040,15 @@ that does not resolve in the workspace is skipped with a warning.
 - `tools` lists only the feature groups the task needs; `access` only the verbs it needs.
 - Every input has a `description`, entity inputs have `entity_type`, and the body names every
   input and says what to do when it is empty.
-- `output` keeps `status` and `summary` as declared above and describes every field of its
-  own; an entity the agent may resolve itself is an output property too.
+- `output` keeps `status` and `summary` as declared above, describes every field of its own,
+  and declares nothing the model does not write. An entity the agent resolves itself is the
+  one exception: it stays in the schema for its `entity_type`.
 - The body defines succeeded, failed and aborted for this agent, gives the first steps, and
   defines every enum.
-- `defaults` holds a sensible trigger and limits and no `model`; the `AGENT.md` says what
-  model to pin. Nothing in `defaults` is a requirement.
+- An evaluator's recommendation pass asks for no change that weakens a guardrail of the graded
+  agent: its constraints, its `access` and `tools` blocks, and the bans its definition states.
+  A broken check that turns on one of them is answered by sharpening that instruction.
+- `defaults` holds sensible limits and no `model` and no `trigger`; the `AGENT.md` says
+  what model to pin and the deployment sets the trigger. Nothing in `defaults` is a
+  requirement.
 - `make validate-toolkits` passes.
