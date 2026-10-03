@@ -33,6 +33,7 @@ Checks:
 - All workbench/ directories must be listed in marketplace
 """
 
+import ast
 import json
 import re
 import sys
@@ -41,7 +42,11 @@ from pathlib import Path
 
 import yaml
 from dlt._workspace.deployment.agent.exceptions import InvalidAgentSpec
-from dlt._workspace.deployment.agent.manifest import load_agent_spec
+from dlt._workspace.deployment.agent.manifest import (
+    VALIDATE_INPUT,
+    VALIDATE_OUTPUT,
+    load_agent_spec,
+)
 from dlt._workspace.deployment.agent.typing import (
     TAgentDefaults,
     TAgentJobStatus,
@@ -113,6 +118,7 @@ _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 _AGENT_FILE = COMPONENT_MARKERS["agent"]
 _AGENTS_DIR = ("agents",)
 _AGENTS_PATH = "/".join(_AGENTS_DIR)
+_AGENT_HOOKS = (VALIDATE_INPUT, VALIDATE_OUTPUT)
 _ENTITY_TYPES = get_args(THubEntityType)
 _STATUS_VALUES = list(get_args(TAgentJobStatus))
 _DEFAULTS_KEYS = set(typing.get_type_hints(TAgentDefaults))
@@ -302,8 +308,38 @@ def validate_agents(
         _validate_schema_types(pname, rel, fm, errors, warnings)
         _validate_optional_count(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
+        _validate_agent_code(pname, plugin_dir, entry, errors)
 
     return agent_names
+
+
+def _validate_agent_code(pname: str, plugin_dir: Path, agent_dir: Path, errors: list[str]) -> None:
+    """`agent.py` parses and defines its hooks as functions; symlinks stay in the toolkit.
+
+    dlt imports `agent.py` only when a job runs, so a broken one would surface on the runner.
+    The check reads the source and imports nothing. A symlinked file installs as a copy, so it
+    must resolve to a file of the same toolkit.
+    """
+    for source in sorted(agent_dir.glob("*.py")):
+        rel = f"{_AGENTS_PATH}/{agent_dir.name}/{source.name}"
+        if source.is_symlink():
+            target = source.resolve()
+            if not target.is_file() or not target.is_relative_to(plugin_dir.resolve()):
+                errors.append(f"[{pname}] {rel} links to {target}, outside the toolkit")
+            continue
+        if source.name != "agent.py":
+            continue
+        try:
+            tree = ast.parse(source.read_text(encoding="utf-8"))
+        except SyntaxError as ex:
+            errors.append(f"[{pname}] {rel} does not parse: {ex}")
+            continue
+        for node in tree.body:
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                names = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for name in names:
+                    if isinstance(name, ast.Name) and name.id in _AGENT_HOOKS:
+                        errors.append(f"[{pname}] {rel} `{name.id}` must be a function")
 
 
 def _validate_agent_body(
