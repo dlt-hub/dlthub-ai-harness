@@ -385,7 +385,10 @@ def _validate_entity_types(
     """Check `entity_type` on input and output properties.
 
     dlt's `entity_properties` rejects an unknown value, so the vocabulary is never
-    restated here. What it does not check is the two ways a *valid* value still misleads:
+    restated here. That makes the answer only as good as the installed dlt, which is why
+    `.github/workflows/lint.yml` runs this against the declared floor as well.
+
+    What it does not check is the two ways a *valid* value still misleads:
     a non-string property, and an output that renames the kind of an input.
 
     Worth catching at all because the damage is invisible at runtime.

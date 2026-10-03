@@ -50,6 +50,10 @@ inspector = run.agent(
     # the summary names runs by uuid; this writes each one as a link to its page
     outputs_validator=links.link_summary,
 )
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector"]
 ```
 
 The job is named after the definition (`job_inspector`), and every decorator argument
@@ -117,17 +121,31 @@ across runs and recommends a change to the inspector's definition. The triggered
 a job run per inspection, with no cap on what a busy day costs. Deploy one or the other: an
 inspector watched by both is graded twice.
 
+Both snippets name the function `job_inspector_eval`, because the job is named after it.
+Switching from one form to the other replaces the job, keeping its history and its page.
+Renaming the function instead leaves the first job deployed, trigger and all, beside the
+second.
+
 #### One report over a window
 
 ```python
+import importlib.util
 import sys
 from typing import Annotated
 
 from dlt.hub import run
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import (DEFAULT_BATCH_RUNS, DEFAULT_MAX_RUNS_READ, DEFAULT_WINDOW_DAYS,
-                    finalize_batch, judge_runs, judge_window_recommendation, prepare_batch)
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
 
 # `section` pins the module the job ref names, which is the default `inspector_job_ref` below
 inspector = run.agent(
@@ -144,39 +162,44 @@ inspector = run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger="schedule:0 7 * * 1",
     require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
 )
-async def job_inspector_eval_batch(
+async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_job_ref: Annotated[
         str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
     ] = "jobs.__deployment__.job_inspector",
     window_days: Annotated[
         int, run.Doc("fallback window with no deployment history")
-    ] = DEFAULT_WINDOW_DAYS,
+    ] = checks.DEFAULT_WINDOW_DAYS,
     max_runs: Annotated[
         int, run.Doc("inspector runs one scheduled job grades")
-    ] = DEFAULT_BATCH_RUNS,
+    ] = checks.DEFAULT_BATCH_RUNS,
     max_runs_read: Annotated[
         int,
         run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
+    ] = checks.DEFAULT_MAX_RUNS_READ,
 ) -> dict:
-    batch = prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
-                          window_days=window_days, max_runs=max_runs,
-                          max_runs_read=max_runs_read)
+    batch = checks.prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
+                                 window_days=window_days, max_runs=max_runs,
+                                 max_runs_read=max_runs_read)
     if batch.aborted:
         raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
     # one run out of budget or out of shape must not cost the rest of the window, and
     # `judge_runs` prints each failure as it happens
-    evaluations, degraded = await judge_runs(
+    evaluations, degraded = await checks.judge_runs(
         run_context["ai_loop"], batch.preps, tolerate_failures=True
     )
     recommendation = ""
     if evaluations:
-        recommendation = await judge_window_recommendation(
+        recommendation = await checks.judge_window_recommendation(
             run_context["ai_loop"], evaluations + degraded, batch
         )
-    return finalize_batch(evaluations, batch, degraded, recommendation)
+    return checks.finalize_batch(evaluations, batch, degraded, recommendation)
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector", "job_inspector_eval"]
 ```
 
 The window starts where the inspector's definition last changed, so every run in the report
@@ -191,13 +214,23 @@ where the window found runs and no judge run completed.
 #### One grade per inspector run
 
 ```python
+import importlib.util
 import sys
 from typing import Annotated
 
 from dlt.hub import run
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -215,12 +248,13 @@ inspector = run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
     require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_run_id: Annotated[
         str,
-        run.Entity("job-runs"),
+        run.Entity("job-run"),
         run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
     ] = "",
     inspector_job_ref: Annotated[
@@ -231,9 +265,9 @@ async def job_inspector_eval(
     max_runs_read: Annotated[
         int,
         run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
+    ] = checks.DEFAULT_MAX_RUNS_READ,
 ) -> dict:
-    prep = prepare(
+    prep = checks.prepare(
         run_context,
         inspector_run_id=inspector_run_id,
         inspector_job_ref=inspector_job_ref,
@@ -243,14 +277,18 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    evaluations, degraded = await judge_runs(
+    evaluations, degraded = await checks.judge_runs(
         run_context["ai_loop"], [prep], tolerate_failures=True
     )
     if not evaluations:
-        # the judge ran out of turns or tokens after Python decided its checks; `judge_runs`
-        # kept those rather than lose the run's whole result
+        # the judge ran out of turns or tokens after Python decided its checks;
+        # `judge_runs` kept those rather than lose the run's whole result
         raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
     return evaluations[0]
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector", "job_inspector_eval"]
 ```
 
 A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.

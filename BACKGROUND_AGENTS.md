@@ -147,7 +147,7 @@ inputs:
     failed_run_id:
       type: string
       description: run id of the failed job run to inspect
-      entity_type: job-runs
+      entity_type: job-run
   required: {}
 ```
 
@@ -160,9 +160,15 @@ inputs:
 
 ### Entities: `entity_type`
 
-An input that names a workspace entity carries `entity_type`: `job-runs`, `job`, `pipeline`,
+An input that names a workspace entity carries `entity_type`: `job-run`, `job`, `pipeline`,
 `dataset` or `workspace`. The agent receives the bare id (a run id, a job ref, a pipeline
-name); dlt composes the entity reference `job-runs/<id>` when it reports.
+name); dlt composes the entity reference `job-run/<id>` when it reports.
+
+dlt owns this vocabulary. A value outside it fails manifest generation, and every job in the
+manifest goes down with it. The spelling here is the one the dlt floor in `pyproject.toml`
+accepts. Take a rename only once it is in a released dlt the floor can move to: a value read
+off a prerelease dlt validates locally and breaks for whoever installs from PyPI. The
+`dlt-floor` leg in `.github/workflows/lint.yml` runs the validator against that floor.
 
 Declaring it does two things:
 
@@ -515,11 +521,11 @@ import importlib.util
 
 # loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
 # entry pointing at the agent folder would shadow or be shadowed by another one
-spec = importlib.util.spec_from_file_location(
+_spec = importlib.util.spec_from_file_location(
     "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
 )
-links = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(links)
+links = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(links)
 
 inspector = run.agent(
     "dlthub-platform:job-inspector",
@@ -527,6 +533,10 @@ inspector = run.agent(
     require={"profile": "access"},
     outputs_validator=links.link_summary,
 )
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector"]
 ```
 
 `link_summary` runs `linkify(summary, web_ui(), labels_from_platform(summary))` over the
@@ -563,6 +573,11 @@ grades the window in a single job run, and is the only form that reads a pattern
 and recommends a change to the graded agent's definition. The triggered form starts a job run
 per graded run, with no cap on what a busy day costs. Deploy one or the other: an agent
 watched by both is graded twice.
+
+Both snippets below name the function `job_inspector_eval`, because the job is named after
+it. Switching from one form to the other replaces the job, keeping its history and its page.
+Renaming the function instead leaves the first job deployed, trigger and all, beside the
+second.
 
 The function overrides the definition it drives, so watch the signature. Give it **no
 docstring**, since a docstring replaces the body. Return **`dict` rather than
@@ -605,53 +620,67 @@ changed and writes one report with a recommendation. The preparation step resolv
 window:
 
 ```python
+import importlib.util
 import sys
 from typing import Annotated
 
 from dlt.hub import run
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import (DEFAULT_BATCH_RUNS, DEFAULT_MAX_RUNS_READ, DEFAULT_WINDOW_DAYS,
-                    finalize_batch, judge_runs, judge_window_recommendation, prepare_batch)
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
 
 
 @run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger="schedule:0 7 * * 1",
     require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
 )
-async def job_inspector_eval_batch(
+async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_job_ref: Annotated[
         str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
     ] = "jobs.__deployment__.job_inspector",
     window_days: Annotated[
         int, run.Doc("fallback window with no deployment history")
-    ] = DEFAULT_WINDOW_DAYS,
+    ] = checks.DEFAULT_WINDOW_DAYS,
     max_runs: Annotated[
         int, run.Doc("runs one scheduled job evaluates")
-    ] = DEFAULT_BATCH_RUNS,
+    ] = checks.DEFAULT_BATCH_RUNS,
     max_runs_read: Annotated[
         int,
         run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
+    ] = checks.DEFAULT_MAX_RUNS_READ,
 ) -> dict:
-    batch = prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
-                          window_days=window_days, max_runs=max_runs,
-                          max_runs_read=max_runs_read)
+    batch = checks.prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
+                                 window_days=window_days, max_runs=max_runs,
+                                 max_runs_read=max_runs_read)
     if batch.aborted:
         raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
     # one run out of budget or out of shape must not cost the rest of the window, and
     # `judge_runs` prints each failure as it happens
-    evaluations, degraded = await judge_runs(
+    evaluations, degraded = await checks.judge_runs(
         run_context["ai_loop"], batch.preps, tolerate_failures=True
     )
     recommendation = ""
     if evaluations:
-        recommendation = await judge_window_recommendation(
+        recommendation = await checks.judge_window_recommendation(
             run_context["ai_loop"], evaluations + degraded, batch
         )
-    return finalize_batch(evaluations, batch, degraded, recommendation)
+    return checks.finalize_batch(evaluations, batch, degraded, recommendation)
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["job_inspector_eval"]
 ```
 
 `finalize_batch` owns what the job does with the report, so the three endings of a window are
@@ -706,13 +735,23 @@ The triggered deployment grades the run that just finished and recommends nothin
 to the instructions rests on a pattern across runs, which one evaluation does not show.
 
 ```python
+import importlib.util
 import sys
 from typing import Annotated
 
 from dlt.hub import run
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
+# loaded by path under a name of its own, the way `links` is: `checks` is a common module
+# name, and a `sys.path` entry pointing at the agent folder would shadow or be shadowed by
+# another one
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_checks", ".claude/dlthub/agents/job-inspector-eval/checks.py"
+)
+checks = importlib.util.module_from_spec(_spec)
+# registered before the exec: `checks.py` postpones its annotations, and a dataclass resolves
+# those through `sys.modules[__module__]`
+sys.modules[_spec.name] = checks
+_spec.loader.exec_module(checks)
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -728,12 +767,13 @@ inspector = run.agent(
     agent="dlthub-platform:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
     require={"profile": "access"},
+    expose={"tags": ["agent"], "display_name": "Job inspector evaluation"},
 )
 async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_run_id: Annotated[
         str,
-        run.Entity("job-runs"),
+        run.Entity("job-run"),
         run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
     ] = "",
     inspector_job_ref: Annotated[
@@ -744,9 +784,9 @@ async def job_inspector_eval(
     max_runs_read: Annotated[
         int,
         run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
+    ] = checks.DEFAULT_MAX_RUNS_READ,
 ) -> dict:
-    prep = prepare(
+    prep = checks.prepare(
         run_context,
         inspector_run_id=inspector_run_id,
         inspector_job_ref=inspector_job_ref,
@@ -756,14 +796,18 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    evaluations, degraded = await judge_runs(
+    evaluations, degraded = await checks.judge_runs(
         run_context["ai_loop"], [prep], tolerate_failures=True
     )
     if not evaluations:
-        # the judge ran out of turns or tokens after Python decided its checks; `judge_runs`
-        # kept those rather than lose the run's whole result
+        # the judge ran out of turns or tokens after Python decided its checks;
+        # `judge_runs` kept those rather than lose the run's whole result
         raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
     return evaluations[0]
+
+# the manifest scan reads module-level names, and a module loaded by path becomes a job
+# of its own unless `__all__` names the jobs
+__all__ = ["inspector", "job_inspector_eval"]
 ```
 
 `.success` and `.fail` are read at import time, before the manifest loader stamps the module
@@ -847,13 +891,13 @@ warning, so leave it unset.
 
 ### Running an evaluation by hand
 
-The scheduled job grades its window:
+The scheduled form grades its window:
 
 ```bash
-dlthub local run job_inspector_eval_batch -c inspector_job_ref=jobs.__deployment__.job_inspector
+dlthub local run job_inspector_eval -c inspector_job_ref=jobs.__deployment__.job_inspector
 ```
 
-The triggered job grades one run:
+The triggered form grades one run:
 
 ```bash
 dlthub local run job_inspector_eval -c inspector_run_id=<run id>

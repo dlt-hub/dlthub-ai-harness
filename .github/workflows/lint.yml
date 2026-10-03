@@ -25,3 +25,56 @@ jobs:
 
       - name: Validate and lint
         run: make lint
+
+  # the validator takes the entity types and tool groups from the installed dlt, so a toolkit
+  # checked only against the resolved version ships broken to whoever installs the declared
+  # floor. this leg is what catches that.
+  dlt-floor:
+    runs-on: ubuntu-latest
+    # `uv run` re-syncs to the lock and would undo the pin a step below installs
+    env:
+      UV_NO_SYNC: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the lowest supported released dlt
+        run: make dev-dlt-floor
+
+      - name: Validate and test
+        run: make validate-toolkits test
+
+  # the dlt a release has not shipped yet. a red run here names a change the next release will
+  # demand, which is why it reports without blocking the branch. it runs only where the
+  # repository variable `DLT_PRERELEASE` holds the requirement to install, which keeps that
+  # value out of a public repository
+  dlt-prerelease:
+    runs-on: ubuntu-latest
+    if: vars.DLT_PRERELEASE != ''
+    continue-on-error: true
+    env:
+      UV_NO_SYNC: "1"
+      DLT_PRERELEASE: ${{ vars.DLT_PRERELEASE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the prerelease dlt
+        run: make dev-dlt-prerelease
+
+      - name: Validate and test
+        run: make validate-toolkits test

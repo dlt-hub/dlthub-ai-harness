@@ -1,8 +1,8 @@
 """The deployment snippets in the docs are checked against `checks.py`.
 
 A snippet is what a workspace copies, and the one in `advanced-patterns.md` had drifted to a
-call shape `checks.py` no longer supports. Every name a snippet imports has to exist, and
-every call it makes has to bind against the real signature.
+call shape `checks.py` no longer supports. Every name a snippet reads off the module has to
+exist, and every call it makes has to bind against the real signature.
 """
 
 import ast
@@ -31,11 +31,14 @@ DOCS = (
 _PYTHON_BLOCK = re.compile(r"```python\n(.*?)```", re.S)
 
 
+CHECKS_MODULE = "dlthub_agent_checks"
+
+
 def blocks():
-    """(document, source) per python block that imports from `checks`."""
+    """(document, source) per python block that loads `checks.py`."""
     for path in DOCS:
         for position, source in enumerate(_PYTHON_BLOCK.findall(path.read_text())):
-            if "from checks import" in source:
+            if CHECKS_MODULE in source:
                 yield path.name, source
 
 
@@ -43,12 +46,14 @@ SNIPPETS = list(blocks())
 IDS = [f"{name}#{position}" for position, (name, _) in enumerate(SNIPPETS)]
 
 
-def imported(tree: ast.Module) -> list[str]:
+def read_off_checks(tree: ast.Module) -> list[str]:
+    """Every `checks.<name>` the snippet reads."""
     return [
-        alias.name
+        node.attr
         for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.module == "checks"
-        for alias in node.names
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "checks"
     ]
 
 
@@ -57,12 +62,12 @@ def test_the_docs_carry_the_snippets():
 
 
 @pytest.mark.parametrize("name,source", SNIPPETS, ids=IDS)
-def test_every_name_a_snippet_imports_exists(name, source):
+def test_every_name_a_snippet_reads_exists(name, source):
     tree = ast.parse(source)
 
-    missing = [symbol for symbol in imported(tree) if not hasattr(C, symbol)]
+    missing = [symbol for symbol in read_off_checks(tree) if not hasattr(C, symbol)]
 
-    assert missing == [], f"{name} imports {missing} from checks.py"
+    assert missing == [], f"{name} reads {missing} off checks.py"
 
 
 @pytest.mark.parametrize("name,source", SNIPPETS, ids=IDS)
@@ -70,14 +75,13 @@ def test_every_call_binds_against_the_real_signature(name, source):
     """Positional and keyword arguments only; a `*args` in a snippet would be a different
     test. The values are placeholders, so this checks the shape, not the types."""
     tree = ast.parse(source)
-    names = set(imported(tree))
 
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
             continue
-        if node.func.id not in names:
+        if not isinstance(node.func.value, ast.Name) or node.func.value.id != "checks":
             continue
-        target = getattr(C, node.func.id)
+        target = getattr(C, node.func.attr, None)
         if not callable(target):
             continue
         signature = inspect.signature(target)
@@ -107,7 +111,7 @@ def snippet(title: str) -> str:
     """
     text = (REPO / "workbench/dlthub-platform/skills/deploy-workspace"
             / "advanced-patterns.md").read_text()
-    section = text.split(f"#### {title}", 1)[1]
+    section = re.split(rf"#+ {re.escape(title)}\n", text, maxsplit=1)[1]
     return LINKS_LOADER + _PYTHON_BLOCK.search(section).group(1)
 
 
@@ -142,18 +146,15 @@ def load(workspace, title: str, module_name: str):
 class _Loop:
     """Answers every open check TRUE, and the recommendation pass with one bullet.
 
-    `completed` and `base_trace` are what `_finish` reads off a loop that ran no turn of its
-    own, so a test can hand this to dlt's launcher.
+    `trace` is what `_finish` reads off the loop when it writes the job result, so a test can
+    hand this to dlt's launcher.
     """
 
     LOOP_TYPE = "stub"
-    completed = False
 
     def __init__(self) -> None:
         self.runs = 0
-
-    def base_trace(self, inputs):
-        return {"loop_type": self.LOOP_TYPE, "turn_count": 0, "inputs": inputs}
+        self.trace = {"loop_type": self.LOOP_TYPE, "turn_count": 0, "total_tokens": 0}
 
     async def run(self, inputs):
         self.runs += 1
@@ -176,10 +177,14 @@ def test_the_window_snippet_runs_as_a_deployment_module(workspace, monkeypatch):
     window of captured runs."""
     module = load(workspace, "One report over a window", "deployment_window")
     root = captured_window(workspace)
-    monkeypatch.setattr(C.SdkFetcher, "connect", staticmethod(lambda: C.FileFetcher(str(root))))
+    # the snippet loads the workspace copy of `checks.py` by path, so the fetcher it calls is
+    # the one on that module, not the one this test imported
+    fetch = module.checks
+    monkeypatch.setattr(fetch.SdkFetcher, "connect",
+                        staticmethod(lambda: fetch.FileFetcher(str(root))))
     loop = _Loop()
 
-    report = asyncio.run(module.job_inspector_eval_batch.__wrapped__(
+    report = asyncio.run(module.job_inspector_eval.__wrapped__(
         run_context={"run_id": "local", "trigger": "schedule:0 7 * * 1", "ai_loop": loop},
         inspector_job_ref=WINDOW_JOB,
         window_days=_days_back(),
@@ -209,7 +214,9 @@ def test_the_run_snippet_delivers_the_four_entities_to_the_platform(workspace, m
     module = load(workspace, "One grade per inspector run", "deployment_run")
     root = CAPTURED / "dq_missing_input"
     run_id = sorted((root / "results").glob("*.json"))[0].stem
-    monkeypatch.setattr(C.SdkFetcher, "connect", staticmethod(lambda: C.FileFetcher(str(root))))
+    fetch = module.checks
+    monkeypatch.setattr(fetch.SdkFetcher, "connect",
+                        staticmethod(lambda: fetch.FileFetcher(str(root))))
     loop = _Loop()
 
     output = asyncio.run(module.job_inspector_eval.__wrapped__(
@@ -227,10 +234,10 @@ def test_the_run_snippet_delivers_the_four_entities_to_the_platform(workspace, m
     delivered = deliver_job_result(job, send=False)
 
     assert [entity["id"] for entity in delivered["object"]] == [
-        f"job-runs/{run_id}",
+        f"job-run/{run_id}",
         f"job/{output['inspector_job_ref']}",
         f"job/{output['failed_job_ref']}",
-        f"job-runs/{output['failed_run_id']}",
+        f"job-run/{output['failed_run_id']}",
     ]
 
 
@@ -252,6 +259,35 @@ def test_without_the_declared_ids_the_run_is_filed_under_nothing(workspace):
 
     assert len(hub_objects(declaration["inputs"], {}, declaration["output"], result, "x")) == 4
     assert hub_objects(declaration["inputs"], {}, without, result, "x") == []
+
+
+MANIFEST_JOBS = {
+    # the first snippet pins no `section`, so its job ref takes the module name
+    "Background agents": ["jobs.deployment_manifest.job_inspector"],
+    "One report over a window": ["jobs.__deployment__.job_inspector",
+                                 "jobs.deployment_manifest.job_inspector_eval"],
+    "One grade per inspector run": ["jobs.__deployment__.job_inspector",
+                                    "jobs.deployment_manifest.job_inspector_eval"],
+}
+
+
+@pytest.mark.parametrize("title", list(MANIFEST_JOBS))
+def test_a_snippet_deploys_the_jobs_it_declares_and_nothing_else(workspace, title):
+    """Manifest generation is where a wrong `entity_type` or a stray module-level name lands,
+    and one bad job takes the whole manifest down with it.
+
+    `generate_manifest` scans module-level names, so a module loaded by path deploys as a job
+    of its own unless `__all__` names the jobs.
+    """
+    from dlt._workspace.deployment.manifest import generate_manifest, validate_manifest
+
+    module = load(workspace, title, "deployment_manifest")
+    manifest, warnings = generate_manifest(module)
+    result = validate_manifest(manifest)
+
+    assert [job["job_ref"] for job in manifest["jobs"]] == MANIFEST_JOBS[title]
+    assert result.is_valid, result.errors
+    assert [warning for warning in warnings if "__all__" in warning] == []
 
 
 def captured_window(root: Path) -> Path:
