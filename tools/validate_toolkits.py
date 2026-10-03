@@ -301,9 +301,50 @@ def validate_agents(
         _validate_output(pname, rel, fm, errors, warnings)
         _validate_schema_types(pname, rel, fm, errors, warnings)
         _validate_optional_count(pname, rel, fm, errors, warnings)
+        _validate_schema_size(pname, rel, fm, errors, warnings)
+        _validate_shipped_modules(pname, rel, entry, manifest, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
 
     return agent_names
+
+
+def _validate_shipped_modules(
+    pname: str,
+    rel: str,
+    agent_dir: Path,
+    manifest: Path,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Every module in the agent folder is named by the `AGENT.md` beside it.
+
+    An install copies the folder whole, so the module reaches a workspace. Nothing in the
+    definition calls it: dlt's agent spec has no field for code, and the deployment function
+    imports it. The definition is then the one installed file that can tell a reader the
+    module is there and what the deployment owes it, which is why it has to name it.
+    """
+    modules = sorted(path.name for path in agent_dir.glob("*.py") if path.is_file())
+    stray = sorted(
+        path.name
+        for path in agent_dir.iterdir()
+        if path.name != _AGENT_FILE and path.name not in modules
+    )
+    if stray:
+        errors.append(
+            f"[{pname}] {rel.rsplit('/', 1)[0]} holds {', '.join(stray)}; an install copies"
+            " the folder verbatim, so anything here lands in every workspace. Keep the"
+            f" {_AGENT_FILE} and the modules the deployment imports"
+        )
+    if not modules:
+        return
+    text = manifest.read_text(encoding="utf-8")
+    missing = [name for name in modules if name not in text]
+    if missing:
+        errors.append(
+            f"[{pname}] {rel} does not name {', '.join(missing)}, which ships in the same"
+            " folder; name the module and say what the deployment calls in it, or drop the"
+            " file"
+        )
 
 
 def _validate_agent_body(
@@ -494,6 +535,60 @@ def _validate_optional_count(
             f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; list the ones the model never"
             f" writes in their object's `required` ({', '.join(optional[:6])}, ...)"
         )
+
+
+SCHEMA_PROPERTY_BUDGET = 20
+"""Properties, nested ones counted, above which a model-facing output schema is reported.
+
+Anthropic refuses a large schema with `400 invalid_request_error: Schema is too complex`
+before the first turn, and publishes no limit to check against. The observed points are an
+evaluator at 48 properties and 6,943 characters refused, and an inspector at 15 and 3,943
+accepted, both on anthropic 1.11.0.
+"""
+
+SCHEMA_CHARACTER_BUDGET = 5_000
+"""Serialized length of the output schema above which it is reported. See the budget above."""
+
+
+def _validate_schema_size(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """The output schema stays small enough for a provider to accept it.
+
+    A field Python fills after the loop belongs out of the schema: nothing validates the
+    returned dict against it, so declaring it spends the model's grammar on a value that is
+    overwritten.
+    """
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    count = len(_optional_properties(output)) + _required_properties(output)
+    size = len(json.dumps(output))
+    if count > SCHEMA_PROPERTY_BUDGET or size > SCHEMA_CHARACTER_BUDGET:
+        warnings.append(
+            f"[{pname}] {rel} output declares {count} properties in {size} characters, over"
+            f" the {SCHEMA_PROPERTY_BUDGET} and {SCHEMA_CHARACTER_BUDGET} a provider has"
+            " accepted; drop the fields the model never writes, keeping any that carries an"
+            " entity_type"
+        )
+
+
+def _required_properties(schema: dict) -> int:
+    """Properties listed in their object's `required`, nested ones counted."""
+    count = 0
+    props = schema.get("properties")
+    required = schema.get("required")
+    required = set(required) if isinstance(required, list) else set()
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        if name in required:
+            count += 1
+        count += _required_properties(spec)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            count += _required_properties(items)
+    return count
 
 
 def _optional_properties(schema: dict, path: str = "") -> list[str]:

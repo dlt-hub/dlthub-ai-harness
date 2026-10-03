@@ -6,10 +6,16 @@ deployment module does.
 """
 
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-import pytest
+# the installer copies the agent folder with `shutil.copytree` and filters nothing, so a
+# `__pycache__` these imports leave behind would travel into every workspace installed from
+# this checkout
+sys.dont_write_bytecode = True
+
+from pathlib import Path  # noqa: E402
+from typing import Any, Dict, List, Optional  # noqa: E402
+
+import pytest  # noqa: E402
 
 AGENT_DIR = (
     Path(__file__).resolve().parents[2]

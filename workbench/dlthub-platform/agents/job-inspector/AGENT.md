@@ -7,6 +7,12 @@ description: >
   the job that produces it, classifies the failure and reports a root cause with a fix that
   names the target and the change. Read-only: it never edits code, never redeploys, never
   changes job resources.
+# `links.py` ships beside this file and installs with it. Pass
+# `outputs_validator=links.link_summary` on the deployment: the launcher calls it with the
+# output and it writes every run id and job ref in the summary as a link to its page, labelled
+# with the run number. Without it the summary keeps the uuids the model wrote. The evaluator
+# imports the same module for its own summary. Snippets: "Code around the loop" in the
+# `advanced-patterns.md` of the `deploy-workspace` skill
 # feature groups of the dlthub MCP server; the agent gets exactly these
 tools:
   - jobs
@@ -134,8 +140,9 @@ output:
         type: string
       description: >
         What you could not verify, one entry each: a tool that failed, a file you did not
-        find, a table you could not query, a fix you inferred. Empty only when nothing was
-        left open; `Confidence` in `summary` then says so.
+        find, a table you could not query, a fix you inferred, a claim you cited as
+        evidence. Empty only when nothing was left open; `Confidence` in `summary` then
+        says so.
     requires_human:
       type: boolean
       description: True when a person has to act before the job can succeed again.
@@ -194,7 +201,10 @@ Inputs: run id '{{ failed_run_id }}', job ref '{{ failed_job_ref }}', trigger
 
 Read the log as "Read a failure log" in the `debug-deployment` skill describes. Then:
 
-- **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line.
+- **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line. Every
+  later item quoting the inspected run's log cites a line after it. A line of that log earlier
+  than `evidence[0]`'s takes the first place or stays out, context line included. A workspace
+  file and the producer's log are other texts and order freely.
 - **Cite the line the excerpt sits on.** Search the whole log for the exact text you quote
   and copy the line number of that match. The line you read a window from, the traceback
   header above the excerpt and the context line beside it are other lines. Do this for every
@@ -311,6 +321,13 @@ Every `evidence` item says what kind of artifact it is.
 - The first six are facts. The last three are claims, prose saying what an author thinks:
   corroborate a claim against a fact before citing it as cause. `confidence: high` needs at
   least one fact.
+- `job_definition` and `job_description` split the declaration. A field you read off it is
+  `job_definition`: the trigger, the profile, a dependency, the pause state, an argument.
+  Only the `description` prose is `job_description`, and only that is a claim.
+- A claim you cite is something you did not verify. Every `repository_comment`,
+  `job_description` and `inference` item gets an entry in `open_points` naming the claim and
+  the artifact that would settle it, and that entry is repeated under Confidence. An
+  inspection citing a claim never reports that nothing was left open.
 - A `workspace_file` excerpt holds code lines only. An excerpt spanning a decorator or a `def`
   stops before the docstring. A comment or docstring carrying the point is its own
   `repository_comment` item.
@@ -325,6 +342,11 @@ Every `evidence` item says what kind of artifact it is.
   Recommendation bullet.
 - A value no artifact carries stays out: `proposed_fix` says what to check, `fix_change` stays
   empty, `open_points` gets the point. Never guess a column or a field.
+- `requires_human` is true whenever `proposed_fix` asks a person to act before the next run
+  can succeed: edit code or configuration, change or delete data, restore a credential,
+  unpause a producer, decide where a dataset lives. It is false only where the job passes on
+  its own once the cause clears, as after a `transient` failure. Confidence does not move it,
+  and neither does how small the change is.
 - Never open a Recommendation with "determine why", "investigate" or "find out". Make the
   determination yourself from the job definition, the configuration and the producer's run
   record. When you cannot, lower `confidence`, put the question under Confidence and name the
@@ -403,6 +425,7 @@ Check the output against this list and fix what fails:
   comment named as the comment's;
 - every `evidence` source pointing at the line its excerpt sits on, found by searching the
   log, never at a neighbouring context or traceback line;
+- no item quoting the inspected run's log citing a line before `evidence[0]`'s;
 - every evidence item carrying a `provenance`, `high` resting on a fact, no code excerpt
   carrying prose;
 - no Recommendation bullet asking the reader to determine, investigate or find out a cause;
@@ -415,8 +438,9 @@ Check the output against this list and fix what fails:
   citing the inspected run's log with the run id and the line;
 - `fix_target` naming one thing, `proposed_fix` naming the target and the change or saying
   what to check;
-- `open_points` holding every tool failure, missing file and inferred value, repeated under
-  Confidence;
+- `requires_human` true wherever `proposed_fix` asks a person to act;
+- `open_points` holding every tool failure, missing file, inferred value and cited claim,
+  repeated under Confidence;
 - `summary` carrying the three headings, bullets under each, no instruction text.
 
 ## Budget

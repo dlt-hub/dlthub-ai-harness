@@ -103,6 +103,22 @@ Decorate a function instead when code has to run around the loop. The evaluator 
 inspector does that: it computes its deterministic checks before the loop and writes them
 over the model's output after it.
 
+Two deployments drive the one definition:
+
+| deployment | trigger | what one job run produces |
+|---|---|---|
+| scheduled | `schedule:0 7 * * 1` | one report over a window of inspector runs, with a recommendation |
+| triggered | `inspector.success`, `inspector.fail` | one grade for the inspector run that just finished |
+
+Deploy the scheduled one unless a grade has to land on each inspection as it happens. Both
+make one judge call per graded run, and the schedule caps how many a job run makes at
+`max_runs`, grades the window in a single job run, and is the only form that reads a pattern
+across runs and recommends a change to the inspector's definition. The triggered form starts
+a job run per inspection, with no cap on what a busy day costs. Deploy one or the other: an
+inspector watched by both is graded twice.
+
+#### One report over a window
+
 ```python
 import sys
 from typing import Annotated
@@ -110,7 +126,78 @@ from typing import Annotated
 from dlt.hub import run
 
 sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+from checks import (DEFAULT_BATCH_RUNS, DEFAULT_MAX_RUNS_READ, DEFAULT_WINDOW_DAYS,
+                    finalize_batch, judge_runs, judge_window_recommendation, prepare_batch)
+
+# `section` pins the module the job ref names, which is the default `inspector_job_ref` below
+inspector = run.agent(
+    "dlthub-platform:job-inspector",
+    section="__deployment__",
+    trigger="job.fail:tag:ingest",
+    require={"profile": "access"},
+    # `links` is the module the first snippet loads
+    outputs_validator=links.link_summary,
+)
+
+
+@run.agent(
+    agent="dlthub-platform:job-inspector-eval",
+    trigger="schedule:0 7 * * 1",
+    require={"profile": "access"},
+)
+async def job_inspector_eval_batch(
+    run_context: run.TJobRunContext = None,
+    inspector_job_ref: Annotated[
+        str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
+    ] = "jobs.__deployment__.job_inspector",
+    window_days: Annotated[
+        int, run.Doc("fallback window with no deployment history")
+    ] = DEFAULT_WINDOW_DAYS,
+    max_runs: Annotated[
+        int, run.Doc("inspector runs one scheduled job grades")
+    ] = DEFAULT_BATCH_RUNS,
+    max_runs_read: Annotated[
+        int,
+        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
+    ] = DEFAULT_MAX_RUNS_READ,
+) -> dict:
+    batch = prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
+                          window_days=window_days, max_runs=max_runs,
+                          max_runs_read=max_runs_read)
+    if batch.aborted:
+        raise run.JobAbortedException(batch.abort_reason, batch.aborted_output)
+    # one run out of budget or out of shape must not cost the rest of the window, and
+    # `judge_runs` prints each failure as it happens
+    evaluations, degraded = await judge_runs(
+        run_context["ai_loop"], batch.preps, tolerate_failures=True
+    )
+    recommendation = ""
+    if evaluations:
+        recommendation = await judge_window_recommendation(
+            run_context["ai_loop"], evaluations + degraded, batch
+        )
+    return finalize_batch(evaluations, batch, degraded, recommendation)
+```
+
+The window starts where the inspector's definition last changed, so every run in the report
+was graded against the instructions it ran under. With no deployment history it falls back to
+`window_days`.
+
+`finalize_batch` decides what the job does with the report, so the deployment hands it over
+rather than reading it. It returns the report where a judge run completed, prints the report
+and returns `{}` on an empty window, and raises `run.JobAbortedException` carrying the report
+where the window found runs and no judge run completed.
+
+#### One grade per inspector run
+
+```python
+import sys
+from typing import Annotated
+
+from dlt.hub import run
+
+sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
+from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
 
 # `section` is explicit because `.success` and `.fail` are read at import time, before the
 # manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
@@ -156,8 +243,14 @@ async def job_inspector_eval(
         # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
         # and this path never started the loop
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-    return finalize(output, prep)
+    evaluations, degraded = await judge_runs(
+        run_context["ai_loop"], [prep], tolerate_failures=True
+    )
+    if not evaluations:
+        # the judge ran out of turns or tokens after Python decided its checks; `judge_runs`
+        # kept those rather than lose the run's whole result
+        raise run.JobAbortedException(degraded[0]["summary"], degraded[0])
+    return evaluations[0]
 ```
 
 A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.
@@ -167,8 +260,9 @@ module on the factory, so a factory whose triggers are used in the same module p
 `section=` itself; without it the manifest is rejected with `triggers referencing unknown
 jobs`.
 
-Four constraints on the function form, because the function overrides the `AGENT.md` it
-drives:
+#### Four constraints on the function form
+
+The function overrides the `AGENT.md` it drives, on both deployments:
 
 - No docstring, or it replaces the body of the `AGENT.md`.
 - Return `dict`, not `TAgentOutput`, or it replaces the declared output schema.

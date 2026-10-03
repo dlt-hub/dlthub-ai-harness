@@ -64,10 +64,11 @@ Route here when the user wants work to happen on its own after an event ("whenev
 ```
 capability                                                        → agent                              | install                                                     | declare
 diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:tag:<tag>")
-grade an inspector diagnosis against the inspector's instructions → dlthub-platform:job-inspector-eval  | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector-eval", trigger=[inspector.success, inspector.fail])
+grade inspector diagnoses against the inspector's instructions     → dlthub-platform:job-inspector-eval  | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector-eval", trigger="schedule:0 7 * * 1")
 ```
 
 * `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
+* `job-inspector-eval` deploys on a schedule by default, grading a window of inspector runs in one job run and writing one report. Deploy it on `trigger=[inspector.success, inspector.fail]` instead only when a grade has to land on each inspection as it happens; that starts a job run per inspection, with no cap on what a busy day costs.
 * `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., tags=["ingest"])`. Name the jobs to watch, or tag them; `job.fail:*` also watches the evaluator and the two then start each other.
 * Neither agent names a model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5, and `AGENT__API_KEY` to the key for that provider.
 * Keep `agent.verbosity` at 1, the default. At 0 the job log drops the tool arguments and thoughts the evaluator reads.

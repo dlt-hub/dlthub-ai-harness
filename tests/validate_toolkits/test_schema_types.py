@@ -108,3 +108,53 @@ def test_the_shipped_agents_carry_their_types() -> None:
         V._validate_schema_types("dlthub-platform", agent, frontmatter, errors, [])
 
     assert errors == []
+
+
+def size_warnings(fm: dict) -> list[str]:
+    warnings: list[str] = []
+    V._validate_schema_size("tk", "agents/x/AGENT.md", fm, [], warnings)
+    return warnings
+
+
+def test_a_schema_inside_the_budget_is_quiet() -> None:
+    props = {f"f{n}": {"type": "string"} for n in range(V.SCHEMA_PROPERTY_BUDGET)}
+
+    assert size_warnings({"output": {"properties": props}}) == []
+
+
+def test_a_schema_over_the_property_budget_is_reported() -> None:
+    props = {f"f{n}": {"type": "string"} for n in range(V.SCHEMA_PROPERTY_BUDGET + 1)}
+
+    warnings = size_warnings({"output": {"properties": props}})
+
+    assert len(warnings) == 1
+    assert str(V.SCHEMA_PROPERTY_BUDGET + 1) in warnings[0]
+
+
+def test_a_nested_property_counts_toward_the_budget() -> None:
+    """The model reads the whole schema, so a required nested field costs what an optional one
+    does. This is where the budget differs from the optional-parameter cap."""
+    nested = {f"n{n}": {"type": "string"} for n in range(V.SCHEMA_PROPERTY_BUDGET)}
+    fm = {
+        "output": {
+            "properties": {
+                "window": {"type": "object", "properties": nested, "required": list(nested)}
+            }
+        }
+    }
+
+    assert len(size_warnings(fm)) == 1
+
+
+def test_a_long_schema_is_reported_on_its_length() -> None:
+    fm = {"output": {"properties": {"f": {"type": "string", "description": "x" * 5_000}}}}
+
+    assert len(size_warnings(fm)) == 1
+
+
+def test_the_shipped_agents_are_inside_the_budget() -> None:
+    for agent in ("job-inspector", "job-inspector-eval"):
+        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / agent / "AGENT.md"
+        frontmatter, _ = V.split_frontmatter(path)
+
+        assert size_warnings(frontmatter) == []

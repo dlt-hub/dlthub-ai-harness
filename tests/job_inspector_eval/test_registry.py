@@ -165,21 +165,38 @@ def test_no_declared_object_is_left_without_properties():
     assert bare == []
 
 
-def test_the_batch_fields_declare_what_checks_py_writes():
-    """`window`, `evaluations` and `skipped_runs` are filled in Python, so the schema is the
-    one place they can drift from the code."""
+JUDGE_FIELDS = {"status", "summary", "recommendation", "checks"}
+ENTITY_FIELDS = {"inspector_run_id", "inspector_job_ref", "failed_run_id", "failed_job_ref"}
+
+
+def test_the_schema_declares_the_judge_fields_and_the_four_entity_ids():
+    """Anthropic refused the schema that also declared the computed fields as `Schema is too
+    complex`. The four ids stay for their `entity_type`, which puts the evaluation on the page
+    of each run and job it names."""
     properties = _declared_output()["properties"]
+
+    assert set(properties) == JUDGE_FIELDS | ENTITY_FIELDS
+    assert {name for name, prop in properties.items() if "entity_type" in prop} == ENTITY_FIELDS
+
+
+def test_every_computed_result_field_is_named_in_the_docstrings():
+    """The computed fields are declared in no schema, so `finalize` and `batch_report` carry
+    their contract. Both travel with the agent folder, which `BACKGROUND_AGENTS.md` does
+    not: a workspace reads what the result holds from the code it imported."""
     batch = C.BatchPrep(job_ref="jobs.x.job_inspector")
     batch.skipped.append({"run_id": "r", "reason": "still running"})
     final = C.finalize_batch([{"inspector_run_id": "a", "checks": []}], batch)
 
-    assert set(properties["window"]["properties"]) == set(final["window"])
-    assert set(properties["evaluations"]["items"]["properties"]) == set(final["evaluations"][0])
-    assert set(properties["skipped_runs"]["items"]["properties"]) == set(final["skipped_runs"][0])
+    computed = set(final) | set(final["window"]) | set(final["metrics"])
+    computed |= set(final["evaluations"][0]) | set(final["skipped_runs"][0])
+    documented = f"{C.finalize.__doc__}{C.batch_report.__doc__}"
+
+    assert sorted(name for name in computed - JUDGE_FIELDS if f"`{name}`" not in documented) == []
 
 
 def test_the_output_schema_stays_small():
-    """The judge reads the whole schema on every run, and a large one has failed to launch."""
+    """The judge reads the whole schema on every run, and a large one has failed to launch.
+    The inspector's own schema is 15 properties and runs; 48 was refused."""
     import json
 
-    assert len(json.dumps(_declared_output())) < 7_800
+    assert len(json.dumps(_declared_output())) < 3_500

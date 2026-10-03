@@ -1,5 +1,9 @@
 .PHONY: dev validate-toolkits test lint lint-ruff lint-mypy format format-fix lint-install
 
+# an install copies an agent folder verbatim, so bytecode written beside a shipped module
+# travels into every workspace
+export PYTHONDONTWRITEBYTECODE = 1
+
 dev:
 	uv sync --group lint --group test --reinstall-package dlt
 

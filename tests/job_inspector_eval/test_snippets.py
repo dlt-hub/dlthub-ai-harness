@@ -1,0 +1,268 @@
+"""The deployment snippets in the docs are checked against `checks.py`.
+
+A snippet is what a workspace copies, and the one in `advanced-patterns.md` had drifted to a
+call shape `checks.py` no longer supports. Every name a snippet imports has to exist, and
+every call it makes has to bind against the real signature.
+"""
+
+import ast
+import asyncio
+import importlib
+import inspect
+import json
+import re
+import shutil
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pytest
+
+import checks as C
+
+from test_captured_runs import CAPTURED
+from test_captured_window import INSPECTOR_JOB as WINDOW_JOB, CASES as WINDOW_CASES, window
+
+REPO = Path(__file__).resolve().parents[2]
+DOCS = (
+    REPO / "BACKGROUND_AGENTS.md",
+    REPO / "workbench/dlthub-platform/skills/deploy-workspace/advanced-patterns.md",
+)
+_PYTHON_BLOCK = re.compile(r"```python\n(.*?)```", re.S)
+
+
+def blocks():
+    """(document, source) per python block that imports from `checks`."""
+    for path in DOCS:
+        for position, source in enumerate(_PYTHON_BLOCK.findall(path.read_text())):
+            if "from checks import" in source:
+                yield path.name, source
+
+
+SNIPPETS = list(blocks())
+IDS = [f"{name}#{position}" for position, (name, _) in enumerate(SNIPPETS)]
+
+
+def imported(tree: ast.Module) -> list[str]:
+    return [
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "checks"
+        for alias in node.names
+    ]
+
+
+def test_the_docs_carry_the_snippets():
+    assert len(SNIPPETS) == 4  # one per deployment, in each document
+
+
+@pytest.mark.parametrize("name,source", SNIPPETS, ids=IDS)
+def test_every_name_a_snippet_imports_exists(name, source):
+    tree = ast.parse(source)
+
+    missing = [symbol for symbol in imported(tree) if not hasattr(C, symbol)]
+
+    assert missing == [], f"{name} imports {missing} from checks.py"
+
+
+@pytest.mark.parametrize("name,source", SNIPPETS, ids=IDS)
+def test_every_call_binds_against_the_real_signature(name, source):
+    """Positional and keyword arguments only; a `*args` in a snippet would be a different
+    test. The values are placeholders, so this checks the shape, not the types."""
+    tree = ast.parse(source)
+    names = set(imported(tree))
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+            continue
+        if node.func.id not in names:
+            continue
+        target = getattr(C, node.func.id)
+        if not callable(target):
+            continue
+        signature = inspect.signature(target)
+        signature.bind(
+            *[object() for _ in node.args],
+            **{keyword.arg: object() for keyword in node.keywords if keyword.arg},
+        )
+
+
+# running the snippets, not just parsing them
+
+
+LINKS_LOADER = '''import importlib.util
+_spec = importlib.util.spec_from_file_location(
+    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py")
+links = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(links)
+
+'''
+
+
+def snippet(title: str) -> str:
+    """The python block under a heading of `advanced-patterns.md`, with `links` loaded.
+
+    The document loads `links` in its first snippet and the later ones use it, so a block
+    taken out of the document needs that loader in front of it.
+    """
+    text = (REPO / "workbench/dlthub-platform/skills/deploy-workspace"
+            / "advanced-patterns.md").read_text()
+    section = text.split(f"#### {title}", 1)[1]
+    return LINKS_LOADER + _PYTHON_BLOCK.search(section).group(1)
+
+
+@pytest.fixture
+def workspace(tmp_path, monkeypatch):
+    """A workspace in the layout an install produces: the agent folders under `.claude`."""
+    agents = tmp_path / ".claude" / "dlthub" / "agents"
+    agents.mkdir(parents=True)
+    source = REPO / "workbench" / "dlthub-platform" / "agents"
+    for name in ("job-inspector", "job-inspector-eval"):
+        shutil.copytree(source / name, agents / name,
+                        ignore=shutil.ignore_patterns("__pycache__"))
+    (tmp_path / ".dlt").mkdir()
+    (tmp_path / ".dlt" / "config.toml").write_text("[runtime]\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    return tmp_path
+
+
+def load(workspace, title: str, module_name: str):
+    """The snippet as an imported deployment module, its `run.agent` declarations resolved.
+
+    A plain import, because `run.agent` reads the calling module off the stack to stamp the
+    job section, and a module executed from a spec carries no frame it can read.
+    """
+    (workspace / f"{module_name}.py").write_text(snippet(title))
+    importlib.invalidate_caches()
+    sys.modules.pop(module_name, None)
+    return importlib.import_module(module_name)
+
+
+class _Loop:
+    """Answers every open check TRUE, and the recommendation pass with one bullet.
+
+    `completed` and `base_trace` are what `_finish` reads off a loop that ran no turn of its
+    own, so a test can hand this to dlt's launcher.
+    """
+
+    LOOP_TYPE = "stub"
+    completed = False
+
+    def __init__(self) -> None:
+        self.runs = 0
+
+    def base_trace(self, inputs):
+        return {"loop_type": self.LOOP_TYPE, "turn_count": 0, "inputs": inputs}
+
+    async def run(self, inputs):
+        self.runs += 1
+        if inputs.get("task") == C.WRITE_THE_RECOMMENDATION:
+            return {
+                "status": "succeeded", "summary": "one window", "checks": [],
+                "recommendation": "- In `.claude/dlthub/agents/job-inspector/AGENT.md`,"
+                                  " under `## Investigate`, state the ordering rule.",
+            }
+        open_checks = json.loads(inputs["evidence_windows"])["open_checks"]
+        return {
+            "status": "succeeded", "summary": "graded", "recommendation": "",
+            "checks": [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
+                       for id in open_checks],
+        }
+
+
+def test_the_window_snippet_runs_as_a_deployment_module(workspace, monkeypatch):
+    """The declarations resolve against the installed agent folders and the function grades a
+    window of captured runs."""
+    module = load(workspace, "One report over a window", "deployment_window")
+    root = captured_window(workspace)
+    monkeypatch.setattr(C.SdkFetcher, "connect", staticmethod(lambda: C.FileFetcher(str(root))))
+    loop = _Loop()
+
+    report = asyncio.run(module.job_inspector_eval_batch.__wrapped__(
+        run_context={"run_id": "local", "trigger": "schedule:0 7 * * 1", "ai_loop": loop},
+        inspector_job_ref=WINDOW_JOB,
+        window_days=_days_back(),
+    ))
+
+    assert loop.runs == len(WINDOW_CASES) + 1  # one per run graded, then the recommendation
+    assert report["status"] == "succeeded"
+    assert report["window"]["runs_found"] == len(WINDOW_CASES)
+    assert report["window"]["runs_evaluated"] == len(WINDOW_CASES)
+    assert report["recommendation"].startswith("- In `.claude/dlthub/agents/job-inspector/")
+    assert [line for line in report["summary"].splitlines() if line.startswith("## ")] == [
+        "## Findings", "## Recommendation", "## Scope", "## Detailed evaluation results"
+    ]
+
+
+def test_the_run_snippet_delivers_the_four_entities_to_the_platform(workspace, monkeypatch):
+    """Why the trimmed schema still declares four computed fields. `deliver_job_result` fills
+    `object` from the declared `output`, which `resolve_agent_spec` takes off the `AGENT.md`,
+    and the platform files the run under each entity. On a trigger no input carries them: the
+    run id was resolved from `prev_run_id`, so the output is the only source."""
+    import os
+
+    from dlt._workspace.deployment.job_result import set_job_inputs
+    from dlt._workspace.deployment.launchers.agent import _finish
+    from dlt._workspace.deployment.launchers.job import deliver_job_result
+
+    module = load(workspace, "One grade per inspector run", "deployment_run")
+    root = CAPTURED / "dq_missing_input"
+    run_id = sorted((root / "results").glob("*.json"))[0].stem
+    monkeypatch.setattr(C.SdkFetcher, "connect", staticmethod(lambda: C.FileFetcher(str(root))))
+    loop = _Loop()
+
+    output = asyncio.run(module.job_inspector_eval.__wrapped__(
+        run_context={"run_id": "local", "trigger": "job.fail:jobs.x.job_inspector",
+                     "ai_loop": loop},
+        inspector_run_id=run_id,
+    ))
+    assert output["status"] == "succeeded"
+    assert output["inspector_run_id"] == run_id
+
+    job = module.job_inspector_eval
+    job.resolve_agent_spec(os.getcwd())  # what `build_agent_loop` does on a real run
+    set_job_inputs({})                   # a trigger supplies none
+    _finish(job, output, loop)
+    delivered = deliver_job_result(job, send=False)
+
+    assert [entity["id"] for entity in delivered["object"]] == [
+        f"job-runs/{run_id}",
+        f"job/{output['inspector_job_ref']}",
+        f"job/{output['failed_job_ref']}",
+        f"job-runs/{output['failed_run_id']}",
+    ]
+
+
+def test_without_the_declared_ids_the_run_is_filed_under_nothing(workspace):
+    """The counterfactual for the test above: drop the four and `hub_objects` returns []."""
+    import yaml
+    from dlt._workspace.deployment.entity import hub_objects
+
+    declaration = yaml.safe_load(
+        (workspace / ".claude/dlthub/agents/job-inspector-eval/AGENT.md").read_text()
+        .split("---", 2)[1]
+    )
+    result = {"status": "succeeded", "inspector_run_id": "r1", "inspector_job_ref": "j1",
+              "failed_run_id": "r2", "failed_job_ref": "j2"}
+    without = {"type": "object", "properties": {
+        name: spec for name, spec in declaration["output"]["properties"].items()
+        if "entity_type" not in spec
+    }}
+
+    assert len(hub_objects(declaration["inputs"], {}, declaration["output"], result, "x")) == 4
+    assert hub_objects(declaration["inputs"], {}, without, result, "x") == []
+
+
+def captured_window(root: Path) -> Path:
+    """The captures `test_captured_window` composes, under a root of this test's own."""
+    composed = root / "window"
+    composed.mkdir()
+    window(composed, *WINDOW_CASES)
+    return composed
+
+
+def _days_back() -> int:
+    """Window long enough to reach the captured runs, which carry their recorded dates."""
+    oldest = datetime(2026, 9, 20, tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - oldest).days + 1

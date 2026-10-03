@@ -1789,3 +1789,59 @@ def test_code_excerpt_free_of_prose():
     assert run("code_excerpt_free_of_prose", output=labelled).outcome == C.NA
     assert run("code_excerpt_free_of_prose",
                output=output(status="aborted", evidence=[])).outcome == C.NA
+
+
+# the instructions the inspector was given for these two checks, applied to the shape that
+# broke them on a real run: `evidence[0]` cited line 15 with line 14 at index 2, and a claim
+# was cited with `open_points` empty
+
+
+def _claim_cited_out_of_order() -> dict:
+    """The output shape a graded window reported both breaks on: a log line cited after an
+    earlier one, and a claim cited with `open_points` empty."""
+    log = f"`dlthub job runs logs {FAILED_RUN_ID}`"
+    return output(
+        evidence=[
+            {"source": f"{log} line {line_no(8)}", "excerpt": "HTTPError",
+             "provenance": "run_log"},
+            {"source": "__deployment__.py line 157", "excerpt": "raise ValueError(row)",
+             "provenance": "workspace_file"},
+            {"source": f"{log} line {line_no(3)}", "excerpt": "ERROR  401 Unauthorized",
+             "provenance": "run_log"},
+            {"source": "__deployment__.py line 144", "excerpt": "# fails on purpose",
+             "provenance": "repository_comment"},
+        ],
+        open_points=[],
+    )
+
+
+def test_ordering_the_evidence_as_the_instruction_says_satisfies_the_check():
+    """"Every later item quoting the inspected run's log cites a line after it." Ordering the
+    log items by line is what turns the real failure into a pass."""
+    broken = _claim_cited_out_of_order()
+    assert run("evidence_sorted_by_line", output=broken).outcome == C.FALSE
+
+    items = broken["evidence"]
+    log_items = sorted(
+        (item for item in items if "runs logs" in item["source"]),
+        key=lambda item: C.source_line_number(item["source"]),
+    )
+    ordered = dict(broken, evidence=log_items + [i for i in items if i not in log_items])
+
+    assert run("evidence_sorted_by_line", output=ordered).outcome == C.TRUE
+
+
+def test_an_open_point_for_a_cited_claim_satisfies_the_check():
+    """"Every `repository_comment`, `job_description` and `inference` item gets an entry in
+    `open_points`." The entry is what turns the real failure into a pass."""
+    broken = _claim_cited_out_of_order()
+    result = run("open_points_declared", output=broken)
+    assert result.outcome == C.FALSE
+    assert "claim (repository_comment)" in result.reasoning
+
+    declared = dict(broken, open_points=[
+        "The comment at `__deployment__.py` line 144 is the author's claim; no artifact I"
+        " read settles it."
+    ])
+
+    assert run("open_points_declared", output=declared).outcome == C.TRUE

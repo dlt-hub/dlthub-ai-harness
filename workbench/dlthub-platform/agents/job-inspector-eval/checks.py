@@ -5065,8 +5065,10 @@ def prepare_batch(
             abort_reason=(
                 "no inspector job could be resolved: the batch evaluator takes"
                 " `inspector_job_ref`, and trigger"
-                f" {str(run_context.get('trigger') or '')!r} names no job. Pass"
-                " `-c inspector_job_ref=jobs.<module>.<job>`."
+                f" {str(run_context.get('trigger') or '')!r} names no job. A deployed job"
+                " reads it from the default of its `inspector_job_ref` parameter, so set"
+                " that to `jobs.<module>.<job>` and deploy again. Locally, `dlthub local run"
+                " <job> -c inspector_job_ref=jobs.<module>.<job>` passes it for one run."
             ),
         )
 
@@ -5105,7 +5107,7 @@ def prepare_batch(
     return batch
 
 
-def finalize_batch(
+def batch_report(
     evaluations: List[Dict[str, Any]],
     batch: BatchPrep,
     degraded: Optional[List[Dict[str, Any]]] = None,
@@ -5116,6 +5118,24 @@ def finalize_batch(
     `evaluations` are `finalize` results, one per run graded. `degraded` are the runs whose
     judge raised, carrying the deterministic checks `finalize_without_judge` kept. They count
     as evaluated, never pass, and the window names each one's reason in its scope bullets.
+
+    The report alone. `finalize_batch` wraps it and decides what the job does with it.
+
+    Beyond `status`, `summary`, `recommendation` and an empty `checks`, the report carries
+    the fields below. The `AGENT.md` declares none of them: a schema holding them too was
+    refused with `400 invalid_request_error: Schema is too complex`, and nothing validates a
+    returned dict against the declaration, so this docstring is their contract.
+
+    - `passed`, `pass_rate`, `decided_count`, `na_count`: the outcome over every check of
+      every run in the window.
+    - `metrics`: `runs_evaluated`, `total_tokens` and `turn_count` summed over the
+      evaluations. dlt stores one trace per job run, so the window counts them itself.
+    - `window`: `job_ref`, `since`, `until`, `since_is`, `runs_found`, `runs_evaluated`,
+      `runs_skipped`, `capped`.
+    - `evaluations`: per graded run, `inspector_run_id`, `inspector_job_ref`,
+      `inspector_run_number`, `failed_run_id`, `failed_job_ref`, `failed_run_number`,
+      `inspector_status`, `passed`, `pass_rate`, `false_checks`, `judge_failure`.
+    - `skipped_runs`: `run_id` and `reason` per run the window found and did not grade.
     """
     graded = list(evaluations) + list(degraded or [])
     skipped = list(batch.skipped)
@@ -5130,8 +5150,6 @@ def finalize_batch(
     window["runs_evaluated"] = len(graded)
     window["runs_skipped"] = len(skipped)
     return {
-        # `passed` is the green flag. On a window with no evaluation the deployment decides:
-        # an empty one prints and returns `{}`, a found-and-none-graded one raises `aborted`
         "status": "succeeded" if graded or not batch.found else "failed",
         "summary": render_batch_summary(graded, batch, skipped, recommendation,
                                         degraded=degraded or []),
@@ -5184,6 +5202,47 @@ def finalize_batch(
     }
 
 
+def job_aborted(summary: str, output: Dict[str, Any]) -> Exception:
+    """`run.JobAbortedException` carrying `output`, for a path the launcher must not read.
+
+    Falls back to `RuntimeError` where dlt is absent, so `checks.py` stays importable on its
+    own.
+    """
+    try:
+        from dlt.hub.run import JobAbortedException
+    except ImportError:
+        return RuntimeError(f"Job aborted: {summary}")
+    return JobAbortedException(summary, output)
+
+
+def finalize_batch(
+    evaluations: List[Dict[str, Any]],
+    batch: BatchPrep,
+    degraded: Optional[List[Dict[str, Any]]] = None,
+    recommendation: str = "",
+) -> Dict[str, Any]:
+    """What the batch deployment function returns, and where the window's outcome is decided.
+
+    The arguments are `batch_report`'s. Three outcomes, so the deployment function hands the
+    report over rather than reading it:
+
+    - A judge run completed: the report comes back and the job returns it.
+    - The window found runs and no judge run completed: raises `run.JobAbortedException`
+      carrying the report, so the deterministic checks of the degraded runs still reach the
+      run page. A loop that completed no run records no trace, and a returned dict carrying
+      `status` is read against one.
+    - The window found nothing: the report goes to the job log and `{}` comes back. Right
+      after a definition change the graded agent has not run yet, which is not a fault.
+    """
+    report = batch_report(evaluations, batch, degraded, recommendation)
+    if evaluations:
+        return report
+    if batch.found:
+        raise job_aborted(report["summary"], {**report, "status": "aborted"})
+    print(report["summary"])
+    return {}
+
+
 async def judge_runs(
     loop: Any, preps: Sequence[EvalPrep], *, tolerate_failures: bool = False
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -5194,6 +5253,9 @@ async def judge_runs(
     deployment functions read the second list, the single-run one for its only entry and the
     batch one for the runs it still reports. With `tolerate_failures` false the exception
     propagates instead.
+
+    Each tolerated failure is printed as it happens. The report names it too, and a window
+    that then raises on a later run leaves the job log as the only place it was written.
     """
     evaluations: List[Dict[str, Any]] = []
     degraded: List[Dict[str, Any]] = []
@@ -5203,7 +5265,12 @@ async def judge_runs(
         except Exception as ex:
             if not tolerate_failures:
                 raise
-            degraded.append(finalize_without_judge(prep, f"{type(ex).__name__}: {ex}"))
+            reason = f"{type(ex).__name__}: {ex}"
+            print(
+                f"the judge never answered on inspector run {prep.inspector_run_id}:"
+                f" {reason}. Its deterministic checks stand and it does not pass."
+            )
+            degraded.append(finalize_without_judge(prep, reason))
     return evaluations, degraded
 
 
@@ -5214,10 +5281,11 @@ def finalize_without_judge(prep: EvalPrep, reason: str) -> Dict[str, Any]:
     checks, and discarding those costs the run every result it had. They are reported instead:
     each judge check `N/A`, `reason` in `summary`, and `status: aborted`.
 
-    `aborted`, not `failed`, because the loop raised before recording a trace, and a returned
-    dict reaches `_finish`, which reads `loop.trace` and fails the run with
-    `AgentTraceNotAvailable`. The deployment function raises `run.JobAbortedException` carrying
-    this output, which stores it and skips the trace.
+    `aborted`, not `failed`, because the loop raised before recording a trace and the launcher
+    reads one off any returned dict carrying `status`. The output travels through
+    `run.JobAbortedException` instead, which stores it and skips the trace: the single-run
+    deployment raises it, and `finalize_batch` raises it for a window whose every judge
+    failed.
     """
     evaluation = finalize({}, prep, judge_failure=reason)
     evaluation["status"] = "aborted"
@@ -5500,6 +5568,19 @@ def finalize(
 
     `pass_rate` divides by the decided checks, so `decided_count` and `na_count` sit beside it
     and the tally goes into `summary`.
+
+    The evaluation carries more fields than the `AGENT.md` declares, and this docstring is
+    their contract: a schema declaring them too was refused with `400 invalid_request_error:
+    Schema is too complex`, and nothing validates a returned dict against the declaration.
+    Beyond `status`, `summary`, `recommendation` and `checks`, which the judge writes, and
+    the four ids the schema keeps for their `entity_type`:
+
+    - `inspector_run_number` and `failed_run_number`, which name those runs in the summary.
+    - `inspector_status`, the status the inspector reported for itself.
+    - `passed`, `pass_rate`, `decided_count`, `na_count`.
+    - `judge_failure`, why the judge never answered on this run, empty where it did.
+    - `metrics`: `turn_count`, `total_tokens`, `cost_usd` and `runs_read`, off the inspector
+      run's trace.
     """
     ctx = prep.ctx
     if ctx is None:
