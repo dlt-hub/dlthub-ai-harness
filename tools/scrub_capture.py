@@ -1,24 +1,8 @@
 """Pseudonymize a captured inspector run before it is committed as a test fixture.
 
-A capture is a verbatim copy of what one evaluation read from a live workspace: run
-records, run logs, the stored result and trace, job run lists, pipeline traces. This
-repository is public, so every identifier that ties a capture to real infrastructure is
-replaced before the files land in git.
-
-Replacement is a keyed hash, so an identifier maps to the same pseudonym in every file and
-the cross-references inside a capture still resolve. The key is fixed in this file, so the
-mapping is reproducible and a guessed original can be confirmed; the source workspace is
-synthetic.
-
-The passes replace run, pipeline-run and trace UUIDs, leaving a hand-written placeholder
-alone; pipeline transaction ids; dlt load ids, both `<epoch>.<fraction>` and the bare epoch
-in a load path; the runner's temporary directory; and any literal pair in the substitution
-file, for names no pattern can find. Timestamps, job, dataset and table names and the quoted
-error text stay: they carry no account or credential and the checks under test read them.
-
-The substitution file holds the real names, so it stays out of the repository. It is JSON,
-`{"<original>": "<pseudonym>"}`, and defaults to `.context/scrub-literals.json`. Without it
-only the structural passes run, and `--verify` cannot confirm the literals are gone.
+Uuids, transaction ids, load ids, runner temp dirs and the literals of the substitution file
+are replaced by a keyed hash, so cross-references inside a capture still resolve. The
+substitution file, `{"<original>": "<pseudonym>"}`, holds real names and stays out of git.
 
 usage: uv run python tools/scrub_capture.py [--literals <path>] <capture directory> [...]
        uv run python tools/scrub_capture.py --verify [--literals <path>] <directory> [...]
@@ -33,29 +17,27 @@ import re
 import sys
 from pathlib import Path
 
+# a fixed key makes the mapping reproducible; acceptable because the source workspace is synthetic
 KEY = b"dlthub-ai-harness/job-inspector-eval/fixture-pseudonym/v1"
 LITERALS_DEFAULT = ".context/scrub-literals.json"
 
 MARK = "0000"
-"""Every pseudonym carries this, so `--verify` tells a scrubbed capture from a raw one
-without the originals. A real identifier carries it with probability 2**-16."""
+"""Carried by every pseudonym so `--verify` can tell a scrubbed capture without the originals."""
 
 EPOCH_FLOOR, EPOCH_RANGE = 1_600_000_000, 31_000_000
-"""A pseudonymous load id lands in late 2020; a real one is the instant the load ran."""
+"""Pseudonymous load ids fall between September 2020 and September 2021."""
 
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 
 HEX32 = re.compile(r"\b[0-9a-f]{32}\b")
+# epoch seconds from 2020 on, with the optional fraction of a dlt load id
 LOAD_ID = re.compile(r"\b(1[6-9][0-9]{8})(\.[0-9]{1,9})?\b")
 RUN_DIR = re.compile(r"(?<=/tmp/dlt_run_)[a-z0-9]{6,12}\b")
 
 
 def placeholder(value: str) -> bool:
-    """A uuid a test wrote by hand, `11111111-1111-4111-8111-111111111111` and its kind.
-
-    Outside the version and variant nibbles every character is the same, which no generated
-    id is. It names nothing real and the tests match on it verbatim.
-    """
+    """True for a hand-written test uuid such as `11111111-1111-4111-8111-111111111111`."""
+    # all digits except the version and variant nibbles are the same
     digits = value.replace("-", "")
     rest = digits[:12] + digits[13:16] + digits[17:]
     return len(digits) == 32 and len(set(rest)) == 1
@@ -102,11 +84,7 @@ def scrub(text: str, literals: dict[str, str]) -> str:
 
 
 def residuals(text: str, literals: dict[str, str] | None = None) -> list[str]:
-    """Every identifier in `text` that is not a pseudonym this module produced.
-
-    The mark each pseudonym carries covers the structural passes without the originals. Pass
-    `literals` too, when the substitution file is at hand, to catch a name no pattern finds.
-    """
+    """Identifiers in `text` that are not pseudonyms, plus any of `literals` still present."""
     found = [literal for literal in literals or {} if literal in text]
     found += [m for m in UUID.findall(text) if not m.startswith(MARK, 24) and not placeholder(m)]
     found += [m for m in HEX32.findall(text) if not m.startswith(MARK)]

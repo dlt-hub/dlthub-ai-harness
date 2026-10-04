@@ -25,6 +25,7 @@ def extract_urls_with_context(text: str) -> list[dict]:
     results = []
     seen = set()
     for i, line in enumerate(lines):
+        # a url ends at whitespace, a closing paren or bracket, a backtick or a quote
         for match in re.finditer(r'https?://[^\s\)>`\'"]+', line):
             url = match.group().rstrip(".,;:")
             if url in seen:
@@ -75,12 +76,12 @@ def build_component_map(plugin_dir: Path) -> dict:
 
 
 def scan_toolkit(plugin_dir: Path) -> dict:
-    """Scan a single toolkit directory."""
+    """Component map and per-file urls of a toolkit."""
     components = build_component_map(plugin_dir)
     files = []
 
     for md_file in sorted(plugin_dir.rglob("*.md")):
-        # skip .claude-plugin/
+        # skip hidden directories such as .claude-plugin/
         rel_parts = md_file.relative_to(plugin_dir).parts
         if any(part.startswith(".") for part in rel_parts):
             continue

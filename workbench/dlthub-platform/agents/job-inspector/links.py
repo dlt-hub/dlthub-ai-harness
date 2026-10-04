@@ -1,16 +1,4 @@
-"""Run ids and job refs in an agent summary, written as links to their web UI pages.
-
-An agent names a run by its uuid, because that is what a person pastes into
-`dlthub job runs logs`. A uuid in prose is unreadable, so the summary goes through
-`linkify` after the loop: the uuid stays in the link target, which is the run's page in the
-platform web UI, and the text becomes what the reader needs, a run number where the caller
-knows one.
-
-The loop stores the summary as the model wrote it. The inspector's `agent.py` passes its output
-to `link_summary` in `validate_output`, before the launcher reads `summary` off it. The
-evaluator's folder holds a symlink to this file, so its `checks.py` links the summary it
-renders the same way, and each agent folder imports only its own files.
-"""
+"""Rewrite run ids and job refs in an agent summary as links to their web UI pages."""
 
 from __future__ import annotations
 
@@ -21,32 +9,24 @@ __all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform", "link_summ
 
 
 def web_ui() -> Tuple[str, str]:
-    """The web UI base and the workspace id, both empty when they cannot be resolved.
-
-    `dlt_runtime.urls` turns the API base url into the UI one, the mapping the CLI prints a
-    run link with. A local replay has neither, and the summary then names runs by id.
-    """
+    """The web UI base and the workspace id, both empty when not available."""
     try:
         from dlt._workspace._workspace_context import active
         from dlt_runtime import urls
 
         return urls.web_ui_base(), str(active().runtime_config.workspace_id or "")
-    except Exception:
+    except Exception:  # links are optional: no runtime or workspace leaves the text plain
         return "", ""
 
 
 _MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
-"""A link already written. Nothing inside one is linked again, and neither is its target."""
+"""An existing markdown link, left as is."""
 
 _UNTERMINATED_LINK = re.compile(r"\[[^\]]*\]\([^)]*$|\[[^\]]*$")
-"""A link a quote cut in half. A check truncates the line it quotes, so a link the agent
-already wrote can lose its closing paren; linking inside what is left nests one link in
-another. Everything from the opening bracket on is left alone."""
+"""A link cut by a truncated quote, left as is so links do not nest."""
 
 _CODE_SPAN = re.compile(r"`[^`\n]+`")
-"""An inline code span. A link inside one is broken markdown, so the span becomes the text of
-the link instead: the inspector cites a run as `dlthub job runs logs <id>`, and that whole
-command is what a reader clicks."""
+"""An inline code span; it becomes link text because a link inside a span does not render."""
 
 _BARE_RUN_ID = re.compile(
     r"\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b"
@@ -54,19 +34,11 @@ _BARE_RUN_ID = re.compile(
 _BARE_JOB_REF = re.compile(r"\b(jobs\.[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\b")
 
 _LOG_COMMAND = re.compile(r"\bjob\s+(?:runs\s+)?logs\b")
-"""A citation that opens a log rather than a run record. The run page defaults to its
-overview, so a log citation carries `?output=logs` and lands the reader on the lines it
-quotes."""
-
+"""A log command; its link opens the logs tab of the run page."""
 
 
 def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
-    """Link text per run id: the run number, which the bullet writes the job ref beside.
-
-    A uuid tells a reader nothing, so it goes in the link target and `#27` goes in the text,
-    the way the inspector's "Cite the artifact in the bullet" names an artifact rather than
-    pointing at one. A run whose number the caller does not hold keeps its uuid.
-    """
+    """`#<number>` per run id, from the `*_run_id` and `*_run_number` fields of the entries."""
     labels: Dict[str, str] = {}
     for entry in entries:
         for prefix in ("inspector", "failed"):
@@ -78,17 +50,7 @@ def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
 
 
 def labels_from_platform(text: str) -> Dict[str, str]:
-    """`#<number>` per run id the text names, read from the platform.
-
-    The evaluator builds its labels from the runs it already holds. An agent summary names
-    runs the caller never fetched, the producer's among them, so they are looked up here, one
-    call per distinct id. A lookup that fails leaves that id as its uuid, which is what the
-    citation carries anyway: the label is a readability gain, not evidence.
-
-    The token is read once rather than renewed. A runner holds a service `api_key` that does
-    not expire; a developer machine holds a JWT that does, and an expired one costs the
-    labels and nothing else.
-    """
+    """`#<number>` per run id in `text`, read from the platform; unknown ids get no label."""
     found = {match.group(1).lower() for match in _BARE_RUN_ID.finditer(text or "")}
     if not found:
         return {}
@@ -97,6 +59,7 @@ def labels_from_platform(text: str) -> Dict[str, str]:
         from dlt._workspace._workspace_context import active
 
         config = active().runtime_config
+        # the token is not renewed: an expired JWT costs only the labels
         token = str(config.api_key or config.auth_token or "")
         if not token or not config.workspace_id:
             return {}
@@ -104,7 +67,7 @@ def labels_from_platform(text: str) -> Dict[str, str]:
             token=token, base_url=config.api_base_url or "https://api.dlthub.com"
         )
         workspace = runtime.workspaces.get(id=config.workspace_id)
-    except Exception:
+    except Exception:  # labels are best effort, a run id still links without one
         return {}
     labels: Dict[str, str] = {}
     for run_id in found:
@@ -122,12 +85,9 @@ def linkify(
     links: Tuple[str, str] = ("", ""),
     labels: Optional[Mapping[str, str]] = None,
 ) -> str:
-    """Every run id and job ref in a line, written as a link to its page.
+    """Rewrite run ids and job refs in `text` as links, leaving existing links unchanged.
 
-    A run id is a link wherever it falls: a summary bullet, a reasoning a check wrote, a
-    table cell. `labels` gives the link its text where the id stands alone, so a reader sees
-    the run number and the uuid stays in the target. Text already inside a link is left
-    alone, and so is the target of one.
+    `labels` gives the link text for a run id that stands alone.
     """
     base, workspace = links
     if not base or not workspace or not text:
@@ -143,11 +103,7 @@ def linkify(
 
 
 def link_summary(output: Dict[str, Any]) -> Dict[str, Any]:
-    """The agent output with its summary linked, for `validate_output` in `agent.py`.
-
-    The run numbers come from the platform, one lookup per run the summary names. An output
-    without a summary is returned as it came.
-    """
+    """The agent output with run ids and job refs in its summary written as links."""
     summary = output.get("summary", "")
     if not summary or not isinstance(summary, str):
         return output
@@ -169,12 +125,7 @@ def _outside_links(text: str, base: str, workspace: str, labels: Mapping[str, st
 
 
 def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> str:
-    """A code span holding an id, written as the text of a link to that id's page.
-
-    The span is the text and never the target of the link: a link wrapped around a code span
-    renders, a link written inside one prints its markup. A span carrying no id is left as it
-    stands.
-    """
+    """A code span holding an id rewritten as the text of a link; other spans unchanged."""
     inner = span[1:-1]
     if run_match := _BARE_RUN_ID.search(inner):
         run_id = run_match.group(1)
@@ -192,13 +143,8 @@ def _span(span: str, base: str, workspace: str, labels: Mapping[str, str]) -> st
 
 
 def _run_query(inner: str) -> str:
-    """What a run link carries beyond its id: the logs tab, for a citation that quotes a log.
-
-    The run page opens on its overview and `output=logs` opens its logs tab, where the quoted
-    line is. The CLI prints the bare run URL, so the parameter is added here. The line itself
-    is printed beside the link: `dlt_runtime.urls` builds workspace, pipeline, job and run URLs
-    and takes no line parameter, and the web app reads none this repository can see.
-    """
+    """The query for a run link: `?output=logs` for a citation of a log command, else empty."""
+    # dlt_runtime.urls has no parameter for the logs tab
     if not _LOG_COMMAND.search(inner):
         return ""
     return "?output=logs"

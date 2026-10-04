@@ -1,4 +1,5 @@
-"""Code dlt runs around the job-inspector loop: links the run ids and job refs in the summary."""
+"""Hooks for the job-inspector agent job: `validate_output` links run ids and job refs in the
+summary."""
 
 from typing import Any, Dict
 

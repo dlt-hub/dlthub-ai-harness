@@ -1,11 +1,6 @@
-"""Check destination connectivity and dataset existence.
+"""Check destination connectivity and dataset existence under a workspace profile.
 
-Switches to the given workspace profile, then creates a temporary pipeline
-pointing at the destination and opens a connection via destination_client().
-Configuration (credentials etc.) is resolved from the profile's secrets.toml / env.
-
-Exit code 0 = connection succeeded (prints whether dataset exists).
-Exit code 1 = connection failed (prints full exception).
+Exits 0 and prints whether the dataset exists, or exits 1 and prints the traceback.
 """
 
 import argparse
@@ -29,7 +24,6 @@ def main() -> int:
     try:
         import dlt
 
-        # switch to the requested profile (reloads config/secrets)
         dlt.current.workspace().switch_profile(args.profile)
 
         pipeline = dlt.pipeline(

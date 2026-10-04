@@ -1,9 +1,4 @@
-"""Code dlt runs around the job-inspector-eval loop for a single-run evaluation.
-
-`validate_input` resolves the inspector run, runs the deterministic checks and hands the judge
-its evidence; `validate_output` writes the computed results over the judge's answer. The
-preparation is kept in `_PREP` between the two: dlt imports this module afresh for every run.
-"""
+"""Hooks for the job-inspector-eval agent job: run the checks before the judge, merge after."""
 
 from typing import Any, Dict, Optional
 
@@ -11,6 +6,7 @@ from dlt.hub.run import JobAbortedException
 
 from .checks import DEFAULT_MAX_RUNS_READ, EvalPrep, fetcher_for, finalize, prepare
 
+# dlt imports this module again for every agent run, so this holds the state of one run
 _PREP: Optional[EvalPrep] = None
 
 
