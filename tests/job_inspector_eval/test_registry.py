@@ -1,12 +1,15 @@
-"""The registry is the one list of check ids. The prompt and the spec must agree with it.
+"""The registry is the one list of check ids; `AGENT.md` and `BACKGROUND_AGENTS.md` agree with it.
 
-The agent ships its `AGENT.md` and `checks.py` and no prose beside them: a document restating
-the registry drifts from it, and the checks carry their own instruction in the first paragraph
-of each docstring. `BACKGROUND_AGENTS.md` holds what an author or an operator needs.
+The first paragraph of each check docstring is its instruction.
 """
 
+import inspect
+import json
 import re
 from pathlib import Path
+
+import pytest
+import yaml
 
 from conftest import AGENT_DIR
 
@@ -30,8 +33,8 @@ def test_no_deterministic_check_carries_a_rubric():
     assert deterministic.isdisjoint(C.RUBRICS)
 
 
-def test_the_prompt_asks_for_the_rubrics_instead_of_spelling_them_out():
-    """The Checks section is `{{ rubrics }}`: the prompt carries the applicable ones only."""
+def test_the_system_prompt_renders_the_rubrics_placeholder():
+    """The Checks section is the `{{ rubrics }}` placeholder, filled with applicable rubrics."""
     assert "{{ rubrics }}" in AGENT_MD
     assert _RUBRIC_ID.findall(AGENT_MD) == []
 
@@ -45,8 +48,6 @@ def test_rubric_block_renders_only_the_ids_asked_for_in_registry_order():
 
 
 def test_rubric_block_rejects_an_id_with_no_rubric():
-    import pytest
-
     with pytest.raises(KeyError):
         C.rubric_block(["evidence_has_provenance"])
 
@@ -75,13 +76,11 @@ def test_the_agent_ships_no_prose_beside_its_definition():
 TRANSCRIPT_ACCESSORS = ("tool_calls", "calls_matching", "shell_commands", "first_call_index",
                         "events_before_call", "runs_read", "transcript_blind", "ctx.events")
 TRACE_BACKED_TRANSCRIPT_READERS = {"no_data_access", "no_write_tool_used"}
-"""Checks that read transcript calls but can still decide from the run trace if parsing fails."""
+"""Checks that read transcript calls, but can decide from the agent trace if parsing fails."""
 
 
 def test_every_check_that_reads_the_transcript_declares_it():
-    """The flag holds back a check when the parser went blind, so it must match the code."""
-    import inspect
-
+    """The flag that returns `N/A` on an unparsed transcript must match the check's code."""
     for entry in C.CHECKS.values():
         if entry.fn is None:
             continue
@@ -105,16 +104,13 @@ def test_data_tool_table_matches_dlt_access_annotations():
 
 
 def test_the_shipped_definitions_declare_read_only_access():
-    """What `inspector_access_read_only` grades at run time must hold in the repository.
-
-    An empty grant passes: the evaluator has one, since everything it reads is fetched for it.
-    """
+    """What `inspector_access_read_only` grades at run time must hold for shipped definitions."""
     for definition in sorted(AGENT_DIR.parent.glob("*/AGENT.md")):
         access = C.parse_access(definition.read_text())
         for axis, verbs in access.items():
             allowed = C.READ_ONLY_ACCESS.get(axis)
-            assert allowed is not None, f"{definition} grants the {axis} axis"
-            assert set(verbs) <= allowed, f"{definition} grants {axis}: {verbs}"
+            assert allowed is not None, f"{definition} declares the {axis} axis"
+            assert set(verbs) <= allowed, f"{definition} declares {axis}: {verbs}"
 
 
 def test_the_inspector_definition_sits_where_the_evaluator_looks_for_it():
@@ -141,14 +137,11 @@ def test_every_deploy_snippet_pins_the_read_only_profile():
 
 def _declared_output() -> dict:
     """The output schema as a model receives it, read out of the shipped `AGENT.md`."""
-    import yaml
-
     return yaml.safe_load(AGENT_MD.split("---", 2)[1])["output"]
 
 
 def test_no_declared_object_is_left_without_properties():
-    """A strict validator refuses an object schema with no `properties`, so OpenAI's structured
-    output falls back or rejects it. Every object the judge is shown names its fields."""
+    """Strict structured output (OpenAI) rejects an object schema without `properties`."""
     bare = []
 
     def walk(node, path="output"):
@@ -166,8 +159,7 @@ def test_no_declared_object_is_left_without_properties():
 
 
 def test_the_batch_fields_declare_what_checks_py_writes():
-    """`window`, `evaluations` and `skipped_runs` are filled in Python, so the schema is the
-    one place they can drift from the code."""
+    """The schema of `window`, `evaluations` and `skipped_runs` matches what Python fills."""
     properties = _declared_output()["properties"]
     batch = C.BatchPrep(job_ref="jobs.x.job_inspector")
     batch.skipped.append({"run_id": "r", "reason": "still running"})
@@ -179,7 +171,5 @@ def test_the_batch_fields_declare_what_checks_py_writes():
 
 
 def test_the_output_schema_stays_small():
-    """The judge reads the whole schema on every run, and a large one has failed to launch."""
-    import json
-
+    """The judge reads the whole schema on every run; a larger one failed to launch."""
     assert len(json.dumps(_declared_output())) < 7_800

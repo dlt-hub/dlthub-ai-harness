@@ -1,18 +1,15 @@
-"""The failure modes of an inspector run, as fixtures.
+"""Failure modes of an inspector run, as fixtures.
 
-Each case pairs a shallow inspector run with the run the definition asks for, over the same
-failed log, and asserts which checks separate them: a traceback left unopened, a fix that
-names no value, a missing table not followed to its producer, a gap left undeclared, a cause
-copied from a comment, and a summary that leaks its own instructions.
+Each case pairs a shallow run with the required run over the same failed log.
 """
 
 from conftest import (
     FAILED_RUN_ID,
     OLDER_RUN_ID,
-    PROGRAM_START,
     context,
     failed_run,
     inspector_log,
+    line_no,
     output,
     with_setup,
 )
@@ -33,13 +30,6 @@ def false_ids(**overrides):
     return sorted(id for id, outcome in outcomes(**overrides).items() if outcome == C.FALSE)
 
 
-def line(program_index):
-    return PROGRAM_START + program_index
-
-
-# case 1: a traceback that names a workspace file, and a fix that names no value
-# a run on `load_jaffle_bad_incremental`
-
 INCREMENTAL_JOB = "jobs.jaffle_shop.load_jaffle_bad_incremental"
 INCREMENTAL_ERROR = (
     "dlt.extract.incremental.exceptions.IncrementalCursorPathMissing: Cursor element with JSON"
@@ -58,7 +48,7 @@ INCREMENTAL_LOG = [
     INCREMENTAL_ERROR,
     "2026-09-22 14:01:04 INFO  job finished with status failed",
 ]
-INCREMENTAL_LINE = line(8)
+INCREMENTAL_LINE = line_no(8)
 FILE_READ = '  Read  {"file_path": "/workspace/jaffle_shop/bad_incremental.py"}'
 
 
@@ -77,8 +67,7 @@ def incremental_transcript(read_file):
 
 
 def incremental_from_the_log_alone():
-    """Every turn on metadata tools while Read, Glob and Grep were live; the fix names no
-    field."""
+    """Only metadata tools while file tools were available; the fix names no field."""
     return output(
         classification="code", confidence="high",
         summary=(
@@ -177,9 +166,6 @@ def test_a_merge_key_guessed_for_a_table_without_it_is_a_hedge():
     assert "typically" in result.reasoning
 
 
-# case 2: a downstream quality job fails because the producer loaded nothing
-# `quality_checks` after `load_jaffle_bad_selector`
-
 QUALITY_JOB = "jobs.jaffle_shop.quality_checks"
 LOADER_JOB = "jobs.jaffle_shop.load_jaffle_bad_selector"
 UPSTREAM_RUN_ID = "66666666-6666-4666-8666-666666666666"
@@ -194,7 +180,7 @@ QUALITY_LOG = [
     "duckdb.duckdb.CatalogException: Catalog Error: Table with name orders does not exist!",
     "2026-09-22 15:00:02 INFO  job finished with status failed",
 ]
-MISSING_TABLE_LINE = line(1)
+MISSING_TABLE_LINE = line_no(1)
 
 
 def quality_transcript(follow):
@@ -288,7 +274,7 @@ def test_a_missing_table_is_followed_to_the_producing_job():
     assert good["upstream_inspected_on_dependency_symptoms"] == C.TRUE
     assert good["only_inspected_run_logs"] == C.TRUE  # the one producer log is allowed
     assert good["single_run_scope"] == C.TRUE
-    assert good["evidence_excerpts_exist"] == C.TRUE  # the producer's log is not held
+    assert good["evidence_excerpts_exist"] == C.TRUE  # the producer log is not in the context
     assert good["fix_names_target_and_change"] == C.TRUE  # the open value is declared
     assert false_ids(**quality_case(True, quality_as_required())) == []
 
@@ -303,8 +289,6 @@ def test_a_run_that_stops_at_the_missing_table_is_caught():
         context(**quality_case(False, quality_stopping_at_the_symptom()))).reasoning
     assert "does not exist" in reason and "no other job's run" in reason
 
-
-# case 3: the evidence is insufficient and the run says so, or does not
 
 TOOL_ERROR = "Error calling tool 'Read': ENOENT jaffle_shop/bad_incremental.py"
 
@@ -346,16 +330,13 @@ def test_a_run_whose_file_read_failed_must_declare_the_gap():
     assert good["fix_names_target_and_change"] == C.TRUE
 
 
-# case 4: a cause copied from a docstring
-# prose stating the answer, cited as evidence
-
-DOCSTRING = "# NOTE: the source records carry ordered_at, not order_date"
+COMMENT = "# NOTE: the source records carry ordered_at, not order_date"
 
 
-def test_high_confidence_on_a_docstring_alone_fails_and_a_code_line_next_to_it_passes():
+def test_high_confidence_on_a_comment_alone_fails_and_a_code_line_next_to_it_passes():
     prose_only = incremental_as_required()
     prose_only["evidence"] = [
-        {"source": "jaffle_shop/bad_incremental.py line 13", "excerpt": DOCSTRING,
+        {"source": "jaffle_shop/bad_incremental.py line 13", "excerpt": COMMENT,
          "provenance": "repository_comment"},
     ]
     result = C.CHECKS["high_confidence_rests_on_facts"].fn(
@@ -365,7 +346,7 @@ def test_high_confidence_on_a_docstring_alone_fails_and_a_code_line_next_to_it_p
 
     corroborated = incremental_as_required()
     corroborated["evidence"].append(
-        {"source": "jaffle_shop/bad_incremental.py line 13", "excerpt": DOCSTRING,
+        {"source": "jaffle_shop/bad_incremental.py line 13", "excerpt": COMMENT,
          "provenance": "repository_comment"})
     good = outcomes(**incremental_case(True, corroborated))
     assert good["high_confidence_rests_on_facts"] == C.TRUE
@@ -373,23 +354,19 @@ def test_high_confidence_on_a_docstring_alone_fails_and_a_code_line_next_to_it_p
     assert good["open_points_declared"] == C.TRUE
 
 
-def test_a_docstring_labelled_as_code_is_caught_by_the_source_check_only_when_the_source_is_a_log():
-    """A comment in a `.py` file fits `workspace_file` by source; the judge's
-    `repository_prose_labelled` is what tells code from prose."""
-    labelled_code = incremental_as_required()
-    labelled_code["evidence"].append(
-        {"source": "jaffle_shop/bad_incremental.py line 13", "excerpt": DOCSTRING,
+def test_source_check_catches_wrong_provenance_only_on_a_log_source():
+    """A comment labeled `workspace_file` passes; only the judge tells code from prose."""
+    labeled_code = incremental_as_required()
+    labeled_code["evidence"].append(
+        {"source": "jaffle_shop/bad_incremental.py line 13", "excerpt": COMMENT,
          "provenance": "workspace_file"})
-    assert outcomes(**incremental_case(True, labelled_code))[
+    assert outcomes(**incremental_case(True, labeled_code))[
         "evidence_provenance_matches_source"] == C.TRUE
 
     log_as_code = incremental_as_required()
     log_as_code["evidence"][0]["provenance"] = "workspace_file"
     assert outcomes(**incremental_case(True, log_as_code))[
         "evidence_provenance_matches_source"] == C.FALSE
-
-
-# case 5: the summary structure, and the instruction text that must not leak into it
 
 
 def test_instruction_questions_next_to_the_headings_fail_two_checks():

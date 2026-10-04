@@ -1,4 +1,4 @@
-"""Transcript and result-envelope parsing, the two readers everything else rests on."""
+"""Parsing of the transcript and the result envelope. All checks use these two parsers."""
 
 import json
 
@@ -21,7 +21,7 @@ def test_transcript_reads_thoughts_calls_and_results():
     assert kinds.count("thinks") == 3
     assert kinds.count("tool_call") == 4
     assert kinds.count("tool_result") == 4
-    assert kinds.count("says") == 2  # the prompt and the closing statement
+    assert kinds.count("says") == 2  # the user turn and the closing statement
 
     calls = [event for event in events if event.kind == "tool_call"]
     assert [call.tool for call in calls] == ["dlthub_get_run", "dlthub_get_run_logs",
@@ -84,8 +84,7 @@ def test_result_envelope_is_none_without_one():
 
 
 def test_a_tool_error_attaches_to_its_own_call_across_a_batch():
-    """The captured runs print two calls before either result, so the scan cannot stop at the
-    next call of any tool."""
+    """Captured runs print two calls before either result, so the scan passes the next call."""
     log = inspector_log(events=[
         "  list_tables (dlt-workspace-mcp)",
         "  get_row_counts (dlt-workspace-mcp)",
@@ -102,7 +101,6 @@ def test_a_tool_error_attaches_to_its_own_call_across_a_batch():
 
 
 def test_token_overlap_counts_whole_tokens_only():
-    """A substring test let short tokens match inside longer words and inflate the share."""
     assert C.token_overlap("load failed at 38", "load failed at 38") == 1.0
     # `38` inside `138` and `no` inside `nothing` are not the tokens the excerpt named
     assert C.token_overlap("38", "row 138 written") == 0.0
@@ -111,8 +109,7 @@ def test_token_overlap_counts_whole_tokens_only():
 
 
 def test_token_overlap_ignores_punctuation_at_the_end_of_a_token():
-    """`_TOKEN` keeps `.` and `:` inside a token, so a faithful quote of a log line that ends
-    in one would otherwise miss on that word."""
+    """`_TOKEN` keeps `.` and `:` inside a token, so a trailing one would hide the last word."""
     assert C.token_overlap("users does not exist", 'relation "users" does not exist.') == 1.0
     assert C.token_overlap(
         "connect failed host=db.internal:5432", "connect failed: host=db.internal:5432"
@@ -243,11 +240,7 @@ def test_source_line_range():
 
 
 def test_a_tool_call_right_after_a_spoken_block_is_read_as_a_call():
-    """The launcher prints a `says` label, its indented text, then that turn's calls.
-
-    The calls take the same indent as the text, so a block that ran to the next blank line
-    would take them with it.
-    """
+    """Calls share the indent of the `says` text that precedes them."""
     log = inspector_log(events=[
         "  says",
         "  I will resolve the failed run, then read its record before the logs.",
@@ -262,7 +255,7 @@ def test_a_tool_call_right_after_a_spoken_block_is_read_as_a_call():
 
 
 def test_a_spoken_block_keeps_prose_that_looks_like_a_call():
-    """A sentence quoting a run id would otherwise land in `runs_read` as a call argument."""
+    """A sentence quoting a run id must not land in `runs_read` as a call argument."""
     log = inspector_log(events=[
         "  says",
         f"  Rotate  the token, then re-run {FAILED_RUN_ID}.",
@@ -273,7 +266,7 @@ def test_a_spoken_block_keeps_prose_that_looks_like_a_call():
 
 
 def test_the_trace_names_a_bare_tool_call_inside_a_spoken_block():
-    """Verbosity 0 prints no argument, so only the trace tells `  Bash` from a first word."""
+    """Verbosity 0 prints no argument, so only the agent trace tells `  Bash` from a first word."""
     log = inspector_log(events=["  says", "  Reading the record now.", "  Bash"])
     assert [e.tool for e in C.parse_transcript(log) if e.kind == "tool_call"] == []
     events = C.parse_transcript(log, known_tools=["Bash", "dlthub_get_run"])
@@ -305,11 +298,7 @@ def test_transcript_reads_every_call_of_a_deployed_run():
 
 
 def test_a_deployed_run_transcript_reads_every_tool_call():
-    """A deployed run whose trace recorded 11 tool calls.
-
-    Every call sits under a `says` label, one blank line further down than the block ends.
-    The parser read 0 of them and the 17 parser-gated transcript checks went `N/A`.
-    """
+    """Each call sits one blank line below the end of a `says` block."""
     events = C.parse_transcript(deployed_run_log())
     calls = [event for event in events if event.kind == "tool_call"]
 
@@ -321,11 +310,11 @@ def test_a_deployed_run_transcript_reads_every_tool_call():
 
 
 def test_a_deployed_run_keeps_its_spoken_text_out_of_the_calls():
-    """The converse of the check above: prose must not become a call."""
+    """Prose in a spoken block must not become a call."""
     events = C.parse_transcript(deployed_run_log())
     spoken = [event.text for event in events if event.kind == "says"]
 
-    assert len(spoken) == 5, "the prompt and the four statements the run made"
+    assert len(spoken) == 5, "the user turn and the four statements the run made"
     assert not any(tool in text for text in spoken for tool in DEPLOYED_RUN_TOOLS), (
         "a swallowed call would show up inside the text of the block above it"
     )

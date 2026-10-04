@@ -1,7 +1,6 @@
-"""Every shipped capability must be reachable from the router skill.
+"""Every shipped skill and agent definition must be reachable from the router skill.
 
-The chain is router → toolkit → workflow.md → skill or agent. A break anywhere in it leaves
-a capability the agent never finds.
+The chain is router → toolkit → workflow.md → skill or agent definition.
 """
 
 from pathlib import Path

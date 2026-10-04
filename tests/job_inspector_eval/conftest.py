@@ -1,8 +1,6 @@
-"""Fixtures for the job-inspector-eval deterministic checks.
+"""Fixtures for the deterministic checks of job-inspector-eval.
 
-`checks.py` ships inside the agent folder, which the toolkit installer copies verbatim into a
-workspace. dlt imports the folder as a package for `agent.py`; the tests put the folder on the
-path instead, as the scheduled job's deployment function does, and `checks.py` works either way.
+`checks.py` ships in the agent folder; the tests put it on `sys.path` as the deployed job does.
 """
 
 import sys
@@ -116,8 +114,7 @@ DEFAULT_EVENTS = [
 ]
 
 DEFAULT_LOG_CITATION = f"`dlthub job runs logs {FAILED_RUN_ID}` line 8"
-"""How a summary bullet points at the line it quotes, as "Cite the artifact in the bullet"
-in the inspector's definition requires."""
+"""A log citation in the form that "Cite the artifact in the bullet" requires."""
 DEFAULT_LOG_BULLET = (
     f"- {DEFAULT_LOG_CITATION}: `ERROR  401 Unauthorized calling"
     " https://api.github.com/events`."
@@ -278,11 +275,7 @@ def ctx() -> "C.EvalContext":
 
 
 DEPLOYED_RUN_LOG = Path(__file__).parent / "fixtures" / "deployed_inspector_run.log"
-"""The `program` output of a real deployed inspector run, ids and workspace name replaced.
-
-Run #3 of `job_inspector`, 2026-09-22. All 11 tool calls sit inside a spoken block, the shape
-that first left the transcript parser reading none of them.
-"""
+"""Pseudonymized `program` output of a deployed `job_inspector` run, calls in spoken blocks."""
 
 DEPLOYED_RUN_TOOLS = [
     "Bash",
@@ -297,7 +290,7 @@ DEPLOYED_RUN_TOOLS = [
     "dlthub_get_pipeline_run_trace",
     "Read",
 ]
-"""The 11 calls that run made, in order. Its trace recorded 11, the evaluator read 0."""
+"""The 11 calls of that run, in order."""
 
 
 def deployed_run_log(result_json: Optional[str] = None) -> List["C.LogLine"]:
@@ -313,7 +306,7 @@ def deployed_run_log(result_json: Optional[str] = None) -> List["C.LogLine"]:
 
 
 def deployed_run_trace(**overrides: Any) -> Dict[str, Any]:
-    """The trace that run reported: 11 uses over 5 turns, and the names behind them."""
+    """The agent trace of that run: 11 tool calls in 5 turns."""
     base = trace(
         turn_count=5,
         total_tokens=80708,

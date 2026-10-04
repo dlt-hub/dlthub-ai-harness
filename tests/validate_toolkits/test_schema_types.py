@@ -1,8 +1,6 @@
-"""A property carrying an enum and no type fails the agent on its first model call.
+"""A property with an enum and no type fails the agent run on its first model call.
 
-Anthropic's schema transformer refuses it with "Schema must have a 'type', 'anyOf', 'oneOf',
-or 'allOf' field", which a platform run of a shipped agent hit, so the validator holds the
-line here rather than in a job log.
+Anthropic rejects it with "Schema must have a 'type', 'anyOf', 'oneOf', or 'allOf' field".
 """
 
 from pathlib import Path
@@ -76,8 +74,7 @@ def test_a_schema_over_the_cap_fails() -> None:
 
 
 def test_a_required_nested_property_does_not_count() -> None:
-    """`required` inside an object binds only when the model writes that object, so the nested
-    properties of a Python-filled field cost nothing."""
+    """A nested `required` binds only when the model writes that object, so it does not count."""
     nested = {f"n{n}": {"type": "string"} for n in range(30)}
     fm = {
         "output": {

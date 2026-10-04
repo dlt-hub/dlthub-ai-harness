@@ -1,8 +1,6 @@
-"""Runs the toolkit's agents through dlt on the pydantic-ai loop with a model that calls nothing.
+"""Fixtures that run the toolkit's agents on dlt's pydantic-ai loop with an offline model.
 
-`NullModelLoop` is dlt's pydantic-ai loop with pydantic-ai's `TestModel` as the model and no
-MCP server, so the agent definition, its `agent.py`, the rendered prompt, the output schema
-and the job result are the ones a deployment uses; only the model answers offline.
+Everything but the model (`TestModel`, no MCP server) is what a deployment uses.
 """
 
 import os

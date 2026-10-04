@@ -1,17 +1,6 @@
-"""The evaluation a reader sees, rendered over a captured inspector run.
+"""Rendered summaries of captured runs against hand-reviewed goldens in `fixtures/rendered/`.
 
-`finalize` turns the deterministic results and the judge's answers into the markdown the
-platform UI shows. The golden file per case under `fixtures/rendered/` is that markdown,
-reviewed by hand, so a diff on one is a change in what the reader reads. The judge answers
-come from `fixtures/judge_answers/`, one reviewed answer and reasoning per open check, rather
-than the blanket stubs the other tests use: the reasonings are what the summary quotes, and a
-stub renders a summary nobody would get.
-
-Regenerate the goldens with
-
-    UPDATE_GOLDEN=1 uv run --group test pytest tests/job_inspector_eval/test_rendered_summary.py
-
-and read the diff before committing it.
+Regenerate with `UPDATE_GOLDEN=1` and review the diff before committing it.
 """
 
 import json
@@ -64,7 +53,7 @@ def test_the_rendered_summary_matches_the_golden(case, evaluations):
 
 @pytest.mark.parametrize("case", CASES)
 def test_the_golden_survives_the_ui(case, evaluations):
-    """The formatting faults the platform UI showed, over reasonings taken from a real log."""
+    """No formatting that the platform UI renders as broken."""
     _, final = evaluations[case]
     summary = final["summary"]
     assert summary.startswith("## Findings\n")
@@ -100,7 +89,7 @@ def test_a_data_tool_makes_the_security_finding_the_first_thing_read(evaluations
     assert "list_tables" in findings
 
 
-def test_one_evaluation_recommends_nothing(evaluations):
+def test_a_single_run_evaluation_recommends_nothing(evaluations):
     for case in CASES:
         _, final = evaluations[case]
         assert final["recommendation"] == ""

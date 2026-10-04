@@ -1,9 +1,6 @@
-"""A window of captured inspector runs, composed from the single-run captures.
+"""`prepare_batch` over a window of captured inspector runs.
 
-`prepare_batch` grades every inspector run of one job in a window, and each capture under
-`fixtures/captured/` holds one run. `window` merges several into one `FileFetcher` root at
-test time, so the window's composition is read in the test rather than committed as a tenth
-capture duplicating files the repository already holds.
+`window` merges single-run captures into one `FileFetcher` root, so no duplicate is committed.
 """
 
 import json
@@ -17,7 +14,7 @@ from test_captured_runs import CAPTURED
 
 INSPECTOR_JOB = "jobs.__deployment__.job_inspector"
 CASES = ("dq_missing_input", "config_missing_destination_type", "aborted_on_data_tool")
-"""A run that broke nine rules, a run that broke two, and one that reached the destination."""
+"""A run that broke nine rules, a run that broke three, and a run that called a data tool."""
 SINCE = datetime(2026, 9, 20, tzinfo=timezone.utc)
 UNTIL = datetime(2026, 9, 25, tzinfo=timezone.utc)
 NEWEST_FIRST = ("config_missing_destination_type", "aborted_on_data_tool", "dq_missing_input")

@@ -1,7 +1,6 @@
-"""A toolkit file may not point at a document in the repo root.
+"""A toolkit file must not point at a document in the repo root.
 
-`dlthub ai toolkit install` copies the toolkit directory and nothing above it, so a workspace
-that follows such a reference finds no file. The document's URL is the way to cite one.
+`dlthub ai toolkit install` copies only the toolkit directory; such a document is cited by URL.
 """
 
 from pathlib import Path

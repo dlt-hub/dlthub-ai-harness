@@ -1,14 +1,6 @@
 """Real inspector runs, captured with `capture` and replayed with `FileFetcher`.
 
-Each directory under `fixtures/captured/` holds what one evaluation read: the inspector run
-and its log, the stored result and trace, the inspected run and its log, the job's run
-list, the pipeline trace when there was one. The runs came from a pydantic-ai loop on an
-Azure deployment. Four ran an inspector definition that predates the provenance, fix and
-summary rules, so they show what those rules catch on a transcript the launcher printed.
-Five ran the current definition; the third summary heading of the first three was captured
-as `Caveats` and renamed to `Confidence` in the fixture when the definition renamed the
-section. The last two ran on the platform runner and show what the tag and fix-target rules
-catch.
+Each directory under `fixtures/captured/` holds everything one evaluation read.
 """
 
 import glob
@@ -22,6 +14,7 @@ import checks as C
 
 CAPTURED = Path(__file__).parent / "fixtures" / "captured"
 CASES = sorted(entry.name for entry in CAPTURED.iterdir() if entry.is_dir())
+# the first three were captured with a `Caveats` heading, renamed to `Confidence` in the fixture
 CURRENT_DEFINITION = ("config_missing_destination_type",
                       "config_missing_destination_type_value_open",
                       "dependency_followed_to_producer",
@@ -29,11 +22,7 @@ CURRENT_DEFINITION = ("config_missing_destination_type",
                       "cursor_value_from_a_comment")
 """Runs of the definition that carries the provenance, fix and summary rules."""
 CLEAN = CURRENT_DEFINITION[:2]
-"""The runs among them with no deterministic FALSE beyond rules added after they ran: their
-Recommendation opens with "Ask a coding agent to" (`recommendation_is_the_action`), chains a
-second action onto the first with a comma (`recommendation_one_action_per_bullet`), and the
-second one names a file its evidence rests on nowhere in the summary
-(`summary_cites_its_evidence`)."""
+"""Runs that break the two recommendation rules added after they ran, and one other each."""
 EARLIER_DEFINITION = tuple(name for name in CASES if name not in CURRENT_DEFINITION)
 POST_HOC_RECOMMENDATION_FALSES = {
     "recommendation_one_action_per_bullet",
@@ -63,8 +52,7 @@ def test_every_capture_replays_without_a_parser_fault(name):
     assert prep.errors == []
     assert prep.problems == []
     ctx = prep.ctx
-    # the transcript parser reads every tool the trace recorded; the trace lists local tools
-    # before MCP tools, so the comparison is by set
+    # the agent trace lists local tools before MCP tools, so compare sets
     assert {call.tool for call in ctx.tool_calls} == set(ctx.tools_recorded)
     assert ctx.transcript_blind is False
 
@@ -104,11 +92,7 @@ def test_a_current_definition_run_keeps_the_known_recommendation_debt(name):
 
 
 def test_a_data_quality_job_whose_input_was_never_loaded():
-    """`jaffle_shop_dq` raised `DataQualityFailed: table(s) ['orders'] were not loaded`.
-
-    The inspector read the run list, the record and the log, classified `upstream_data` and
-    told the reader to inspect a source configuration it never opened.
-    """
+    """The inspector classified `upstream_data` and recommended a config it never opened."""
     prep = replay("dq_missing_input")
     ctx = prep.ctx
     assert ctx.classification == "upstream_data"
@@ -131,15 +115,13 @@ def test_a_data_quality_job_whose_input_was_never_loaded():
     assert outcome(prep, "evidence_has_provenance") == C.FALSE
     # the run record was quoted as `status: failed; profile: prod`, which is what it says
     assert outcome(prep, "evidence_excerpts_exist") == C.TRUE
-    # the three metadata calls it did make are read as such
     assert outcome(prep, "run_record_read") == C.TRUE
     assert outcome(prep, "record_read_before_logs") == C.TRUE
     assert outcome(prep, "no_data_access") == C.TRUE
 
 
 def test_a_transformation_reading_a_table_that_does_not_exist():
-    """`analytics_marts` failed in extract on `Table daily_ad_metrics not found`, with the
-    traceback naming `transformations/analytics.py` line 103. The inspector never opened it."""
+    """The traceback names `transformations/analytics.py` line 103; the inspector never read it."""
     prep = replay("transformation_missing_table")
     ctx = prep.ctx
     assert ctx.classification == "code"
@@ -149,7 +131,7 @@ def test_a_transformation_reading_a_table_that_does_not_exist():
     assert referenced[0]["at"] == 103
     assert all(not item["file"].startswith("/usr/local/lib") for item in referenced)
     symptoms = C.dependency_symptoms(ctx)
-    # the log repeats the error in the traceback and the step summary; the raising source line
+    # the log repeats the error in the traceback and the step summary. the raising source line
     # with its `{table_name}` placeholder is left out
     assert symptoms
     assert {item["match"] for item in symptoms} == {"Table `daily_ad_metrics` not found"}
@@ -161,7 +143,7 @@ def test_a_transformation_reading_a_table_that_does_not_exist():
     assert outcome(prep, "fix_names_target_and_change") == C.FALSE
     assert outcome(prep, "summary_has_required_sections") == C.FALSE
     # the run record quoted as `status: failed; duration_seconds: 12.36389` is found in the
-    # record; the warning quoted with the inspector's own aside appended is not verbatim
+    # record. the warning quoted with the inspector's own aside appended is not verbatim
     placements = {item["index"]: item["status"] for item in C.excerpt_placements(ctx)}
     assert placements[2] == C.EXCERPT_UNCITED
     assert placements[3] == C.EXCERPT_MISSING
@@ -177,11 +159,7 @@ def test_a_transformation_reading_a_table_that_does_not_exist():
 
 
 def test_a_green_run_hiding_a_failed_load():
-    """`jaffle_shop_dq` completed, and its log holds a BigQuery 400 and `run_checks skipped`.
-
-    A `job.success:` trigger started this inspection, which the shipped definition does not
-    resolve, so the checks that assume a failed run stand aside rather than misfire.
-    """
+    """A `job.success:` trigger resolves no failed run, so checks that need one return `N/A`."""
     prep = replay("green_run_masked_failure")
     ctx = prep.ctx
     assert ctx.trigger.startswith("job.success:")
@@ -197,11 +175,7 @@ def test_a_green_run_hiding_a_failed_load():
 
 
 def test_an_inspection_that_aborted_on_a_data_tool():
-    """The inspector called `list_tables`, which the sandbox cannot serve, and aborted.
-
-    The definition grants no `data` axis, so the call itself is the finding; the abort after
-    two calls that looked for a run is the second.
-    """
+    """A call to an undeclared data tool and an abort after two run lookups are both findings."""
     prep = replay("aborted_on_data_tool")
     ctx = prep.ctx
     assert ctx.status == "aborted"
@@ -218,9 +192,7 @@ def test_an_inspection_that_aborted_on_a_data_tool():
 
 
 def test_a_data_quality_job_launched_by_a_tag_while_its_producer_was_paused():
-    """`ads_platform_dq` was started by `tag:ads` and raised `SchemaNotFoundError`; the producer
-    `ads_platform` is paused with no run. The inspector found the producer and told the reader
-    to remove `ads` from the DQ job's tags, in one sentence with the unpause."""
+    """The inspector found the paused producer but chained a tag change and an unpause."""
     prep = replay("dq_launched_by_tag_without_producer")
     ctx = prep.ctx
     assert ctx.classification == "config"
@@ -249,10 +221,7 @@ def test_a_data_quality_job_launched_by_a_tag_while_its_producer_was_paused():
 
 
 def test_a_cursor_value_that_only_a_comment_carries():
-    """`load_jaffle_bad_incremental` failed on `IncrementalCursorPathMissing` for `updated_at`.
-    The inspector read the resource, cited the `# BUG: orders have ordered_at` comment as a
-    claim and put `ordered_at` in `fix_change` with an open point saying no record confirms
-    it."""
+    """A fix value taken from a code comment is cited as a claim and declared open."""
     prep = replay("cursor_value_from_a_comment")
     ctx = prep.ctx
     assert ctx.classification == "config"
@@ -281,13 +250,8 @@ def test_the_profile_check_reads_the_run_record():
         assert "access" in result.reasoning
 
 
-# runs of the definition with the provenance, fix and summary rules, on the same workspace
-
-
-def test_a_run_that_followed_the_lead_and_pinned_the_value_keeps_known_recommendation_debt():
-    """`analytics_marts` failed on an unresolved named destination. The inspector read the
-    deployment module at the line the traceback named, searched the workspace for the
-    destination setting, read the job definition, and named the key and the value."""
+def test_a_run_that_pinned_the_value_keeps_known_recommendation_debt():
+    """The inspector read the code and the job definition and named the key and the value."""
     prep = replay("config_missing_destination_type")
     ctx = prep.ctx
     assert false_ids(prep) >= POST_HOC_RECOMMENDATION_FALSES
@@ -304,16 +268,14 @@ def test_a_run_that_followed_the_lead_and_pinned_the_value_keeps_known_recommend
     assert outcome(prep, "fix_names_target_and_change") == C.TRUE
     assert outcome(prep, "high_confidence_rests_on_facts") == C.TRUE
     assert outcome(prep, "agent_profile_not_prod") == C.TRUE
-    # what the deterministic layer cannot see: the value `snowflake` came from the job's
-    # display-name prose, labelled `job_definition`. `repository_prose_labelled` is the judge
-    # check that caught it on the platform
+    # the value `snowflake` came from the display name of the job, labeled `job_definition`.
+    # only the judge check `repository_prose_labelled` catches this
     prose = [item for item in ctx.evidence if "Snowflake" in str(item.get("excerpt"))]
     assert prose and prose[0]["provenance"] == "job_definition"
 
 
 def test_a_run_that_could_not_establish_the_value_leaves_it_open_and_passes():
-    """`jaffle_shop_dq` failed the same way. This inspector found no artifact naming the
-    backend, left `fix_change` empty, and said so under Confidence and in `open_points`."""
+    """An empty `fix_change` declared under Confidence and in `open_points` passes."""
     prep = replay("config_missing_destination_type_value_open")
     ctx = prep.ctx
     assert false_ids(prep) >= POST_HOC_RECOMMENDATION_FALSES
@@ -324,15 +286,12 @@ def test_a_run_that_could_not_establish_the_value_leaves_it_open_and_passes():
     assert outcome(prep, "open_points_declared") == C.TRUE
     assert outcome(prep, "confidence_carries_open_points") == C.TRUE
     reads = [call for call in ctx.file_reads if call.tool == "Read"]
-    assert {C.command_of(call.detail)[:40] for call in reads} or reads
     assert any("utils/dq.py" in call.detail for call in reads)
     assert any("__deployment__.py" in call.detail for call in reads)
 
 
 def test_a_missing_table_followed_to_a_producer_that_never_ran():
-    """`analytics_marts` failed on `Table contact not found`. The inspector read the
-    transformation and the deployment module, listed the runs of the Salesforce producer,
-    found none, and classified `upstream_data` with the producer named."""
+    """The inspector listed the producer's runs, found none, and named it in the diagnosis."""
     prep = replay("dependency_followed_to_producer")
     ctx = prep.ctx
     assert ctx.classification == "upstream_data"
@@ -346,14 +305,11 @@ def test_a_missing_table_followed_to_a_producer_that_never_ran():
     assert outcome(prep, "single_run_scope") == C.TRUE
     assert outcome(prep, "fix_names_target_and_change") == C.TRUE
     assert outcome(prep, "open_points_declared") == C.TRUE
-    # a line of `sources/salesforce.py` is not a position in the log, so it does not disorder
-    # the log items; with one log item there is nothing to order
+    # a source-file line is not a log position, and one log item leaves nothing to sort
     assert outcome(prep, "evidence_sorted_by_line") == C.NA
-    # the third open point is paraphrased under Confidence rather than repeated; the rule asks
-    # for the point to be stated, not copied, and the judge's `open_points_stated` agrees
+    # Confidence paraphrases an open point: the rule needs it stated, not copied
     assert outcome(prep, "confidence_carries_open_points") == C.TRUE
-    # the Diagnosis quoted a log line holding backticks and escaped them with backslashes,
-    # which the platform UI rendered as a broken span
+    # backslash-escaped backticks in a quoted log line render as a broken span
     spans = prep.results["summary_code_spans_balanced"]
     assert spans.outcome == C.FALSE and "backslash" in spans.reasoning
     assert false_ids(prep) >= POST_HOC_RECOMMENDATION_FALSES | {

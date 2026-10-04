@@ -1,4 +1,4 @@
-"""Resolution, fetching, the judge inputs, and writing the computed results back."""
+"""Tests for `prepare`, `finalize` and the batch window."""
 
 import asyncio
 import json
@@ -70,9 +70,6 @@ def fetcher(**overrides) -> StubFetcher:
     return StubFetcher(**kwargs)
 
 
-# resolution
-
-
 def test_given_run_id_wins():
     resolved, reason = C.resolve_inspector_run(
         {"run_id": EVALUATOR_RUN_ID}, fetcher(), inspector_run_id="explicit"
@@ -106,9 +103,6 @@ def test_nothing_resolves_to_a_reason():
     assert "no inspector run could be resolved" in reason
 
 
-# fetching
-
-
 def test_context_is_built_from_the_log_envelope_when_no_result_is_stored():
     ctx = C.build_context(INSPECTOR_RUN_ID, fetcher())
     assert ctx.output["classification"] == "credentials"
@@ -127,9 +121,6 @@ def test_stored_result_is_preferred_over_the_envelope():
     assert ctx.trace["turn_count"] == 9
 
 
-# prepare
-
-
 def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID, "trigger": "job.success:jobs.job_inspector"},
                      fetcher=fetcher())
@@ -140,8 +131,7 @@ def test_prepare_runs_every_deterministic_check_and_builds_the_judge_inputs():
     deterministic = {entry.id for entry in C.CHECKS.values() if entry.fn is not None}
     assert deterministic <= set(prep.results)
 
-    # the rest are judge checks whose condition this run does not meet, answered by their
-    # precondition so they never reach the model
+    # the rest are judge checks whose precondition answers `N/A`, so the model never sees them
     by_precondition = set(prep.results) - deterministic
     assert by_precondition == {
         "transient_evidence_cites_neighbours", "pipeline_step_named",
@@ -194,9 +184,6 @@ def test_prepare_does_not_hand_the_judge_a_whole_log():
     assert len(windows["log_tail"]) <= 60
 
 
-# finalize
-
-
 def _prep_with(**overrides) -> C.EvalPrep:
     ctx = context(**overrides)
     results, errors = C.run_deterministic(ctx)
@@ -247,7 +234,7 @@ def test_finalize_reports_an_unanswered_judge_check_as_not_applicable():
 
 
 def test_an_open_check_left_unanswered_fails_the_evaluation():
-    """An empty or truncated judge response would otherwise read as a clean inspector run."""
+    """Without this failure, an empty or truncated judge response reads as a clean run."""
     prep = _prep_with()
     answers = [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
                for id in C.judge_ids(prep.results)]
@@ -303,7 +290,7 @@ def test_finalize_fills_the_deterministic_checks_the_judge_did_not_return():
 
 
 def test_earliest_error_window_says_when_it_could_not_locate_the_cited_line():
-    """Seen on a real run: the judge read an empty candidate list as `no earlier error`."""
+    """An empty candidate list must not read as no earlier error."""
     unanchored = output(evidence=[{"source": "dlthub job runs logs abc",
                                    "excerpt": "a phrase that appears nowhere in the log"}])
     window = C.earliest_error_window(context(output=unanchored))
@@ -332,9 +319,7 @@ def test_earliest_error_window_anchors_on_the_line_the_excerpt_sits_on():
 
 
 def test_earliest_error_window_anchors_on_the_real_line_when_the_citation_is_a_little_late():
-    """A citation two lines late is within tolerance, so the excerpt counts as cited at its line;
-    the anchor is still where the text sits, or the exception itself would read as an error
-    the inspector skipped."""
+    """A citation two lines late is within tolerance, so the exception is not a skipped error."""
     late = output(evidence=[{
         "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(10)}",
         "excerpt": "requests.exceptions.HTTPError: 401 Client Error: Unauthorized",
@@ -358,8 +343,7 @@ def test_earliest_error_window_has_no_anchor_in_a_file_the_evaluator_does_not_ho
     assert "not a log the evaluator holds" in window["reason"]
 
 
-def test_finalize_reads_a_checks_array_the_judge_serialised_as_a_string():
-    """Seen on a real run: `checks` came back as JSON text, so every answer read as missing."""
+def test_finalize_reads_a_checks_array_the_judge_serialized_as_a_string():
     prep = _prep_with()
     answers = [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
                for id in C.judge_ids(prep.results)]
@@ -372,23 +356,19 @@ def test_finalize_reads_a_checks_array_the_judge_serialised_as_a_string():
 
 
 def test_finalize_reads_the_shapes_a_judge_wraps_its_answers_in():
-    """Constrained decoding guarantees the schema, not that a model fills it as declared.
-
-    Each shape below reaches `finalize` as a full set of answers, so an evaluation is not lost
-    to a wrapper object, a double encoding or a per-entry serialisation.
-    """
+    """Answers wrapped in an object, a second JSON encoding or per-entry strings."""
     prep = _prep_with()
     answers = [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
                for id in C.judge_ids(prep.results)]
     shapes = {
         "wrapped in an object": {"checks": answers},
-        "wrapped and serialised": {"results": json.dumps(answers)},
+        "wrapped and serialized": {"results": json.dumps(answers)},
         "keyed by check id": {entry["id"]: entry for entry in answers},
         "keyed by check id, no id inside": {
             entry["id"]: {k: v for k, v in entry.items() if k != "id"} for entry in answers
         },
-        "serialised twice": json.dumps(json.dumps(answers)),
-        "one serialised entry each": [json.dumps(entry) for entry in answers],
+        "serialized twice": json.dumps(json.dumps(answers)),
+        "one serialized entry each": [json.dumps(entry) for entry in answers],
         "a trailing comma": json.dumps(answers)[:-1] + ",]",
     }
     for name, checks in shapes.items():
@@ -410,7 +390,7 @@ def test_finalize_fails_loudly_when_the_judge_answers_cannot_be_read():
 
 
 def test_earliest_error_window_has_no_anchor_when_the_excerpt_is_not_in_the_log():
-    """An invented excerpt with a line number used to anchor the search on that line."""
+    """An invented excerpt gives no anchor, even with a line number."""
     invented = output(evidence=[{
         "source": f"dlthub job runs logs {FAILED_RUN_ID} line {line_no(9)}",
         "excerpt": "a phrase that appears nowhere in this log",
@@ -471,7 +451,7 @@ def test_an_evaluation_that_decided_nothing_does_not_pass():
 
 
 def test_a_transcript_it_could_not_read_decides_nothing_about_what_the_inspector_did():
-    """A blind parser used to score as an inspector that called nothing, and made it a pass."""
+    """A transcript the parser cannot read does not score as an inspector that called nothing."""
     aborted = output(status="aborted", classification="", confidence="", evidence=[])
     unreadable = context(output=aborted, inspector_log=inspector_log(
         events=["  a shape the parser does not know"]))
@@ -489,7 +469,7 @@ def test_a_transcript_it_could_not_read_decides_nothing_about_what_the_inspector
 
 
 def test_prepare_reads_the_tool_calls_a_deployed_run_printed():
-    """A spoken block runs into the calls of its turn. Every call has to survive it."""
+    """A `says` text block can precede the tool calls of its turn. The parser reads every call."""
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(), "trace": trace()}
     spoken = inspector_log(
@@ -513,7 +493,7 @@ def test_prepare_reads_the_tool_calls_a_deployed_run_printed():
 
 
 def test_prepare_hands_the_parser_the_tool_names_the_trace_records():
-    """Verbosity 0 prints a bare name, and inside a spoken block only the trace settles it."""
+    """At verbosity 0 only the trace names a tool printed inside a `says` block."""
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(), "trace": trace()}
     blind = inspector_log(
@@ -528,7 +508,7 @@ def test_prepare_hands_the_parser_the_tool_names_the_trace_records():
 
 
 def test_finalize_reports_the_checks_the_pass_rate_left_out():
-    """Without the tally, a rate over a third of the checks reads like one over all."""
+    """The summary counts the `N/A` checks, so a reader sees how many checks the rate covers."""
     prep = _prep_with()
     judge = {"status": "succeeded", "summary": "done",
              "checks": [{"id": id, "kind": "judge", "outcome": "N/A", "reasoning": "no condition"}
@@ -544,7 +524,7 @@ def test_finalize_reports_the_checks_the_pass_rate_left_out():
 
 
 def deployed_run_fetcher() -> StubFetcher:
-    """The platform as it stood for the deployed run the log fixture came from."""
+    """Runtime state for the deployed run in the log fixture."""
     job_ref = "jobs.jaffle_shop.load_jaffle_bad_config"
     payload = {"type": "dlthub-platform:job-inspector", "status": "succeeded",
                "result": output(classification="config"), "trace": deployed_run_trace()}
@@ -575,15 +555,10 @@ def deployed_run_fetcher() -> StubFetcher:
 
 
 def test_prepare_scores_what_a_deployed_run_did():
-    """End to end over the captured run: its 11 calls reach the checks that read them.
-
-    The parser read none of them before, so `transcript_unread` held all 17 transcript checks
-    at `N/A` and a third of the evaluation measured nothing.
-    """
+    """The 11 tool calls of the captured deployed run reach the checks that read them."""
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
     assert prep.ctx is not None
-    # This is intentionally coupled to `fixtures/deployed_inspector_run.log`: the checked-in
-    # trace recorded these 11 calls in this order, while the old parser read none of them.
+    # coupled to `fixtures/deployed_inspector_run.log`: its trace recorded these 11 calls in order
     assert [call.tool for call in prep.ctx.tool_calls] == DEPLOYED_RUN_TOOLS
     assert prep.ctx.transcript_unread is False
     assert prep.ctx.transcript_blind is False
@@ -592,7 +567,7 @@ def test_prepare_scores_what_a_deployed_run_did():
 
     reads_transcript = [entry.id for entry in C.CHECKS.values() if entry.reads_transcript]
     decided = {id for id in reads_transcript if prep.results[id].outcome != C.NA}
-    # Re-capturing the deployed log can change which transcript checks are applicable.
+    # a new capture of the deployed log can change which transcript checks apply
     assert len(decided) == 13, "the other seven state a condition that did not apply"
     assert prep.results["job_declaration_read"].outcome == C.TRUE
     assert prep.results["run_record_read"].outcome == C.TRUE
@@ -600,13 +575,13 @@ def test_prepare_scores_what_a_deployed_run_did():
     assert prep.results["workspace_file_read_when_referenced"].outcome == C.TRUE
     assert prep.results["run_logs_read"].outcome == C.TRUE
     assert prep.results["job_definition_read_for_config"].outcome == C.TRUE
-    # the order of the calls survives the parse, which is what this one rests on
+    # `record_read_before_logs` needs the call order that the parse keeps
     assert prep.results["record_read_before_logs"].outcome == C.TRUE
     assert prep.results["single_run_scope"].outcome == C.TRUE
 
 
 def test_a_deployed_run_reports_the_checks_it_left_undecided():
-    """`pass_rate` alone says nothing about how much of the inspector was looked at."""
+    """`pass_rate` alone does not show how many checks were decided."""
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=deployed_run_fetcher())
     judge = {"status": "succeeded", "summary": "graded it",
              "checks": [{"id": id, "kind": "judge", "outcome": "TRUE", "reasoning": "fine"}
@@ -619,9 +594,6 @@ def test_a_deployed_run_reports_the_checks_it_left_undecided():
     assert final["na_count"] > 0
     assert f"{final['na_count']} `N/A`" in final["summary"]
     assert f"over the {final['decided_count']} decided" in final["summary"]
-
-
-# the summary
 
 
 def _all_true(prep):
@@ -787,15 +759,12 @@ def test_judge_windows_carry_the_summary_sections_and_the_leads():
     assert json.loads(prep.judge_inputs["inspector_output"])["open_points"]
 
 
-# the batch window
-
-
 SECOND_RUN_ID = "66666666-6666-4666-8666-666666666666"
 WINDOW_END = datetime(2026, 9, 2, tzinfo=timezone.utc)
 
 
 def week_fetcher(**overrides):
-    """Three inspector runs: two inside the window, one a fortnight old."""
+    """Three inspector runs: two inside the window, one two weeks old."""
     second = dict(INSPECTOR_RECORD, id=SECOND_RUN_ID, created_at="2026-08-31T10:05:00Z")
     stale = dict(INSPECTOR_RECORD, id=OLDER_RUN_ID, created_at="2026-08-15T10:05:00Z")
     records = {
@@ -841,7 +810,7 @@ def test_a_run_that_is_still_going_is_skipped_with_the_reason():
         {"run_id": SECOND_RUN_ID, "reason": "the run is running and has not finished"}
     ]
 
-    # a run the platform stopped never produced a result either
+    # a run that the runtime stopped has no job result either
     cancelled = dict(INSPECTOR_RECORD, id=SECOND_RUN_ID, status="cancelled",
                      created_at="2026-08-31T10:05:00Z")
     source.records[SECOND_RUN_ID] = cancelled
@@ -851,8 +820,8 @@ def test_a_run_that_is_still_going_is_skipped_with_the_reason():
     assert batch.skipped[0]["reason"] == "the run is cancelled, so it never produced a result"
 
 
-def test_a_run_the_platform_calls_completed_is_graded():
-    """The run record says `completed`; only the agent's own result says `succeeded`."""
+def test_a_run_the_runtime_calls_completed_is_graded():
+    """The run record says `completed`. Only the job result says `succeeded`."""
     assert "completed" in C.GRADED_RUN_STATUSES
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
@@ -987,7 +956,7 @@ def test_the_window_recommendation_is_asked_for_once_over_every_run():
 
 
 def test_a_window_with_nothing_broken_asks_for_no_recommendation():
-    """The pass costs a loop run, so a clean window does not make it."""
+    """The recommendation pass costs one agent run, so a clean window skips it."""
     class Loop:
         def __init__(self):
             self.calls = 0
@@ -1012,7 +981,7 @@ def test_a_window_with_nothing_broken_asks_for_no_recommendation():
 
 
 def test_a_recommendation_pass_that_raised_does_not_cost_the_graded_window():
-    """The pass runs after every run is graded, so its failure reports in its own place."""
+    """The recommendation pass runs after grading. Its failure is reported separately."""
     class Loop:
         async def run(self, inputs):
             raise RuntimeError("the loop hit its token limit")
@@ -1035,7 +1004,7 @@ def test_a_recommendation_pass_that_raised_does_not_cost_the_graded_window():
 
 
 def test_a_recommendation_that_weakens_a_guardrail_never_reaches_the_reader():
-    """The body bans such a bullet and a judge still writes one, so it is dropped here."""
+    """The system prompt bans such a bullet. A judge can still write one, so it is dropped."""
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector", until=WINDOW_END)
     evaluations = [
@@ -1098,7 +1067,7 @@ def test_a_judge_run_that_raised_keeps_the_checks_python_decided():
 
 
 def test_the_sdk_walk_stops_at_the_edge_of_the_window():
-    """The listing carries no time filter, so the walk is what bounds the window."""
+    """The run listing has no time filter, so the pagination stops at the window edge."""
 
     class _Run:
         def __init__(self, record):
@@ -1155,7 +1124,7 @@ def test_the_sdk_walk_stops_at_the_edge_of_the_window():
 
 
 def test_the_batch_deployment_function_reports_the_window_the_way_the_readme_declares_it():
-    """The loop drives one judge run per prepared evaluation, and one failure costs one run."""
+    """The loop starts one agent run per prepared evaluation. One failure loses only that run."""
     import asyncio
 
     class _Loop:
@@ -1194,12 +1163,11 @@ def test_the_batch_deployment_function_reports_the_window_the_way_the_readme_dec
     assert final["evaluations"][1]["inspector_run_id"] == SECOND_RUN_ID
     assert "token limit" in final["evaluations"][1]["judge_failure"]
     assert "token limit" in final["summary"]
-    assert final["passed"] is False  # a run the judge never answered on fails the week
+    assert final["passed"] is False  # a run the judge did not answer fails the window
 
 
 def test_a_window_whose_every_judge_raised_aborts_with_the_deterministic_checks():
-    """No loop run completed, so there is no trace and the output goes out through the abort
-    path; the checks Python decided still travel with it."""
+    """No agent run completed, so the window aborts but keeps the deterministic checks."""
     class _Loop:
         async def run(self, inputs):
             raise RuntimeError("the loop hit its token limit")
@@ -1236,9 +1204,6 @@ def test_a_skip_reason_does_not_repeat_the_run_id_the_row_carries():
     entry = {"run_id": "abc", "reason": "inspector run abc declared no result: nothing to read"}
     assert C._skip_reason(entry) == "declared no result: nothing to read"
     assert C._skip_reason({"run_id": "abc", "reason": "the run is running"}) == "the run is running"
-
-
-# where the window starts
 
 
 def history(*entries):
@@ -1323,7 +1288,6 @@ def test_the_batch_window_starts_at_the_definition_change_and_says_so():
 
 
 def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
-    """The scheduled job's function raises on one and completes on the other."""
     quiet = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector",
                             until=datetime(2026, 9, 24, tzinfo=timezone.utc))
@@ -1339,15 +1303,8 @@ def test_an_empty_window_is_a_quiet_result_and_a_graded_nothing_is_a_fault():
     assert C.finalize_batch([], faulty)["status"] == "failed"
 
 
-# the shape every background agent's summary takes
-
-
 def assert_summary_shape(summary, sections):
-    """Headings over short bullets: nothing before the first, nothing outside a bullet.
-
-    `sections` carries the heading markers, so a subsection reads `### Quality`. A markdown
-    table is allowed as the last thing in the last section, and nowhere else.
-    """
+    """Asserts headings over bullets, with one optional table at the end of the last section."""
     lines = summary.splitlines()
     assert lines[0].startswith("## "), lines[0]
     assert [line for line in lines if line.startswith("#")] == sections
@@ -1447,8 +1404,7 @@ def test_every_precondition_reads_only_what_prepare_already_holds():
 
 
 def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
-    """The trace is often missing on a run that failed early; the run record still lists
-    the pipeline, so `pipeline_step_named` stays the judge's to answer."""
+    """A run that failed early has no trace, but its run record still lists the pipeline."""
     ran_a_pipeline = context(pipeline_trace=None,
                              failed_run=failed_run(pipelines=[{"pipeline_name": "orders"}]))
     results: dict = {}
@@ -1460,9 +1416,6 @@ def test_a_pipeline_job_keeps_its_step_check_open_without_a_trace():
     results = {}
     C.run_preconditions(no_pipeline, results)
     assert results["pipeline_step_named"].outcome == C.NA
-
-
-# workspace source windows
 
 
 def _source_context(**overrides):
@@ -1551,11 +1504,7 @@ def test_definition_sections_are_the_headings_and_not_the_file(tmp_path):
     assert sections == ["## Investigate", "### Checking credentials"]
 
 
-# the bounds a window ran under
-
-
 def test_the_window_report_prints_the_cap_the_run_used():
-    """`capped` next to the default cap read as a contradiction: `4 evaluated` and `the 25`."""
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
                             max_runs=1)
@@ -1566,7 +1515,7 @@ def test_the_window_report_prints_the_cap_the_run_used():
 
 
 def test_the_recommendation_pass_is_told_what_the_runs_were_graded_under():
-    """A check broken by a tighter bound is configuration, not a missing instruction."""
+    """A check broken by a tighter bound points at the config, not at a missing instruction."""
     batch = C.prepare_batch({"run_id": "local"}, fetcher=week_fetcher(),
                             inspector_job_ref="jobs.job_inspector", until=WINDOW_END,
                             max_runs=3, max_runs_read=0)
@@ -1581,7 +1530,7 @@ def test_the_recommendation_pass_is_told_what_the_runs_were_graded_under():
 
 
 def test_each_pass_is_told_which_task_it_is():
-    """Routing on whether another input came back empty made the judge infer it and get it wrong."""
+    """Each judge input names its task, so the judge does not infer it from an empty input."""
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
     assert prep.judge_inputs["task"] == C.GRADE_ONE_RUN
 

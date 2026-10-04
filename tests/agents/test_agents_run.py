@@ -1,7 +1,6 @@
 """The toolkit's agents run as a user declares them: `run.agent("<toolkit>:<agent>")`.
 
-Each test calls the agent job as a function and reads what it returned and the job result the
-launcher would deliver, `last_job_result`. The model is `TestModel` (see `conftest.py`).
+Each test checks the returned output and `last_job_result`. The model is `TestModel`.
 """
 
 import ast
@@ -97,7 +96,8 @@ async def test_job_inspector_eval_grades_a_captured_run(workspace: Path, null_lo
 
     evaluation = await evaluator(inspector_run_id=inspector_run_id, run_context=run_context)
 
-    # `validate_input` prepared the evidence the prompt renders, `validate_output` finalized
+    # `validate_input` prepared the evidence for the system prompt, and `validate_output`
+    # finalized the result
     assert evaluation["inspector_run_id"] == inspector_run_id
     assert "passed" in evaluation and "pass_rate" in evaluation and "metrics" in evaluation
     assert evaluation["summary"].startswith("## Findings")

@@ -1,8 +1,6 @@
 """The committed captures carry no identifier from the workspace they were taken on.
 
-This repository is public, so `tools/scrub_capture.py` rewrites every identifier before a
-capture lands in git and marks each pseudonym it writes. These tests read the mark, so they
-check the fixtures without the originals, which stay out of the repository.
+`tools/scrub_capture.py` marks each pseudonym it writes, so the tests need no originals.
 """
 
 import importlib.util
