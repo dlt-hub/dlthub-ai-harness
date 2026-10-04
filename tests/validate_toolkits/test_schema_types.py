@@ -5,9 +5,9 @@ Anthropic rejects it with "Schema must have a 'type', 'anyOf', 'oneOf', or 'allO
 
 from pathlib import Path
 
-from fakes import REPO_ROOT
+from tests.utils import REPO_ROOT
 
-import validate_toolkits as V
+from tools import validate_toolkits as V
 
 
 def type_errors(fm: dict) -> list[str]:

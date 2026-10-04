@@ -31,6 +31,10 @@ test = [
 [tool.uv.sources]
 dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=9" }
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
 [tool.ruff]
 preview = true
 line-length = 100

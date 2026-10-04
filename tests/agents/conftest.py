@@ -19,7 +19,8 @@ from dlt.common.configuration.specs.pluggable_run_context import PluggableRunCon
 from dlt.common.runtime.run_context import switch_context
 from dlt._workspace.deployment.agent.loops.pydantic_ai import PydanticAILoop
 
-REPO = Path(__file__).resolve().parents[2]
+from tests.utils import REPO_ROOT
+
 NULL_LOOP = "null-pydantic-ai"
 PLUGIN_NAME = "null_model_loop"
 
@@ -53,7 +54,7 @@ def installed_workspace(tmp_path_factory: pytest.TempPathFactory) -> Path:
     dlthub = Path(sys.executable).parent / "dlthub"
     subprocess.run(
         [str(dlthub), "--non-interactive", "ai", "toolkit", "install", "dlthub-platform",
-         "--location", str(REPO), "--agent", "claude"],
+         "--location", str(REPO_ROOT), "--agent", "claude"],
         cwd=root, check=True, capture_output=True,
     )
     return root

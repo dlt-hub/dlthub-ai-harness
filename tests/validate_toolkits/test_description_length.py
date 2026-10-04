@@ -5,9 +5,10 @@ Codex drops a skill whose description is longer than 1024 chars.
 
 from pathlib import Path
 
-from fakes import REPO_ROOT, fake_root, toolkit
+from tests.utils import REPO_ROOT
+from tests.validate_toolkits.utils import fake_root, toolkit
 
-import validate_toolkits as V
+from tools import validate_toolkits as V
 
 
 def length_warnings(root: Path, name: str) -> list[str]:

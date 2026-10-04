@@ -1,16 +1,6 @@
-"""Fake toolkit trees for the validator tests.
-
-Not a `conftest.py`: `tests/job_inspector_eval` imports its `conftest` by module name.
-"""
-
-import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-# `tools/` is a script folder, put on the path as `make validate-toolkits` does
-sys.path.insert(0, str(REPO_ROOT / "tools"))
-
-import validate_toolkits as V  # noqa: E402
+from tools import validate_toolkits as V
 
 
 def write(path: Path, text: str) -> None:

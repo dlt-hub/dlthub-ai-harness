@@ -5,9 +5,10 @@ The chain is router → toolkit → workflow.md → skill or agent definition.
 
 from pathlib import Path
 
-from fakes import REPO_ROOT, fake_root, toolkit, write
+from tests.utils import REPO_ROOT
+from tests.validate_toolkits.utils import fake_root, toolkit, write
 
-import validate_toolkits as V
+from tools import validate_toolkits as V
 
 
 def coverage_errors(root: Path) -> list[str]:
