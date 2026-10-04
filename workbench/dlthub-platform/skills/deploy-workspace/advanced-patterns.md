@@ -58,7 +58,7 @@ in its environment. The agent's `access` block decides which tools the model is 
 profile decides which credentials the job process holds, so declare both. Work that needs
 production write credentials belongs in a pipeline or a plain job that a person wrote.
 
-### Model, credentials and verbosity
+### Model and credentials
 
 A shipped definition names no model, so the workspace sets one for every agent job it runs.
 Set these as workspace variables, which reach the runner as environment and override
@@ -77,56 +77,9 @@ printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
 
 Pick a model at least as capable as Claude Sonnet 5: `anthropic:claude-sonnet-5` (`sonnet`),
 `openai:gpt-5.4-mini` (`gpt-mini`), `google:gemini-3.5-flash` (`gemini`), or your own Azure
-deployment. Step up to `opus`, `gpt` or `gemini-pro` for a check that keeps coming back wrong
-after its rubric was fixed. `run.agent` takes `model=` too and configuration outranks it, so
-leave it out of the deployment code and the two cannot disagree.
-
-Leave `agent.verbosity` at 1, its default. At 0 the job log drops the tool calls and thoughts
-the evaluator reads.
-
-### Code around the loop
-
-The evaluator for the inspector computes its deterministic checks before the loop and writes
-them over the model's output after it. Its `agent.py` does both, so it is declared by
-reference too:
-
-```python
-from dlt.hub import run
-
-# `section` is explicit because `.success` and `.fail` are read at import time, before the
-# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
-inspector = run.agent(
-    "dlthub-platform:job-inspector",
-    section="__deployment__",
-    trigger="job.fail:tag:ingest",
-    require={"profile": "access"},
-)
-
-job_inspector_eval = run.agent(
-    "dlthub-platform:job-inspector-eval",
-    trigger=[inspector.success, inspector.fail],
-    require={"profile": "access"},
-)
-```
-
-A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.
-The scheduler sets `prev_run_id` on the follow-up run, which is how the evaluator finds the
-run that triggered it. Both are read at import time, before the manifest loader stamps the
-module on the factory, so a factory whose triggers are used in the same module passes
-`section=` itself; without it the manifest is rejected with `triggers referencing unknown
-jobs`.
-
-The evaluator takes `inspector_run_id`, `inspector_job_ref` and `max_runs_read` as inputs.
-Set one for a single run with `-c inspector_run_id=<run id>`.
-
-To drive the loop yourself, decorate a function with
-`run.agent(agent="<toolkit>:<agent>")`; it finds the loop in `run_context["ai_loop"]`, and dlt
-does not run the folder's `agent.py` for it. The function overrides the `AGENT.md` it drives:
-
-- No docstring, or it replaces the body of the `AGENT.md`.
-- Return `dict`, not `TAgentOutput`, or it replaces the declared output schema.
-- Declare a parameter for every input a caller may set, with a default or
-  `dlt.config.value`: configured inputs reach a decorated function through its signature.
+deployment. Step up to `opus`, `gpt` or `gemini-pro` when a smaller model falls short.
+`run.agent` takes `model=` too and configuration outranks it, so leave it out of the
+deployment code and the two cannot disagree.
 
 A shipped agent definition names no model, so set one for the workspace:
 
@@ -137,7 +90,7 @@ dlthub variable set AGENT__MODEL --value 'anthropic:claude-sonnet-5' --plain --w
 Every agent job in the workspace reads it. It takes a `provider:model` id on any provider,
 and an alias (`sonnet`, `gpt-mini`, `gemini`) where the provider has one. Azure takes
 `azure:<deployment>` with `AGENT__API_URL` and `AGENT__API_VERSION` beside the key. The
-inspector and its evaluator both want a model at least as capable as Claude Sonnet 5.
+inspector wants a model at least as capable as Claude Sonnet 5.
 
 `run.agent` takes `model=` too, and configuration outranks it, so a model in the deployment
 code is beaten by `AGENT__MODEL` wherever the variable is set. Keep the decision in the

@@ -99,7 +99,8 @@ def test_missing_router_skill(tmp_path: Path) -> None:
 def test_router_prose_mention_is_not_an_index_row(tmp_path: Path) -> None:
     """Only index rows count; a name dropped in prose leaves the agent unroutable."""
     root = fake_root(tmp_path, [])
-    write(root / V._ROUTER_SKILL, "---\nname: dlthub-router\n---\n\ndlthub-platform:job-inspector\n")
+    router = "---\nname: dlthub-router\n---\n\ndlthub-platform:job-inspector\n"
+    write(root / V._ROUTER_SKILL, router)
     toolkit(root, "dlthub-platform", agents=("job-inspector",))
 
     errors = coverage_errors(root)

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-__all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform", "link_summary"]
+__all__ = ["web_ui", "linkify", "labels_from_platform", "link_summary"]
 
 
 def web_ui() -> Tuple[str, str]:
@@ -35,18 +35,6 @@ _BARE_JOB_REF = re.compile(r"\b(jobs\.[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+)\b")
 
 _LOG_COMMAND = re.compile(r"\bjob\s+(?:runs\s+)?logs\b")
 """A log command; its link opens the logs tab of the run page."""
-
-
-def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:
-    """`#<number>` per run id, from the `*_run_id` and `*_run_number` fields of the entries."""
-    labels: Dict[str, str] = {}
-    for entry in entries:
-        for prefix in ("inspector", "failed"):
-            run_id = str(entry.get(f"{prefix}_run_id") or "").lower()
-            number = entry.get(f"{prefix}_run_number")
-            if run_id and number not in (None, ""):
-                labels.setdefault(run_id, f"#{number}")
-    return labels
 
 
 def labels_from_platform(text: str) -> Dict[str, str]:

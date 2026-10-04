@@ -38,7 +38,7 @@ A toolkit is a Claude Code plugin. It can contain:
 - **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
 - **Agents** (`agents/<name>/AGENT.md`) — agent definitions. Frontmatter plus a body that is the system prompt. Name must match the folder. Each declares `access`, `inputs`, `output` (with `status` and `summary`) and `defaults`.
-  - The folder holds `AGENT.md`, an optional `agent.py` (`validate_input`, `validate_output`) and the modules it imports. A file shared with another agent definition is a symlink, never an import across folders.
+  - The folder holds `AGENT.md`, an optional `agent.py` (`validate_input`, `validate_output`) and the modules it imports. An agent folder imports only its own files.
   - No README in the folder. Author and operator docs go in `BACKGROUND_AGENTS.md`, the reference for agent definitions.
   - Install path: `.claude/dlthub/agents/<name>/`, under `dlthub/` so it never mixes with the host's native agents.
 

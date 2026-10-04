@@ -52,56 +52,10 @@ def test_anyof_stands_in_for_a_type() -> None:
     assert type_errors(fm) == []
 
 
-def optional_errors(fm: dict) -> list[str]:
+def test_the_shipped_inspector_carries_its_types() -> None:
     errors: list[str] = []
-    V._validate_optional_count("tk", "agents/x/AGENT.md", fm, errors, [])
-    return errors
-
-
-def test_a_schema_inside_the_cap_passes() -> None:
-    props = {f"f{n}": {"type": "string"} for n in range(V.MAX_OPTIONAL_PROPERTIES)}
-
-    assert optional_errors({"output": {"properties": props}}) == []
-
-
-def test_a_schema_over_the_cap_fails() -> None:
-    props = {f"f{n}": {"type": "string"} for n in range(V.MAX_OPTIONAL_PROPERTIES + 1)}
-
-    errors = optional_errors({"output": {"properties": props}})
-
-    assert len(errors) == 1
-    assert str(V.MAX_OPTIONAL_PROPERTIES + 1) in errors[0]
-
-
-def test_a_required_nested_property_does_not_count() -> None:
-    """A nested `required` binds only when the model writes that object, so it does not count."""
-    nested = {f"n{n}": {"type": "string"} for n in range(30)}
-    fm = {
-        "output": {
-            "properties": {
-                "window": {"type": "object", "properties": nested, "required": list(nested)}
-            }
-        }
-    }
-
-    assert optional_errors(fm) == []
-
-
-def test_the_shipped_evaluator_is_inside_the_cap() -> None:
-    path = (
-        Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / "job-inspector-eval"
-        / "AGENT.md"
-    )
+    path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / "job-inspector" / "AGENT.md"
     frontmatter, _ = V.split_frontmatter(path)
-
-    assert optional_errors(frontmatter) == []
-
-
-def test_the_shipped_agents_carry_their_types() -> None:
-    errors: list[str] = []
-    for agent in ("job-inspector", "job-inspector-eval"):
-        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / agent / "AGENT.md"
-        frontmatter, _ = V.split_frontmatter(path)
-        V._validate_schema_types("dlthub-platform", agent, frontmatter, errors, [])
+    V._validate_schema_types("dlthub-platform", "job-inspector", frontmatter, errors, [])
 
     assert errors == []

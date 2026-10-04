@@ -9,8 +9,7 @@
 
 ## Extend and harden
 3. **Debug deployment** (`debug-deployment`) — check job status, view logs, diagnose failures
-4. **Inspect failures unattended** (`job-inspector`) — background agent: runs after a job fails, reads the run record and the logs, follows the traceback into the workspace code, classifies the failure and proposes a fix naming the target and the change. Declare it with `run.agent("dlthub-platform:job-inspector", trigger=..., require={"profile": "access"})`, keep `agent.verbosity` at 1, and set `AGENT__MODEL` in the workspace, at least as capable as Claude Sonnet 5. "Background agents" in (`deploy-workspace`) `advanced-patterns.md` says why each of those matters
-5. **Evaluate the inspector** (`job-inspector-eval`) — background agent: grades a diagnosis against the inspector's own instructions, `TRUE`, `FALSE` or `N/A` per instruction with a reasoning. Deploy it on a trigger to grade every inspector run, or on a schedule to grade a window of runs in one report. It names no model either, and `AGENT__MODEL` serves both. See "Background agents" in (`deploy-workspace`) `advanced-patterns.md` for the deployment snippets and the model per provider
+4. **Inspect failures unattended** (`job-inspector`) — background agent: runs after a job fails, reads the run record and the logs, follows the traceback into the workspace code, classifies the failure and proposes a fix naming the target and the change. Declare it with `run.agent("dlthub-platform:job-inspector", trigger=..., require={"profile": "access"})`, and set `AGENT__MODEL` in the workspace, at least as capable as Claude Sonnet 5. "Background agents" in (`deploy-workspace`) `advanced-patterns.md` says why each of those matters
 
 ## Handover to other toolkits
 

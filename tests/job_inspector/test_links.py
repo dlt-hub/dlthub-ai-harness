@@ -72,14 +72,6 @@ def test_nothing_is_linked_without_a_workspace():
     assert links.linkify(f"run `{RUN}`", ("", "")) == f"run `{RUN}`"
 
 
-def test_run_labels_take_the_run_number_and_skip_a_run_without_one():
-    labels = links.run_labels([
-        {"inspector_run_id": RUN, "inspector_run_number": 114,
-         "failed_run_id": "f" * 8 + "-1111-4111-8111-111111111111", "failed_run_number": None},
-    ])
-    assert labels == {RUN: "#114"}
-
-
 def test_a_platform_lookup_that_cannot_connect_yields_no_labels():
     assert links.labels_from_platform(f"run `{RUN}`") == {}
 

@@ -238,25 +238,16 @@ def validate_agents(
         _validate_entity_types(pname, rel, fm, errors, warnings)
         _validate_output(pname, rel, fm, errors, warnings)
         _validate_schema_types(pname, rel, fm, errors, warnings)
-        _validate_optional_count(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
-        _validate_agent_code(pname, plugin_dir, entry, errors)
+        _validate_agent_code(pname, entry, errors)
 
     return agent_names
 
 
-def _validate_agent_code(pname: str, plugin_dir: Path, agent_dir: Path, errors: list[str]) -> None:
-    """Check that `agent.py` parses and defines its hooks as functions, and symlinks stay local."""
-    for source in sorted(agent_dir.glob("*.py")):
+def _validate_agent_code(pname: str, agent_dir: Path, errors: list[str]) -> None:
+    """Check that `agent.py` parses and defines its hooks as functions."""
+    for source in sorted(agent_dir.glob("agent.py")):
         rel = f"{_AGENTS_PATH}/{agent_dir.name}/{source.name}"
-        # a symlink installs as a copy, so it must resolve to a file of the same toolkit
-        if source.is_symlink():
-            target = source.resolve()
-            if not target.is_file() or not target.is_relative_to(plugin_dir.resolve()):
-                errors.append(f"[{pname}] {rel} links to {target}, outside the toolkit")
-            continue
-        if source.name != "agent.py":
-            continue
         # dlt imports `agent.py` only when a job runs, so parse it here without importing
         try:
             tree = ast.parse(source.read_text(encoding="utf-8"))
@@ -410,45 +401,6 @@ def _validate_output(
                     f"[{pname}] {rel} output.{field} has no description; the standard"
                     " one will be used"
                 )
-
-
-MAX_OPTIONAL_PROPERTIES = 24
-"""Anthropic's cap on optional properties in a structured output schema, nested ones counted."""
-
-
-def _validate_optional_count(
-    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
-) -> None:
-    """Check that the output schema has at most `MAX_OPTIONAL_PROPERTIES` optional properties."""
-    output = fm.get("output")
-    if not isinstance(output, dict):
-        return
-    optional = _optional_properties(output)
-    if len(optional) > MAX_OPTIONAL_PROPERTIES:
-        errors.append(
-            f"[{pname}] {rel} output declares {len(optional)} optional properties, over the"
-            f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; list the ones the model never"
-            f" writes in their object's `required` ({', '.join(optional[:6])}, ...)"
-        )
-
-
-def _optional_properties(schema: dict, path: str = "") -> list[str]:
-    """Paths of the properties, nested included, that their object does not list as required."""
-    optional: list[str] = []
-    props = schema.get("properties")
-    required = schema.get("required")
-    required = set(required) if isinstance(required, list) else set()
-    for name, spec in (props if isinstance(props, dict) else {}).items():
-        if not isinstance(spec, dict):
-            continue
-        here = f"{path}.{name}" if path else name
-        if name not in required:
-            optional.append(here)
-        optional += _optional_properties(spec, here)
-        items = spec.get("items")
-        if isinstance(items, dict):
-            optional += _optional_properties(items, f"{here}[]")
-    return optional
 
 
 def _validate_schema_types(

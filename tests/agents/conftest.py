@@ -30,13 +30,9 @@ class NullModelLoop(PydanticAILoop):
     LOOP_TYPE = NULL_LOOP
     output: Optional[Dict[str, Any]] = None
     """What the model answers; `None` lets `TestModel` generate it from the output schema."""
-    models: List[TestModel] = []
-    """Every model built, so a test can tell whether the loop ran at all."""
 
     def _build_model(self) -> Any:
-        model = TestModel(call_tools=[], custom_output_args=NullModelLoop.output)
-        NullModelLoop.models.append(model)
-        return model
+        return TestModel(call_tools=[], custom_output_args=NullModelLoop.output)
 
     def _build_toolsets(self) -> List[Any]:
         return []
@@ -83,11 +79,10 @@ def workspace(
     if manager.get_plugin(PLUGIN_NAME) is None:
         manager.register(NullModelLoopPlugin(), name=PLUGIN_NAME)
     NullModelLoop.output = None
-    NullModelLoop.models = []
     yield run_dir
 
 
 @pytest.fixture
 def null_loop() -> type:
-    """The loop the `workspace` runs agents on: set `output`, read `models`."""
+    """The loop the `workspace` runs agents on; set `output` to fix the answer."""
     return NullModelLoop
