@@ -22,7 +22,7 @@ Determine what `old-name` is:
 - **Rule**: exists in `components.rules` → file at `workbench/<toolkit>/rules/<old-name>.md`
 - **Agent**: exists in `components.agents` → directory at `workbench/<toolkit>/agents/<old-name>/`
 
-If `old-name` doesn't match any component, ERROR and stop.
+If `old-name` matches no component, report an error and stop.
 
 ## 2. Rename the file/directory
 
@@ -40,7 +40,7 @@ Read every .md file in the toolkit and replace references to `old-name` with `ne
 - prose: "use old-name to ...", "continue with old-name"
 - workflow.md step references: `(`old-name`)`
 
-Use the Edit tool with `replace_all: true` for each file that contains the old name. Be careful not to replace partial matches (e.g. don't rename "add-endpoint" when renaming "endpoint").
+Use the Edit tool with `replace_all: true` on each file that contains the old name. Do not replace partial matches. For example, `add-endpoint` stays when you rename `endpoint`.
 
 ## 4. Update plugin definitions
 

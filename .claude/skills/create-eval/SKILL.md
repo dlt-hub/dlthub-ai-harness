@@ -11,7 +11,7 @@ Scaffold a trigger eval for `$ARGUMENTS` (format: `toolkit skill` or `toolkit/sk
 ## Step 1: Locate the skill
 
 Parse `$ARGUMENTS` into toolkit and skill name. Find the skill at `workbench/<toolkit>/skills/<skill>/SKILL.md`.
-Read the skill's frontmatter (`name`, `description`) and body to understand what it does and when it should trigger.
+Read the frontmatter (`name`, `description`) and the body of the skill. Find what it does and when it must trigger.
 
 ## Step 2: Create eval directory
 
@@ -19,10 +19,10 @@ Create `evals/<toolkit>/<skill>/` if it doesn't exist.
 
 ## Step 3: Determine eval workspaces
 
-Ask the user which workspace configurations to test. Each workspace represents a different set of installed toolkits — this tests how the skill behaves when competing with other skills.
+Ask the user which workspaces to test. Each workspace has a different set of toolkits. It shows how the skill behaves against other skills.
 
 Common patterns:
-- **init-only** — just `dlthub ai init` (minimum skills: `setup-secrets`, `dlthub-router`). Tests cold-start triggering.
+- **init-only** — just `dlthub ai init` (minimum skills: `setup-secrets`, `dlthub-router`). Tests triggering when no matching toolkit is installed.
 - **with-\<toolkit\>** — init + the skill's own toolkit installed. Tests triggering with competing sibling skills.
 
 Write `config.json`:
@@ -44,7 +44,7 @@ Read the skill's SKILL.md description carefully. Then read all competing skill d
 uv run python tools/list_skill_descriptions.py workbench/<toolkit1> workbench/<toolkit2> ...
 ```
 
-Use the competing descriptions to understand clash surfaces — which skills have overlapping vocabulary or intent.
+Use the other descriptions to find skills with the same words or intent.
 
 Generate 20 eval queries — a mix of should-trigger (10) and should-not-trigger (10).
 
@@ -62,17 +62,17 @@ Think about **coverage** — different phrasings of the same intent:
 - Some formal, some casual
 - Cases where the user doesn't name the skill explicitly but clearly needs it
 - Uncommon use cases at the edges of the skill's scope
-- Cases where this skill competes with another but should win
+- Cases where this skill competes with another but must win
 
 ### Should-not-trigger queries (10)
 
 The most valuable negatives are **near-misses** — queries that share keywords or concepts with the skill but actually need something different:
 - Adjacent domains or overlapping vocabulary
-- Ambiguous phrasing where a keyword match would trigger but shouldn't
+- Ambiguous phrasing where a keyword match triggers but the skill does not fit
 - Queries that touch on the skill's domain but in a context where another tool is better
 - Specific in-progress tasks that belong to sibling skills
 
-**Avoid obviously irrelevant negatives** — "write a fibonacci function" as a negative for a pipeline skill doesn't test anything. The negatives should be genuinely tricky.
+**Avoid obviously irrelevant negatives** — "write a fibonacci function" as a negative for a pipeline skill tests nothing. Each negative must be hard to tell apart.
 
 ### Disabled queries
 
@@ -94,7 +94,7 @@ Run:
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill>
 ```
 
-This creates all workspaces defined in config.json (default agent: claude). To also test Codex/Cursor, build for those agents too (they get a `--<agent>` workspace suffix so all three coexist):
+The command builds all workspaces in `config.json` for Claude. To test Codex or Cursor, build those too. Each gets a `--<agent>` suffix:
 ```bash
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent codex
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> --agent cursor

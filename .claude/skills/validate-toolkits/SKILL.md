@@ -20,7 +20,7 @@ uv run python tools/extract_refs.py [toolkit-path]
 ```
 
 This outputs JSON with:
-- **components**: lists of skills, commands, rules in the toolkit (for cross-reference resolution)
+- **components**: lists of skills, commands, rules and agents in the toolkit (for cross-reference resolution)
 - **files**: each .md file with its URLs and surrounding context lines
 
 Save the components map. You will process files **one at a time** in the next steps.
@@ -33,8 +33,8 @@ For each file in the extraction output, do the following **before moving to the 
 
 For each URL in the file (use the context lines from the extraction):
 
-1. **Fetch it** using WebFetch. Check if the page loads.
-2. **Validate relevance** using the context: does the page content match what the surrounding text claims? For example, if context says "Essential Reading on resource config" and the URL points to a page about pipelines — that's a mismatch.
+1. **Fetch it** with WebFetch. Make sure that the page loads.
+2. **Check relevance**: compare the page with the context. Does the page content match what the surrounding text claims? For example, if context says "Essential Reading on resource config" and the URL points to a page about pipelines — that's a mismatch.
 3. If a URL is dead (404) or redirects to unrelated content, mark as ERROR.
 4. If a URL loads but content doesn't match the context, mark as WARNING.
 5. Use web search to find the correct URL if a reference is broken but the intent is clear from context.
@@ -80,7 +80,7 @@ Check `README.md`, `CLAUDE.md`, and `EVALS.md` in the repo root for content that
 - If a toolkit was added, renamed, or removed: update the relevant tables/lists in README.md and CLAUDE.md.
 - If skills within a toolkit changed (added, removed, renamed): update any skill tables or workflow descriptions.
 - If CLI interface changed: update command examples.
-- Mark changes that can't be auto-resolved as WARNINGS (e.g., prose descriptions that may need human judgment).
+- If you cannot fix a change, mark it as WARNING. Prose that needs a human decision is an example.
 
 ## 4. Report
 

@@ -1,6 +1,6 @@
 # Toolkits
 
-How the dltHub AI workbench organizes toolkits and how `dlthub ai toolkit` installs them across AI platforms.
+How the dltHub AI Harness organizes toolkits and how `dlthub ai toolkit` installs them across AI platforms.
 
 ## Repository structure
 
@@ -93,7 +93,7 @@ dlthub ai status
 dlthub ai toolkit list                            [--location] [--branch]
 dlthub ai toolkit info <name>                     [--location] [--branch]
 dlthub ai toolkit install <name> [--agent] [--overwrite] [--strict] [--location] [--branch]
-dlthub ai init              [--agent] [--location] [--branch]
+dlthub ai init              [--agent] [--overwrite] [--location] [--branch]
 ```
 
 | Command | Description |
@@ -102,7 +102,7 @@ dlthub ai init              [--agent] [--location] [--branch]
 | `list` | List available toolkits with name, description, and install status |
 | `info <name>` | Show toolkit contents (skills, commands, rules, MCP servers) |
 | `install <name>` | Install toolkit components into the current project |
-| `init` | Shortcut for installing the `init` toolkit |
+| `init` | Install the `init` toolkit: rules, the secrets skill and the MCP server config |
 
 `list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name.
 
@@ -123,7 +123,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | command | `commands/<name>.md` | Single markdown file, slash-command or prompt template |
 | rule | `rules/<name>.md` | Single markdown file, always-on context injected by the IDE |
 | mcp | `plugin.json`, `.mcp.json`, or `mcp.json` | MCP server definitions, merged into platform config |
-| ignore | `.claudeignore` | Glob patterns for files the AI should not read or index |
+| ignore | `.claudeignore` | Glob patterns for files that the AI does not read or index |
 
 ## Platform support
 
@@ -161,12 +161,12 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 
 The `init` toolkit contains shared rules, secrets handling, and the workspace MCP server. It is automatically installed (without overwrite) whenever any other toolkit is installed. It can also be installed explicitly via `dlthub ai init`.
 
-Dependencies are declared in `plugin.json` under `"dependencies"`. The CLI resolves them in topological order and installs any that are missing before installing the requested toolkit. Circular dependencies are detected and rejected.
+Dependencies are declared in `toolkit.json` under `"dependencies"`. The CLI resolves them in topological order and installs any that are missing before installing the requested toolkit. Circular dependencies are detected and rejected.
 
 ## Install workflow
 
 1. **Resolve agent** — use `--agent` or auto-detect (see below)
-2. **Fetch workbench** — clone/update the repo to `~/.dlt/repos/` (thread-safe)
+2. **Fetch the harness repo** — clone or update it in `~/.dlt/repos/`
 3. **Install dependencies** — resolve dependency graph, install missing upstream toolkits
 4. **Version check** — skip if same version already installed (unless `--overwrite`)
 5. **Plan** — scan toolkit directory, build install actions, validate frontmatter
@@ -174,14 +174,14 @@ Dependencies are declared in `plugin.json` under `"dependencies"`. The CLI resol
 
 ## Conflict handling
 
-By default, when a destination path already exists the component is skipped with a warning.
+By default, when a destination path already exists, the CLI skips the component and logs a warning.
 
 Pass `--overwrite` to `install` to replace existing files:
-- Skills: `shutil.copytree` with `dirs_exist_ok=True` (merges into existing directory, user files preserved)
-- Commands, rules, ignore: `write_text` overwrites the file
+- Skills: merged into the existing folder. Files that the user added stay.
+- Commands, rules, ignore files: overwritten.
 - MCP servers: all servers from the toolkit are merged (existing entries with the same name are replaced)
 
-Pass `--strict` to fail on validation warnings (e.g. invalid frontmatter).
+Pass `--strict` to fail on validation warnings (for example, invalid frontmatter).
 
 ## Install tracking
 
@@ -214,7 +214,7 @@ sql-database-pipeline:
     - dlt-workspace-mcp
 ```
 
-This enables version comparison on subsequent installs, entry skill display in `dlthub ai status`, and integrity tracking via SHA3-256 file hashes.
+The CLI uses this file to compare versions on the next install, to show entry skills in `dlthub ai status` and to check file hashes (SHA3-256).
 
 ## Auto-detection priority
 
