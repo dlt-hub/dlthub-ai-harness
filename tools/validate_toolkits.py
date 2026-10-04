@@ -240,8 +240,24 @@ def validate_agents(
         _validate_schema_types(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
         _validate_agent_code(pname, entry, errors)
+        _validate_shipped_files(pname, entry, errors)
 
     return agent_names
+
+
+def _validate_shipped_files(pname: str, agent_dir: Path, errors: list[str]) -> None:
+    """Check that the agent folder holds only the `AGENT.md` and Python modules."""
+    # an install copies the folder verbatim, so a stray file lands in every workspace
+    stray = sorted(
+        path.name
+        for path in agent_dir.iterdir()
+        if path.name != _AGENT_FILE and not (path.is_file() and path.suffix == ".py")
+    )
+    if stray:
+        errors.append(
+            f"[{pname}] {_AGENTS_PATH}/{agent_dir.name} holds {', '.join(stray)}. An install"
+            f" copies the folder verbatim. Keep only {_AGENT_FILE} and Python modules"
+        )
 
 
 def _validate_agent_code(pname: str, agent_dir: Path, errors: list[str]) -> None:

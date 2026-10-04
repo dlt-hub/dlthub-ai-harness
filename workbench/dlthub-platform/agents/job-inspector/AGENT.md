@@ -134,8 +134,9 @@ output:
         type: string
       description: >
         What you could not verify, one entry each: a tool that failed, a file you did not
-        find, a table you could not query, a fix you inferred. Empty only when nothing was
-        left open; `Confidence` in `summary` then says so.
+        find, a table you could not query, a fix you inferred, a claim you cited as
+        evidence. Empty only when nothing was left open; `Confidence` in `summary` then
+        says so.
     requires_human:
       type: boolean
       description: True when a person has to act before the job can succeed again.
@@ -194,7 +195,10 @@ Inputs: run id '{{ failed_run_id }}', job ref '{{ failed_job_ref }}', trigger
 
 Read the log as "Read a failure log" in the `debug-deployment` skill describes. Then:
 
-- **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line.
+- **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line. Every
+  later item quoting the inspected run's log cites a line after it. A line of that log earlier
+  than `evidence[0]`'s takes the first place or stays out, context line included. A workspace
+  file and the producer's log are other texts and order freely.
 - **Cite the line the excerpt sits on.** Search the whole log for the exact text you quote
   and copy the line number of that match. The line you read a window from, the traceback
   header above the excerpt and the context line beside it are other lines. Do this for every
@@ -332,6 +336,11 @@ Every `evidence` item says what kind of artifact it is.
   Recommendation bullet.
 - A value no artifact carries stays out: `proposed_fix` says what to check, `fix_change` stays
   empty, `open_points` gets the point. Never guess a column or a field.
+- `requires_human` is true whenever `proposed_fix` asks a person to act before the next run
+  can succeed: edit code or configuration, change or delete data, restore a credential,
+  unpause a producer, decide where a dataset lives. It is false only where the job passes on
+  its own once the cause clears, as after a `transient` failure. Confidence does not move it,
+  and neither does how small the change is.
 - Never open a Recommendation with "determine why", "investigate" or "find out". Make the
   determination yourself from the job definition, the configuration and the producer's run
   record. When you cannot, lower `confidence`, put the question under Confidence and name the
@@ -429,6 +438,7 @@ Check the output against this list and fix what fails:
   comment named as the comment's;
 - every `evidence` source pointing at the line its excerpt sits on, found by searching the
   log, never at a neighbouring context or traceback line;
+- no item quoting the inspected run's log citing a line before `evidence[0]`'s;
 - every evidence item carrying a `provenance`, `high` resting on a fact, no code excerpt
   carrying prose;
 - no Recommendation bullet asking the reader to determine, investigate or find out a cause;
