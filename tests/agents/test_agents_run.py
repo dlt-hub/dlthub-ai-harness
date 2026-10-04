@@ -43,7 +43,7 @@ async def test_job_inspector_runs_and_links_its_summary(
     assert f"/w/ws-test/runs/{FAILED_RUN_ID})" in report["summary"]
     assert "/w/ws-test/jobs/jobs.ingest.load)" in report["summary"]
     job_result = inspector.last_job_result
-    assert job_result["type"] == "background_agent.dlthub-platform:job-inspector"
+    assert job_result["type"] == "job.background_agent.dlthub-platform:job-inspector"
     assert job_result["status"] == "succeeded"
     assert job_result["result"] == report
     assert {"type": "job-runs", "id": f"job-runs/{FAILED_RUN_ID}"} in job_result["object"]

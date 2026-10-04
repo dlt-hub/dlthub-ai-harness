@@ -27,7 +27,7 @@ from dlt._workspace.deployment.agent.typing import (
 from dlt._workspace.deployment.exceptions import InvalidJobSchema
 from dlt._workspace.deployment.reflection import ENTITY_TYPE_KEY, entity_properties
 from dlt._workspace.deployment.typing import THubEntityType
-from dlt._workspace.cli.dlthub.ai.agents import COMPONENT_MARKERS
+from dlt._workspace.cli.dlthub.ai.agents import COMPONENT_MARKERS, DLTHUB_AGENTS_DIR
 from dlt._workspace.cli.formatters import parse_frontmatter
 from dlt.common.typing import get_args
 
@@ -72,8 +72,9 @@ _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 # the agent file schema and its vocabularies come from dlt; this file checks only what a
 # source toolkit adds
 _AGENT_FILE = COMPONENT_MARKERS["agent"]
-_AGENTS_DIR = ("agents",)
-_AGENTS_PATH = "/".join(_AGENTS_DIR)
+_AGENTS_PATH = DLTHUB_AGENTS_DIR
+# `<toolkit>/agents` holds a host's own subagents, which dlt does not install as agents
+_HOST_AGENTS_PATH = "agents"
 _AGENT_HOOKS = (VALIDATE_INPUT, VALIDATE_OUTPUT)
 _ENTITY_TYPES = get_args(THubEntityType)
 _STATUS_VALUES = list(get_args(TAgentJobStatus))
@@ -129,7 +130,7 @@ def build_component_inventory(root: Path) -> dict[str, dict]:
         inventory[tk_dir.name] = {
             "skills": skills,
             "rules": _stems(tk_dir / "rules"),
-            "agents": _agent_names(tk_dir.joinpath(*_AGENTS_DIR)),
+            "agents": _agent_names(tk_dir / _AGENTS_PATH),
             "commands": _stems(tk_dir / "commands"),
             "dependencies": dependencies,
         }
@@ -188,9 +189,14 @@ def validate_agents(
     errors: list[str],
     warnings: list[str],
 ) -> set[str]:
-    """Validate the agent files under `agents/<name>/AGENT.md`."""
+    """Validate the agent files under `dlthub/agents/<name>/AGENT.md`."""
     agent_names: set[str] = set()
-    agents_dir = plugin_dir.joinpath(*_AGENTS_DIR)
+    for misplaced in sorted((plugin_dir / _HOST_AGENTS_PATH).glob(f"*/{_AGENT_FILE}")):
+        errors.append(
+            f"[{pname}] {_HOST_AGENTS_PATH}/{misplaced.parent.name}/{_AGENT_FILE} is not"
+            f" installed. dlt installs agents from {_AGENTS_PATH}/. Move the folder there"
+        )
+    agents_dir = plugin_dir / _AGENTS_PATH
     if not agents_dir.is_dir():
         return agent_names
 

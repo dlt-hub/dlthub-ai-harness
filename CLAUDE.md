@@ -13,7 +13,7 @@ workbench/                                # All toolkits live here
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
-    agents/<name>/AGENT.md         # Agent definitions (optional)
+    dlthub/agents/<name>/AGENT.md  # Agent definitions (optional)
     .mcp.json                      # MCP servers (optional)
   init/                            # Shared rules, secrets handling, and workspace MCP
 tools/                             # Dev tooling
@@ -37,7 +37,8 @@ A toolkit is a Claude Code plugin. It can contain:
 - **Commands** (`commands/<name>.md`) — frontmatter required (`name`, `description`). Name must match filename. User-invoked via `/toolkit:command`.
 - **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
-- **Agents** (`agents/<name>/AGENT.md`) — agent definitions. Frontmatter plus a body that is the system prompt. Name must match the folder. Each declares `access`, `inputs`, `output` (with `status` and `summary`) and `defaults`.
+- **Agents** (`dlthub/agents/<name>/AGENT.md`) — agent definitions. Frontmatter plus a body that is the system prompt. Name must match the folder. Each declares `access`, `inputs`, `output` (with `status` and `summary`) and `defaults`.
+  - `agents/` is the host's own subagents folder; dlt does not install an agent definition from there.
   - The folder holds `AGENT.md`, an optional `agent.py` (`validate_input`, `validate_output`) and the modules it imports. An agent folder imports only its own files.
   - No README in the folder. Author and operator docs go in `BACKGROUND_AGENTS.md`, the reference for agent definitions.
   - Install path: `.claude/dlthub/agents/<name>/`, under `dlthub/` so it never mixes with the host's native agents.

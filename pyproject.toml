@@ -29,7 +29,8 @@ test = [
 ]
 
 [tool.uv.sources]
-dlt = { url = "https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=9" }
+dlt = { path = "../dlt/.worktrees/feat-background-agent-launcher", editable = true }
+# dlt = { url="https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=8"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

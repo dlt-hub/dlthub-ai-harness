@@ -3,8 +3,6 @@
 Anthropic rejects it with "Schema must have a 'type', 'anyOf', 'oneOf', or 'allOf' field".
 """
 
-from pathlib import Path
-
 from tests.utils import REPO_ROOT
 
 from tools import validate_toolkits as V
@@ -54,7 +52,7 @@ def test_anyof_stands_in_for_a_type() -> None:
 
 def test_the_shipped_inspector_carries_its_types() -> None:
     errors: list[str] = []
-    path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / "job-inspector" / "AGENT.md"
+    path = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH / "job-inspector" / "AGENT.md"
     frontmatter, _ = V.split_frontmatter(path)
     V._validate_schema_types("dlthub-platform", "job-inspector", frontmatter, errors, [])
 

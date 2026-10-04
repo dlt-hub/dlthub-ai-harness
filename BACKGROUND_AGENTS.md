@@ -6,7 +6,7 @@ the command line.
 
 This document is a guideline for authors. An agent definition is an `AGENT.md`, written much
 like a `SKILL.md`. The working example is
-[`job-inspector`](workbench/dlthub-platform/agents/job-inspector/AGENT.md).
+[`job-inspector`](workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md).
 
 ## Definition of terms
 
@@ -34,10 +34,11 @@ job built on it, and any run of that job, follows your instructions.
 ## Where it lives, where it installs
 
 ```
-workbench/<toolkit>/agents/<name>/AGENT.md
+workbench/<toolkit>/dlthub/agents/<name>/AGENT.md
 ```
 
-A definition is a folder, like a skill. The folder can also hold an `agent.py` that dlt runs
+A definition is a folder, like a skill. It sits under `dlthub/agents/` because `agents/` holds
+a host's own subagents, and dlt does not install a definition from there. The folder can also hold an `agent.py` that dlt runs
 around the loop (§ code around the loop) and the modules it imports.
 `dlthub ai toolkit install <toolkit>` copies the folder to `.claude/dlthub/agents/<name>/`.
 On other hosts the target is `.cursor/dlthub/agents/` or `.agents/dlthub/agents/`. The
@@ -551,7 +552,10 @@ model provider.
 
 ## Validation
 
-`make validate-toolkits` checks every `agents/<name>/AGENT.md` in the workbench:
+`make validate-toolkits` checks every `dlthub/agents/<name>/AGENT.md` in the workbench:
+
+- no `AGENT.md` sits under the toolkit's `agents/`, where dlt does not look for it
+- the folder holds only the `AGENT.md` and Python modules, since an install copies it whole
 
 - frontmatter, if present, is valid YAML, and a stated `name` matches the folder
 - the body is not empty, and every `{{ placeholder }}` in it is declared under

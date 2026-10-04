@@ -1,9 +1,9 @@
 """Tests for `links.py`, which writes run ids and job refs in agent summaries as links."""
 
 import importlib.util
-from pathlib import Path
+from tests.utils import REPO_ROOT
 
-AGENT_DIR = Path(__file__).resolve().parents[2] / "workbench/dlthub-platform/agents"
+AGENT_DIR = REPO_ROOT / "workbench/dlthub-platform/dlthub/agents"
 _spec = importlib.util.spec_from_file_location(
     "links", AGENT_DIR / "job-inspector" / "links.py"
 )

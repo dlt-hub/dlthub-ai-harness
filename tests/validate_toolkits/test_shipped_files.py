@@ -45,9 +45,20 @@ def test_every_stray_file_is_listed(tmp_path: Path) -> None:
 
 
 def test_the_shipped_agent_folders_hold_nothing_else() -> None:
-    agents = REPO_ROOT / V.AI_DIR / "dlthub-platform" / "agents"
+    agents = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH
     errors: list[str] = []
     for agent_dir in sorted(p for p in agents.iterdir() if p.is_dir()):
         V._validate_shipped_files("dlthub-platform", agent_dir, errors)
 
     assert errors == []
+
+
+def test_an_agent_in_the_host_agents_folder_fails(tmp_path: Path) -> None:
+    """dlt installs only `dlthub/agents`; a definition under `agents` would be skipped silently."""
+    write(tmp_path / "agents" / "an-agent" / V._AGENT_FILE, "# an agent\n")
+    errors: list[str] = []
+
+    V.validate_agents("tk", tmp_path, {}, errors, [])
+
+    assert len(errors) == 1
+    assert "agents/an-agent" in errors[0] and V._AGENTS_PATH in errors[0]
