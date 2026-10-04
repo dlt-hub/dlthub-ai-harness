@@ -39,6 +39,7 @@ dataset.row_counts().df()
 
 ```python
 dataset("SELECT * FROM orders WHERE amount > 100").df()
+```
 
 ## ibis expressions (complex queries)
 

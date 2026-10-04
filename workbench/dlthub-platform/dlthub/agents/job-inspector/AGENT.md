@@ -43,7 +43,7 @@ inputs:
     failed_run_id:
       type: string
       description: run id of the failed job run to inspect
-      entity_type: job-runs
+      entity_type: job-run
     failed_job_ref:
       type: string
       description: job ref of the failed job; its latest failed run is inspected when no run id is given
@@ -71,7 +71,7 @@ output:
     failed_run_id:
       type: string
       description: run id of the job run you inspected
-      entity_type: job-runs
+      entity_type: job-run
     failed_job_ref:
       type: string
       description: job ref of the job whose run you inspected
@@ -193,7 +193,7 @@ Inputs: run id '{{ failed_run_id }}', job ref '{{ failed_job_ref }}', trigger
 
 ## Investigate
 
-Read the log as "Read a failure log" in the `debug-deployment` skill describes. Then:
+Read the log as "Step 2: Read the failure log" in the `debug-deployment` skill describes. Then:
 
 - **Earliest wrong line first.** It is `evidence[0]`, quoted with its source and line. Every
   later item quoting the inspected run's log cites a line after it. A line of that log earlier

@@ -274,7 +274,7 @@ os.chdir(Path(__file__).resolve().parents[1])  # run from project root
 If the run fails, read the error before deciding where to go — do not proceed to step 9:
 
 - **SQL syntax error, unsupported function, dialect error** → (`debug-transformation`) skill
-- **Pipeline state error, stale packages, schema drift, connection error** → `debug-pipeline` skill in the **rest-api-pipeline** toolkit (also use this for development iterations — it sets up `dev_mode=True`)
+- **Pipeline state error, stale packages, schema drift, connection error** → `debug-pipeline` skill in the **rest-api-pipeline** toolkit
 
 ### 9. Validate output
 

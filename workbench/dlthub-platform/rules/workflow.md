@@ -35,4 +35,3 @@ References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt
 * **Workspace deployment reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments.md
 * **Runtime overview**: https://dlthub.com/docs/hub/pipeline-operations/overview.md
-* **Platform tutorial**: https://dlthub.com/docs/hub/getting-started/platform-tutorial.md

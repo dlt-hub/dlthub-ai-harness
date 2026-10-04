@@ -63,11 +63,11 @@ Route here when the user wants work to happen on its own after an event ("whenev
 
 ```
 capability                                                        → agent                              | install                                                     | declare
-diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:tag:<tag>")
+diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:tag:<tag>", require={"profile": "access"})
 ```
 
 * `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
-* `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., tags=["ingest"])`. Name the jobs to watch, or tag them.
+* `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., expose={"tags": ["ingest"]})`. Name the jobs to watch, or tag them.
 * The agent names no model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5, and `AGENT__API_KEY` to the key for that provider.
 
 <!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. -->

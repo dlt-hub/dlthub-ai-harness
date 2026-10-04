@@ -190,10 +190,12 @@ The harness is also available as a Claude Code plugin via the marketplace. Start
 /plugin install bootstrap@dlthub-ai-harness --scope project
 /plugin install rest-api-pipeline@dlthub-ai-harness --scope project
 /plugin install sql-database-pipeline@dlthub-ai-harness --scope project
+/plugin install filesystem-pipeline@dlthub-ai-harness --scope project
 /plugin install dlthub-platform@dlthub-ai-harness --scope project
 /plugin install data-exploration@dlthub-ai-harness --scope project
 /plugin install transformations@dlthub-ai-harness --scope project
 /plugin install data-quality@dlthub-ai-harness --scope project
+/plugin install performance@dlthub-ai-harness --scope project
 ```
 
 Plugins become active only in a new session. Restart Claude Code with `claude`.

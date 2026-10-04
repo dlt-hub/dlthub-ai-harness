@@ -81,7 +81,7 @@ A dependency is missing from the environment. Install it with `uv add <package>`
 The SQL query returns no rows. Common causes:
 1. Filter is too restrictive — check `where` clauses.
 2. Column names don't match schema — verify against `get_table_schema`.
-3. Table is empty — check `row_counts`.
+3. Table is empty — check `get_row_counts` (MCP).
 
 ### dlt.attach fails in notebook
 Pipeline name is wrong or pipeline hasn't been run. Run `dlthub local pipeline info <name>` to verify.

@@ -46,7 +46,10 @@ async def test_job_inspector_runs_and_links_its_summary(
     assert job_result["type"] == "job.background_agent.dlthub-platform:job-inspector"
     assert job_result["status"] == "succeeded"
     assert job_result["result"] == report
-    assert {"type": "job-runs", "id": f"job-runs/{FAILED_RUN_ID}"} in job_result["object"]
+    assert any(
+        {"type": entity_type, "id": f"{entity_type}/{FAILED_RUN_ID}"} in job_result["object"]
+        for entity_type in ("job-runs", "job-run")
+    )
     trace = job_result["trace"]
     assert trace["loop_type"] == NULL_LOOP
     assert trace["inputs"]["failed_run_id"] == FAILED_RUN_ID

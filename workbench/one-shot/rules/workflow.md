@@ -1,10 +1,10 @@
 # One-shot workflow
 
 ## Workflow Entry
-**ALWAYS** start with `deploy-run-sample-pipeline`. Invoke it immediately — do not ask for clarification.
+**ALWAYS** start with **Deploy run sample pipeline** (`deploy-run-sample-pipeline`) SKILL — invoke it immediately, do not ask for clarification.
 
 ## Core workflow
-1. **Deploy run sample pipeline** (`deploy-run-sample-pipeline`) — set up a cloud destination, deploy the pre-shipped GitHub pipeline to dltHub Platform, and run it on the cloud.
+1. **Deploy run sample pipeline** (`deploy-run-sample-pipeline`) — deploy the pre-shipped Jaffle Shop sample pipeline to dltHub Platform (playground destination, no credentials), run it, and open the dataset browser.
 
 This workflow has exactly one step.
 

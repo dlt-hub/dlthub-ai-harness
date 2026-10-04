@@ -18,7 +18,7 @@ Before scaffolding, check session context — if the user has already stated any
 
 Collect all unknown inputs in **one round** — never split into separate back-and-forth turns. The inputs split into two kinds:
 
-**Structured choices** (ask in one round with multipl   e-choice options, up to three parallel questions):
+**Structured choices** (ask in one round with multiple-choice options, up to three parallel questions):
 - **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[hub,s3]`, `dlt[hub,gs]`, `dlt[hub,az]`, `dlt[hub,sftp]`; local needs only `dlt[hub]`) and the credential layout.
 - **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
@@ -85,7 +85,7 @@ Do **not** read `.dlt/secrets.toml` directly — use the MCP tools (step 6b).
 
 ### 4. Replace the pipeline with a focused function
 
-Edit `filesystem_pipeline.py`. Pick the pattern that matches the **Layout** chosen in step 1.
+Edit `filesystem_pipeline.py`. Pick the pattern that matches the layout confirmed in step 1b (single-table by default).
 
 #### 4a. Single-table layout
 
@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
 Rules:
 - `bucket_url` is injected from `[sources.filesystem]` in `config.toml` (step 6a). `file_glob` is **passed inline** in the script — keeping the pattern next to the code that depends on it makes the pipeline self-documenting and easier to refactor when patterns change.
-- `.with_name("<table_name>")` controls the destination table name. Without it, dlt names tables after the resource (`encounters` for `read_csv`).
-- Start with `replace` write disposition + `dev_mode=True`. Switch to `merge` / incremental later (see advanced docs).
+- `.with_name("<table_name>")` controls the destination table name. Without it, dlt names tables after the resource (`_read_csv` for `read_csv`).
+- Start with `replace` write disposition + `dev_mode=True`. Switch to `merge` / incremental later with `add-incremental-loading`.
 - One file format per pipeline at first. Mixing CSV and Parquet means two readers and two `.with_name(...)` calls — leave that for iteration 2.
 
 #### 4b. Multi-table layout
