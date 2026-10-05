@@ -1,23 +1,23 @@
 ## Findings
 
-- The inspector broke 4 of the 60 decided checks on run `6622b4d7-8aaa-4ce0-82f4-00005b4ac657`: 2 under instruction following and 2 under quality.
+- The inspector broke 4 of the 61 decided checks on run `6622b4d7-8aaa-4ce0-82f4-00005b4ac657`: 2 under instruction following and 2 under quality.
 - The fix is correct and its value rests on a label: `snowflake` comes from the job's display name, which the deployment module's author wrote, cited under a provenance reserved for settings.
 - The Confidence section says only that the change was not applied, so nothing in the summary says what the evidence establishes.
 - Instruction following: minor issues. 41 of the 43 decided checks came back TRUE, 2 FALSE.
   - Broken: The provenance of an item fits what its source names: a log line is `run_log`, a file is `workspace_file` or `repository_comment`, and so on. (`evidence_provenance_matches_source`) evidence[2] cites 'deployed definition for jobs.__deployment__.analytics_marts, field name', the job's own name or description, which its author wrote, under provenance 'job_definition'; that source is 'job_description'.
   - Broken: The summary says what the evidence establishes, and so why this confidence. (`confidence_reason_stated`) The Confidence bullet states only that the change was not applied; no statement says what the evidence establishes.
-- Quality: minor issues. 15 of the 17 decided checks came back TRUE, 2 FALSE.
+- Quality: minor issues. 16 of the 18 decided checks came back TRUE, 2 FALSE.
   - Broken: Each Recommendation bullet holds one action in one sentence; the change, the value, the check afterwards and the thing not to assume are separate bullets. (`recommendation_one_action_per_bullet`) a Recommendation bullet chains a second action (', and rerun'): '- Ask a coding agent to add `[destination.warehouse]` with `destination_type="snowflake"` to the workspace configuration used by the `prod` '. Two verbs joined by a comma, `and` or `then` are two bullets.
   - Broken: Recommendation bullets state the action itself: no wrapper handing it to an agent, and no quotation marks outside inline code. (`recommendation_is_the_action`) a Recommendation bullet is addressed to an agent instead of stating the action ('Ask a coding agent'): '- Ask a coding agent to add `[destination.warehouse]` with `destination_type="snowflake"` to the workspace configuration'. The reader pastes the whole summary, so write the instruction itself.
 
 ## Scope
 
-- 31 of the 91 checks did not apply to this run.
+- 31 of the 92 checks did not apply to this run.
 - `jobs.__deployment__.job_inspector` run `6622b4d7-8aaa-4ce0-82f4-00005b4ac657`, which inspected `jobs.__deployment__.analytics_marts` run `691bd0f7-b5c7-426a-8f11-00005d3f3045`.
 
 ## Detailed evaluation results
 
-- 91 check results: 56 TRUE, 4 FALSE, 31 `N/A`. `pass_rate` 0.93 over the 60 decided.
+- 92 check results: 57 TRUE, 4 FALSE, 31 `N/A`. `pass_rate` 0.93 over the 61 decided.
 - One row per decided check below.
 
 | check_id | category | kind | results | reasoning |
@@ -39,7 +39,7 @@
 | `run_logs_read` | Instruction following | deterministic | TRUE | the log was read with 'dlthub_get_run_logs' |
 | `record_read_before_logs` | Instruction following | deterministic | TRUE | the run record was read at call 1, the log at call 2 |
 | `no_explicit_cause_before_log` | Instruction following | deterministic | TRUE | none of the 4 statement(s) before the log read commits to a cause |
-| `finished_within_limits` | Instruction following | deterministic | TRUE | the trace records no limit as the stop reason |
+| `finished_within_limits` | Instruction following | deterministic | TRUE | 7 of 30 turn(s) and 119905 of 1000000 token(s) were used |
 | `single_run_scope` | Instruction following | deterministic | TRUE | the inspector read 0 run(s) beyond the one it inspected, at most 5 allowed |
 | `job_definition_read_for_config` | Instruction following | deterministic | TRUE | the job definition was read with 'dlthub_get_job' |
 | `only_inspected_run_logs` | Instruction following | deterministic | TRUE | every log call targets the inspected run |
@@ -68,6 +68,7 @@
 | `recommendation_one_action_per_bullet` | Quality | deterministic | FALSE | a Recommendation bullet chains a second action (', and rerun'): '- Ask a coding agent to add `[destination.warehouse]` with `destination_type="snowflake"` to the workspace configuration used by the `prod` '. Two verbs jo ... |
 | `recommendation_is_the_action` | Quality | deterministic | FALSE | a Recommendation bullet is addressed to an agent instead of stating the action ('Ask a coding agent'): '- Ask a coding agent to add `[destination.warehouse]` with `destination_type="snowflake"` to the workspace configura ... |
 | `earliest_error_first` | Quality | deterministic | TRUE | no error-like line precedes line 52, where `evidence[0]`'s excerpt sits |
+| `summary_plain_language` | Quality | deterministic | TRUE | the summary carries none of the phrases the summary rules keep out |
 | `recommendation_settles_the_cause` | Quality | deterministic | TRUE | no Recommendation bullet delegates the cause question |
 | `high_confidence_rests_on_facts` | Quality | deterministic | TRUE | `high` rests on 4 fact(s): job_definition, run_log, run_record, workspace_file |
 | `fix_names_target_and_change` | Quality | deterministic | TRUE | the fix changes 'prod runtime configuration key destination.warehouse.destination_type' to 'destination_type="snowflake"' |

@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from urllib.parse import quote
 
-__all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform"]
+__all__ = ["web_ui", "linkify", "run_labels", "labels_from_platform", "agent_run_links"]
 
 
 def web_ui() -> Tuple[str, str]:
@@ -57,6 +58,29 @@ _LOG_COMMAND = re.compile(r"\bjob\s+(?:runs\s+)?logs\b")
 overview, so a log citation carries `?output=logs` and lands the reader on the lines it
 quotes."""
 
+
+
+def agent_run_links(
+    text: str, links: Tuple[str, str] = ("", ""), job_refs: Optional[Mapping[str, str]] = None
+) -> str:
+    """Moves the run links of agent jobs onto the route the web app serves them from.
+
+    A run of an agent job has its page at `/agents/<job ref>/runs/<id>`; `/runs/<id>` is the
+    route of a plain job run, and it is what `dlt_runtime.urls` builds for every run alike. A
+    run id says nothing about the job behind it, so the caller passes the job ref of each run
+    it knows to be an agent's. The rewrite keeps whatever query the link carries.
+    """
+    base, workspace = links
+    if not base or not workspace or not text:
+        return text
+    for run_id, job_ref in (job_refs or {}).items():
+        if not run_id or not job_ref:
+            continue
+        text = text.replace(
+            f"{base}/w/{workspace}/runs/{run_id}",
+            f"{base}/w/{workspace}/agents/{quote(str(job_ref), safe='')}/runs/{run_id}",
+        )
+    return text
 
 
 def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:

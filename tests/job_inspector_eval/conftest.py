@@ -184,6 +184,8 @@ def trace(**overrides: Any) -> Dict[str, Any]:
         },
         "turn_count": 3,
         "total_tokens": 12000,
+        # a real agent trace carries the limits the run was given, and no stop reason
+        "limits": {"max_turns": 30, "max_tokens": 1000000},
         "skills_used": ["dlthub-platform:debug-deployment"],
         "tools_used": ["Bash", "Read"],
         "mcp_tools_used": ["dlthub_get_run", "dlthub_get_run_logs", "dlthub_get_job"],

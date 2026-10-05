@@ -142,6 +142,17 @@ INSTRUCTION_QUESTIONS = (
 """The guidance next to each summary heading in the inspector's definition. It is for the
 model and never for the reader."""
 SUMMARY_MAX_WORDS = 400
+MODEL_REGISTER = re.compile(
+    r"(?i)\bnothing is owed\b"
+    r"|\bno (?:action|further action|changes?) (?:is |are )?(?:required|needed)\b"
+    r"|\bit(?:'s| is) worth noting\b|\bit should be noted\b"
+    r"|(?:^|[-*•]\s*)(?:importantly|notably|overall|in summary|to summarize)\b"
+    r"|\bsuccessfully\b|\bseamless(?:ly)?\b|\brobust\b|\bcomprehensive\b|\bleverage\b"
+    r"|\bdelve\b"
+    r"|\bas an ai\b|\bmy analysis\b|\bI (?:found|noticed|observed|believe)\b"
+)
+"""The register a model falls into, which the summary rules in `summary-format.md` keep out.
+Each one stands in for the sentence that says what happened."""
 BULLET_MAX_WORDS = 70
 SECTION_MAX_BULLETS = 8
 FIX_HEDGES = re.compile(
@@ -2169,19 +2180,37 @@ def step_already_named(ctx: EvalContext) -> str:
 def finished_within_limits(ctx: EvalContext) -> CheckResult:
     """The inspector finished inside its turn and token limits.
 
-    TRUE  `stop_reason` names no limit
-    FALSE it names a turn or token limit, so the output was cut short
-    N/A   the trace is missing
+    TRUE  the counts the trace records stayed under the limits it records
+    FALSE one reached its limit, so the output was produced under it
+    N/A   the trace is missing, or records no limits to compare the counts against
+
+    A dlt agent trace carries `turn_count`, `total_tokens` and the `limits` the run was given,
+    and records no stop reason. Reading one made every run pass this check, a run cut off at
+    `max_turns` included; a reason is still read where a loop reports one.
     """
     if not ctx.trace:
         return na("no trace was recorded for the inspector run")
     reason = str(ctx.trace.get("stop_reason") or "")
-    if not reason:
-        return ok("the trace records no limit as the stop reason")
-    if _LIMIT_STOP_REASON.search(reason):
+    if reason and _LIMIT_STOP_REASON.search(reason):
         return bad(f"the run stopped on {reason!r}, so the output was produced under a limit",
                    stop_reason=reason)
-    return ok(f"the run stopped on {reason!r}, which is no limit")
+    limits = ctx.trace.get("limits")
+    limits = limits if isinstance(limits, dict) else {}
+    for count_key, limit_key in (("turn_count", "max_turns"), ("total_tokens", "max_tokens")):
+        count = ctx.trace.get(count_key)
+        limit = limits.get(limit_key)
+        if isinstance(count, int) and isinstance(limit, int) and limit > 0 and count >= limit:
+            return bad(
+                f"the run reached its {limit_key} of {limit} at {count_key} {count}, so the"
+                " output was produced under a limit",
+                **{count_key: count, limit_key: limit},
+            )
+    if not limits or not isinstance(ctx.trace.get("turn_count"), int):
+        return na("the trace records no limits and no counts to compare them against")
+    return ok(
+        f"{ctx.trace['turn_count']} of {limits.get('max_turns')} turn(s) and"
+        f" {ctx.trace.get('total_tokens')} of {limits.get('max_tokens')} token(s) were used"
+    )
 
 
 @check("single_run_scope", reads_transcript=True)
@@ -2564,6 +2593,30 @@ def summary_sections_are_bullets(ctx: EvalContext) -> CheckResult:
         if not section_bullets(entry):
             return bad(f"the section {entry['title']!r} has no bullet", section=entry["title"])
     return ok(f"all {len(present)} section(s) present hold bullets only")
+
+
+@check("summary_plain_language", category=QUALITY)
+def summary_plain_language(ctx: EvalContext) -> CheckResult:
+    """`summary` is written in the workspace's words rather than a model's register.
+
+    TRUE  no bullet carries one of the phrases the summary rules name
+    FALSE one does; the reasoning quotes it
+    N/A   the summary is empty
+
+    The phrases stand in for the sentence that says what happened, so a reader acting on the
+    summary is left without it.
+    """
+    summary = ctx.summary
+    if not summary.strip():
+        return na("the run wrote no summary")
+    for line in summary.splitlines():
+        match = MODEL_REGISTER.search(line)
+        if match:
+            return bad(
+                f"the summary carries {match.group(0).strip()!r} in: {line.strip()[:120]!r}",
+                phrase=match.group(0).strip(),
+            )
+    return ok("the summary carries none of the phrases the summary rules keep out")
 
 
 @check("summary_free_of_instruction_text")
@@ -4561,11 +4614,18 @@ class SdkFetcher(Fetcher):
         return history
 
     def pipeline_trace(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """The dlt trace of the pipeline run this job run made, or None when it made none.
+
+        `pipeline_runs.trace` answers with a `PipelineRunTrace`, and the trace is its `trace`
+        attribute. The object carries no mapping protocol and no `to_dict`, so reading it as
+        one returned an empty trace and every check over it went quietly blind.
+        """
         runs = list(self.workspace.telemetry.pipeline_runs.list(job_run_id=run_id, limit=1))
         if not runs:
             return None
-        trace = self.workspace.telemetry.pipeline_runs.trace(id=runs[0].id)
-        return dict(trace) if isinstance(trace, dict) else getattr(trace, "to_dict", dict)()
+        answer = self.workspace.telemetry.pipeline_runs.trace(id=runs[0].id)
+        trace = getattr(answer, "trace", answer)
+        return trace if isinstance(trace, dict) else None
 
 
 class FileFetcher(Fetcher):
@@ -4831,8 +4891,16 @@ def prepare(
     inspector_job_ref: str = "",
     max_runs_read: int = DEFAULT_MAX_RUNS_READ,
 ) -> EvalPrep:
-    """Resolves the inspector run, runs the deterministic checks, builds the judge inputs."""
-    fetcher = fetcher or SdkFetcher.connect()
+    """Resolves the inspector run, runs the deterministic checks, builds the judge inputs.
+
+    Every failure comes back as an abort reason, reaching the platform included: an exception
+    out of here is a traceback in the job log and no agent output at all.
+    """
+    if fetcher is None:
+        try:
+            fetcher = SdkFetcher.connect()
+        except Exception as exception:
+            return EvalPrep(abort_reason=f"the platform could not be reached: {exception}")
     resolved, reason = resolve_inspector_run(
         run_context, fetcher, inspector_run_id, inspector_job_ref
     )
@@ -5061,8 +5129,14 @@ def prepare_batch(
     runs of one definition. A scheduled job carries no job ref in its trigger, so
     `inspector_job_ref` names the job to cover. A run still going, or one that declared no
     result, is skipped with the reason rather than dropped.
+
+    A platform that cannot be reached comes back as an abort reason, as in `prepare`.
     """
-    fetcher = fetcher or SdkFetcher.connect()
+    if fetcher is None:
+        try:
+            fetcher = SdkFetcher.connect()
+        except Exception as exception:
+            return BatchPrep(abort_reason=f"the platform could not be reached: {exception}")
     job_ref = resolve_inspector_job(run_context, inspector_job_ref)
     since, end, window_source = resolve_window(
         fetcher, since, until, window_days, definition_path
@@ -5730,6 +5804,7 @@ try:
     web_ui = _links.web_ui
     linkify = _links.linkify
     run_labels = _links.run_labels
+    agent_run_links = _links.agent_run_links
 except Exception:  # the inspector is not installed beside this evaluator
     def web_ui() -> Tuple[str, str]:  # type: ignore[misc]
         return "", ""
@@ -5743,6 +5818,13 @@ except Exception:  # the inspector is not installed beside this evaluator
 
     def run_labels(entries: Sequence[Dict[str, Any]]) -> Dict[str, str]:  # type: ignore[misc]
         return {}
+
+    def agent_run_links(  # type: ignore[misc]
+        text: str,
+        links: Tuple[str, str] = ("", ""),
+        job_refs: Optional[Mapping[str, str]] = None,
+    ) -> str:
+        return text
 
 
 def as_bullets(text: str) -> List[str]:
@@ -6184,7 +6266,20 @@ def render_summary(
     sections.append(
         section("Detailed evaluation results", results, table, links=links, labels=labels)
     )
-    return "\n\n".join(sections)
+    return agent_run_links("\n\n".join(sections), links, inspector_run_refs(evaluations))
+
+
+def inspector_run_refs(evaluations: Sequence[Dict[str, Any]]) -> Dict[str, str]:
+    """Job ref per graded run id, so each inspector run links to its agent page.
+
+    Only the inspector's own runs: the failed run an evaluation names belongs to whatever job
+    broke, and a plain job run has its page under `/runs/<id>`.
+    """
+    return {
+        str(entry.get("inspector_run_id") or ""): str(entry.get("inspector_job_ref") or "")
+        for entry in evaluations
+        if entry.get("inspector_run_id") and entry.get("inspector_job_ref")
+    }
 
 
 def tally_line(checks: List[Dict[str, Any]], runs: int = 1) -> str:

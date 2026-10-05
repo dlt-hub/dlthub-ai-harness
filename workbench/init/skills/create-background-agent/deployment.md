@@ -34,7 +34,9 @@ which is why the body must say what to do with empty input.
 
 `instructions` is the user turn of every run. The job takes the definition's name, `job_inspector`
 here. Instead of a `<toolkit>:<name>` reference the workspace may point at a folder holding an
-`AGENT.md` by its workspace-relative path.
+`AGENT.md` by its workspace-relative path. A path reference then needs `name=` as well: the job
+name comes from the reference, and `agents/job-inspector` is no Python identifier, so without it
+the deployment fails with `InvalidJobName`.
 
 ## What the Python definition overrides
 
@@ -102,6 +104,23 @@ The profile has to be `configured` in the workspace; workspace info lists which 
 profile and reports the mismatch, so check the active profile before running an agent job by hand.
 
 ## Running an agent job by hand
+
+The loop is an optional dependency. A local machine installs it once:
+
+```bash
+pip install "pydantic-ai-slim[anthropic,openai,google,mcp,spec]"
+```
+
+Without it the run stops at `MissingDependencyException` before the model is addressed.
+
+The runner takes it from the `agent-loop-pydantic-ai` group, which dlt adds to the workspace
+requirements with that same spec and no version bound. A workspace whose other pins push the
+solver backwards gets an old loop that fails to import, so pin a floor of your own next to the
+rest of the workspace dependencies:
+
+```text
+pydantic-ai-slim>=2.52.0
+```
 
 ```bash
 dlthub local run job_inspector -c failed_run_id=89826ee6-... -c agent.instructions="explain, do not fix"
@@ -203,15 +222,25 @@ nothing compares the result against the jobs that run agents.
 
 ## Pinning the model
 
-An agent definition names no model, so the workspace sets one. `agent.model`, `agent.api_key`,
-`agent.api_url` and `agent.api_version` are one set: a run takes all four from the workspace or
-all four from the runtime. Setting `api_key` alone leaves `model` unset, so the run sends the
+An agent definition names no model, so the workspace sets one. The runtime supplies none: a
+workspace with no variables set falls back to the loop's default alias and the run fails on the
+first model call with the provider's own missing-key error, before a turn is taken.
+`agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run takes
+all four from the workspace or all four from the runtime. Setting `api_key` alone leaves `model` unset, so the run sends the
 agent's default model to your endpoint and gets `401 API key is invalid`. Set them as workspace
 variables, which arrive on the runner as environment and override `.dlt/secrets.toml`:
 
 ```bash
 printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
 ```
+
+```bash
+printf '%s' 'anthropic:claude-sonnet-5' | dlthub variable set AGENT__MODEL --plain --workspace
+```
+
+Every `variable set` takes `--plain` or `--secret`, and it writes to the workspace the current
+directory is connected to. Check with `dlthub variable list` that the value landed where the job
+runs.
 
 | Variable | Anthropic | Azure OpenAI |
 |---|---|---|

@@ -26,16 +26,34 @@ change here is a change in every body that states them.
   section, which is what `job-inspector` does with `Confidence`.
 - **A markdown table only as the last thing in the last section**, when the agent reports rows.
   Its headers are lowercase and name the field in the row. A row that measured nothing stays out;
-  how many there were belongs in `Scope` or in the tally above the table.
-- **Every run id and job ref is a link**, wherever it falls. The text is the id in a code span and
-  the target is `<web ui base>/w/<workspace id>/runs/<id>` for a run, `/jobs/<job ref>` for a job.
-  `dlt_runtime.urls` builds that base from the API base url, which is how the CLI prints a run
-  link.
+  how many there were belongs in `Scope` or in the tally above the table. **No rows means no
+  table**, and a sentence in its place saying what was not measured. A placeholder row, with
+  `none` in the first cell and the rest empty, reads as a broken report.
+- **Every run id and job ref is a link**, wherever it falls, in a summary the deployment
+  linkifies. The text is the id in a code span. The target is
+  `<web ui base>/w/<workspace id>/runs/<id>` for a plain job run,
+  `/w/<workspace id>/agents/<job ref>/runs/<id>` for a run of an agent job, and `/jobs/<job ref>`
+  for a job. `dlt_runtime.urls` builds the base from the API base url and its `job_run_url`
+  writes the plain run route for every run alike, so an agent run is moved onto the agent route
+  by the caller, the only side that knows which job a run id belongs to.
 - **Markdown only, no raw HTML.** The summary renderer in the web UI strips tags, so a `<details>`
   element folding a long list arrives as an empty section. A long list goes in as plain bullets.
 - **Close every code span, and never escape a backtick with a backslash.** An unbalanced span
   swallows the rest of the line in the UI, and a backslash in front of a backtick renders as
   itself.
+- **Plain language, none of the register a model falls into.** A summary is read by an engineer
+  deciding what to do, so it states facts in the words the workspace uses. These shapes stay
+  out, and the body of every agent names them:
+
+  | out | in |
+  |---|---|
+  | `Nothing is owed`, `No action is required` | the sentence that says why: `The load added no column a transformation reads` |
+  | `It is worth noting`, `Importantly`, `Notably`, `Overall`, `In summary` | the fact, with no opener in front of it |
+  | `successfully`, `seamlessly`, `robust`, `comprehensive`, `leverage`, `delve` | the verb that happened: `loaded`, `read`, `found` |
+  | `I found`, `my analysis`, `as an AI` | the finding, with no narrator |
+  | `appears to`, `seems to` where the evidence settles it | the claim, with the confidence field carrying the doubt |
+  | `not X but Y`, `X, not Y` | what is the case, stated once |
+
 - **No verdict label at the top.** State what was found; `passed` and the other output fields
   carry the verdict.
 
@@ -64,7 +82,7 @@ open on the verdict and keep the evidence underneath:
 | `## Findings` | The counts, any rule broken that outranks the rest, what the graded agent got wrong and why it matters, then one bullet per category with its verdict and every broken check nested under it |
 | `## Recommendation` | What to change in the graded agent's definition so a broken check stops recurring. A report over one run leaves this out, because a change to an agent's instructions rests on a pattern across runs |
 | `## Scope` | How many checks did not apply, then the run or runs graded and what each acted on, each linked |
-| `## Detailed evaluation results` | The tally, then the table of every decided check: `check_id`, `category`, `kind`, `results`, `reasoning` |
+| `## Detailed evaluation results` | The tally, then one row per decided check: `check_id`, `category`, `kind`, `results`, `reasoning`. Over a window each check appears once and `results` says how it came back across the runs. A check that answered `N/A` everywhere has no row, and a report that decided nothing writes no table and says so in its place |
 
 `job-inspector-eval` names its two categories `Instruction following` and `Quality`; a grader with
 other categories renames those bullets and leaves the rest. A report over many runs takes the same
@@ -101,6 +119,18 @@ output["summary"] = links.linkify(
 ```
 
 The evaluator loads the same file the same way, in `_shared_links` in its `checks.py`.
+
+The module sits inside the inspector's folder, so an agent in another toolkit or in a workspace
+of its own copies `links.py` beside its own definition and loads that copy by path. A grader and
+the agent it grades share one copy, which is what makes a run read the same way in both
+summaries.
+
+**A summary is linkified only where the deployment runs code after the loop.** `run.agent("<ref>",
+...)` starts the loop and stores what it returned, so an agent deployed in that declared form
+reports its run ids as the model wrote them, in plain code spans. The decorated form in
+[deployment.md](deployment.md) is what gives a summary links, and it is the deciding reason to
+take it for an agent whose output names other runs. `agent_run_links` is the second call, after
+`linkify`, and it takes the job ref of each run the caller knows to be an agent's.
 
 A span holding an id becomes the text of the link, since a link wrapped around a code span renders
 and a link written inside one prints its markup. So the inspector's

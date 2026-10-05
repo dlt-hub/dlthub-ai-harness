@@ -71,6 +71,11 @@ the trace records tool use is a parser fault, and the stored job result needs a 
 
 ## What an evaluation reports
 
+The results table holds one row per decided check, and over a window one row per check with how
+it came back across the runs. A check that answered `N/A` on every run of the window has no row,
+and a report that decided nothing writes no table and a sentence saying so, since a placeholder
+row reads as a broken report.
+
 `passed` is true when no check is FALSE, every open check came back answered, and at least one
 check was decided. A judge response that is empty or cut off leaves checks unanswered and fails
 the evaluation. `pass_rate` is `TRUE / (TRUE + FALSE)`, so `N/A` never moves it. It sits beside

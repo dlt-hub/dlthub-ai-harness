@@ -1,6 +1,6 @@
 ## Findings
 
-- The inspector broke 14 of the 49 decided checks on run `f69e5a23-c45e-45d1-8534-0000327148a4`: 9 under instruction following and 5 under quality.
+- The inspector broke 14 of the 50 decided checks on run `f69e5a23-c45e-45d1-8534-0000327148a4`: 9 under instruction following and 5 under quality.
 - A security rule was broken: the inspector run used the 'prod' profile, so the production credentials were in its environment; pin require={"profile": "access"} on the job.
 - The diagnosis stops at the symptom: it repeats the error message, that the orders table was not loaded because the source returned no rows, and never looks at the job that produces orders.
 - The next action sends the reader to `workspace/sources/` without naming a file or a setting, so whoever picks this up starts the investigation from the beginning.
@@ -15,7 +15,7 @@
   - Broken: The inspector read how the failed job is declared before classifying: the deployed definition through the job tool, or the declaring module with a file tool. (`job_declaration_read`) the transcript holds no read of the failed job's declaration: no job-definition call and no file read naming '__deployment__' or '__deployment__'. The classification rests on the run record and the log alone.
   - Broken: The summary says what the evidence establishes, and so why this confidence. (`confidence_reason_stated`) The summary carries no Confidence section and no statement linking the evidence to a confidence level.
   - Broken: The summary says what the inspector could not verify. (`open_points_stated`) There is no Confidence section, and Python found the fix names no target or no change.
-- Quality: needs attention. 10 of the 15 decided checks came back TRUE, 5 FALSE.
+- Quality: needs attention. 11 of the 16 decided checks came back TRUE, 5 FALSE.
   - Broken: A proposed fix names the thing to change and the change, or declares the value open. (`fix_names_target_and_change`) `proposed_fix` is filled but `fix_target` and `fix_change` are empty and no open point says why the value is not established: 'Check the `orders` source module and its `prod` configuration in `workspace/sources/`, confirm the upstream system has accessible order rows'.
   - Broken: When the failed run's log reports a missing table, empty input or zero-row load, the inspector looked at the job that produces the input, or at the code that does. (`upstream_inspected_on_dependency_symptoms`) the log reports 'no rows' (line 41), a symptom of the job that produces the input, and the transcript inspected no other job's run, fetched no other job and opened no workspace file: the diagnosis stops at the symptom.
   - Broken: The confidence level is the one the confidence table gives for this evidence. (`confidence_justified`) high needs the earliest error to name the cause or a producer state shown as a fact; the error names the symptom and no producer run was read, so medium is the level.
@@ -24,12 +24,12 @@
 
 ## Scope
 
-- 42 of the 91 checks did not apply to this run.
+- 42 of the 92 checks did not apply to this run.
 - `jobs.__deployment__.job_inspector` run `f69e5a23-c45e-45d1-8534-0000327148a4`, which inspected `jobs.__deployment__.jaffle_shop_dq` run `51a7bbdb-922a-483b-84c9-0000dd2b282e`.
 
 ## Detailed evaluation results
 
-- 91 check results: 35 TRUE, 14 FALSE, 42 `N/A`. `pass_rate` 0.71 over the 49 decided.
+- 92 check results: 36 TRUE, 14 FALSE, 42 `N/A`. `pass_rate` 0.72 over the 50 decided.
 - One row per decided check below.
 
 | check_id | category | kind | results | reasoning |
@@ -56,7 +56,7 @@
 | `run_logs_read` | Instruction following | deterministic | TRUE | the log was read with 'dlthub_get_run_logs' |
 | `record_read_before_logs` | Instruction following | deterministic | TRUE | the run record was read at call 1, the log at call 2 |
 | `no_explicit_cause_before_log` | Instruction following | deterministic | TRUE | none of the 4 statement(s) before the log read commits to a cause |
-| `finished_within_limits` | Instruction following | deterministic | TRUE | the trace records no limit as the stop reason |
+| `finished_within_limits` | Instruction following | deterministic | TRUE | 4 of 30 turn(s) and 54756 of 1000000 token(s) were used |
 | `single_run_scope` | Instruction following | deterministic | TRUE | the inspector read 0 run(s) beyond the one it inspected, at most 5 allowed |
 | `only_inspected_run_logs` | Instruction following | deterministic | TRUE | every log call targets the inspected run |
 | `evidence_source_has_line` | Instruction following | deterministic | TRUE | all 2 source(s) that have lines name one |
@@ -74,6 +74,7 @@
 | `fix_actionable` | Quality | judge | FALSE | It sends the reader to the directory workspace/sources/ to find the source module, which is the inspection's own work, and names no file, setting or value. |
 | `dependency_cause_named` | Quality | judge | FALSE | The Diagnosis restates the symptom, the source returned no rows, as the cause, and no producer run was read. |
 | `earliest_error_first` | Quality | deterministic | TRUE | no error-like line precedes line 41, where `evidence[0]`'s excerpt sits |
+| `summary_plain_language` | Quality | deterministic | TRUE | the summary carries none of the phrases the summary rules keep out |
 | `fix_target_is_one_thing` | Quality | deterministic | TRUE | `fix_target` is empty |
 | `no_premature_cause` | Quality | judge | TRUE | The four statements before the first log read are plans and facts from the run record; none settles a cause. |
 | `no_invented_cause` | Quality | judge | TRUE | The stated cause is log line 41 verbatim: the orders table was not loaded by the ingestion pipeline. |

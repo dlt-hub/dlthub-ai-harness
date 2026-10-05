@@ -574,6 +574,39 @@ def test_finished_within_limits():
     assert run("finished_within_limits", trace=None).outcome == C.NA
 
 
+def test_finished_within_limits_reads_the_counts_the_trace_records():
+    """A dlt agent trace carries no stop reason, so a run cut off at its turn limit used to
+    pass this check."""
+    at_the_turn_limit = trace(turn_count=30)
+    result = run("finished_within_limits", trace=at_the_turn_limit)
+    assert result.outcome == C.FALSE
+    assert "max_turns" in result.reasoning
+
+    result = run("finished_within_limits", trace=trace(total_tokens=1000000))
+    assert result.outcome == C.FALSE
+    assert "max_tokens" in result.reasoning
+
+    bare = trace()
+    bare.pop("limits")
+    assert run("finished_within_limits", trace=bare).outcome == C.NA
+
+
+def test_summary_plain_language():
+    """The register a model falls into stands in for the sentence saying what happened."""
+    assert run("summary_plain_language").outcome == C.TRUE
+    for phrase in (
+        "Nothing is owed: the job will run again",
+        "No action is required here",
+        "It is worth noting that the credential is set",
+        "The pipeline successfully loaded the table",
+        "I found the cause in the loader step",
+    ):
+        summary = f"## Diagnosis\n\n- {phrase}.\n\n## Recommendation\n\n- Set it.\n"
+        result = run("summary_plain_language", output=output(summary=summary))
+        assert result.outcome == C.FALSE, phrase
+    assert run("summary_plain_language", output=output(summary="")).outcome == C.NA
+
+
 def test_single_run_scope():
     assert run("single_run_scope").outcome == C.TRUE
 
@@ -699,6 +732,8 @@ def test_finished_within_limits_recognises_the_loop_limit_wording():
     for reason in ("end_turn", "stop_sequence", ""):
         assert run("finished_within_limits",
                    trace=trace(stop_reason=reason)).outcome == C.TRUE, reason
+    # a loop that reports no reason leaves the counts to decide
+    assert run("finished_within_limits", trace=trace(turn_count=30)).outcome == C.FALSE
 
 
 def test_evidence_from_a_source_the_evaluator_does_not_hold_is_not_invented():

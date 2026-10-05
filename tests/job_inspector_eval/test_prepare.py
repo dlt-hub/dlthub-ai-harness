@@ -188,6 +188,58 @@ def test_prepare_aborts_when_the_run_declared_no_result():
     assert "declared no result" in prep.abort_reason
 
 
+def test_an_agent_run_links_to_its_agent_page():
+    """The web app serves an agent run under `/agents/<job ref>/runs/<id>`; a plain job run
+    keeps `/runs/<id>`, which is what `dlt_runtime.urls` writes for both."""
+    links = ("https://app.example", "ws-1")
+    text = C.linkify(
+        f"graded `{INSPECTOR_RUN_ID}` over `{FAILED_RUN_ID}`", links
+    )
+    moved = C.agent_run_links(text, links, {INSPECTOR_RUN_ID: "jobs.m.job_inspector"})
+
+    assert f"/w/ws-1/agents/jobs.m.job_inspector/runs/{INSPECTOR_RUN_ID}" in moved
+    assert f"/w/ws-1/runs/{FAILED_RUN_ID}" in moved
+
+
+def test_the_rendered_summary_puts_the_graded_run_on_its_agent_page():
+    prep = _prep_with()
+    prep.links = ("https://app.example", "ws-1")
+    final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
+
+    assert "/agents/jobs.job_inspector/runs/" in final["summary"]
+
+
+def test_a_run_with_no_job_ref_keeps_the_plain_route():
+    links = ("https://app.example", "ws-1")
+    text = C.linkify(f"graded `{INSPECTOR_RUN_ID}`", links)
+
+    assert C.agent_run_links(text, links, {INSPECTOR_RUN_ID: ""}) == text
+    assert C.agent_run_links(text, ("", ""), {INSPECTOR_RUN_ID: "jobs.m.j"}) == text
+
+
+def test_prepare_aborts_when_the_platform_cannot_be_reached(monkeypatch):
+    """An exception here would be a traceback in the job log and no agent output at all."""
+
+    def refuse():
+        raise RuntimeError("no workspace resolved: the runtime configuration carries no id")
+
+    monkeypatch.setattr(C.SdkFetcher, "connect", staticmethod(refuse))
+    prep = C.prepare({"run_id": EVALUATOR_RUN_ID})
+    assert prep.aborted is True
+    assert "could not be reached" in prep.abort_reason
+    assert prep.aborted_output["summary"] == prep.abort_reason
+
+
+def test_prepare_batch_aborts_when_the_platform_cannot_be_reached(monkeypatch):
+    def refuse():
+        raise RuntimeError("token_expired")
+
+    monkeypatch.setattr(C.SdkFetcher, "connect", staticmethod(refuse))
+    batch = C.prepare_batch({"run_id": "local"}, inspector_job_ref="jobs.job_inspector")
+    assert batch.aborted is True
+    assert batch.aborted_output["status"] == "aborted"
+
+
 def test_prepare_does_not_hand_the_judge_a_whole_log():
     prep = C.prepare({"run_id": EVALUATOR_RUN_ID}, fetcher=fetcher())
     windows = json.loads(prep.judge_inputs["evidence_windows"])
@@ -1430,8 +1482,12 @@ def test_the_rendered_summary_links_the_ids_the_checks_wrote():
     prep.links = ("https://app.example", "ws-1")
     final = C.finalize({"status": "succeeded", "summary": "", "checks": _all_true(prep)}, prep)
     summary = final["summary"]
-    # the uuid is the target, the job and the run number the text
-    assert f"[#7](https://app.example/w/ws-1/runs/{INSPECTOR_RUN_ID})" in summary
+    # the uuid is the target, the job and the run number the text; an agent run sits on the
+    # agent route and the failed job run on the plain one
+    assert (
+        f"[#7](https://app.example/w/ws-1/agents/jobs.job_inspector/runs/{INSPECTOR_RUN_ID})"
+        in summary
+    )
     # a reasoning that names the inspected run carries the link too
     assert summary.count(f"/runs/{FAILED_RUN_ID}") > 1
     assert_summary_shape(

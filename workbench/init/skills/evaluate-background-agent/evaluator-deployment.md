@@ -14,6 +14,11 @@ decorated form. `prepare` resolves the graded run, fetches every artifact the ch
 the deterministic checks and builds the evidence windows. The loop judges. `finalize` writes the
 computed results over the judge's output and assembles the summary.
 
+`prepare` answers with an abort rather than raising, reaching the platform included. A workspace
+that is not connected, an expired credential and a run id that resolves to nothing all come back
+as `abort_reason`, which the deployment function turns into `JobAbortedException`. An exception
+out of `prepare` is a traceback in the job log and no agent output at all.
+
 ## Per run
 
 ```python
@@ -164,6 +169,10 @@ async def job_inspector_eval_batch(
 Every input is a parameter of the deployment function. A workspace changes a default by editing
 that parameter; a single run overrides one with `-c <name>=...`, and a job section in
 `config.toml` overrides it for every run of that job.
+
+The body names the run id and job ref inputs in a sentence, as `job-inspector-eval` does under
+"What you are given", even though the preparation step is what reads them. An input no
+placeholder in the body names is reported by `make validate-toolkits` as declared and unread.
 
 | input | per-run deployment | scheduled deployment | default |
 |---|---|---|---|
