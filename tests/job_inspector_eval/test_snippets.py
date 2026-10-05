@@ -106,8 +106,8 @@ _spec.loader.exec_module(links)
 def snippet(title: str) -> str:
     """The python block under a heading of `advanced-patterns.md`, with `links` loaded.
 
-    The document loads `links` in its first snippet and the later ones use it, so a block
-    taken out of the document needs that loader in front of it.
+    The document loads `links` once and the later snippets use it, so a block taken out of
+    the document needs that loader in front of it.
     """
     text = (REPO / "workbench/dlthub-platform/skills/deploy-workspace"
             / "advanced-patterns.md").read_text()
@@ -134,8 +134,8 @@ def workspace(tmp_path, monkeypatch):
 def load(workspace, title: str, module_name: str):
     """The snippet as an imported deployment module, its `run.agent` declarations resolved.
 
-    A plain import, because `run.agent` reads the calling module off the stack to stamp the
-    job section, and a module executed from a spec carries no frame it can read.
+    A plain import: `run.agent` stamps the job section from the calling module's frame, which
+    a module executed from a spec does not have.
     """
     (workspace / f"{module_name}.py").write_text(snippet(title))
     importlib.invalidate_caches()
@@ -146,9 +146,8 @@ def load(workspace, title: str, module_name: str):
 class _Loop:
     """Answers every open check TRUE, and the recommendation pass with one bullet.
 
-    `completed`, `trace` and `base_trace` are what the launcher reads off a loop when it writes
-    the job result, so a test can hand this to dlt. `completed` is false here because the stub
-    answers without a turn, which sends the launcher to `base_trace`.
+    The launcher reads `completed`, `trace` and `base_trace` off a loop to write the job
+    result. `completed` is false because the stub answers without a turn.
     """
 
     LOOP_TYPE = "stub"
@@ -206,10 +205,8 @@ def test_the_window_snippet_runs_as_a_deployment_module(workspace, monkeypatch):
 
 
 def test_the_run_snippet_delivers_the_four_entities_to_the_platform(workspace, monkeypatch):
-    """Why the trimmed schema still declares four computed fields. `deliver_job_result` fills
-    `object` from the declared `output`, which `resolve_agent_spec` takes off the `AGENT.md`,
-    and the platform files the run under each entity. On a trigger no input carries them: the
-    run id was resolved from `prev_run_id`, so the output is the only source."""
+    """Why the trimmed schema keeps four computed fields: the platform files the run under
+    each, and on a trigger the output is the only source of them."""
     import os
 
     from dlt._workspace.deployment.job_result import set_job_inputs
@@ -278,11 +275,8 @@ MANIFEST_JOBS = {
 
 @pytest.mark.parametrize("title", list(MANIFEST_JOBS))
 def test_a_snippet_deploys_the_jobs_it_declares_and_nothing_else(workspace, title):
-    """Manifest generation is where a wrong `entity_type` or a stray module-level name lands,
-    and one bad job takes the whole manifest down with it.
-
-    `generate_manifest` scans module-level names, so a module loaded by path deploys as a job
-    of its own unless `__all__` names the jobs.
+    """One bad job takes the whole manifest down, and `generate_manifest` scans module-level
+    names, so a module loaded by path deploys as a job unless `__all__` names the jobs.
     """
     from dlt._workspace.deployment.manifest import generate_manifest, validate_manifest
 

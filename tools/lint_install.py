@@ -43,8 +43,7 @@ def shipped_agents(toolkit: str) -> dict[str, list[str]]:
 def missing_agent_files(project: Path, toolkit: str) -> list[str]:
     """What the install owed the workspace and did not put there.
 
-    The host folder differs per agent (`.claude`, `.cursor`, `.agents`), so the glob asks
-    only for the path dlt installs under, whichever host holds it.
+    The host folder differs per agent, so the glob asks only for the path dlt installs under.
     """
     missing = []
     for name, files in shipped_agents(toolkit).items():
