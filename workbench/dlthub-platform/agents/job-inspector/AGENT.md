@@ -53,6 +53,8 @@ output:
   type: object
   properties:
     status:
+      # every property carries a `type`: Anthropic's schema transformer rejects a bare enum
+      type: string
       enum: [succeeded, failed, aborted]
       description: >
         Outcome of your task, as "What counts as success for the agent run" in your system
@@ -75,9 +77,11 @@ output:
       description: job ref of the job whose run you inspected
       entity_type: job
     classification:
+      type: string
       enum: [config, credentials, upstream_data, code, resources, transient, unknown]
       description: The kind of failure, as the "Classification" section of your system prompt defines it. `unknown` when you could not establish a cause.
     confidence:
+      type: string
       enum: [high, medium, low]
       description: How well the evidence supports the classification, as the "Confidence levels" section of your system prompt defines it. `low` whenever the classification is `unknown`.
     evidence:
@@ -98,6 +102,7 @@ output:
             type: string
             description: The text as it stands in the source. Never paraphrase it.
           provenance:
+            type: string
             enum: [run_log, run_record, trace, job_definition, workspace_file, secrets_redacted, repository_comment, job_description, inference]
             description: >
               What kind of artifact the excerpt is, as "Provenance" in your system prompt
@@ -134,7 +139,18 @@ output:
     requires_human:
       type: boolean
       description: True when a person has to act before the job can succeed again.
-  required: [status, summary, classification, confidence, evidence, open_points, requires_human]
+  # `failed_run_id` and `failed_job_ref` are required because `job-inspector-eval` resolves the
+  # failed run it has to read from them: a run that leaves them out is graded blind
+  required:
+    - status
+    - summary
+    - failed_run_id
+    - failed_job_ref
+    - classification
+    - confidence
+    - evidence
+    - open_points
+    - requires_human
 defaults:
   # no `model` here: set `AGENT__MODEL` in your workspace, at least as capable as Claude
   # Sonnet 5. a template that named a provider would hand every installer that provider
@@ -365,6 +381,14 @@ the summary alone.
 - Confidence cites the artifact behind each open point, and the artifact a person should read
   when nothing you read carries the answer.
 - An artifact you did not read is never cited.
+
+Write it in the words the workspace uses. These shapes stay out of every bullet: `Nothing is
+owed` and `No action is required`, which replace the sentence saying why; `It is worth noting`,
+`Importantly`, `Notably`, `Overall` and `In summary`, which stand in front of the fact;
+`successfully`, `seamlessly`, `robust`, `comprehensive`, `leverage` and `delve`, which replace
+the verb that happened; `I found`, `my analysis` and `as an AI`, which put a narrator in front
+of the finding; `appears to` and `seems to` where the evidence settles it, which belong in
+`confidence` instead; and `not X but Y`, where what is the case is stated once.
 
 Recommendation bullets:
 

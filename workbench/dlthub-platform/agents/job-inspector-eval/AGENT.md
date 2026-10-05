@@ -97,6 +97,8 @@ output:
   type: object
   properties:
     status:
+      # every property carries a `type`: Anthropic's schema transformer rejects a bare enum
+      type: string
       enum: [succeeded, failed, aborted]
       description: >
         Outcome of your task. `succeeded` and `failed` mean what your system prompt says
@@ -146,6 +148,7 @@ output:
       type: integer
       description: run number of the failed job run, which names it in the summary
     inspector_status:
+      type: string
       enum: [succeeded, failed, aborted]
       description: The status the inspector reported for itself, copied from its output.
     passed:
@@ -176,9 +179,11 @@ output:
             type: string
             description: The check id from the "Checks" section of your system prompt.
           kind:
+            type: string
             enum: [deterministic, judge]
             description: Always `judge` for a check you answered.
           outcome:
+            type: string
             enum: ["TRUE", "FALSE", "N/A"]
             description: As defined in the section "Outcomes" of your system prompt.
           reasoning:
@@ -215,6 +220,9 @@ output:
         capped:
           type: boolean
           description: the window held more runs than `max_runs`, so the oldest were left out
+      # every nested property is required so it stops counting against Anthropic's cap of 24
+      # optional parameters; `required` inside an object binds only when that object is written
+      required: [job_ref, since, until, since_is, runs_found, runs_evaluated, runs_skipped, capped]
     evaluations:
       type: array
       description: Scheduled path only. One entry per inspector run graded. Filled by `checks.py`.
@@ -251,6 +259,18 @@ output:
             description: >
               why the judge never answered on that run; empty when it did. The deterministic
               checks stand, the judge checks read `N/A`, and the run does not pass.
+        required:
+          - inspector_run_id
+          - inspector_job_ref
+          - inspector_run_number
+          - failed_run_id
+          - failed_job_ref
+          - failed_run_number
+          - inspector_status
+          - passed
+          - pass_rate
+          - false_checks
+          - judge_failure
     skipped_runs:
       type: array
       description: >
@@ -263,6 +283,7 @@ output:
           reason:
             type: string
             description: why the run was not graded
+        required: [run_id, reason]
     metrics:
       type: object
       description: Numbers about the inspector run, copied from its trace. Not pass or fail.
@@ -282,6 +303,7 @@ output:
             Distinct runs the inspector read a record or a log for, the inspected run
             included. `single_run_scope` counts the runs beyond that one, so it reads one
             lower.
+      required: [turn_count, total_tokens, cost_usd, runs_read]
 
   # only what the judge itself produces; the rest are computed after the loop and any value
   # the model puts there is overwritten

@@ -20,6 +20,8 @@ Checks:
 - Agent `access` axes/verbs are known; the body's placeholders are declared inputs
 - Agent `entity_type` values are known, sit on string properties, and agree input vs output
 - Agent `output` may omit status/summary (warning); a type conflict on them is an error
+- Agent `inputs` / `output` properties each name a `type`; an enum without one breaks Anthropic
+- Agent `output` stays under 24 optional properties, which is Anthropic's cap
 - Agent `skills` / `rules` refs resolve in the toolkit or a declared dependency
 - Agent `defaults` sets no `model` and no `trigger`; the deployment sets both
 - workflow.md (`skill-name`) references point to real skill or agent directories
@@ -296,6 +298,8 @@ def validate_agents(
                     errors.append(f"[{pname}] {rel} {msg}")
         _validate_entity_types(pname, rel, fm, errors, warnings)
         _validate_output(pname, rel, fm, errors, warnings)
+        _validate_schema_types(pname, rel, fm, errors, warnings)
+        _validate_optional_count(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
 
     return agent_names
@@ -463,6 +467,82 @@ def _validate_output(
                     f"[{pname}] {rel} output.{field} has no description; the standard"
                     " one will be used"
                 )
+
+
+MAX_OPTIONAL_PROPERTIES = 24
+"""Anthropic refuses a structured output schema with more optional properties than this, nested
+ones counted, and the agent run fails on its first model call."""
+
+
+def _validate_optional_count(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """The output schema stays inside the provider's cap on optional properties.
+
+    A property in its object's `required` does not count, and `required` inside a nested object
+    binds only when the model writes that object, so the nested properties of a field Python
+    fills after the loop belong in one.
+    """
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    optional = _optional_properties(output)
+    if len(optional) > MAX_OPTIONAL_PROPERTIES:
+        errors.append(
+            f"[{pname}] {rel} output declares {len(optional)} optional properties, over the"
+            f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; list the ones the model never"
+            f" writes in their object's `required` ({', '.join(optional[:6])}, ...)"
+        )
+
+
+def _optional_properties(schema: dict, path: str = "") -> list[str]:
+    optional: list[str] = []
+    props = schema.get("properties")
+    required = schema.get("required")
+    required = set(required) if isinstance(required, list) else set()
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        here = f"{path}.{name}" if path else name
+        if name not in required:
+            optional.append(here)
+        optional += _optional_properties(spec, here)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            optional += _optional_properties(items, f"{here}[]")
+    return optional
+
+
+def _validate_schema_types(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Every property of `inputs` and `output` names a `type`.
+
+    Anthropic's schema transformer refuses a property carrying `enum` and no `type` with
+    "Schema must have a 'type', 'anyOf', 'oneOf', or 'allOf' field", and the agent run fails
+    on its first model call. dlt fills the type on `status` alone, so every other enum has to
+    carry its own.
+    """
+    for field in ("inputs", "output"):
+        node = fm.get(field)
+        if isinstance(node, dict):
+            _walk_properties(pname, f"{rel} {field}", node, errors)
+
+
+def _walk_properties(pname: str, where: str, schema: dict, errors: list[str]) -> None:
+    props = schema.get("properties")
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        if not any(key in spec for key in ("type", "anyOf", "oneOf", "allOf", "$ref")):
+            errors.append(
+                f"[{pname}] {where}.{name} names no type; a property carrying an enum alone"
+                " is refused by Anthropic's structured output. Add `type: string`"
+            )
+        _walk_properties(pname, f"{where}.{name}", spec, errors)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            _walk_properties(pname, f"{where}.{name}[]", items, errors)
 
 
 def _validate_defaults(

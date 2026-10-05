@@ -97,6 +97,9 @@ inputs:
 - A required input with no value fails the run like any missing job argument. An optional one
   nobody supplied renders as empty text, so **the body must say what to do with partial input**:
   which combinations are workable, and when to abort.
+- An input the run did not carry at all is also logged as an unresolved placeholder and listed
+  in the trace under `unresolved_placeholders`. The text still renders empty, so a triggered run
+  of an agent with optional inputs warns on every run and works as written.
 - `required: {}` is how "nothing required" is written; `[]` works too.
 - An input the body never names is a warning at manifest time: nothing would read it.
 - There is no `inputs.prompt`. The task is the body.
@@ -119,6 +122,10 @@ Declare the same name with `entity_type` on an **output** property when the agen
 acting on a different entity than it was given: an output overwrites the input of the same name in
 `object`, so an inspector that resolved a run from a job ref reports the run it actually inspected.
 
+Put that property in `required`. A grader, and anything else reading the run afterwards, resolves
+the entity from it, and a model leaves an optional field out: the checks over that artifact then
+answer `N/A` and the run is graded blind.
+
 ## `output`
 
 A JSON Schema of the agent output. Two properties are the contract every agent shares and dlt adds
@@ -140,6 +147,10 @@ output:
   required: [status, summary]
 ```
 
+**dlt writes its own description over both**, whatever the file says. The model reads dlt's text,
+so what `succeeded`, `failed` and `aborted` mean for this agent belongs in the body. A
+description written here documents the contract for the next author.
+
 Declare them anyway: the file then shows the whole contract, and `make validate-toolkits` checks
 they carry the standard values. A declaration that contradicts them (`status` with other values,
 `summary` not a string) fails validation, because dlt would overwrite it and lose your intent. A
@@ -159,6 +170,15 @@ Add the agent's own fields next to them. What to know about the schema:
 - **Every object names its `properties`.** A bare `type: object` means "any object", which a
   strict validator refuses, so OpenAI's structured output falls back or rejects the schema. A
   field Python fills after the loop is declared as fully as one the model writes.
+- **Every property names its `type`, an enum included.** Anthropic's schema transformer
+  refuses a property carrying `enum` and no `type` with `Schema must have a 'type', 'anyOf',
+  'oneOf', or 'allOf' field`, and the run fails on the first model call. Write `type: string`
+  beside the enum.
+- **At most 24 optional properties, nested ones counted.** Anthropic rejects a larger schema
+  with `Schemas contains too many optional parameters (N), which would make grammar compilation
+  inefficient`, and the run fails on the first model call. A property listed in its object's
+  `required` does not count, and `required` inside a nested object binds only when the model
+  writes that object, so every nested property of a field Python fills belongs in one.
 - **Keep the schema small.** The model reads all of it on every run, and a large one has stopped a
   job launching. `job-inspector-eval` declares 17 properties in about 5,600 characters, and a test
   holds it under 7,800.
