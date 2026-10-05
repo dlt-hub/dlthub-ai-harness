@@ -12,7 +12,7 @@
 
 4. **Deploy to dltHub Platform** — hand off to **dlthub-platform** to deploy and run the pipeline on dltHub; can be done with a working pipeline
 5. **Adjust endpoint** (`adjust-endpoint`) — add pagination, remove limits, add hints, mappings, correct schema etc.
-6. **Add incremental loading** — set up `dlt.sources.incremental`, merge keys, and lag windows for production efficiency
+6. **Add incremental loading** (`adjust-endpoint`) — set up `dlt.sources.incremental`, merge keys, and lag windows for production efficiency
 7. **Add endpoints** (`new-endpoint`) — add more resources to the source
 8. **View data** (`view-data`) — show data to the user & query and explore loaded data in Python
 9. **Optimize performance** (`optimize-rest-api-performance`) — when the pipeline works but is slow: parallelize child resources, raise page size, run resources concurrently, tune retries

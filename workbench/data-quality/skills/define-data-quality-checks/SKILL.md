@@ -19,9 +19,9 @@ Parse `$ARGUMENTS`:
 This skill is usually entered with context already in session:
 - Confirmed pipeline name
 - Table list (names + column counts)
-- Auto-detected check candidates per table (from `display_schema` hints)
+- Auto-detected check candidates per table (from `create_check_hints_from_schema`)
 
-If this context is missing (skill invoked directly), run steps 2–3 of `setup-data-quality` inline: call `display_schema` for each table to recover the schema hints before continuing.
+If this context is missing (skill invoked directly), run steps 2–3 of `setup-data-quality` inline: call `list_tables` and run the `create_check_hints_from_schema` snippet from `setup-data-quality` step 3 to recover the schema hints before continuing.
 
 ## Steps
 

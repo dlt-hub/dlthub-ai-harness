@@ -1,14 +1,14 @@
-"""Every shipped capability must be reachable from the router skill.
+"""Every shipped skill and agent definition must be reachable from the router skill.
 
-The chain is router → toolkit → workflow.md → skill or agent. A break anywhere in it leaves
-a capability the agent never finds.
+The chain is router → toolkit → workflow.md → skill or agent definition.
 """
 
 from pathlib import Path
 
-from fakes import REPO_ROOT, fake_root, toolkit, write
+from tests.utils import REPO_ROOT
+from tests.validate_toolkits.utils import fake_root, toolkit, write
 
-import validate_toolkits as V
+from tools import validate_toolkits as V
 
 
 def coverage_errors(root: Path) -> list[str]:
@@ -100,7 +100,8 @@ def test_missing_router_skill(tmp_path: Path) -> None:
 def test_router_prose_mention_is_not_an_index_row(tmp_path: Path) -> None:
     """Only index rows count; a name dropped in prose leaves the agent unroutable."""
     root = fake_root(tmp_path, [])
-    write(root / V._ROUTER_SKILL, "---\nname: dlthub-router\n---\n\ndlthub-platform:job-inspector\n")
+    router = "---\nname: dlthub-router\n---\n\ndlthub-platform:job-inspector\n"
+    write(root / V._ROUTER_SKILL, router)
     toolkit(root, "dlthub-platform", agents=("job-inspector",))
 
     errors = coverage_errors(root)

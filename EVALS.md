@@ -4,26 +4,24 @@ Test whether skill descriptions cause Claude to invoke the right skill for the r
 
 ## Why
 
-A skill's `description` frontmatter is the primary mechanism Claude uses to decide whether to consult a skill. A bad description means:
+Claude reads the `description` of a skill to decide whether to use it. A bad description means:
 - **Missed triggers** — the skill exists but Claude doesn't use it
 - **False triggers** — the skill fires when a different skill should handle the query
 - **Clashes** — a competing skill steals the trigger from the intended skill
-
-Trigger evals measure these systematically.
 
 ## Concepts
 
 ### Eval workspace
 
-An eval workspace is a fresh dlthub project (`uv venv` + `dlthub ai init` + optional toolkits) created under `evals/.evals/`. It simulates what a real user has after bootstrapping — the same skills, rules, and MCP servers, but in an isolated directory.
+An eval workspace is a fresh dlthub project (`uv venv` + `dlthub ai init` + optional toolkits) created under `evals/.evals/`. It has the same skills, rules and MCP servers as a real user project, in an isolated directory.
 
 Each eval can define **multiple workspaces** with different toolkit combinations. This tests how a skill behaves:
-- **Alone** (init-only) — minimal competition, should have high recall
+- **Alone** (init-only) — few competing skills, so recall is high
 - **With siblings** (with-rest-api) — many competing skills, tests precision and clash resistance
 
 ### Isolation
 
-Eval workspaces are self-contained — the agent runner (`claude -p`, `codex exec`, or `cursor-agent -p`) runs from the workspace directory and only sees the skills installed there. This prevents pollution from the dev project's plugins, skills, and commands.
+The agent runner (`claude -p`, `codex exec` or `cursor-agent -p`) runs in the eval workspace. It sees only the skills installed there. This prevents pollution from the dev project's plugins, skills, and commands.
 
 ### Agents (Claude, Codex, Cursor)
 
@@ -35,13 +33,13 @@ Evals run on all three agents via `--agent {claude,cursor,codex}` (or `--agent a
 | Codex | `codex exec --json -s read-only` | a shell command reading `.agents/skills/<name>/SKILL.md`, excluding always-on `AGENTS.md` skills |
 | Cursor | `cursor-agent -p --output-format stream-json --trust` | a `readToolCall` on `.cursor/skills/<name>/SKILL.md` |
 
-Codex and Cursor have no native `Skill` tool — they "activate" a skill by **reading its `SKILL.md`**. **Always-loaded router skills (e.g. `dlthub-router`) are N/A on Codex**: there the routing index lives in the always-loaded `AGENTS.md`, not a skill activation, so there is no discrete trigger event to measure. Opt-in skills (e.g. `find-source`) are measured normally on all three.
+Codex and Cursor have no `Skill` tool. For these agents, **a read of `SKILL.md`** counts as a trigger. **On Codex, the eval does not measure always-loaded router skills such as `dlthub-router`.** Codex keeps the routing index in the always-loaded `AGENTS.md`, so no skill trigger occurs. The eval measures opt-in skills such as `find-source` on all three agents.
 
 Codex and Cursor require their CLIs installed and authenticated (`codex`; and `cursor-agent login` or `CURSOR_API_KEY`).
 
 ### Clashes
 
-A clash occurs when a should-trigger query activates a **different** skill instead of the tested one. Clashes are only tracked on should-trigger queries (a should-not-trigger query activating another skill is correct behavior, not a clash).
+A clash occurs when a should-trigger query activates a **different** skill instead of the tested one. The eval counts clashes only on should-trigger queries. When a should-not-trigger query activates another skill, that is correct.
 
 ### Disabled queries
 
@@ -55,11 +53,11 @@ Queries that consistently miss due to **undertriggering** (Claude handles simple
 | **Recall** | Of queries that should trigger, how many did? | 1.0 (never missed) |
 | **Clashes** | On should-trigger queries, how many times did another skill fire instead? | 0 |
 
-**Expected tradeoffs**: With more competing skills, recall may drop slightly as more specific skills correctly claim specific queries. This is acceptable when the competing skill is genuinely better suited.
+**Expected tradeoffs**: With more competing skills, recall can drop a little, because more specific skills take some queries. This is correct when the other skill fits the query better.
 
 ## Directory structure
 
-```git 
+```
 evals/
   <toolkit>/
     <skill>/
@@ -110,7 +108,7 @@ Array of queries with expected trigger behavior:
 }
 ```
 
-`expect` records how often the named skill picked the query up. `forbid` is the other direction and fails the query when the named skill fires, for a handoff whose target is not a skill: a background agent never counts as a trigger, so name the skill that would mean wrong routing.
+`expect` records how often the named skill took the query. `forbid` fails the query when the named skill fires. Use `forbid` when the handoff target is an agent job, which never counts as a skill trigger: name the skill that means wrong routing. Both keys apply only when `should_trigger` is false.
 
 ## Tools
 
@@ -182,4 +180,4 @@ uv run python tools/list_skill_descriptions.py --json workbench/init
 
 **Should-not-trigger**: Focus on **near-misses** — queries sharing keywords with the skill but belonging to a sibling. Avoid obviously irrelevant negatives.
 
-**Undertrigger awareness**: Claude handles simple one-step requests directly without any skill. Queries like "list my secrets files" won't trigger regardless of description quality. Mark these as disabled rather than fighting them.
+**Undertrigger awareness**: Claude handles simple one-step requests directly without any skill. A query such as "list my secrets files" does not trigger, whatever the description says. Mark these as disabled rather than fighting them.

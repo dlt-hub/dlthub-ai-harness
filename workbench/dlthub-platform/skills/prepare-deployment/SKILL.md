@@ -91,7 +91,7 @@ Use `secrets_view_redacted` to see the final unified view across all workspace s
 **Reference**: [deployment-module.md](deployment-module.md)
 **Full Documentation** https://dlthub.com/docs/hub/pipeline-operations/deployments.md
 
-- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlthub run <file>` directly instead (see the [platform tutorial](https://dlthub.com/docs/hub/getting-started/platform-tutorial.md))
+- This step is **optional** for simple workspaces with a single pipeline and notebook -- you can use `dlthub run <file>` directly instead (see [ad-hoc launch](https://dlthub.com/docs/hub/pipeline-operations/deployments.md#quick-deploy-ad-hoc-launch))
 - This step is **mandatory** for workspaces with transformations, multiple pipelines, scheduled jobs, or followup triggers
 - This step will be repeated when more notebooks or pipelines are added to the workspace
 

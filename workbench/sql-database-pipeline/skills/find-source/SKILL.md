@@ -18,7 +18,7 @@ Parse `$ARGUMENTS`:
 
 - **Arriving from `dlthub-platform`** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
   - Pipeline errors or connection issues → `debug-pipeline`
-  - Schema or column changes needed → `adjust-table`
+  - Column type / schema fixes → `validate-data`; removing limits or adding incremental loading → `adjust-table`
   - Adding more tables → `add-table`
 
 - **Arriving mid-session** with a pipeline already scaffolded — if a `*_pipeline.py` file exists and the user just wants to extend or fix it, skip steps 1–4 and go straight to step 5 to confirm tables and destination.
@@ -127,4 +127,4 @@ Reflection level:  <minimal | full | full_with_precision>
 Transform before load: <brief description, e.g. "filter rows by status=active", "pseudonymize email column", "cast decimal columns" — or "none">
 ```
 
-Then proceed to `create-sql-database-pipeline` with this information. If transformations are needed, address them in step 7 (Add transformation callbacks).
+Then proceed to `create-sql-database-pipeline` with this information. If transformations are needed, address them in step 8 (Add transformation callbacks).

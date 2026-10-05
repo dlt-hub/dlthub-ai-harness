@@ -1,19 +1,7 @@
 #!/usr/bin/env python3
-"""Run trigger evaluation for a skill across eval workspaces.
+"""Run the trigger evaluation of a skill in its eval workspaces and detect clashes.
 
-Tests whether a skill triggers correctly for a set of queries, and detects
-when a competing skill triggers instead (clash). Runs `claude -p` from eval
-workspaces where real skills are installed.
-
-Runs against all workspaces defined in config.json.
-
-Output format is compatible with skill-creator's run_eval.py (extended with
-`triggered_skill` and `clashes` fields).
-
-Usage:
-    python tools/run_trigger_eval.py evals/init/dlthub-router
-    python tools/run_trigger_eval.py evals/init/dlthub-router --workspace init-only
-    python tools/run_trigger_eval.py evals/init/dlthub-router --runs-per-query 3
+Output extends the format of skill-creator's run_eval.py with clash fields.
 """
 
 import argparse
@@ -46,11 +34,7 @@ def load_config(eval_dir: Path) -> dict[str, dict]:
 
 
 def find_workspace(eval_dir: Path, ws_id: str, agent: str = "claude") -> Path:
-    """Find workspace path for a given workspace ID and agent.
-
-    Mirrors create_eval_workspace.ws_name_for: claude paths are unsuffixed;
-    cursor/codex get a `--<agent>` suffix so all three coexist.
-    """
+    """Path of the eval workspace for `ws_id` and `agent`. Exits when it does not exist."""
     rel = eval_dir.relative_to(ROOT / "evals")
     name = str(rel).replace("/", "--").replace("\\", "--") + "--" + ws_id
     if agent != "claude":
@@ -74,12 +58,7 @@ def run_single_query(
     agent: str = "claude",
     model: str | None = None,
 ) -> str | None:
-    """Run one query and return the skill name that triggered, or None.
-
-    Dispatches to a per-agent runner. Each agent signals a skill trigger
-    differently (see the per-agent functions), but they share the return
-    contract: the name of the skill that triggered for this query, or None.
-    """
+    """Run one query with `agent`. Return the skill that triggered, or None."""
     if agent == "claude":
         return _run_claude(query, workspace, timeout, model)
     if agent == "codex":
@@ -95,11 +74,7 @@ def _run_claude(
     timeout: int,
     model: str | None = None,
 ) -> str | None:
-    """Run a query via claude -p. Return the skill name that triggered, or None.
-
-    Claude exposes skills as a native `Skill` tool, so a trigger is the first
-    tool_use in the stream being `Skill` (its `input.skill` is the name).
-    """
+    """Run a query with `claude -p`. Return the skill that triggered, or None."""
     cmd = [
         "claude",
         "-p",
@@ -113,6 +88,7 @@ def _run_claude(
     if model:
         cmd.extend(["--model", model])
 
+    # claude refuses to start nested in a Claude Code session that sets CLAUDECODE
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
 
     process = subprocess.Popen(
@@ -156,7 +132,7 @@ def _run_claude(
                 except json.JSONDecodeError:
                     continue
 
-                # Early detection via stream events
+                # only the first tool call counts as a trigger
                 if event.get("type") == "stream_event":
                     se = event.get("event", {})
                     se_type = se.get("type", "")
@@ -169,7 +145,6 @@ def _run_claude(
                                 pending_skill = True
                                 accumulated_json = ""
                             else:
-                                # First tool is not Skill → no skill triggered
                                 return None
 
                     elif se_type == "content_block_delta" and pending_skill:
@@ -183,7 +158,7 @@ def _run_claude(
                         if se_type == "message_stop":
                             return None
 
-                # Fallback: full assistant message
+                # fallback when no stream event named the tool
                 elif event.get("type") == "assistant":
                     message = event.get("message", {})
                     for content_item in message.get("content", []):
@@ -191,7 +166,7 @@ def _run_claude(
                             continue
                         if content_item.get("name") == "Skill":
                             return content_item.get("input", {}).get("skill")
-                        return None  # first tool call is not Skill
+                        return None
 
                 elif event.get("type") == "result":
                     return None
@@ -204,31 +179,28 @@ def _run_claude(
 
 
 def _extract_skill_name(json_fragment: str) -> str | None:
-    """Extract skill name from accumulated JSON fragment."""
+    """Skill name from the accumulated input JSON of a `Skill` tool call."""
     try:
         data = json.loads(json_fragment)
         return data.get("skill")
     except json.JSONDecodeError:
-        # Partial JSON — look for "skill":"<name>" pattern
+        # the input may be incomplete, so match the field directly
         m = re.search(r'"skill"\s*:\s*"([^"]+)"', json_fragment)
         return m.group(1) if m else None
 
 
+# codex activates a skill by reading its SKILL.md
 _SKILL_READ_RE = re.compile(r"\.agents/skills/([a-z0-9][a-z0-9-]*)/SKILL\.md")
 
 
 def _codex_baseline_skills(workspace: str) -> set[str]:
-    """Always-on skills registered in the workspace AGENTS.md.
-
-    On Codex these are read on every turn regardless of the query (the
-    "ALWAYS ACTIVATE" bullets, written as `- ``<name>```), so they must be
-    excluded when detecting which skill a query actually triggered.
-    """
+    """Always-on skills listed in the AGENTS.md of the workspace."""
     agents_md = Path(workspace) / "AGENTS.md"
     if not agents_md.is_file():
         return set()
     names = set()
     for line in agents_md.read_text().splitlines():
+        # a bullet that starts with a backticked skill name: "- `skill-name` ..."
         m = re.match(r"\s*-\s*`([a-z0-9][a-z0-9-]*)`", line)
         if m:
             names.add(m.group(1))
@@ -256,15 +228,10 @@ def _codex_line_skill(line: str, baseline: set[str]) -> str | None:
 
 
 def _stream_scan_for_skill(cmd, workspace, timeout, line_skill):
-    """Run cmd in the workspace, stream stdout JSONL, and return the first
-    non-None result of line_skill(line) — i.e. the first detected skill.
-
-    Shared by the codex and cursor runners (both have no native Skill tool and
-    signal a trigger by reading a SKILL.md). stdin is closed (codex blocks
-    otherwise); stderr is discarded.
-    """
+    """Run `cmd` in `workspace` and return the first skill `line_skill` finds in its stdout."""
     process = subprocess.Popen(
         cmd,
+        # codex blocks on an open stdin
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
@@ -297,7 +264,7 @@ def _stream_scan_for_skill(cmd, workspace, timeout, line_skill):
             process.kill()
             process.wait()
 
-    # Drain any remaining buffered lines after process exit.
+    # the last output read after exit is still in the buffer
     for line in buffer.split("\n"):
         skill = line_skill(line)
         if skill:
@@ -311,14 +278,8 @@ def _run_codex(
     timeout: int,
     model: str | None = None,
 ) -> str | None:
-    """Run a query via `codex exec --json`. Return the skill that triggered, or None.
-
-    Codex has no native Skill tool: it "activates" a skill by running a shell
-    command that reads `.agents/skills/<name>/SKILL.md`. Always-on skills (the
-    AGENTS.md "ALWAYS ACTIVATE" bullets) are read every turn, so we exclude them
-    and return the first *opt-in* skill whose SKILL.md the query caused to be
-    read. Runs read-only so the probe cannot mutate the workspace.
-    """
+    """Run a query with read-only `codex exec`. Return the skill that triggered, or None."""
+    # codex reads the always-on skills on every turn, so reading them is not a trigger
     baseline = _codex_baseline_skills(workspace)
     cmd = ["codex", "exec", query, "--json", "-s", "read-only"]
     if model:
@@ -328,6 +289,7 @@ def _run_codex(
     )
 
 
+# cursor activates a skill by reading its SKILL.md; always-on content comes from `.mdc` rules
 _CURSOR_SKILL_READ_RE = re.compile(r"\.cursor/skills/([a-z0-9][a-z0-9-]*)/SKILL\.md")
 
 
@@ -356,17 +318,8 @@ def _run_cursor(
     timeout: int,
     model: str | None = None,
 ) -> str | None:
-    """Run a query via `cursor-agent -p --output-format stream-json`. Return the
-    skill that triggered, or None.
-
-    Cursor has no native Skill tool: it activates a skill by reading the file via
-    a `readToolCall` on `.cursor/skills/<name>/SKILL.md`. Return the first such
-    in-workspace read. No baseline exclusion: cursor keeps always-on content as
-    auto-applied `.mdc` rules, not skill reads; the `.cursor/skills/` path
-    requirement excludes stray SKILL.md reads elsewhere in the repo. `--trust`
-    runs headlessly (auth via `cursor-agent login` or CURSOR_API_KEY) and lets
-    file reads through while rejecting shell/web — enough to detect the trigger.
-    """
+    """Run a query with `cursor-agent -p`. Return the skill that triggered, or None."""
+    # `--trust` allows file reads and blocks shell and web tools
     cmd = ["cursor-agent", "-p", query, "--output-format", "stream-json", "--trust"]
     if model:
         cmd.extend(["--model", model])
@@ -420,17 +373,13 @@ def run_eval_on_workspace(
     total_clashes = 0
     for query, triggered_skills in query_results.items():
         item = query_items[query]
-        # Per-workspace expectation override: a query's expected behavior depends on
-        # which toolkits are installed. Once the matching workflow toolkit is present,
-        # the router should DEFER to that toolkit's entry skill instead of triggering
-        # itself — so the same query can be should_trigger=true (cold start) yet
-        # should_trigger=false with `expect: <entry-skill>` once installed.
+        # by_workspace overrides the expectation: with the workflow toolkit installed, the
+        # router defers to its entry skill
         ws_override = item.get("by_workspace", {}).get(ws_id, {})
         should_trigger = ws_override.get("should_trigger", item["should_trigger"])
         expect_skill = ws_override.get("expect")
         forbid_skill = ws_override.get("forbid")
 
-        # Count triggers for our skill
         our_triggers = sum(1 for s in triggered_skills if s == skill_name)
 
         trigger_rate = our_triggers / len(triggered_skills)
@@ -448,7 +397,7 @@ def run_eval_on_workspace(
             "pass": did_pass,
         }
 
-        # Track clashes only on should-trigger queries (wrong skill stole the trigger)
+        # a clash is another skill taking a query this skill should take
         if should_trigger:
             other_skills = [s for s in triggered_skills if s is not None and s != skill_name]
             if other_skills:
@@ -457,16 +406,15 @@ def run_eval_on_workspace(
                 entry["clash_count"] = len(other_skills)
                 total_clashes += len(other_skills)
 
-        # When the router is expected to defer, record whether the intended handoff
-        # target (e.g. find-source) actually picked up the query.
+        # when the router defers, record whether the expected skill (for example
+        # find-source) took the query
         if not should_trigger and expect_skill:
             expect_hits = sum(1 for s in triggered_skills if s == expect_skill)
             entry["expect_skill"] = expect_skill
             entry["expect_rate"] = round(expect_hits / len(triggered_skills), 3)
 
-        # The other direction, for a handoff that cannot be named: a background agent is
-        # not a skill, so `expect: job-inspector` can never match. Name the skill that
-        # would mean wrong routing instead. Firing it fails the query.
+        # `expect` cannot name a background agent, so `forbid` names the skill that signals
+        # wrong routing instead
         if not should_trigger and forbid_skill:
             forbid_hits = sum(1 for s in triggered_skills if s == forbid_skill)
             entry["forbid_skill"] = forbid_skill
@@ -479,7 +427,6 @@ def run_eval_on_workspace(
     passed = sum(1 for r in results if r["pass"])
     total = len(results)
 
-    # Compute metrics
     tp = sum(1 for r in results if r["should_trigger"] and r["trigger_rate"] >= trigger_threshold)
     fn = sum(1 for r in results if r["should_trigger"] and r["trigger_rate"] < trigger_threshold)
     fp = sum(
@@ -510,10 +457,7 @@ VALID_AGENTS = ["claude", "cursor", "codex"]
 
 
 def parse_agents(spec: str) -> list[str]:
-    """Parse a --agent spec ('all', 'codex', or 'codex,cursor') into a list.
-
-    Raises ValueError on an unknown agent name.
-    """
+    """Parse a --agent spec ('all', 'codex' or 'codex,cursor'). Raises ValueError if unknown."""
     agents = VALID_AGENTS[:] if spec == "all" else [a.strip() for a in spec.split(",") if a.strip()]
     bad = [a for a in agents if a not in VALID_AGENTS]
     if bad:
@@ -524,7 +468,7 @@ def parse_agents(spec: str) -> list[str]:
 
 
 def per_agent_rollup(all_results: list[dict]) -> list[dict]:
-    """Aggregate a flat list of per-(agent,workspace) results into per-agent totals."""
+    """Sum per-(agent, workspace) results into per-agent totals."""
     rollup: dict[str, dict] = {}
     for r in all_results:
         a = r["agent"]
@@ -580,7 +524,6 @@ def main():
     skill_name = eval_dir.name
     ws_configs = load_config(eval_dir)
 
-    # Filter to requested workspace
     if args.workspace:
         if args.workspace not in ws_configs:
             print(f"ERROR: Workspace '{args.workspace}' not in config.json", file=sys.stderr)
@@ -588,7 +531,6 @@ def main():
             sys.exit(1)
         ws_configs = {args.workspace: ws_configs[args.workspace]}
 
-    # Load eval set
     eval_path = eval_dir / "trigger-eval.json"
     if not eval_path.exists():
         print(f"ERROR: {eval_path} not found", file=sys.stderr)
@@ -617,7 +559,6 @@ def main():
         for ws_id in ws_configs:
             workspace = find_workspace(eval_dir, ws_id, agent)
 
-            # Verify skill exists in the agent's install layout
             skill_dir = workspace / skills_root / "skills" / skill_name
             if not skill_dir.is_dir():
                 print(
@@ -672,7 +613,6 @@ def main():
 
             all_results.append(output)
 
-    # Per-agent rollup when more than one agent ran in this invocation.
     if args.verbose and len(agents) > 1:
         print("\n=== Per-agent summary ===", file=sys.stderr)
         for agg in per_agent_rollup(all_results):

@@ -6,7 +6,7 @@ argument-hint: "[source-name]"
 
 # Set up dlthub secrets
 
-**Essential Reading** Credentials & config resolution: `https://dlthub.com/docs/general-usage/credentials/setup.md` `https://dlthub.com/docs/general-usage/credentials/advanced`
+**Essential Reading** Credentials & config resolution: `https://dlthub.com/docs/general-usage/credentials/setup.md` `https://dlthub.com/docs/general-usage/credentials/advanced.md`
 
 Configure credentials in `.dlt/secrets.toml`. **Never read secrets files directly** — use `dlt-workspace-mcp` tools or `dlthub ai secrets` CLI commands.
 

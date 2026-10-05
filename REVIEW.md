@@ -1,10 +1,8 @@
 # Review PR
 
-Review this pull request against the quality standards of the dltHub AI Workbench. These instructions take priority over the default review behavior.
+Review this pull request against the quality standards of the dltHub AI Harness. These instructions take priority over the default review behavior.
 
-Identify which toolkits, skills, commands, rules, or workflows are changed. Understand the original problem being solved (check linked issues) before evaluating the solution.
-
----
+Find the toolkits, skills, commands, rules and workflows that the PR changes. Before you evaluate the solution, read the linked issues.
 
 ## Step 1 — Run automated validation
 
@@ -13,8 +11,6 @@ make validate-toolkits
 ```
 
 Report failures immediately — broken frontmatter, unresolved skill references, marketplace inconsistencies, wrong argument-hint format, rule files with frontmatter. These are blocking.
-
----
 
 ## Step 2 — Review against the quality criteria
 
@@ -44,22 +40,19 @@ A skill that conflates distinct stages hides intent. Split them, so each concept
 - [ ] Secrets never appear in agent output — only via redacted CLI or MCP inspection tools
 - [ ] Agents don't auto-proceed past defined checkpoints (code review, schema validation, deployment approval)
 
-### dltHub AI workbench approach for building skills
-- [ ] Skills should not merely contain docs but be step by step instructions for workflows for the agent
-- [ ] Ensure a skill gives clear and concise instructions for the workflow and not just copy the docs into it
-
----
+### dltHub AI Harness approach for building skills
+- [ ] Each skill gives step-by-step instructions for a workflow. It does not copy the docs.
 
 ## Step 3 — Core library gaps: prefer upstream fixes, flag workarounds
 
-The workbench may introduce temporary workarounds solving a problem via a skill that can actually be solved deterministically e.g via a CLI command or a platform capability. These workarounds may address gaps in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub) temporarily, but they should always be visible, flagged to core maintainers, and have a clear path to removal.
+The harness can contain workarounds: a skill that does work a CLI command or a platform feature can do deterministically. Each workaround fills a gap in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub). It must be visible, reported to core maintainers and have a removal path.
 
-**Prefer deterministic over probabilistic.** If something can be handled by a CLI command in [dlt](https://dlthub.com/docs/hub/command-line-interface) or [dltHub](https://dlthub.com/docs/reference/command-line-interface), a library call, or a platform feature — that is always preferable to a skill-based workaround. An agent skill is a last resort, not a first option, when the core library could own the behaviour.
+**Prefer deterministic over probabilistic.** A CLI command in [dlt](https://dlthub.com/docs/hub/command-line-interface) or [dltHub](https://dlthub.com/docs/reference/command-line-interface), a library call or a platform feature is better than a skill. Use a skill only when the core library cannot own the behavior.
 
 **Check for these patterns:**
 
-- [ ] Is there a dlt or dlthub built-in (pagination, auth, schema inference, secrets, normalisation) that should be used instead of skill-level instructions?
-- [ ] If no built-in exists but one clearly should — could this be proposed as a new feature in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub)? A skill encoding something deterministic is a signal the core library has a gap worth filing.
+- [ ] Is there a dlt or dlthub built-in (pagination, auth, schema inference, secrets, normalization) that the skill must use instead of skill-level instructions?
+- [ ] If no built-in exists but one is necessary, propose it as a feature in [dlt](https://github.com/dlt-hub/dlt) or [dltHub](https://github.com/dlt-hub/dlthub). A skill encoding something deterministic is a signal the core library has a gap worth filing.
 - [ ] If a workaround exists, is it marked with a `TODO: remove when dlt#<issue> / dlthub#<issue> is resolved` comment so it has an expiry?
 - [ ] Is the upstream gap tracked as an issue in the right repo?
   - ingestion library gap → [github.com/dlt-hub/dlt](https://github.com/dlt-hub/dlt)
@@ -69,13 +62,9 @@ The workbench may introduce temporary workarounds solving a problem via a skill 
 
 **What to flag in the review:**
 
-If a skill reimplements something the core library handles (or should handle), note it — not as a blocker, but as a signal that either (a) the skill should defer to the built-in, or (b) an upstream issue should be opened and a `TODO` added. The goal is that workarounds are visible and temporary, not silently normalised into the workbench.
-
----
+If a skill reimplements something the core library handles (or should handle), note it — not as a blocker, but as a signal that either (a) the skill must use the built-in, or (b) open an upstream issue and add a `TODO`. Each workaround must be visible and temporary.
 
 ## Step 4 — Architecture and separation of concerns
-
-The most common source of review feedback.
 
 **For each changed skill or workflow step:**
 
@@ -97,21 +86,19 @@ The most common source of review feedback.
    - Source → CDM mapping is separate from the CDM definition itself
    - Transformations built on top of an established CDM, not reinvented per query
 
----
-
 ## Step 5 — Skill format and trigger quality
 
 For any changed SKILL.md files:
 
 **Frontmatter:**
 - [ ] `name` matches directory name exactly
-- [ ] `description` contains use-when patterns (not "does X" — should name trigger conditions)
+- [ ] `description` contains use-when patterns (not "does X" — names trigger conditions)
 - [ ] `argument-hint` tokens use `[bracket]` convention (not `<angle>` or bare text)
 
 **Trigger quality:**
 - [ ] Description triggers for the right user queries
 - [ ] Does NOT trigger for unrelated queries — check against other skill descriptions for clashes
-- [ ] If multiple skills could trigger, the workflow rule disambiguates
+- [ ] If more than one skill can trigger, the workflow rule disambiguates
 
 **Content:**
 - [ ] Prerequisites listed at top
@@ -120,8 +107,6 @@ For any changed SKILL.md files:
 - [ ] Authoritative doc links embedded (dlt docs, API provider docs, dltHub platform docs)
 - [ ] Code examples are minimal and correct (3–10 lines; no fabricated output)
 - [ ] Handoff conditions to the next skill are explicit
-
----
 
 ## Step 6 — Workflow and handoff correctness
 
@@ -135,22 +120,20 @@ For changes to `workflow.md` or `rules/`:
 - [ ] `toolkit.json` `workflow_entry_skill` matches the entry skill declared in `workflow.md`
 - [ ] No rules files contain YAML frontmatter (rules are catch-all, no frontmatter)
 
----
-
 ## Step 6a — Cross-toolkit link symmetry
 
 Every toolkit that sends users somewhere must also be reachable from somewhere. Check both directions for any affected toolkit.
 
 **Outgoing links** (this toolkit → other toolkits):
 
-- [ ] Each outgoing handover names the target toolkit, the specific entry skill (`find-source`, `new-endpoint`, etc.), and the trigger condition that causes the handoff
+- [ ] Each outgoing handover names the target toolkit, the specific entry skill (for example `find-source` or `new-endpoint`), and the trigger condition that causes the handoff
 - [ ] The named target skill actually exists in the target toolkit
 
 **Incoming links** (other toolkits → this toolkit):
 
 - [ ] The `workflow.md` has an `### Incoming` subsection listing every toolkit that can arrive here
-- [ ] Each incoming entry names the originating toolkit + skill, and specifies what context is already established on arrival (e.g. "pipeline name and dataset are known — skip `list_pipelines` discovery")
-- [ ] Incoming context assumptions are reflected in the entry skill itself (it should skip steps it doesn't need to redo)
+- [ ] Each incoming entry names the originating toolkit + skill, and specifies what context is already established on arrival (for example "pipeline name and dataset are known — skip `list_pipelines` discovery")
+- [ ] Incoming context assumptions are reflected in the entry skill itself (it skips steps it does not need to redo)
 
 **Cross-check symmetry** — for every outgoing handover declared in toolkit A, verify that toolkit B's `workflow.md` has a matching incoming entry, and vice versa:
 
@@ -160,8 +143,6 @@ grep -r "Incoming\|Outgoing" workbench/*/rules/workflow.md
 ```
 
 Flag any broken pair: A says it sends to B, but B has no incoming entry for A, or the skill name referenced doesn't exist.
-
----
 
 ## Step 7 — Format and naming conventions
 
@@ -178,8 +159,6 @@ Flag any broken pair: A says it sends to B, but B has no incoming entry for A, o
 - [ ] SQL uses ANSI syntax, not destination-specific dialects (unless PR explicitly targets one)
 - [ ] Python uses dlt built-ins for auth, pagination, REST client
 
----
-
 ## Step 8 — README currency
 
 Check whether the PR's changes affect anything described in `README.md` (root) or a toolkit-level `README.md`:
@@ -192,11 +171,9 @@ Check whether the PR's changes affect anything described in `README.md` (root) o
 
 If README updates are missing, flag as required — not a suggestion.
 
----
-
 ## Step 8a — dlt docs currency
 
-The dltHub AI Workbench is documented in the dlt docs under [`dlt-ecosystem/llm-tooling`](https://github.com/dlt-hub/dlt/tree/devel/docs/website/docs/dlt-ecosystem/llm-tooling). Two pages cover the workbench directly:
+The dltHub AI Harness is documented in the dlt docs under [`dlt-ecosystem/llm-tooling`](https://github.com/dlt-hub/dlt/tree/devel/docs/website/docs/dlt-ecosystem/llm-tooling). Two pages cover the harness directly:
 
 - **`llm-native-workflow.md`** — REST API pipeline toolkit: skill names, seven-phase workflow, setup instructions, validation checklist, handoff possibilities
 - **`explore-and-transform.md`** — Data exploration and transformations toolkits: skill names, intent levels, four-stage transformation process, setup, deliverables
@@ -210,8 +187,6 @@ Check whether the PR's changes affect anything described on those pages:
 - [ ] Transformation stages changed (annotate → ontology → CDM → transformation) → `explore-and-transform.md` reflects the current sequence
 
 Docs live in a separate repo ([dlt-hub/dlt](https://github.com/dlt-hub/dlt)). If updates are needed, flag them as a required follow-up — either in this PR (if the author has access) or as a tracked issue.
-
----
 
 ## Review composition
 
@@ -243,7 +218,7 @@ Structure the review as:
 - [ ] Skill descriptions trigger correctly, no clashes
 - [ ] Workflow references resolve
 - [ ] Cross-toolkit links are symmetric (outgoing in A ↔ incoming in B)
-- [ ] Incoming context assumptions reflected in entry skill behaviour
+- [ ] Incoming context assumptions reflected in entry skill behavior
 - [ ] README updated if toolkit structure, entry points, or usage changed
 - [ ] dlt docs (`llm-tooling`) updated or follow-up tracked if skill names/workflow changed
 - [ ] Authoritative doc links embedded
@@ -251,8 +226,6 @@ Structure the review as:
 ## Verdict
 APPROVE / REQUEST CHANGES / COMMENT
 ```
-
----
 
 ## Common patterns from past reviews
 
@@ -266,13 +239,13 @@ APPROVE / REQUEST CHANGES / COMMENT
 > Glossary included domain concepts not present in any loaded source. Fix: scope to concepts actually found in workspace data.
 
 **IBIS over SQL for transformations:**
-> Early versions preferred IBIS; LLMs perform better with SQL and it's more readable. Use ANSI SQL; IBIS is an acceptable fallback.
+> Early versions preferred IBIS. LLMs write better SQL, and SQL is easier to read. Use ANSI SQL; IBIS is an acceptable fallback.
 
 **Missing human checkpoint before pipeline run:**
 > Skills ran the full pipeline without asking the user to review generated code. Fix: always show generated code, get approval, then run with `.add_limit(1)` on first execution.
 
 **Skill description too generic:**
-> "Handles transformation workflows" won't trigger reliably. Fix: use explicit use-when language with concrete user intent examples.
+> "Handles transformation workflows" does not trigger reliably. Fix: use explicit use-when language with concrete user intent examples.
 
 **Workflow handoff missing originating skill:**
 > Handover listed the target toolkit but not which local skill the user was in. Fix: add "from (`skill-name`) when…" context.

@@ -1,6 +1,10 @@
-# tools/check_dialect.py
-# Static SQL dialect compatibility checker for @dlt.hub.transformation functions.
-# Usage: uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py <transform_file.py> --read <dev_dialect> --write <prod_dialect>
+"""Check the SQL of `@dlt.hub.transformation` functions for dialect compatibility.
+
+Usage:
+    uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py <transform_file.py> \\
+        --read <dev_dialect> --write <prod_dialect>
+"""
+
 import argparse
 import ast
 import sys
@@ -16,6 +20,7 @@ DLT_TO_SQLGLOT = {
 
 
 def to_sqlglot_dialect(dlt_dest: str) -> str | None:
+    """SQLGlot dialect for a dlt destination type, `None` when SQLGlot has none."""
     mapped = DLT_TO_SQLGLOT.get(dlt_dest, dlt_dest)
     try:
         sqlglot.Dialect.get_or_raise(mapped)
@@ -25,19 +30,14 @@ def to_sqlglot_dialect(dlt_dest: str) -> str | None:
 
 
 def _is_transformation_decorator(node: ast.expr) -> bool:
+    # any `<x>.transformation`, bare or called, matches
     if isinstance(node, ast.Call):
         node = node.func
     return isinstance(node, ast.Attribute) and node.attr == "transformation"
 
 
 def extract_queries(transform_file: Path) -> tuple[dict[str, str], list[str]]:
-    """Extract SQL from @dlt.hub.transformation functions via AST.
-
-    Handles both inline literals (dataset("SELECT ...")) and local variable
-    assignments (sql = "SELECT ..."; dataset(sql)). Skips f-strings and
-    dynamically constructed SQL.
-    Returns (queries, skipped) where skipped is a list of function names.
-    """
+    """SQL per `@dlt.hub.transformation` function, and the functions whose SQL is not static."""
     tree = ast.parse(transform_file.read_text())
     queries = {}
     skipped = []
@@ -47,6 +47,7 @@ def extract_queries(transform_file: Path) -> tuple[dict[str, str], list[str]]:
         if not any(_is_transformation_decorator(d) for d in node.decorator_list):
             continue
 
+        # resolves `sql = "..."; dataset(sql)` through string constants assigned in the function
         local_strings = {
             n.targets[0].id: n.value.value
             for n in ast.walk(node)
@@ -58,6 +59,7 @@ def extract_queries(transform_file: Path) -> tuple[dict[str, str], list[str]]:
         }
 
         found = False
+        # only the first `dataset()` call with static SQL is read
         for child in ast.walk(node):
             if (
                 isinstance(child, ast.Call)
@@ -81,8 +83,18 @@ def extract_queries(transform_file: Path) -> tuple[dict[str, str], list[str]]:
 
 parser = argparse.ArgumentParser(description="Check SQL dialect compatibility for dlthub transformations")
 parser.add_argument("transform_file", type=Path, help="Path to the transformation Python file")
-parser.add_argument("--read", required=True, metavar="DIALECT", help="Dev/source destination type (e.g. duckdb, motherduck)")
-parser.add_argument("--write", required=True, metavar="DIALECT", help="Prod/target destination type (e.g. bigquery, snowflake, postgres)")
+parser.add_argument(
+    "--read",
+    required=True,
+    metavar="DIALECT",
+    help="Dev/source destination type (for example duckdb, motherduck)",
+)
+parser.add_argument(
+    "--write",
+    required=True,
+    metavar="DIALECT",
+    help="Prod/target destination type (for example bigquery, snowflake, postgres)",
+)
 parser.add_argument("--strict", action="store_true", help="Treat warnings as errors (exit non-zero on any warning)")
 args = parser.parse_args()
 
@@ -105,7 +117,10 @@ for label, raw, resolved in [
 
 QUERIES, SKIPPED = extract_queries(args.transform_file)
 if SKIPPED:
-    print(f"WARNING: skipped {SKIPPED} — SQL is not a static string in dataset(); inspect manually")
+    print(
+        f"WARNING: skipped {SKIPPED}. The SQL in dataset() is not a static string."
+        " Inspect it manually."
+    )
 if not QUERIES:
     print(f"No @dlt.hub.transformation functions with extractable SQL found in {args.transform_file}")
     sys.exit(1 if SKIPPED else 0)
@@ -125,7 +140,7 @@ for name, sql in QUERIES.items():
         parsed = sqlglot.parse_one(sql, read=READ_DIALECT)
         if not isinstance(parsed, exp.Select):
             query_warnings.append(
-                f"top-level is {type(parsed).__name__}, not Select; dlthub SqlModel may reject it"
+                f"top-level is {type(parsed).__name__}, not Select; dlthub SqlModel can reject it"
             )
     except Exception as e:
         query_errors.append(f"parse failed for {READ_DIALECT}: {e}")
