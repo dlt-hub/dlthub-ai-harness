@@ -1,4 +1,4 @@
-# dltHub AI Workbench
+# dltHub AI Harness
 
 A collection of **toolkits** (compatible with Claude Code plugins) for data engineering with [dlthub](https://dlthub.com).
 
@@ -13,12 +13,15 @@ workbench/                                # All toolkits live here
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
-    agents/<name>/AGENT.md         # Background agent manifests (optional)
+    dlthub/agents/<name>/AGENT.md  # Agent definitions (optional)
     .mcp.json                      # MCP servers (optional)
   init/                            # Shared rules, secrets handling, and workspace MCP
 tools/                             # Dev tooling
-  validate_toolkits.py              # Marketplace & plugin consistency checker
+  validate_toolkits.py             # Marketplace & plugin consistency checker
   extract_refs.py                  # Extract component map & external URLs from a toolkit
+  create_eval_workspace.py         # Build trigger eval workspaces (see EVALS.md)
+  run_trigger_eval.py              # Run trigger evals
+  ...
 Makefile                           # make validate-toolkits
 ```
 
@@ -28,16 +31,20 @@ Makefile                           # make validate-toolkits
 
 Every toolkit under `workbench/` must be listed in `marketplace.json`.
 
-A toolkit is a Claude Code plugin. It may contain:
+A toolkit is a Claude Code plugin. It can contain:
 
 - **Skills** (`skills/<name>/SKILL.md`) — frontmatter required (`name`, `description`). Name must match directory name.
 - **Commands** (`commands/<name>.md`) — frontmatter required (`name`, `description`). Name must match filename. User-invoked via `/toolkit:command`.
 - **Rules** (`rules/*.md`) — **catch-all only**, no frontmatter allowed. Loaded into every session unconditionally.
 - **MCP servers** (`.mcp.json`) — stdio transport, use `${CLAUDE_PLUGIN_ROOT}` for paths.
-- **Agents** (`agents/<name>/AGENT.md`) — background agent manifests: a folder like a skill, markdown + YAML frontmatter, body is the system prompt. Name must match the folder. Declares `access`, `inputs`, `output` (which must carry `status` and `summary`) and `defaults`. Installs to `.claude/dlthub/agents/<name>/`, under `dlthub/` so it never mixes with a host's native agents. A toolkit ships them under `workbench/<toolkit>/agents/<name>/`. The folder holds the `AGENT.md` and the code the deployment imports, and no README: a document beside a definition drifts from it. What an author or an operator needs is in two skills under `workbench/init/skills/`, which reach every workspace through `init`: `create-background-agent` for writing and deploying one, `evaluate-background-agent` for grading one.
+- **Agents** (`dlthub/agents/<name>/AGENT.md`) — agent definitions. Frontmatter plus a body that is the system prompt. Name must match the folder. Each declares `access`, `inputs`, `output` (with `status` and `summary`) and `defaults`.
+  - `agents/` is the host's own subagents folder; dlt does not install an agent definition from there.
+  - The folder holds `AGENT.md`, an optional `agent.py` (`validate_input`, `validate_output`) and the modules it imports. An agent folder imports only its own files.
+  - No README in the folder: a document beside a definition drifts from it. What an author or an operator needs is in two skills under `workbench/init/skills/`, which reach every workspace through `init`: `create-background-agent` for writing and deploying one, `evaluate-background-agent` for grading one.
+  - Install path: `.claude/dlthub/agents/<name>/`, under `dlthub/` so it never mixes with the host's native agents.
 
 ### Toolkit Workflow (`rules/workflow.md`)
-Each toolkit has a **workflow** rule that shows how skills should be used together. It is always loaded so the agent knows the intended skill sequence.
+Each toolkit has a **workflow** rule that shows the order in which the agent uses the skills. It is always loaded so the agent knows the intended skill sequence.
 
 #### Entry skill
 
@@ -48,7 +55,7 @@ Every workflow toolkit MUST have an **entry skill** — the skill where the work
 
 The entry skill is triggered when:
 - The user invokes it explicitly with `/skill-name`
-- The user expresses intent matching the skill description (low-intent trigger — the skill's `description` frontmatter field drives matching)
+- The user expresses intent matching the skill description (the skill's `description` field decides the match)
 
 The workflow rule must open with a `## Workflow Entry` section referencing this skill. Example from `rest-api-pipeline`:
 ```markdown
@@ -63,16 +70,16 @@ After install, `dlthub ai status` and `dlthub ai toolkit install <name>` display
 1. **Workflow Entry** — declares which skill MUST run first (see above)
 2. **Core workflow** — numbered steps with skill references: `N. **Step name** (`skill-name`) — what it does`
 3. **Extend and harden** (optional) — additional steps for production readiness, iteration, or advanced use cases
-4. **Handover to other toolkits** — when to leave this toolkit. Each entry names the target toolkit, the trigger condition, and which local skill the user was in when the handover applies
+4. **Handover to other toolkits** — when to leave this toolkit. Each entry names the target toolkit, the condition and the skill that the user leaves
 
 #### Router vs handovers
 
 Two mechanisms route the user between toolkits — they are complementary, not redundant:
 
-- **Router/index** (`dlthub-router` skill + the always-loaded intent index in `init`) handles **cold start**: no relevant toolkit installed yet → match intent, install the toolkit, enter at its entry skill.
-- **Handovers** (a toolkit's `workflow.md`) handle **in-flight transitions**: they carry context forward (pipeline name, dataset, destination → "skip discovery") and route to a *specific* skill under a *specific* condition (e.g. Early vs Later deploy, Profile A vs B) — precision the index can't express.
+- **Router/index** (`dlthub-router` skill + the always-loaded intent index in `init`) handles the case where **no matching toolkit is installed**: match intent, install the toolkit, enter at its entry skill.
+- **Handovers** (a toolkit's `workflow.md`) move the user to another toolkit **during a workflow**. They pass on context, for example the pipeline name, dataset and destination ("skip discovery"). They name one skill and one condition (for example, Early vs Later deploy), which the index cannot do.
 
-When a handover names a toolkit that is **not installed**, use the index/router to install it, then follow the handover's entry point + context. The router does not fire mid-workflow once the relevant toolkit is installed (its description gates that out).
+When a handover names a toolkit that is **not installed**, use the index/router to install it, then follow the handover's entry point + context. When the toolkit is installed, the router does not trigger during a workflow. Its `description` excludes that case.
 
 #### Linking conventions
 
@@ -81,11 +88,10 @@ When a handover names a toolkit that is **not installed**, use the index/router 
 - **Handover to external toolkits** — use `**toolkit-name**` (bold) and describe the trigger. Only reference toolkits that are NOT dependencies (dependencies like `init` are always loaded — their skills are local, not handovers).
 
 ### Refer to authoritative docs everywhere
-Embed links to authoritative docs (ie. dlt docs) in skills/commands/rules you write. They are useful when skill is used **AND TO AUTOMATICALLY REFRESH SKILLS IF AUTH SOURCE IS UPDATED**.
+Put links to the authoritative docs (for example, the dlt docs) in each skill, command and rule. The agent reads them at run time. We also use them to **refresh a skill when its source doc changes**.
 
 ## New Toolkit
-We have `plugin-dev` installed and since all toolkits are also Claude plugins use it to create new plugin. This is interactive
-procedure for humans - it will correctly guess marketplace location, duplicate skills etc.
+All toolkits are Claude plugins. To create a toolkit, use the installed `plugin-dev` plugin. It is an interactive procedure for humans. It finds the marketplace and copies skill templates.
 
 ## Validation & Maintenance
 
@@ -94,7 +100,15 @@ Run after any change to skills, rules, commands, or marketplace.json:
 ```
 make validate-toolkits
 ```
-Checks: marketplace ↔ plugin.json name consistency, skill frontmatter, rule format, command files, agent manifests (access, inputs, output contract, refs, no `defaults.model`), workflow.md references, capability coverage (every skill and agent indexed in its toolkit's workflow.md, every agent in the `dlthub-router` index).
+Checks:
+- marketplace and `plugin.json` names
+- skill frontmatter
+- rule format
+- command files
+- agent files (access, inputs, agent output, refs, no `defaults.model`)
+- `workflow.md` references
+- root documents (a toolkit file names one only through its URL)
+- index coverage (each skill and agent definition is in its `workflow.md`, each agent definition is in the `dlthub-router` index)
 
 ### Maintenance skills
 - `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, rule, or agent and update all cross-references within the toolkit.

@@ -18,9 +18,9 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 - https://dlthub.com/docs/hub/pipeline-operations/profiles
 
 ## DO NOT USE WHEN
-- The data source is a SQL database or files — use `sql-database-pipeline` or `filesystem-pipeline` instead
-- The user already has a working pipeline and wants to extend or harden it — use `rest-api-pipeline` instead
-- The user wants a production-grade pipeline (auth, incremental, multiple endpoints) — use `rest-api-pipeline` instead
+- The data source is a SQL database or files — use the **sql-database-pipeline** or **filesystem-pipeline** toolkit instead
+- The user already has a working pipeline and wants to extend or harden it — use the **rest-api-pipeline** toolkit instead
+- The user wants a production-grade pipeline (auth, incremental, multiple endpoints) — use the **rest-api-pipeline** toolkit instead
 
 ## Anti-patterns
 
@@ -258,7 +258,7 @@ Use the credential skeleton for the chosen destination:
 # MotherDuck
 [destination.warehouse.credentials]
 database = ""
-token = ""
+password = ""  # MotherDuck service token
 
 # BigQuery
 [destination.warehouse.credentials]

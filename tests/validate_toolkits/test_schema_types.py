@@ -1,15 +1,11 @@
-"""A property carrying an enum and no type fails the agent on its first model call.
+"""A property with an enum and no type fails the agent run on its first model call.
 
-Anthropic's schema transformer refuses it with "Schema must have a 'type', 'anyOf', 'oneOf',
-or 'allOf' field", which a platform run of a shipped agent hit, so the validator holds the
-line here rather than in a job log.
+Anthropic rejects it with "Schema must have a 'type', 'anyOf', 'oneOf', or 'allOf' field".
 """
 
-from pathlib import Path
+from tests.utils import REPO_ROOT
 
-from fakes import REPO_ROOT
-
-import validate_toolkits as V
+from tools import validate_toolkits as V
 
 
 def type_errors(fm: dict) -> list[str]:
@@ -54,6 +50,15 @@ def test_anyof_stands_in_for_a_type() -> None:
     assert type_errors(fm) == []
 
 
+def test_the_shipped_inspector_carries_its_types() -> None:
+    errors: list[str] = []
+    path = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH / "job-inspector" / "AGENT.md"
+    frontmatter, _ = V.split_frontmatter(path)
+    V._validate_schema_types("dlthub-platform", "job-inspector", frontmatter, errors, [])
+
+    assert errors == []
+
+
 def optional_errors(fm: dict) -> list[str]:
     errors: list[str] = []
     V._validate_optional_count("tk", "agents/x/AGENT.md", fm, errors, [])
@@ -67,6 +72,7 @@ def test_a_schema_inside_the_cap_passes() -> None:
 
 
 def test_a_schema_over_the_cap_fails() -> None:
+    """Anthropic answered 400 on a shipped agent that reached 28 optional properties."""
     props = {f"f{n}": {"type": "string"} for n in range(V.MAX_OPTIONAL_PROPERTIES + 1)}
 
     errors = optional_errors({"output": {"properties": props}})
@@ -77,7 +83,7 @@ def test_a_schema_over_the_cap_fails() -> None:
 
 def test_a_required_nested_property_does_not_count() -> None:
     """`required` inside an object binds only when the model writes that object, so the nested
-    properties of a Python-filled field cost nothing."""
+    properties of a field the code fills cost nothing."""
     nested = {f"n{n}": {"type": "string"} for n in range(30)}
     fm = {
         "output": {
@@ -90,21 +96,10 @@ def test_a_required_nested_property_does_not_count() -> None:
     assert optional_errors(fm) == []
 
 
-def test_the_shipped_evaluator_is_inside_the_cap() -> None:
-    path = (
-        Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / "job-inspector-eval"
-        / "AGENT.md"
-    )
-    frontmatter, _ = V.split_frontmatter(path)
-
-    assert optional_errors(frontmatter) == []
-
-
-def test_the_shipped_agents_carry_their_types() -> None:
+def test_the_shipped_inspector_is_inside_the_cap() -> None:
     errors: list[str] = []
-    for agent in ("job-inspector", "job-inspector-eval"):
-        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / agent / "AGENT.md"
-        frontmatter, _ = V.split_frontmatter(path)
-        V._validate_schema_types("dlthub-platform", agent, frontmatter, errors, [])
+    path = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH / "job-inspector" / "AGENT.md"
+    frontmatter, _ = V.split_frontmatter(path)
+    V._validate_optional_count("dlthub-platform", "job-inspector", frontmatter, errors, [])
 
     assert errors == []

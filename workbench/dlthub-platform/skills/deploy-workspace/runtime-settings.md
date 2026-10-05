@@ -47,7 +47,7 @@ for graceful shutdown before hard kill. Note `grace_period` nests **inside**
 
 A longer timeout raises the ceiling on billable wall-clock, so it spends
 run-time budget like a size bump does — **ask the user before changing it**
-(**job resources and run-time budget** rule).
+(the always-loaded `job-resources` rule).
 
 ## Instance size
 
@@ -79,7 +79,7 @@ multiplier is charged against the organization's run-time budget on every run,
 forever. Propose it with the budget math (current vs proposed multiplier,
 wall-clock per run, cadence, resulting charged hours per month), then wait for an
 explicit yes for that one job. Same for `execute={"timeout": ...}` and trigger
-cadence. The **job resources and run-time budget** rule is always loaded and it governs.
+cadence. The always-loaded `job-resources` rule governs.
 
 **Do not raise this to fix a slow or OOM-ing job before the pipeline itself is
 tuned.** Hand over to the **performance** toolkit (`optimize-performance`,
@@ -104,3 +104,5 @@ def daily_load(run_context: TJobRunContext):
 
 Intervals in `run_context` are always UTC, but align to tick boundaries
 in the declared timezone.
+
+Reference: https://dlthub.com/docs/hub/pipeline-operations/triggers.md#timezone

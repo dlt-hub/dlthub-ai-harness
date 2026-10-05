@@ -57,11 +57,10 @@ change here is a change in every body that states them.
 - **No verdict label at the top.** State what was found; `passed` and the other output fields
   carry the verdict.
 
-State the shape in the body and check it. `job-inspector` has the rules under "Summary format",
-and `job-inspector-eval` grades them with `summary_has_required_sections`,
-`summary_sections_are_bullets`, `summary_code_spans_balanced` and `summary_within_length`. An
-agent that assembles its summary in Python around the loop splits what the model wrote into
-bullets itself.
+State the shape in the body and check it. `job-inspector` has the rules under "Summary format".
+An evaluator grading an agent gives each of them a deterministic check, since a heading, a bullet
+and a code span are what data settles. An agent that assembles its summary in Python around the
+loop splits what the model wrote into bullets itself.
 
 ## Default sections
 
@@ -74,8 +73,8 @@ An agent that investigates, inspects or analyses an entity in the workspace take
 | `## Recommendation` | What the reader does next: the target and the change, written as the instruction itself |
 | `## Confidence` | What this rests on and what it leaves open; when nothing was left open, one bullet says so |
 
-An agent that grades another agent's run takes the sections `job-inspector-eval` writes, which
-open on the verdict and keep the evidence underneath:
+An agent that grades another agent's run opens on the verdict and keeps the evidence
+underneath:
 
 | heading | the bullets answer |
 |---|---|
@@ -84,57 +83,45 @@ open on the verdict and keep the evidence underneath:
 | `## Scope` | How many checks did not apply, then the run or runs graded and what each acted on, each linked |
 | `## Detailed evaluation results` | The tally, then one row per decided check: `check_id`, `category`, `kind`, `results`, `reasoning`. Over a window each check appears once and `results` says how it came back across the runs. A check that answered `N/A` everywhere has no row, and a report that decided nothing writes no table and says so in its place |
 
-`job-inspector-eval` names its two categories `Instruction following` and `Quality`; a grader with
-other categories renames those bullets and leaves the rest. A report over many runs takes the same
+Two categories carry most graders, `Instruction following` and `Quality`; one with other
+categories renames those bullets and leaves the rest. A report over many runs takes the same
 sections, with the window, the runs skipped and the reasons under `Scope`, and each broken
 instruction states the runs it broke on.
 
-Changing a section the evaluator grades means changing the evaluator too:
-`REQUIRED_SUMMARY_SECTIONS` in its `checks.py` holds the inspector's three headings, and the
-checks that read the `Confidence` section by name go with them.
+Changing a section an evaluator grades means changing that evaluator too: its registry holds
+the graded agent's headings, and the checks that read a section by name go with them.
 
 ## Linking the runs and jobs a summary names
 
 An agent writes a run id as a uuid, because that is what a person pastes into `dlthub job runs
 logs`. It cannot write a link: its `run_context` carries the trigger, the run id and the interval,
-and no workspace id or UI base. So the ids become links after the loop, in `links.py` under
-`agents/job-inspector/`. The inspector and the evaluator share that one module, so a run reads the
-same way in both summaries.
+and no workspace id or UI base. The ids become links after the loop, in the agent folder's
+`agent.py`. dlt runs its hooks around the loop of every job referencing the agent,
+`validate_input(inputs)` before and `validate_output(output)` after, so a declared
+`run.agent("<ref>", ...)` gets the links as much as a decorated one.
 
 ```python
-import importlib.util
+from .links import link_summary
 
-# loaded by path under a name of its own: `links` is a common module name, and a `sys.path`
-# entry pointing at the agent folder would shadow or be shadowed by another one
-spec = importlib.util.spec_from_file_location(
-    "dlthub_agent_links", ".claude/dlthub/agents/job-inspector/links.py"
-)
-links = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(links)
 
-summary = output["summary"]
-output["summary"] = links.linkify(
-    summary, links.web_ui(), links.labels_from_platform(summary)
-)
+def validate_output(output: Dict[str, Any]) -> Dict[str, Any]:
+    return link_summary(output)
 ```
 
-The evaluator loads the same file the same way, in `_shared_links` in its `checks.py`.
-
-The module sits inside the inspector's folder, so an agent in another toolkit or in a workspace
-of its own copies `links.py` beside its own definition and loads that copy by path. A grader and
-the agent it grades share one copy, which is what makes a run read the same way in both
-summaries.
-
-**A summary is linkified only where the deployment runs code after the loop.** `run.agent("<ref>",
-...)` starts the loop and stores what it returned, so an agent deployed in that declared form
-reports its run ids as the model wrote them, in plain code spans. The decorated form in
-[deployment.md](deployment.md) is what gives a summary links, and it is the deciding reason to
-take it for an agent whose output names other runs. `agent_run_links` is the second call, after
-`linkify`, and it takes the job ref of each run the caller knows to be an agent's.
+`links.py` beside it does the work: `linkify` writes each id as a link, and
+`labels_from_platform` reads the run number behind it and makes it the link text, so a reader
+meets `#114` rather than a uuid. The inspector's folder holds both files. An agent folder imports
+only its own files, so an agent elsewhere copies `links.py` beside its own definition and calls it
+from its own `agent.py`.
 
 A span holding an id becomes the text of the link, since a link wrapped around a code span renders
 and a link written inside one prints its markup. So the inspector's
-`` `dlthub job runs logs <id>` `` is what the reader clicks. `labels_from_platform` reads the run
-number behind each id and makes it the link text, so a reader meets `#114` rather than a uuid; the
-evaluator passes `run_labels` instead, built from the runs it already holds. Wiring it needs the
-decorated form in [deployment.md](deployment.md).
+`` `dlthub job runs logs <id>` `` is what the reader clicks.
+
+**Only ids that resolve belong in a summary.** Every uuid in it becomes a link to a job run page,
+so a pipeline run id, a load id or a package id points at a page that does not exist. Name the
+pipeline by its name and the load by its step, and write the job run id.
+
+`linkify` writes the plain run route for every id alike. A run of an agent job has its page under
+`/agents/<job ref>/runs/<id>`, and only the code holding that job ref can move the link there, so
+an agent whose summary names another agent's runs writes that step itself.

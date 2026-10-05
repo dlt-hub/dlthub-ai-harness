@@ -1,9 +1,0 @@
-{
-  "tests/job_inspector_eval/test_fixtures_pseudonymized.py": [
-    "7f3a91c4-2b6d-4e18-9a05-c1d8e2f40b73",
-    "('1695312345', '.123456')"
-  ],
-  "tests/job_inspector_eval/test_prepare.py": [
-    "/tmp/dlt_run_x"
-  ]
-}

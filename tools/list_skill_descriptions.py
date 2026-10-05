@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List skill names and descriptions from toolkit(s) or an eval workspace.
+"""List skill names and descriptions from toolkit(s) or a claude eval workspace.
 
 Extracts frontmatter (name, description) from all SKILL.md files.
 
@@ -32,12 +32,11 @@ def parse_frontmatter(path: Path) -> dict:
 
 
 def find_skills(path: Path) -> list[dict]:
-    """Find all skills under a path (toolkit dir or eval workspace)."""
+    """Find all skills under a path (toolkit dir or claude eval workspace)."""
     results: list[dict[str, str]] = []
 
-    # Check if it's an eval workspace (.claude/skills/)
+    # an eval workspace installs skills under .claude/skills, a toolkit under skills/
     claude_skills = path / ".claude" / "skills"
-    # Check if it's a toolkit (skills/)
     toolkit_skills = path / "skills"
 
     if claude_skills.is_dir():

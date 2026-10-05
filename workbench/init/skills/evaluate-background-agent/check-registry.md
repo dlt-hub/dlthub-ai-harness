@@ -66,8 +66,8 @@ to follow, and delimits it as such.
 
 Two more blind spots sit in the code that raises them: a transcript parser that read nothing while
 the trace records tool use is a parser fault, and the stored job result needs a recent enough
-`dlthub-client`. Both are documented in the docstrings of the functions that detect them, in
-`checks.py` beside the agent.
+`dlthub-client`. Each one belongs in the docstring of the function that detects it, in the
+evaluator's own `checks.py`.
 
 ## What an evaluation reports
 

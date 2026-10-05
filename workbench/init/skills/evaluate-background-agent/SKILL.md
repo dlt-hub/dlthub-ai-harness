@@ -8,9 +8,9 @@ description: "Grade a dltHub background agent against its own instructions with 
 An agent that runs unattended is read by a person only when its output matters, so nothing tells
 you whether it followed its own instructions. An **evaluator agent** answers that: it runs as a
 follow-up job after every run of the agent it grades, reads that run's result, trace and log
-together with whatever the run acted on, and reports one outcome per instruction. The working
-example is `workbench/dlthub-platform/agents/job-inspector-eval/AGENT.md`, which grades
-`job-inspector`.
+together with whatever the run acted on, and reports one outcome per instruction. The example
+throughout this skill is an evaluator for `job-inspector`, the agent `dlthub-platform` ships.
+The evaluator itself is yours to write: no toolkit ships one.
 
 An evaluator is worth writing when the graded agent runs often enough that nobody reads every run,
 and its output is acted on. A single run someone reads end to end does not need one.

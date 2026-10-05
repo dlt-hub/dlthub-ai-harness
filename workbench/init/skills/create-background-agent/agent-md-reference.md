@@ -180,8 +180,8 @@ Add the agent's own fields next to them. What to know about the schema:
   `required` does not count, and `required` inside a nested object binds only when the model
   writes that object, so every nested property of a field Python fills belongs in one.
 - **Keep the schema small.** The model reads all of it on every run, and a large one has stopped a
-  job launching. `job-inspector-eval` declares 17 properties in about 5,600 characters, and a test
-  holds it under 7,800.
+  job launching. An agent that reports per-item results keeps the item's schema to the fields a
+  reader acts on, and a test holds the whole `output` under 8,000 characters.
 
 The agent run's `status` decides what the job does: `succeeded` and `failed` complete the run;
 `aborted` raises with `summary` as the message and the run fails, after the result and trace were

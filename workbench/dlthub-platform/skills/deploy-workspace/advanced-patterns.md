@@ -30,6 +30,8 @@ def transform(run_context: TJobRunContext):
 An installed agent definition becomes a job by naming it:
 
 ```python
+from dlt.hub import run
+
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     # `ingest` is a tag this workspace puts on its own jobs
@@ -43,90 +45,41 @@ overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `ski
 `rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
 for them, and on a decorated function the argument replaces the list, every axis included.
 
-**An agent job must never run on the `prod` profile.** The runtime gives an agent job the
-`access` profile when the deployment declares none. Pin `require={"profile": "access"}` on every
-one of them so the declaration says so, and never override it with `prod`: production credentials
-would land in the job process. The agent's `access` block decides which tools the model is
-offered. The profile decides which credentials the job process holds. Declare both. Work that
-needs production write credentials belongs in a pipeline or a plain job that a person wrote.
+An agent folder can ship an `agent.py`, which dlt runs around the loop of a job that
+references the agent: `validate_input(inputs)` before it and `validate_output(output)` after
+it. The inspector's `agent.py` writes every run id and job ref in its summary as a link to its
+web UI page, labelled with the run number. The reference fails when
+`.claude/dlthub/agents/job-inspector/` is missing, which means the toolkit is not installed in
+the workspace.
 
-Decorate a function instead when code has to run around the loop. The evaluator for the
-inspector does that: it computes its deterministic checks before the loop and writes them
-over the model's output after it.
+**An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
+them. Without it the job runs as a batch job on `prod` and the production credentials land
+in its environment. The agent's `access` block decides which tools the model is offered; the
+profile decides which credentials the job process holds, so declare both. Work that needs
+production write credentials belongs in a pipeline or a plain job that a person wrote.
 
-```python
-import sys
-from typing import Annotated
+### Model and credentials
 
-from dlt.hub import run
+A shipped definition names no model, so the workspace sets one for every agent job it runs.
+Set these as workspace variables, which reach the runner as environment and override
+`.dlt/secrets.toml`:
 
-sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
-from checks import DEFAULT_MAX_RUNS_READ, finalize, prepare
+| Variable | Anthropic | Azure OpenAI |
+|---|---|---|
+| `AGENT__MODEL` | `anthropic:claude-sonnet-5` | `azure:<deployment name>` |
+| `AGENT__API_KEY` | the Anthropic key | the Azure key |
+| `AGENT__API_URL` | unset | `https://<resource>.openai.azure.com` |
+| `AGENT__API_VERSION` | unset | the api-version your deployment serves |
 
-# `section` is explicit because `.success` and `.fail` are read at import time, before the
-# manifest loader stamps the module; without it the trigger names `jobs.job_inspector`
-inspector = run.agent(
-    "dlthub-platform:job-inspector",
-    section="__deployment__",
-    trigger="job.fail:tag:ingest",
-    require={"profile": "access"},
-)
-
-
-@run.agent(
-    agent="dlthub-platform:job-inspector-eval",
-    trigger=[inspector.success, inspector.fail],
-    require={"profile": "access"},
-)
-async def job_inspector_eval(
-    run_context: run.TJobRunContext = None,
-    inspector_run_id: Annotated[
-        str,
-        run.Entity("job-run"),
-        run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
-    ] = "",
-    inspector_job_ref: Annotated[
-        str,
-        run.Entity("job"),
-        run.Doc("job ref of the inspector job; its latest run is evaluated without a run id"),
-    ] = "",
-    max_runs_read: Annotated[
-        int,
-        run.Doc("distinct runs the inspector may read before `single_run_scope` fails"),
-    ] = DEFAULT_MAX_RUNS_READ,
-) -> dict:
-    prep = prepare(
-        run_context,
-        inspector_run_id=inspector_run_id,
-        inspector_job_ref=inspector_job_ref,
-        max_runs_read=max_runs_read,
-    )
-    if prep.aborted:
-        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
-        # and this path never started the loop
-        raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
-    output = await run_context["ai_loop"].run(inputs=prep.judge_inputs)
-    return finalize(output, prep)
+```bash
+printf '%s' '<key>' | dlthub variable set AGENT__API_KEY --secret --workspace
 ```
 
-A job factory exposes `.success` and `.fail`, so a follow-up job lists them as its trigger.
-The scheduler sets `prev_run_id` on the follow-up run, which is how the evaluator finds the
-run that triggered it. Both are read at import time, before the manifest loader stamps the
-module on the factory, so a factory whose triggers are used in the same module passes
-`section=` itself; without it the manifest is rejected with `triggers referencing unknown
-jobs`.
-
-Four constraints on the function form, because the function overrides the `AGENT.md` it
-drives:
-
-- No docstring, or it replaces the body of the `AGENT.md`.
-- Return `dict`, not `TAgentOutput`, or it replaces the declared output schema.
-- Declare a parameter for every input a caller may set. Configured inputs reach a decorated
-  function through its signature only, and `dlthub deploy` warns about a declared input the
-  signature does not accept.
-- Raise `run.JobAbortedException` on a path that never started the loop. dlt reads
-  `loop.trace` on any returned dict carrying `status`, so returning one there fails the run
-  with `AgentTraceNotAvailable` and loses the abort reason.
+Pick a model at least as capable as Claude Sonnet 5: `anthropic:claude-sonnet-5` (`sonnet`),
+`openai:gpt-5.4-mini` (`gpt-mini`), `google:gemini-3.5-flash` (`gemini`), or your own Azure
+deployment. Step up to `opus`, `gpt` or `gemini-pro` when a smaller model falls short.
+`run.agent` takes `model=` too and configuration outranks it, so leave it out of the
+deployment code and the two cannot disagree.
 
 A shipped agent definition names no model, so set one for the workspace:
 
@@ -137,7 +90,7 @@ dlthub variable set AGENT__MODEL --value 'anthropic:claude-sonnet-5' --plain --w
 Every agent job in the workspace reads it. It takes a `provider:model` id on any provider,
 and an alias (`sonnet`, `gpt-mini`, `gemini`) where the provider has one. Azure takes
 `azure:<deployment>` with `AGENT__API_URL` and `AGENT__API_VERSION` beside the key. The
-inspector and its evaluator both want a model at least as capable as Claude Sonnet 5.
+inspector wants a model at least as capable as Claude Sonnet 5.
 
 `run.agent` takes `model=` too, and configuration outranks it, so a model in the deployment
 code is beaten by `AGENT__MODEL` wherever the variable is set. Keep the decision in the

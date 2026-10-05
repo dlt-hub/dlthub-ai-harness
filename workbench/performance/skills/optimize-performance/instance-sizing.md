@@ -4,7 +4,7 @@
 
 A bigger runner is not a tuning lever: it is a **recurring cost** charged against your organization's run-time budget by a multiplier, so one hour on `large` spends four hours of budget — every run, forever. A config change is free; a tier bump is not. Reach for it when you have **measured** that the machine, not the pipeline, is the ceiling.
 
-Tiers step `small` → `medium` → `large` → `xlarge`, doubling vCPU and memory each step and doubling the budget multiplier with them (`small` is the default at 1×). **Read the current numbers from the reference below, or from `deploy-workspace` (`runtime-settings.md`) if that toolkit is installed — never quote tiers or multipliers from memory**, since instance sizing is in public preview.
+Tiers step `small` → `medium` → `large` → `xlarge`, doubling vCPU and memory each step and doubling the budget multiplier with them (`small` is the default at 1×). **Read the current numbers from the reference below, or from **dlthub-platform** → `deploy-workspace` (`runtime-settings.md`) if that toolkit is installed — never quote tiers or multipliers from memory**, since instance sizing is in public preview.
 
 **Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size
 
@@ -55,7 +55,7 @@ def heavy_sync():
     ...
 ```
 
-`require` is a **decorator argument only** — there is no `config.toml` or env-var form, and it needs a `__deployment__.py` manifest plus `dlthub deploy` to take effect. **Only with the approval from Gate 0 in hand**, hand over to **dlthub-platform** (`deploy-workspace`) to edit the manifest and deploy; install it if absent: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`. That toolkit's always-loaded **job resources and run-time budget** rule carries the full budget reference and the same permission requirement.
+`require` is a **decorator argument only** — there is no `config.toml` or env-var form, and it needs a `__deployment__.py` manifest plus `dlthub deploy` to take effect. **Only with the approval from Gate 0 in hand**, hand over to **dlthub-platform** (`deploy-workspace`) to edit the manifest and deploy; install it if absent: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`. That toolkit's always-loaded `job-resources` rule carries the full budget reference and the same permission requirement.
 
 Then **verify the spend is earning its multiplier**: re-read `dlthub job logs <name>` and check peak RSS now fits, or that the stage duration dropped roughly in proportion to the extra vCPU. If it didn't, **propose dropping back to the smaller tier** — you are paying the multiplier for nothing — and return to Step 1. **A bump can fail outright** — an OOM driven by an un-chunkable in-memory step is killed on the bigger tier too, because the amplified requirement outran that tier as well. When that happens the answer is the workload (split it, avoid the copies, chunk the operation), **not** the next tier up — and climbing tiers on a guess needs a fresh Gate 0 approval each step anyway.
 

@@ -31,7 +31,7 @@ sys.path.insert(0, ".claude/dlthub/agents/job-inspector-eval")
 from checks import DEFAULT_MAX_RUNS_READ, judge_runs, prepare
 
 # `section` is explicit because this module uses the inspector's own triggers; see
-# `deployment.md`
+# `deployment.md`. `job-inspector` is shipped; the evaluator beside it is the one you write
 inspector = run.agent(
     "dlthub-platform:job-inspector",
     section="__deployment__",
@@ -41,7 +41,7 @@ inspector = run.agent(
 
 
 @run.agent(
-    agent="dlthub-platform:job-inspector-eval",
+    agent="<your toolkit>:job-inspector-eval",
     trigger=[inspector.success, inspector.fail],
     require={"profile": "access"},
 )
@@ -88,7 +88,7 @@ preparation step resolve the window:
 
 ```python
 @run.agent(
-    agent="dlthub-platform:job-inspector-eval",
+    agent="<your toolkit>:job-inspector-eval",
     trigger="schedule:0 7 * * 1",
     require={"profile": "access"},
 )
@@ -170,8 +170,8 @@ Every input is a parameter of the deployment function. A workspace changes a def
 that parameter; a single run overrides one with `-c <name>=...`, and a job section in
 `config.toml` overrides it for every run of that job.
 
-The body names the run id and job ref inputs in a sentence, as `job-inspector-eval` does under
-"What you are given", even though the preparation step is what reads them. An input no
+The body names the run id and job ref inputs in a sentence, under a heading like "What you are
+given", even though the preparation step is what reads them. An input no
 placeholder in the body names is reported by `make validate-toolkits` as declared and unread.
 
 | input | per-run deployment | scheduled deployment | default |

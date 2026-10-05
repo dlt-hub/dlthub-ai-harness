@@ -20,7 +20,7 @@ Parse `$ARGUMENTS`:
 
 Ask the user: **how much data will be loaded?** (approximate row count or table size is enough)
 
-Note the answer — it will be used in step 10 to recommend the right backend and `chunk_size`.
+Note the answer — it will be used in step 11 to recommend the right backend and `chunk_size`.
 
 Key rules regardless of scale:
 - **Always pass `table_names=`** to `sql_database()` — avoids reflecting the entire schema

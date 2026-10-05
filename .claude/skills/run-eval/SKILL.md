@@ -10,7 +10,7 @@ Run eval for `$ARGUMENTS` (format: `toolkit skill [workspace]`). The workspace a
 
 ## Step 0: Rebuild workspaces if needed
 
-Check if the skill's SKILL.md is newer than the eval workspace. If the description changed, workspaces have stale copies.
+Compare the time of the source `SKILL.md` with the copy in the eval workspace. A newer source means the workspace copy is stale.
 
 ```bash
 # Compare timestamps
@@ -18,7 +18,7 @@ stat -c %Y workbench/<toolkit>/skills/<skill>/SKILL.md
 stat -c %Y evals/.evals/<workspace>/.claude/skills/<skill>/SKILL.md
 ```
 
-If the source is newer (or workspace doesn't exist), rebuild (add `--agent <agent>` to match the agent you'll eval; non-claude workspaces live at `…--<agent>/` with skills under `.cursor/skills` or `.agents/skills`):
+If the source is newer, or the workspace does not exist, rebuild it. Use the same `--agent` as the eval. Workspaces for Cursor and Codex end in `--<agent>`, with skills in `.cursor/skills` or `.agents/skills`:
 ```bash
 uv run python tools/create_eval_workspace.py evals/<toolkit>/<skill> [--agent <agent>]
 ```
@@ -36,7 +36,11 @@ uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --verbose [--mod
 uv run python tools/run_trigger_eval.py evals/<toolkit>/<skill> --workspace <ws-id> --verbose [--model <model>]
 ```
 
-By default the eval runs on Claude. To run on another agent (or all), pass `--agent` — `claude` (default), `cursor`, `codex`, or `all` / a comma-list like `codex,cursor`. Non-Claude agents need their CLI installed + authenticated (`codex`; `cursor-agent login` or `CURSOR_API_KEY`) and the workspace built for that agent (Step 0, same `--agent`). `--agent all` reports per-agent results in one run. Note: always-loaded router skills (e.g. `dlthub-router`) are N/A on Codex — measure routers on Claude/Cursor; see EVALS.md.
+The eval runs on Claude by default. To use another agent, pass `--agent cursor`, `--agent codex`, a list such as `codex,cursor`, or `all`. `--agent all` reports results for each agent in one run.
+
+A non-Claude agent needs its CLI installed and authenticated (`codex`; `cursor-agent login` or `CURSOR_API_KEY`). It also needs a workspace built with the same `--agent` (Step 0).
+
+Measure router skills such as `dlthub-router` on Claude or Cursor only. See `EVALS.md`.
 
 ## Step 2: Read the results
 
@@ -82,22 +86,22 @@ Based on the analysis, propose concrete changes. **Always present proposals to t
 
 ### How to write good descriptions
 
-Claude undertriggers by default — it prefers to handle things directly rather than consulting skills. Descriptions need to be **pushy**: include explicit trigger phrases and concrete user utterances, not just abstract capability statements.
+Claude undertriggers by default — it prefers to handle things directly rather than consulting skills. Write the description to trigger often. Put explicit trigger phrases and real user sentences in it, not only a summary of what the skill does.
 
 **Weak**: "Set up dlt secrets"
 **Strong**: "Use when the user needs to set up, check, verify, debug, or read dlt secrets (API keys, database credentials). Also use when writing Python code that needs credentials."
 
-But don't use rigid ALWAYS/NEVER/MUST-in-caps as a crutch. Instead, explain **why** the skill should handle it — Claude has good theory of mind and responds better to reasoning than commands.
+Do not use ALWAYS, NEVER or MUST in capitals. Give the reason **why** the skill fits the query.
 
 ### Generalize, don't overfit
 
-The skill will be used across many prompts, not just these eval queries. Don't make fiddly description changes that target one specific eval query. Instead, identify the **pattern** behind the miss and address the pattern.
+The skill gets many prompts, not only the eval queries. Do not change the description for one eval query. Find the **pattern** behind the miss and fix the pattern.
 
 If a query like "which secrets files does my project have?" misses, don't add that exact phrase. Instead, add the pattern: "list or inspect secrets files".
 
 ### Propose new eval queries
 
-When proposing description changes, also propose **new trigger queries** that test the change. This ensures the next eval run validates the improvement. Focus on:
+When proposing description changes, also propose **new trigger queries** that test the change. The next eval run then measures the change. Focus on:
 - Queries that probe the exact boundary being adjusted
 - Realistic phrasings a user would actually type (with context, detail, casual tone)
 - Both positive (should now trigger) and negative (should still not trigger) cases

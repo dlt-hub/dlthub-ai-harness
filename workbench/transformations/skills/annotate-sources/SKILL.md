@@ -19,7 +19,7 @@ If not provided in arguments, ask the user for:
 
 **IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
-All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 3 below.
+All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 2 below.
 
 ## Steps
 
@@ -29,13 +29,13 @@ Use `list_pipelines` MCP tool to list all local dlt pipelines.
 
 For each source the user mentioned, one of three cases applies:
 
-**Case A — local pipeline found** → note the pipeline name, dataset name, and destination. Schema will be extracted via `export_schema` in step 2.
+**Case A — local pipeline found** → note the pipeline name, dataset name, and destination. Schema will be extracted via `export_schema` in step 3.
 
 **Case B — no local pipeline, but data already exists on a remote destination** → ask the user for:
 - The exact dataset name on the destination (e.g. `luma_events_data`)
 - The destination type (e.g. `bigquery`, `snowflake`)
 
-Schema will be extracted via a dlt ibis script in step 2. Do NOT hand off to rest-api-pipeline — the data is already there.
+Schema will be extracted via a dlt ibis script in step 3. Do NOT hand off to rest-api-pipeline — the data is already there.
 
 **Case C — no pipeline and no remote dataset** → stop and hand over to **rest-api-pipeline** toolkit:
 

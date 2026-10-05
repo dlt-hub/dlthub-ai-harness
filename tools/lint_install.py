@@ -38,7 +38,6 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix=f"lint-{agent}-") as tmpdir:
             project = Path(tmpdir)
 
-            # dlthub ai init
             total += 1
             ok, output = run_dlt(
                 ["ai", "init", "--agent", agent, "--location", location],
@@ -50,7 +49,6 @@ def main() -> int:
                 errors.append(f"[{agent}] dlthub ai init failed:\n{output}")
                 continue
 
-            # each toolkit
             for name in toolkits:
                 total += 1
                 ok, output = run_dlt(

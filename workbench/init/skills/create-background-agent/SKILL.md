@@ -8,7 +8,7 @@ description: "Write a dltHub background agent: an AGENT.md that runs unattended 
 A **background agent** is a toolkit item alongside skills, commands and rules. It runs
 unattended: on a schedule, after a job fails, or when someone starts it from the web UI or the
 command line. An agent is an `AGENT.md`, written much like a `SKILL.md`. The working example is
-`workbench/dlthub-platform/agents/job-inspector/AGENT.md`, installed as
+`workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md`, installed as
 `.claude/dlthub/agents/job-inspector/AGENT.md`.
 
 **Essential reading**: AI harness `https://dlthub.com/docs/hub/ai-harness/introduction.md`,
@@ -96,15 +96,15 @@ the field table, the access axes and the verbs.
 - `access`: what it may touch, per axis: `local`, `data`, `context`.
 - `skills` and `rules`: `<toolkit>:<name>` refs to components it uses.
 
-The two shipped agents are the decision rule. `job-inspector` grants `local: read` and
-`context: read`: it investigates an open question and cannot know in advance which file or which
-record answers it. `job-inspector-eval` grants nothing and declares no `tools`: it answers a
-fixed list of checks, so its preparation step fetches every artifact those checks read before the
-loop starts and hands the judge bounded windows. Fetch the evidence in Python where the task is
-fixed, and grant the axis where it is open.
+What the task knows in advance is the decision rule. `job-inspector` grants `local: read`
+and `context: read`: it investigates an open question and cannot know which file or which record
+answers it. An agent that answers a fixed list of questions grants nothing and declares no
+`tools`: the code around its loop fetches every artifact those questions read before the loop
+starts and hands the model bounded windows. Fetch the evidence in Python where the task is fixed,
+and grant the axis where it is open.
 
-Neither grants `data`. Both work from run records, logs, job definitions, telemetry and source,
-and a `data` grant would put workspace data in front of a model-driven process.
+`job-inspector` grants no `data`. It works from run records, logs, job definitions, telemetry and
+source, and a `data` grant would put workspace data in front of a model-driven process.
 
 ### Hold the grant narrow
 

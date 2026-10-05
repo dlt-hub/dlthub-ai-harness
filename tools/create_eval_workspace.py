@@ -14,8 +14,6 @@ config.json format:
             "with-rest-api": {"toolkits": ["rest-api-pipeline"]}
         }
     }
-
-Each workspace is always recreated from scratch.
 """
 
 import argparse
@@ -50,16 +48,11 @@ def get_dlt_version() -> str:
     )
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
-    raise RuntimeError("Cannot detect dlt version from current environment")
+    raise RuntimeError("The dlt version in the current environment is not available.")
 
 
 def ws_name_for(eval_dir: Path, workspace_id: str, agent: str = "claude") -> str:
-    """Build workspace directory name: toolkit--skill--workspace_id[--agent].
-
-    The agent suffix is omitted for claude so existing claude workspace paths
-    (and run_trigger_eval.py's matching convention) stay unchanged; cursor/codex
-    get a suffix so all three agents can coexist for the same eval.
-    """
+    """Workspace directory name: `toolkit--skill--workspace_id[--agent]`, no suffix for claude."""
     rel = eval_dir.relative_to(ROOT / "evals")
     name = str(rel).replace("/", "--").replace("\\", "--") + "--" + workspace_id
     if agent != "claude":
@@ -70,25 +63,21 @@ def ws_name_for(eval_dir: Path, workspace_id: str, agent: str = "claude") -> str
 def create_single_workspace(
     workspace: Path, dlt_pkg: str, toolkits: list[str], agent: str = "claude"
 ) -> Path:
-    """Create a single eval workspace."""
+    """Recreate an eval workspace with dlt and the given toolkits installed."""
     if workspace.exists():
         shutil.rmtree(workspace)
     workspace.mkdir(parents=True)
 
-    # Check uv
     result = run(["uv", "--version"], cwd=workspace, check=False)
     if result.returncode != 0:
         print("ERROR: uv is not installed")
         sys.exit(1)
 
-    # Create venv + install dlt. Also install `dlthub[mcp]` (the workspace MCP
-    # server lives there), mirroring a real scaffolded workspace.
+    # dlthub[mcp] holds the workspace MCP server, as in a scaffolded workspace
     run(["uv", "venv"], cwd=workspace)
     run(["uv", "pip", "install", dlt_pkg, "dlthub[mcp]"], cwd=workspace)
 
-    # Resolve the CLI name. The rebranded `dlthub` console script only ships on
-    # newer dlt builds; published PyPI releases still expose the CLI as `dlt`.
-    # Both provide identical `ai` subcommands, so fall back to `dlt`.
+    # older dlt releases ship the CLI as dlt, not dlthub
     cli = "dlthub"
     result = run(["uv", "run", cli, "--version"], cwd=workspace, check=False)
     if result.returncode != 0:
@@ -96,8 +85,7 @@ def create_single_workspace(
         result = run(["uv", "run", cli, "--version"], cwd=workspace)
     print(f"  cli: {cli} ({result.stdout.strip()})")
 
-    # AI init — install the LOCAL toolkits from this repo (via --location) so
-    # the eval tests working-tree changes, not the published dlthub snapshot.
+    # --location installs the toolkits of this working tree, not the published ones
     run(
         [
             "uv",
@@ -114,17 +102,13 @@ def create_single_workspace(
         cwd=workspace,
     )
 
-    # Install toolkits. Canonical syntax is install-first: `ai toolkit install <name>`
-    # (per the dlthub CLI docs). The older published `dlt` binary parses name-first
-    # (`ai toolkit <name> install`) and rejects install-first, so fall back to it —
-    # mirroring the dlthub->dlt CLI fallback above.
+    # the older dlt binary takes the name first: ai toolkit <name> install
     base = ["uv", "run", cli, "--non-interactive", "ai", "toolkit"]
     tail = ["--agent", agent, "--location", str(ROOT)]
     for toolkit in toolkits:
         print(f"  Installing toolkit: {toolkit}")
         result = run(base + ["install", toolkit] + tail, cwd=workspace, check=False)
         if result.returncode != 0:
-            # older binary: retry with name-first ordering
             run(base + [toolkit, "install"] + tail, cwd=workspace)
 
     return workspace
@@ -132,15 +116,13 @@ def create_single_workspace(
 
 def report_workspace(workspace: Path, agent: str = "claude") -> None:
     """Print workspace contents for the agent's install layout."""
-    # Skills land under a per-agent root: .claude/.cursor/.agents.
     skills_root = {"claude": ".claude", "cursor": ".cursor", "codex": ".agents"}[agent]
     skills_dir = workspace / skills_root / "skills"
     if skills_dir.is_dir():
         skills = [d.name for d in sorted(skills_dir.iterdir()) if d.is_dir()]
         print(f"  skills: {', '.join(skills) if skills else '(none)'}")
 
-    # Rules: claude .claude/rules/*.md, cursor .cursor/rules/*.mdc; on codex
-    # rules are folded into the always-loaded AGENTS.md (no rules dir).
+    # codex has no rules dir, its rules are folded into the always-loaded AGENTS.md
     if agent == "codex":
         agents_md = workspace / "AGENTS.md"
         print(f"  AGENTS.md: {'present' if agents_md.is_file() else '(missing)'}")
@@ -161,10 +143,9 @@ def create_workspaces(eval_dir: Path, agent: str = "claude") -> list[Path]:
 
     config = json.loads(config_path.read_text())
 
-    # Support both old single-workspace and new multi-workspace format
     workspaces_config = config.get(".eval-workspaces")
     if workspaces_config is None:
-        # Legacy: single workspace
+        # legacy configs hold a single ".eval-workspace"
         ws_config = config.get(".eval-workspace", {})
         workspaces_config = {"default": ws_config}
 
