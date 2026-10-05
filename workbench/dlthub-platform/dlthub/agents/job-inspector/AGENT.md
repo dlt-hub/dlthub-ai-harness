@@ -8,20 +8,18 @@ description: >
   names the target and the change. Read-only: it never edits code, never redeploys, never
   changes job resources.
 # `links.py` ships beside this file and installs with it. Pass
-# `outputs_validator=links.link_summary` on the deployment: the launcher calls it with the
-# output and it writes every run id and job ref in the summary as a link to its page, labelled
-# with the run number. Without it the summary keeps the uuids the model wrote. The evaluator
-# imports the same module for its own summary. Snippets: "Code around the loop" in the
-# `advanced-patterns.md` of the `deploy-workspace` skill
+# `outputs_validator=links.link_summary` on the deployment and the launcher calls it with the
+# output, writing every run id and job ref in the summary as a link labelled with the run
+# number. Without it the summary keeps the uuids. The evaluator imports the same module.
+# Snippets: "Code around the loop" in the `deploy-workspace` skill
 # feature groups of the dlthub MCP server; the agent gets exactly these
 tools:
   - jobs
   - logs
   - telemetry
   - workspace
-  # the redacted credential check: `secrets` gives secrets_list and secrets_view_redacted
-  # (secrets_update_fragment needs `local: write` and is pruned), `config` gives
-  # dlthub_list_variables
+  # the redacted credential check: `secrets` gives secrets_list and secrets_view_redacted,
+  # `config` gives dlthub_list_variables. secrets_update_fragment needs `local: write`
   - secrets
   - config
 skills:
@@ -31,17 +29,15 @@ rules:
   - dlthub-platform:job-resources
   - dlthub-platform:profiles
 access:
-  # read the workspace files, nothing else. no `execute`: the secret deny rules cover the
-  # file tools only, so a shell is a way around them, and an instruction not to `cat` a
-  # secrets file is not a control. without it `cat`, `grep` and RunPython are all gone, and
-  # so is any way to re-run the job being inspected
+  # read the workspace files, nothing else. no `execute`: a shell runs its input as given,
+  # so it is the way around the file tools' credential guard, and it could re-run the job
   local:
     - read
   # runs, logs, job definitions and telemetry
   context:
     - read
   # no `data`: a diagnosis reads run metadata and source, never destination rows
-# every input is a job configuration key: `-c failed_run_id=...`; both are optional and the
+# every input is a job configuration key: `-c failed_run_id=...`. Both are optional and the
 # body says what to do when one or both are empty
 inputs:
   type: object

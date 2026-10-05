@@ -5,27 +5,23 @@ description: >
   a schedule over a window of inspector runs, which is how to deploy it, or after every single
   one of them. Reads the inspector's result and trace, the failed run it inspected and that
   run's log, and reports TRUE, FALSE or N/A per instruction with a reasoning. Read-only.
-# `checks.py` ships beside this file and installs with it. The deployment is a function that
-# imports it and runs it around the loop: `prepare_batch` or `prepare` before, which fetch
-# every artifact and decide the deterministic checks, and `finalize_batch` or `finalize`
-# after, which write those results over the judge's. Declared by bare reference,
-# `run.agent("dlthub-platform:job-inspector-eval", ...)`, the judge is started with empty
-# inputs and nothing merges its answers, so the run reports nothing. Snippets: "Code around
-# the loop" in the `advanced-patterns.md` of the `deploy-workspace` skill
-# no `tools`, so no MCP server. The preparation step fetches the run records, the logs, the
-# traces and the neighbours, and the judge reads them as windows
+# `checks.py` ships beside this file and installs with it. The deployment imports it and
+# runs it around the loop: `prepare` or `prepare_batch` before, `finalize` or `finalize_batch`
+# after. By bare reference the judge gets no prepared inputs and nothing merges its answers.
+# Snippets: "Code around the loop" in the `deploy-workspace` skill
+# no `tools`, so no MCP server: the preparation step fetches every artifact and the judge
+# reads them as windows
 skills:
   - dlthub-platform:debug-deployment
 rules:
   - dlthub-platform:job-resources
   # `agent_profile_not_prod` grades which profile the inspector ran on
   - dlthub-platform:profiles
-# nothing is granted: every artifact the checks read is fetched before the loop and handed over
-# as a window, so the judge needs no tool and cannot spend a turn looking for one
+# nothing is granted: the checks fetch every artifact before the loop, so the judge needs no
+# tool and cannot spend a turn looking for one
 access: {}
-# Two deployments run this agent: a scheduled one grading a window of inspector runs, which is
-# the one to deploy, and a triggered one grading a single run. Each input below names the
-# deployments that set it and where its default lives
+# two deployments: a scheduled one grading a window, which is the one to deploy, and a
+# triggered one grading a single run. Each input names the deployments that set it
 inputs:
   type: object
   properties:
