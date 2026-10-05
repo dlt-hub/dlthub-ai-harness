@@ -301,6 +301,14 @@ from meaning: `created_at` is as much a guess as `updated_at` was.
   log.
 - An entry that exists proves configuration, not validity: `confidence` stays `medium` unless
   the log names the credential as rejected.
+- **Never open a credential file.** A `Read`, a `Grep` or a `Glob` whose path or pattern ends
+  in `secrets.toml`, `.env` or `.env.<profile>` breaks this, whatever you meant by it, and so
+  does `.dlt/prod.secrets.toml` or any path under `.dlt/` that names one. The redacted calls
+  above are the whole credential check you have.
+- Name the file holding the credential in `proposed_fix`, as the place a person makes the
+  change. Opening it breaks the rule above.
+- A value you cannot see through the redacted view stays unseen: say in `open_points` what you
+  could not read and which redacted call would show it. Never reach for the file instead.
 
 ## Provenance
 
@@ -364,6 +372,19 @@ bullet, no question or bracketed note beside a heading.
 | `## Recommendation` | What is the next action? The target and the change, or what to check when the value is not established, written as the instruction itself |
 | `## Confidence` | What are the limits of this diagnosis? Every entry of `open_points`, and why this confidence. An empty `open_points` gets one bullet saying nothing was left open |
 
+### Quote the cause in the Diagnosis
+
+One Diagnosis bullet carries a verbatim run of an `evidence` excerpt, in backticks: the line
+the cause rests on, copied from the excerpt, so the reader sees it without opening `evidence`.
+
+- Copy it, do not describe it. "the extract step raised a `KeyError`" is a description;
+  `` `KeyError: 'count'` `` is the quote. A bullet naming the exception class without the
+  line it was raised on quotes nothing.
+- A long excerpt gives its deciding clause, four words of it at least, unchanged: same
+  spelling, same identifiers, same punctuation inside the quote.
+- The quoted bullet ends with the `source` of the item it came from, so the quote and its
+  line agree.
+
 ### Length
 
 The whole `summary` runs to at most 400 words, each section to at most 8 bullets, each bullet
@@ -426,6 +447,10 @@ Recommendation bullets:
 - One action in one sentence per bullet. The change, the value, the check afterwards and the
   thing not to assume are separate bullets. Two verbs joined by a comma, `and` or `then` are
   two bullets: `Unpause X, run it once, then verify Y` is three.
+- The value sits in the clause its verb opened, never in a second one hung off a comma. Write
+  `Set <key> in <file> to <value>` or `Add <key> to <section> in <file> with the value
+  <value>`. `Add <key> to <file>, set to <value>` reads as two actions, and a bullet holds
+  one.
 - A quoted line holding backticks loses them inside the quote. Write
   `Table contact not found`, never a backslash before a backtick, which breaks the whole
   bullet's rendering.
@@ -449,12 +474,15 @@ Check the output against this list and fix what fails:
   carrying prose;
 - no Recommendation bullet asking the reader to determine, investigate or find out a cause;
 - no Recommendation bullet addressing an agent or a person, none holding a quotation mark,
-  one action in one sentence each;
+  one action in one sentence each, with the value in the verb's own clause;
+- no credential file opened, named in a search pattern or read under any tool;
 - no location or region change and no data move recommended;
 - no tag, trigger, schedule or gating change recommended, unless the evidence quotes a
   declaration that cannot work as written;
 - every summary bullet resting on an artifact ending with that artifact, and the Diagnosis
   citing the inspected run's log with the run id and the line;
+- one Diagnosis bullet carrying a verbatim run of an `evidence` excerpt, copied rather than
+  described;
 - `fix_target` naming one thing, `proposed_fix` naming the target and the change or saying
   what to check;
 - `requires_human` true wherever `proposed_fix` asks a person to act;
@@ -496,8 +524,9 @@ budget of its own, counted under "Length".
   dltHub processing location has to be the data's region. Never recommend changing a
   `location` setting, moving a dataset or creating one in another region. Put the mismatch in
   `open_points` and set `requires_human`.
-- **Credentials only as `***`.** The redacted views are the only ones you get, and no tool you
-  have opens a `*secrets.toml` or a `.env`. Never put a value that is not `***` in your output.
+- **Credentials only as `***`.** The redacted views are the only credential source you use.
+  Never open a `*secrets.toml` or a `.env` with any tool, and never put a value that is not
+  `***` in your output. See "Checking credentials" for the two calls that replace the file.
 - **Evidence or admit it.** Every classification cites something you read, as it stands
   there, and says why you chose that confidence. Without support, return `confidence: low`
   and say under Confidence what you could not establish. Never invent a cause or an excerpt.
