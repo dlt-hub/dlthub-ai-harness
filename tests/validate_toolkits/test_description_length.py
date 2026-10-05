@@ -44,6 +44,14 @@ def test_description_over_the_cap_warns(tmp_path: Path) -> None:
     assert "deploy" in warnings[0] and str(over) in warnings[0]
 
 
-def test_router_is_over_the_cap_today() -> None:
-    """The shipped router trips it, so the check is live rather than theoretical."""
-    assert len(length_warnings(REPO_ROOT, "init")) == 1
+def test_every_shipped_description_is_within_the_cap() -> None:
+    """Run against the workbench, so the rule holds for what ships and not only for a fake.
+
+    `dlthub-router` sat 143 chars over, which cut the clause sending a demo request to
+    `quick-start`.
+    """
+    toolkits = sorted(d.name for d in (REPO_ROOT / V.AI_DIR).iterdir() if d.is_dir())
+
+    over = [warning for name in toolkits for warning in length_warnings(REPO_ROOT, name)]
+
+    assert over == []
