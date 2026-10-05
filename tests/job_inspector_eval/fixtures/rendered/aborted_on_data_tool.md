@@ -17,12 +17,12 @@
 
 ## Scope
 
-- 63 of the 91 checks did not apply to this run.
+- 64 of the 92 checks did not apply to this run.
 - `jobs.__deployment__.job_inspector` run `03262361-f56e-4bec-883d-0000c93b6a0e`, which inspected `jobs.__deployment__.jaffle_shop_dq` run `2fecfcee-6497-419c-8930-000088ac6ffd`.
 
 ## Detailed evaluation results
 
-- 91 check results: 23 TRUE, 5 FALSE, 63 `N/A`. `pass_rate` 0.82 over the 28 decided.
+- 92 check results: 23 TRUE, 5 FALSE, 64 `N/A`. `pass_rate` 0.82 over the 28 decided.
 - One row per decided check below.
 
 | check_id | category | kind | results | reasoning |

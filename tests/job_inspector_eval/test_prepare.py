@@ -596,7 +596,7 @@ def test_prepare_scores_what_a_deployed_run_did():
     reads_transcript = [entry.id for entry in C.CHECKS.values() if entry.reads_transcript]
     decided = {id for id in reads_transcript if prep.results[id].outcome != C.NA}
     # Re-capturing the deployed log can change which transcript checks are applicable.
-    assert len(decided) == 13, "the other seven state a condition that did not apply"
+    assert len(decided) == 14, "the others state a condition that did not apply"
     assert prep.results["job_declaration_read"].outcome == C.TRUE
     assert prep.results["run_record_read"].outcome == C.TRUE
     # its one `Read` opened the file the traceback names

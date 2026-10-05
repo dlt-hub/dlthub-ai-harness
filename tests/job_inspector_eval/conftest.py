@@ -21,6 +21,7 @@ AGENT_DIR = (
     Path(__file__).resolve().parents[2]
     / "workbench"
     / "dlthub-platform"
+    / "dlthub"
     / "agents"
     / "job-inspector-eval"
 )
@@ -97,7 +98,7 @@ def inspector_log(
             "Result  [dlthub-platform:job-inspector]",
             "  status:     succeeded",
             "  summary:    the job could not authenticate",
-            f"  job-run: job-run/{FAILED_RUN_ID}",
+            f"  job-runs: job-runs/{FAILED_RUN_ID}",
             "  loop:       claude-agent-sdk on anthropic:claude-sonnet-5, 3 turns, 12,000 tokens",
         ]
         lines += result_json.splitlines()

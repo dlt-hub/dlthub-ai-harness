@@ -92,7 +92,7 @@ def test_a_required_nested_property_does_not_count() -> None:
 
 def test_the_shipped_evaluator_is_inside_the_cap() -> None:
     path = (
-        Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / "job-inspector-eval"
+        Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "dlthub" / "agents" / "job-inspector-eval"
         / "AGENT.md"
     )
     frontmatter, _ = V.split_frontmatter(path)
@@ -103,7 +103,7 @@ def test_the_shipped_evaluator_is_inside_the_cap() -> None:
 def test_the_shipped_agents_carry_their_types() -> None:
     errors: list[str] = []
     for agent in ("job-inspector", "job-inspector-eval"):
-        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / agent / "AGENT.md"
+        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "dlthub" / "agents" / agent / "AGENT.md"
         frontmatter, _ = V.split_frontmatter(path)
         V._validate_schema_types("dlthub-platform", agent, frontmatter, errors, [])
 
@@ -154,7 +154,7 @@ def test_a_long_schema_is_reported_on_its_length() -> None:
 
 def test_the_shipped_agents_are_inside_the_budget() -> None:
     for agent in ("job-inspector", "job-inspector-eval"):
-        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents" / agent / "AGENT.md"
+        path = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "dlthub" / "agents" / agent / "AGENT.md"
         frontmatter, _ = V.split_frontmatter(path)
 
         assert size_warnings(frontmatter) == []

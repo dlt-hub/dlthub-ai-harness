@@ -13,7 +13,7 @@ workbench/                                # All toolkits live here
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
-    agents/<name>/AGENT.md         # Background agent manifests (optional)
+    dlthub/agents/<name>/AGENT.md  # Background agent manifests (optional)
     .mcp.json                      # MCP servers (optional)
   init/                            # Shared rules, secrets handling, and workspace MCP
 tools/                             # Dev tooling

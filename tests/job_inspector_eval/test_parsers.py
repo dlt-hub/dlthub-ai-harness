@@ -34,7 +34,7 @@ def test_transcript_reads_thoughts_calls_and_results():
 def test_transcript_stops_at_the_result_banner():
     log = inspector_log(result_json=json.dumps({"status": "succeeded"}, indent=2))
     tools = [event.tool for event in C.parse_transcript(log) if event.kind == "tool_call"]
-    # `  job-run: <ref>` and `  status: ...` in the printed result are not tool calls
+    # `  job-runs: <ref>` and `  status: ...` in the printed result are not tool calls
     assert tools == ["dlthub_get_run", "dlthub_get_run_logs", "dlthub_get_job", "Read"]
 
 

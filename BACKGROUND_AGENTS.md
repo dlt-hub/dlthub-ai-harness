@@ -6,7 +6,7 @@ the command line.
 
 This document is a guideline for authors. An agent is an `AGENT.md`, written much like a
 `SKILL.md`; the working example is
-[`job-inspector`](workbench/dlthub-platform/agents/job-inspector/AGENT.md).
+[`job-inspector`](workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md).
 
 ## Definition of terms
 
@@ -34,14 +34,14 @@ job built on it, and any run of that job, follows your instructions.
 ## Where it lives, where it installs
 
 ```
-workbench/<toolkit>/agents/<name>/AGENT.md
+workbench/<toolkit>/dlthub/agents/<name>/AGENT.md
 ```
 
 A folder, like a skill, so a definition can grow supporting files. `dlthub ai toolkit
 install <toolkit>` copies it to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`,
-`.agents/dlthub/agents/` on the other hosts). It lands under `dlthub/` because the hosts scan
-their own folders for native subagents (`.claude/agents/`, `.codex/agents/`), which a dltHub
-agent is not. A workspace refers to it as `<toolkit>:<name>`. The workspace's toolkit index
+`.agents/dlthub/agents/` on the other hosts). It sits under `dlthub/` on both sides, and the
+installer reads that path and no other. A host's own subagents own `<toolkit>/agents/` in the
+toolkit and `.claude/agents/` in the workspace, which a dltHub agent is not. A workspace refers to it as `<toolkit>:<name>`. The workspace's toolkit index
 (`.dlt/.toolkits`) travels with every deployment, so the reference resolves on the runner as
 it does locally. The toolkit ships the file and dlt runs it.
 
@@ -147,7 +147,7 @@ inputs:
     failed_run_id:
       type: string
       description: run id of the failed job run to inspect
-      entity_type: job-run
+      entity_type: job-runs
   required: {}
 ```
 
@@ -160,12 +160,13 @@ inputs:
 
 ### Entities: `entity_type`
 
-An input that names a workspace entity carries `entity_type`: `job-run`, `job`, `pipeline`,
+An input that names a workspace entity carries `entity_type`: `job-runs`, `job`, `pipeline`,
 `dataset` or `workspace`. The agent receives the bare id (a run id, a job ref, a pipeline
-name); dlt composes the entity reference `job-run/<id>` when it reports.
+name); dlt composes the entity reference `job-runs/<id>` when it reports.
 
 dlt owns this vocabulary. A value outside it fails manifest generation, and every job in the
-manifest goes down with it. The spelling here is the one the dlt floor in `pyproject.toml`
+manifest goes down with it. `job-run`, the older spelling of `job-runs`, is still accepted and
+passed through unchanged. The spelling here is the one the dlt floor in `pyproject.toml`
 accepts. Take a rename only once it is in a released dlt the floor can move to: a value read
 off a prerelease dlt validates locally and breaks for whoever installs from PyPI. The
 `dlt-floor` leg in `.github/workflows/lint.yml` runs the validator against that floor.
@@ -480,7 +481,7 @@ tells you whether it followed its own instructions. An **evaluator agent** answe
 reads a graded run's result, trace and log together with whatever that run acted on, and
 reports one outcome per instruction. It deploys on a schedule over a window of runs or as a
 follow-up job after every run, and the scheduled form is the default. The working example is
-[`job-inspector-eval`](workbench/dlthub-platform/agents/job-inspector-eval/AGENT.md),
+[`job-inspector-eval`](workbench/dlthub-platform/dlthub/agents/job-inspector-eval/AGENT.md),
 which grades `job-inspector`.
 
 An evaluator has four parts:
@@ -509,7 +510,7 @@ window; the triggered one listens on both `job.success` and `job.fail` of the ag
 An agent writes a run id as a uuid, because that is what a person pastes into
 `dlthub job runs logs`. It cannot write a link: its `run_context` carries the trigger, the
 run id and the interval, and no workspace id or UI base. So the ids become links after the
-loop, in `links.py` under `agents/job-inspector/`. The inspector and the evaluator share
+loop, in `links.py` under `dlthub/agents/job-inspector/`. The inspector and the evaluator share
 that one module, so a run reads the same way in both summaries.
 
 The reference form runs no code of its own after the loop, so it passes `link_summary` as the
@@ -773,7 +774,7 @@ async def job_inspector_eval(
     run_context: run.TJobRunContext = None,
     inspector_run_id: Annotated[
         str,
-        run.Entity("job-run"),
+        run.Entity("job-runs"),
         run.Doc("run id of the job-inspector run to evaluate; empty on a trigger"),
     ] = "",
     inspector_job_ref: Annotated[
@@ -1009,7 +1010,7 @@ over a window, because one run decides tens of checks and a window thousands:
 
 ## Validation
 
-`make validate-toolkits` checks every `agents/<name>/AGENT.md` in the workbench:
+`make validate-toolkits` checks every `dlthub/agents/<name>/AGENT.md` in the workbench:
 
 - frontmatter, if present, is valid YAML, and a stated `name` matches the folder
 - the body is not empty, and every `{{ placeholder }}` in it is declared under

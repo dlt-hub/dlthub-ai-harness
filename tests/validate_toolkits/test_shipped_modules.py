@@ -52,7 +52,7 @@ def test_every_unnamed_module_is_listed(tmp_path: Path) -> None:
 
 
 def test_the_shipped_agents_name_the_modules_beside_them() -> None:
-    agents = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents"
+    agents = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "dlthub" / "agents"
     errors: list[str] = []
     for agent_dir in sorted(p for p in agents.iterdir() if p.is_dir()):
         V._validate_shipped_modules(
@@ -80,7 +80,7 @@ def test_a_stray_file_in_the_folder_fails(tmp_path: Path) -> None:
 
 
 def test_the_shipped_agent_folders_hold_nothing_else() -> None:
-    agents = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents"
+    agents = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "dlthub" / "agents"
     errors: list[str] = []
     for agent_dir in sorted(p for p in agents.iterdir() if p.is_dir()):
         V._validate_shipped_modules(
@@ -97,7 +97,7 @@ def test_an_install_copies_the_module_beside_the_definition(tmp_path: Path) -> N
     from dlt._workspace.cli.dlthub.ai.agents import _ClaudeAgent
     from dlt._workspace.cli.dlthub.ai.commands import _execute_install
 
-    source = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "agents"
+    source = Path(REPO_ROOT) / V.AI_DIR / "dlthub-platform" / "dlthub" / "agents"
     actions = []
     for agent in ("job-inspector", "job-inspector-eval"):
         actions += _ClaudeAgent().install_actions(
@@ -114,3 +114,42 @@ def test_an_install_copies_the_module_beside_the_definition(tmp_path: Path) -> N
         ".claude/dlthub/agents/job-inspector/AGENT.md",
         ".claude/dlthub/agents/job-inspector/links.py",
     ]
+
+
+def install_check_errors(tmp_path: Path, drop: str = "") -> list[str]:
+    """`lint_install`'s verdict on a workspace built from the real toolkit, minus `drop`."""
+    import lint_install as L
+
+    host = tmp_path / ".claude" / L.DLTHUB_AGENTS_DIR
+    for name, files in L.shipped_agents("dlthub-platform").items():
+        for file in files:
+            (host / name / file).parent.mkdir(parents=True, exist_ok=True)
+            (host / name / file).write_text("installed")
+    if drop:
+        target = host / drop
+        if target.is_dir():
+            for leftover in target.rglob("*"):
+                leftover.unlink()
+            target.rmdir()
+        else:
+            target.unlink()
+    return L.missing_agent_files(tmp_path, "dlthub-platform")
+
+
+def test_a_complete_install_is_reported_as_complete(tmp_path):
+    assert install_check_errors(tmp_path) == []
+
+
+def test_an_install_missing_an_agent_module_is_caught(tmp_path):
+    """An install once skipped a toolkit's agents and still exited 0:
+    https://github.com/dlt-hub/dlt/issues/4454
+    """
+    errors = install_check_errors(tmp_path, drop="job-inspector/links.py")
+
+    assert errors == ["job-inspector/links.py is not in the workspace"]
+
+
+def test_an_install_missing_a_whole_agent_is_caught(tmp_path):
+    errors = install_check_errors(tmp_path, drop="job-inspector")
+
+    assert errors == ["agent 'job-inspector' is not in the workspace"]

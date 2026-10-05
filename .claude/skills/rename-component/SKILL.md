@@ -20,7 +20,7 @@ Determine what `old-name` is:
 - **Skill**: exists in `components.skills` → directory at `workbench/<toolkit>/skills/<old-name>/`
 - **Command**: exists in `components.commands` → file at `workbench/<toolkit>/commands/<old-name>.md`
 - **Rule**: exists in `components.rules` → file at `workbench/<toolkit>/rules/<old-name>.md`
-- **Agent**: exists in `components.agents` → directory at `workbench/<toolkit>/agents/<old-name>/`
+- **Agent**: exists in `components.agents` → directory at `workbench/<toolkit>/dlthub/agents/<old-name>/`
 
 If `old-name` doesn't match any component, ERROR and stop.
 

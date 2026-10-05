@@ -52,6 +52,7 @@ from dlt._workspace.deployment.exceptions import InvalidJobSchema
 from dlt._workspace.deployment.reflection import ENTITY_TYPE_KEY, entity_properties
 from dlt._workspace.deployment.typing import THubEntityType
 from dlt._workspace.cli.dlthub.ai.agents import COMPONENT_MARKERS
+from dlt._workspace.cli.dlthub.ai.utils import DLTHUB_AGENTS_DIR
 from dlt._workspace.cli.formatters import parse_frontmatter
 from dlt.common.typing import get_args
 
@@ -102,17 +103,18 @@ _WORKFLOW_SKILL_REF = re.compile(r"\(`([a-z][\w-]*)`\)")
 _WORKFLOW_HANDOVER_REF = re.compile(r"\*\*([a-z][\w-]*)\*\*")
 
 # --- background agents ---
-# Agents are folders, like skills: `agents/<name>/AGENT.md`, the path the installer reads.
-# They land under `dlthub/` in the *host* folder (`.claude/dlthub/agents/`) so they never mix
-# with a host's native agents (`.claude/agents/`, `.codex/agents/`).
+# Agents are folders, like skills: `dlthub/agents/<name>/AGENT.md`, the path the installer
+# reads, taken from dlt so a move follows by itself. They sit under `dlthub/` on both sides,
+# in the toolkit and in the host folder (`.claude/dlthub/agents/`), so they never mix with a
+# host's native agents, which own `<toolkit>/agents` and `.claude/agents/`.
 #
 # dlt owns the contract, so everything below comes from dlt rather than being restated
 # here: `load_agent_spec` is the same reader the runtime uses, and the vocabularies are
 # the types the runtime enforces. This file adds only what dlt cannot know — that a
 # workbench toolkit is a *source* tree, not an installed workspace.
 _AGENT_FILE = COMPONENT_MARKERS["agent"]
-_AGENTS_DIR = ("agents",)
-_AGENTS_PATH = "/".join(_AGENTS_DIR)
+_AGENTS_PATH = DLTHUB_AGENTS_DIR
+_AGENTS_DIR = tuple(_AGENTS_PATH.split("/"))
 _ENTITY_TYPES = get_args(THubEntityType)
 _STATUS_VALUES = list(get_args(TAgentJobStatus))
 _DEFAULTS_KEYS = set(typing.get_type_hints(TAgentDefaults))

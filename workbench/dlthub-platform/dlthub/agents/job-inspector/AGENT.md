@@ -49,7 +49,7 @@ inputs:
     failed_run_id:
       type: string
       description: run id of the failed job run to inspect
-      entity_type: job-run
+      entity_type: job-runs
     failed_job_ref:
       type: string
       description: job ref of the failed job; its latest failed run is inspected when no run id is given
@@ -77,7 +77,7 @@ output:
     failed_run_id:
       type: string
       description: run id of the job run you inspected
-      entity_type: job-run
+      entity_type: job-runs
     failed_job_ref:
       type: string
       description: job ref of the job whose run you inspected
@@ -301,14 +301,15 @@ from meaning: `created_at` is as much a guess as `updated_at` was.
   log.
 - An entry that exists proves configuration, not validity: `confidence` stays `medium` unless
   the log names the credential as rejected.
-- **Never open a credential file.** A `Read`, a `Grep` or a `Glob` whose path or pattern ends
-  in `secrets.toml`, `.env` or `.env.<profile>` breaks this, whatever you meant by it, and so
-  does `.dlt/prod.secrets.toml` or any path under `.dlt/` that names one. The redacted calls
-  above are the whole credential check you have.
+- **No entry is the finding.** An empty redacted view answers the question on its own and
+  needs no second opinion from the filesystem. Classify on it and move on.
+- **A credential file cannot be reached from here, so do not try.** The loop refuses a path
+  ending in `secrets.toml`, `.env` or `.env.<profile>`: `Read` raises on it, `Grep` and `Glob`
+  drop it from their results. A lookup for one returns nothing and costs you a turn.
 - Name the file holding the credential in `proposed_fix`, as the place a person makes the
-  change. Opening it breaks the rule above.
-- A value you cannot see through the redacted view stays unseen: say in `open_points` what you
-  could not read and which redacted call would show it. Never reach for the file instead.
+  change. You do not open it.
+- A value the redacted view does not carry stays unseen: say in `open_points` what you could
+  not read and which redacted call would show it.
 
 ## Provenance
 
@@ -475,7 +476,7 @@ Check the output against this list and fix what fails:
 - no Recommendation bullet asking the reader to determine, investigate or find out a cause;
 - no Recommendation bullet addressing an agent or a person, none holding a quotation mark,
   one action in one sentence each, with the value in the verb's own clause;
-- no credential file opened, named in a search pattern or read under any tool;
+- no credential file looked for, in a path or in a search pattern;
 - no location or region change and no data move recommended;
 - no tag, trigger, schedule or gating change recommended, unless the evidence quotes a
   declaration that cannot work as written;
@@ -524,9 +525,10 @@ budget of its own, counted under "Length".
   dltHub processing location has to be the data's region. Never recommend changing a
   `location` setting, moving a dataset or creating one in another region. Put the mismatch in
   `open_points` and set `requires_human`.
-- **Credentials only as `***`.** The redacted views are the only credential source you use.
-  Never open a `*secrets.toml` or a `.env` with any tool, and never put a value that is not
-  `***` in your output. See "Checking credentials" for the two calls that replace the file.
+- **Credentials only as `***`.** The redacted views are the only credential source you have.
+  The loop refuses a `*secrets.toml` or a `.env` to every file tool, so a lookup for one buys
+  nothing and spends a turn. Never put a value that is not `***` in your output. See
+  "Checking credentials" for the two calls that stand in for the file.
 - **Evidence or admit it.** Every classification cites something you read, as it stands
   there, and says why you chose that confidence. Without support, return `confidence: low`
   and say under Confidence what you could not establish. Never invent a cause or an excerpt.

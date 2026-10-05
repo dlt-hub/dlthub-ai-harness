@@ -120,7 +120,7 @@ def workspace(tmp_path, monkeypatch):
     """A workspace in the layout an install produces: the agent folders under `.claude`."""
     agents = tmp_path / ".claude" / "dlthub" / "agents"
     agents.mkdir(parents=True)
-    source = REPO / "workbench" / "dlthub-platform" / "agents"
+    source = REPO / "workbench" / "dlthub-platform" / "dlthub" / "agents"
     for name in ("job-inspector", "job-inspector-eval"):
         shutil.copytree(source / name, agents / name,
                         ignore=shutil.ignore_patterns("__pycache__"))
@@ -146,15 +146,20 @@ def load(workspace, title: str, module_name: str):
 class _Loop:
     """Answers every open check TRUE, and the recommendation pass with one bullet.
 
-    `trace` is what `_finish` reads off the loop when it writes the job result, so a test can
-    hand this to dlt's launcher.
+    `completed`, `trace` and `base_trace` are what the launcher reads off a loop when it writes
+    the job result, so a test can hand this to dlt. `completed` is false here because the stub
+    answers without a turn, which sends the launcher to `base_trace`.
     """
 
     LOOP_TYPE = "stub"
+    completed = False
 
     def __init__(self) -> None:
         self.runs = 0
         self.trace = {"loop_type": self.LOOP_TYPE, "turn_count": 0, "total_tokens": 0}
+
+    def base_trace(self, inputs):
+        return {"loop_type": self.LOOP_TYPE, "turn_count": 0, "inputs": inputs}
 
     async def run(self, inputs):
         self.runs += 1
@@ -208,7 +213,7 @@ def test_the_run_snippet_delivers_the_four_entities_to_the_platform(workspace, m
     import os
 
     from dlt._workspace.deployment.job_result import set_job_inputs
-    from dlt._workspace.deployment.launchers.agent import _finish
+    from dlt._workspace.deployment.launchers.agent import _set_result_from_agent_output
     from dlt._workspace.deployment.launchers.job import deliver_job_result
 
     module = load(workspace, "One grade per inspector run", "deployment_run")
@@ -230,14 +235,14 @@ def test_the_run_snippet_delivers_the_four_entities_to_the_platform(workspace, m
     job = module.job_inspector_eval
     job.resolve_agent_spec(os.getcwd())  # what `build_agent_loop` does on a real run
     set_job_inputs({})                   # a trigger supplies none
-    _finish(job, output, loop)
+    _set_result_from_agent_output(job, output, loop)
     delivered = deliver_job_result(job, send=False)
 
     assert [entity["id"] for entity in delivered["object"]] == [
-        f"job-run/{run_id}",
+        f"job-runs/{run_id}",
         f"job/{output['inspector_job_ref']}",
         f"job/{output['failed_job_ref']}",
-        f"job-run/{output['failed_run_id']}",
+        f"job-runs/{output['failed_run_id']}",
     ]
 
 

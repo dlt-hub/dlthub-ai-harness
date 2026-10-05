@@ -50,7 +50,7 @@ def toolkit(
             f"---\nname: {skill}\ndescription: {skill_description}\n---\n",
         )
     for agent in agents:
-        write(tk / "agents" / agent / V._AGENT_FILE, f"---\nname: {agent}\n---\n\nprompt\n")
+        write(tk / "dlthub" / "agents" / agent / V._AGENT_FILE, f"---\nname: {agent}\n---\n\nprompt\n")
     if workflow:
         refs = skills + agents if workflow_refs is None else workflow_refs
         steps = "\n".join(f"1. **Step** (`{ref}`)" for ref in refs)

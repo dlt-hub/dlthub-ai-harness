@@ -60,7 +60,7 @@ The last thing a finished agent run prints is its result:
 Result  [<toolkit>:<agent>]
   status:     succeeded
   summary:    <the agent's summary, one line>
-  job-run: job-run/<run id>
+  job-runs: job-runs/<run id>
   loop:       pydantic-ai on anthropic:claude-sonnet-5, 6 turns, 48,120 tokens
 { ... the declared output as JSON ... }
 ```

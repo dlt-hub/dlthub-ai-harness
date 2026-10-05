@@ -39,7 +39,7 @@ The answer is usually in the log. Read it whole once, then work through it:
 
 An agent job writes its structured output to the end of its run log, under a `Result` banner; `cli-reference.md` says how to read it.
 
-The `job-inspector` agent (`agents/job-inspector/AGENT.md`) runs this same method unattended after a job fails, and adds the rules for the classification and evidence it reports and for when to stop investigating and write its output.
+The `job-inspector` agent (`dlthub/agents/job-inspector/AGENT.md`) runs this same method unattended after a job fails, and adds the rules for the classification and evidence it reports and for when to stop investigating and write its output.
 
 ## Step 3: Read the job definition
 

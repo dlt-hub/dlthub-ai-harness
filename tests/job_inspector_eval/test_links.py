@@ -7,7 +7,7 @@ A link inside an inline code span is broken markdown, and the inspector cites a 
 import importlib.util
 from pathlib import Path
 
-AGENT_DIR = Path(__file__).resolve().parents[2] / "workbench/dlthub-platform/agents"
+AGENT_DIR = Path(__file__).resolve().parents[2] / "workbench/dlthub-platform/dlthub/agents"
 _spec = importlib.util.spec_from_file_location(
     "links", AGENT_DIR / "job-inspector" / "links.py"
 )
