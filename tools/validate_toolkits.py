@@ -245,6 +245,7 @@ def validate_agents(
         _validate_output(pname, rel, fm, errors, warnings)
         _validate_schema_types(pname, rel, fm, errors, warnings)
         _validate_optional_count(pname, rel, fm, errors, warnings)
+        _validate_output_size(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
         _validate_agent_code(pname, entry, errors)
         _validate_shipped_files(pname, entry, errors)
@@ -435,6 +436,12 @@ def _validate_output(
 MAX_OPTIONAL_PROPERTIES = 24
 """Anthropic refuses more optional properties than this, nested ones counted."""
 
+REJECTED_KEYWORDS = frozenset({"minimum", "maximum", "minLength", "maxLength"})
+"""Anthropic's structured output rejects these keywords; a bound goes in the description."""
+
+MAX_OUTPUT_CHARS = 8000
+"""The model reads the whole output schema on every run, and a large one has stopped a job."""
+
 
 def _validate_optional_count(
     pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
@@ -471,6 +478,21 @@ def _optional_properties(schema: dict, path: str = "") -> list[str]:
     return optional
 
 
+def _validate_output_size(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Check the serialized `output` against the size a job has launched with."""
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    size = len(json.dumps(output))
+    if size > MAX_OUTPUT_CHARS:
+        errors.append(
+            f"[{pname}] {rel} output is {size} characters, over the {MAX_OUTPUT_CHARS} a job"
+            " has launched with. Keep each item's schema to the fields a reader acts on"
+        )
+
+
 def _validate_schema_types(
     pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
 ) -> None:
@@ -491,6 +513,16 @@ def _walk_properties(pname: str, where: str, schema: dict, errors: list[str]) ->
             errors.append(
                 f"[{pname}] {where}.{name} names no type; a property carrying an enum alone"
                 " is refused by Anthropic's structured output. Add `type: string`"
+            )
+        if spec.get("type") == "object" and "properties" not in spec:
+            errors.append(
+                f"[{pname}] {where}.{name} is a bare object; a strict validator refuses it and"
+                " OpenAI's structured output falls back. Name its `properties`"
+            )
+        for keyword in sorted(REJECTED_KEYWORDS & set(spec)):
+            errors.append(
+                f"[{pname}] {where}.{name} carries {keyword!r}, which Anthropic's structured"
+                " output rejects. Put the bound in the description"
             )
         _walk_properties(pname, f"{where}.{name}", spec, errors)
         items = spec.get("items")

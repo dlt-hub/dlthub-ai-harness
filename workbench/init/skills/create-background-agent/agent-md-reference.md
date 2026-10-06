@@ -182,7 +182,8 @@ Add the agent's own fields next to them. What to know about the schema:
 - **The schema reaches the model as declared.** dltHub changes one thing: `entity_type` moves into
   `$comment`, because strict validators reject keywords they do not know. Nothing is added or
   relaxed on your behalf, so write what the provider accepts. For example, Anthropic's structured
-  output rejects `minimum`, `maximum` and `minLength`. Put numeric bounds in the description.
+  output rejects `minimum`, `maximum`, `minLength` and `maxLength`. Put the bound in the
+  description.
 - **Every object names its `properties`.** A bare `type: object` means "any object", which a
   strict validator refuses, so OpenAI's structured output falls back or rejects the schema. A
   field Python fills after the loop is declared as fully as one the model writes.

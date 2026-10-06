@@ -102,3 +102,58 @@ def test_the_shipped_inspector_is_inside_the_cap() -> None:
     V._validate_optional_count("dlthub-platform", "job-inspector", frontmatter, errors, [])
 
     assert errors == []
+
+
+def test_a_bare_object_fails() -> None:
+    errors = type_errors({"output": {"properties": {"window": {"type": "object"}}}})
+
+    assert len(errors) == 1
+    assert "output.window" in errors[0]
+
+
+def test_an_object_naming_its_properties_passes() -> None:
+    fm = {"output": {"properties": {"w": {"type": "object", "properties": {"n": {"type": "integer"}}}}}}
+
+    assert type_errors(fm) == []
+
+
+def test_a_numeric_bound_fails() -> None:
+    """Anthropic's structured output rejects `minimum`; the bound goes in the description."""
+    fm = {"output": {"properties": {"score": {"type": "number", "minimum": 0, "maximum": 1}}}}
+
+    errors = type_errors(fm)
+
+    assert len(errors) == 2
+    assert "'maximum'" in errors[0] and "'minimum'" in errors[1]
+
+
+def test_a_length_bound_on_an_input_fails() -> None:
+    fm = {"inputs": {"properties": {"q": {"type": "string", "minLength": 1}}}}
+
+    assert "inputs.q" in type_errors(fm)[0]
+
+
+def size_errors(fm: dict) -> list[str]:
+    errors: list[str] = []
+    V._validate_output_size("tk", "agents/x/AGENT.md", fm, errors, [])
+    return errors
+
+
+def test_a_small_output_passes() -> None:
+    assert size_errors({"output": {"properties": {"status": {"type": "string"}}}}) == []
+
+
+def test_an_oversized_output_fails() -> None:
+    props = {f"f{n}": {"type": "string", "description": "x" * 200} for n in range(40)}
+
+    errors = size_errors({"output": {"properties": props}})
+
+    assert len(errors) == 1
+    assert str(V.MAX_OUTPUT_CHARS) in errors[0]
+
+
+def test_the_shipped_inspector_is_inside_the_size_bound() -> None:
+    path = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH / "job-inspector" / "AGENT.md"
+    frontmatter, _ = V.split_frontmatter(path)
+
+    assert size_errors(frontmatter) == []
