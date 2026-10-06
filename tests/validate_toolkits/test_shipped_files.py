@@ -23,8 +23,7 @@ def test_a_definition_with_its_modules_passes(tmp_path: Path) -> None:
 
 
 def test_bytecode_beside_a_module_passes(tmp_path: Path) -> None:
-    """`__pycache__` is gitignored, so an install never copies it. Importing an agent module
-    writes it beside the source, and flagging it failed the gate after any test run."""
+    """`__pycache__` is gitignored, so an install never copies it."""
     write(tmp_path / V._AGENT_FILE, "# an agent\n")
     write(tmp_path / "links.py", "x = 1\n")
     write(tmp_path / "__pycache__" / "links.cpython-313.pyc", "")

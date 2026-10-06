@@ -44,11 +44,7 @@ def test_description_over_the_cap_warns(tmp_path: Path) -> None:
 
 
 def test_every_shipped_description_is_within_the_cap() -> None:
-    """Run against the workbench, so the rule holds for what ships and not only for a fake.
-
-    `dlthub-router` sat 143 chars over, which cut the clause sending a demo request to
-    `quick-start`.
-    """
+    """Run against the workbench, so the rule holds for what ships and not only for a fake."""
     toolkits = sorted(d.name for d in (REPO_ROOT / V.AI_DIR).iterdir() if d.is_dir())
 
     over = [warning for name in toolkits for warning in length_warnings(REPO_ROOT, name)]

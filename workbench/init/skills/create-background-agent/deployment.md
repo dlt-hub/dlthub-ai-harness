@@ -17,8 +17,7 @@ from dlt.hub import run
 
 inspector = run.agent(
     "dlthub-platform:job-inspector",
-    # access comes from the definition: local: [read], context: [read]. an `access=`
-    # argument on a referenced agent is dropped; see below
+    # `access=` on a referenced agent is dropped; the definition holds the grant
     # `ingest` is a tag this workspace puts on its own jobs
     trigger="job.fail:tag:ingest",
     require={"profile": "access"},       # see "Profile"
@@ -167,8 +166,7 @@ async def wrapped_agent(
 ) -> dict:
     prep = before(run_context, target_run_id=target_run_id)
     if prep.aborted:
-        # raising, not returning: dlt reads `loop.trace` on any dict carrying `status`,
-        # and this path never started the loop
+        # this path never started the loop, so a returned dict fails on `loop.trace`
         raise run.JobAbortedException(prep.abort_reason, prep.aborted_output)
     answer = await run_context["ai_loop"].run(inputs=prep.inputs)
     return after(answer, prep)

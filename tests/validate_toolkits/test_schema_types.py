@@ -82,8 +82,7 @@ def test_a_schema_over_the_cap_fails() -> None:
 
 
 def test_a_required_nested_property_does_not_count() -> None:
-    """`required` inside an object binds only when the model writes that object, so the nested
-    properties of a field the code fills cost nothing."""
+    """A nested `required` binds only when the model writes that object."""
     nested = {f"n{n}": {"type": "string"} for n in range(30)}
     fm = {
         "output": {

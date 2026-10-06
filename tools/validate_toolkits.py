@@ -253,9 +253,7 @@ def validate_agents(
 
 
 _UNTRACKED_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
-"""Tool caches the repo gitignores. An install works from a checkout, which never holds them,
-and importing an agent module writes `__pycache__` beside it, so flagging them fails the gate on
-any machine that ran the tests."""
+"""Gitignored tool caches. An install works from a checkout, which never holds them."""
 
 
 def _validate_shipped_files(pname: str, agent_dir: Path, errors: list[str]) -> None:
@@ -435,19 +433,14 @@ def _validate_output(
 
 
 MAX_OPTIONAL_PROPERTIES = 24
-"""Anthropic refuses an output schema with more optional properties than this, nested ones
-counted, and the agent run fails on its first model call."""
+"""Anthropic refuses more optional properties than this, nested ones counted."""
 
 
 def _validate_optional_count(
     pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
 ) -> None:
-    """Check that `output` stays inside the provider's cap on optional properties.
-
-    A property in its object's `required` does not count, and `required` inside a nested object
-    binds only when the model writes that object, so the nested properties of a field the code
-    fills after the loop belong in one.
-    """
+    """Check `output` against the provider's cap. A property in its object's `required` does
+    not count, and a nested `required` binds only when the model writes that object."""
     output = fm.get("output")
     if not isinstance(output, dict):
         return
