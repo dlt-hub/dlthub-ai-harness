@@ -91,7 +91,8 @@ inputs table. **Deploy one or the other.** An agent watched by both is graded tw
   recommendation over the window.
 
 The profile pin, the loop guard and the verbosity floor are the same as for any agent job; they
-are in `deployment.md` beside (`create-background-agent`).
+are in [deployment.md](../create-background-agent/deployment.md) beside
+(`create-background-agent`).
 
 ## 7. Pin the judge model
 

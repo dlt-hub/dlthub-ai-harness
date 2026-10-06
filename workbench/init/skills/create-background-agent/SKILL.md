@@ -52,14 +52,17 @@ and the output stands on its own.
 ## 2. Scaffold the folder
 
 ```
-agents/<name>/AGENT.md
+agents/<name>/AGENT.md                              # in a workspace
+workbench/<toolkit>/dlthub/agents/<name>/AGENT.md   # in a toolkit
 ```
 
 A folder, like a skill, so a definition can grow supporting files. In a workspace put it at the
 workspace root and point the deployment at the folder path. In a toolkit it goes under
-`workbench/<toolkit>/agents/<name>/`, and `dlthub ai toolkit install <toolkit>` copies it to
-`.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`, `.agents/dlthub/agents/` on the other
-hosts). It lands under `dlthub/` because the hosts scan their own folders for native subagents. A
+`workbench/<toolkit>/dlthub/agents/<name>/`, and `dlthub ai toolkit install <toolkit>` copies it
+to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`, `.agents/dlthub/agents/` on the
+other hosts). The `dlthub/` segment is on both sides: a toolkit's plain `agents/` folder is the
+host's own subagents folder, which dlt neither installs from nor validates, and the hosts scan
+their own folders for native subagents. A
 workspace refers to an installed agent as `<toolkit>:<name>`, and the workspace's toolkit index
 (`.dlt/.toolkits`) travels with every deployment, so the reference resolves on the runner as it
 does locally.

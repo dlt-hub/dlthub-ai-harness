@@ -1,8 +1,8 @@
 # Deploying an evaluator
 
 This file owns the prepare, judge and finalize shape, the two deployments an evaluator takes, and
-the rules of a scheduled window. Everything it leaves out is in `deployment.md` beside
-(`create-background-agent`): `run.agent`, what a decorated function overrides, the signature
+the rules of a scheduled window. Everything it leaves out is in
+[deployment.md](../create-background-agent/deployment.md) beside (`create-background-agent`): `run.agent`, what a decorated function overrides, the signature
 rules, why an abort raises instead of returning, the profile pin, the trigger strings, `section=`
 and the `AGENT__` variables. Read that file first. The checks themselves are in
 [check-registry.md](check-registry.md).
@@ -87,6 +87,16 @@ covering the runs of the current definition deploys the same agent on a schedule
 preparation step resolve the window:
 
 ```python
+from checks import (
+    DEFAULT_BATCH_RUNS,
+    DEFAULT_WINDOW_DAYS,
+    finalize_batch,
+    judge_runs,
+    judge_window_recommendation,
+    prepare_batch,
+)
+
+
 @run.agent(
     agent="<your toolkit>:job-inspector-eval",
     trigger="schedule:0 7 * * 1",
@@ -97,8 +107,12 @@ async def job_inspector_eval_batch(
     inspector_job_ref: Annotated[
         str, run.Entity("job"), run.Doc("job ref whose window is evaluated")
     ] = "jobs.__deployment__.job_inspector",
-    window_days: Annotated[int, run.Doc("fallback window with no deployment history")] = 7,
-    max_runs: Annotated[int, run.Doc("runs one scheduled job evaluates")] = 25,
+    window_days: Annotated[
+        int, run.Doc("fallback window with no deployment history")
+    ] = DEFAULT_WINDOW_DAYS,
+    max_runs: Annotated[
+        int, run.Doc("runs one scheduled job evaluates")
+    ] = DEFAULT_BATCH_RUNS,
 ) -> dict:
     batch = prepare_batch(run_context, inspector_job_ref=inspector_job_ref,
                           window_days=window_days, max_runs=max_runs)

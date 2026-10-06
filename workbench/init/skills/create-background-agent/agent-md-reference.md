@@ -46,8 +46,10 @@ rules: [init:dlthub-workspace, dlthub-platform:job-resources]
 
 ## `access`
 
-What the agent may touch, per axis, as one verb or a list. An empty block wires no file tool, no
-shell, and an MCP server serving the toolkit catalogue alone.
+What the agent may touch, per axis, as one verb or a list. An empty block wires no file tool and
+no shell. What it leaves of the MCP server depends on `tools`: with no groups listed there is no
+server at all, and with groups listed the server serves the toolkit catalogue alone, since every
+other group's tools need an axis.
 
 ```yaml
 access:

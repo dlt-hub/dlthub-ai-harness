@@ -252,13 +252,21 @@ def validate_agents(
     return agent_names
 
 
+_UNTRACKED_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+"""Tool caches the repo gitignores. An install works from a checkout, which never holds them,
+and importing an agent module writes `__pycache__` beside it, so flagging them fails the gate on
+any machine that ran the tests."""
+
+
 def _validate_shipped_files(pname: str, agent_dir: Path, errors: list[str]) -> None:
     """Check that the agent folder holds only the `AGENT.md` and Python modules."""
     # an install copies the folder verbatim, so a stray file lands in every workspace
     stray = sorted(
         path.name
         for path in agent_dir.iterdir()
-        if path.name != _AGENT_FILE and not (path.is_file() and path.suffix == ".py")
+        if path.name != _AGENT_FILE
+        and path.name not in _UNTRACKED_DIRS
+        and not (path.is_file() and path.suffix == ".py")
     )
     if stray:
         errors.append(

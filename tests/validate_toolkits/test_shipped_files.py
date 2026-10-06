@@ -22,15 +22,14 @@ def test_a_definition_with_its_modules_passes(tmp_path: Path) -> None:
     assert shipped_errors(tmp_path) == []
 
 
-def test_bytecode_beside_a_module_fails(tmp_path: Path) -> None:
+def test_bytecode_beside_a_module_passes(tmp_path: Path) -> None:
+    """`__pycache__` is gitignored, so an install never copies it. Importing an agent module
+    writes it beside the source, and flagging it failed the gate after any test run."""
     write(tmp_path / V._AGENT_FILE, "# an agent\n")
     write(tmp_path / "links.py", "x = 1\n")
     write(tmp_path / "__pycache__" / "links.cpython-313.pyc", "")
 
-    errors = shipped_errors(tmp_path)
-
-    assert len(errors) == 1
-    assert "__pycache__" in errors[0]
+    assert shipped_errors(tmp_path) == []
 
 
 def test_every_stray_file_is_listed(tmp_path: Path) -> None:

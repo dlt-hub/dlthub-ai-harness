@@ -215,10 +215,10 @@ matches no job is reported at deploy time as `matched no job`.
 
 Three mechanisms sit between a broad selector and a loop, and none of them replaces naming the
 jobs: the inspecting agent aborts when the run it resolved belongs to an evaluator job or to its
-own job; `no_agent_job_inspected` reports FALSE when an inspection reached one anyway, so the loop
-shows up in the evaluation; a job event never fires on a manual run. dlt has no manifest
-validation for this yet, because a selector is expanded to concrete refs at deploy time and
-nothing compares the result against the jobs that run agents.
+own job; an evaluator gives that rule a check of its own, so an inspection that reached one anyway
+comes back FALSE and the loop shows up in the evaluation; a job event never fires on a manual run.
+dlt has no manifest validation for this yet, because a selector is expanded to concrete refs at
+deploy time and nothing compares the result against the jobs that run agents.
 
 ## Pinning the model
 

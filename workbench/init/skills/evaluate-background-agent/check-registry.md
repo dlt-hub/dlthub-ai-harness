@@ -99,5 +99,6 @@ a window, because one run decides tens of checks and a window thousands:
 | no findings | none broke, and at least one was decided | the same |
 | not graded | the category decided nothing | the same |
 
-The summary sections a grader writes are in `summary-format.md` beside
+The summary sections a grader writes are in
+[summary-format.md](../create-background-agent/summary-format.md) beside
 (`create-background-agent`), next to the sections an inspecting agent writes.
