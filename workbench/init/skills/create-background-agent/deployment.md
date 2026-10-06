@@ -121,6 +121,20 @@ rest of the workspace dependencies:
 pydantic-ai-slim>=2.52.0
 ```
 
+A local run reads configuration from the local environment and `.dlt`, and does not fetch the
+workspace variables. `AGENT__MODEL` and `AGENT__API_KEY` set with `dlthub variable set` reach the
+runner only. Without them in the local environment the run falls back to the loop's default model
+with no key and dies inside the provider, on `Set the ANTHROPIC_API_KEY environment variable`,
+which names a variable the workspace never used. Export the same two values before the run:
+
+```bash
+export AGENT__MODEL=anthropic:claude-sonnet-5
+```
+
+```bash
+export AGENT__API_KEY=<the provider key>
+```
+
 ```bash
 dlthub local run job_inspector -c failed_run_id=89826ee6-... -c agent.instructions="explain, do not fix"
 ```
@@ -134,6 +148,56 @@ to the job's log at the configured verbosity.
 
 Keep `agent.verbosity` at 1, the default. At 0 the log keeps tool names only, and anything reading
 the agent's tool arguments or statements afterwards goes blind.
+
+## Row evidence through a hook
+
+An agent folder ships an `agent.py` beside its `AGENT.md`. From dlt 1.30.1a1 dltHub imports that
+module on a declared `run.agent("<ref>", ...)` and calls `validate_input(inputs)` before the loop
+and `validate_output(output)` after it. A returned value replaces the inputs or the output,
+`None` keeps them, and raising `JobAbortedException` from `validate_input` ends the run before the
+loop starts. This is where an agent reads warehouse rows, since the MCP data tools need pipeline
+state a runner has not got; see the `data` axis in
+[agent-md-reference.md](agent-md-reference.md).
+
+`agents/<name>/coverage.py`, resolving the date column against the schema rather than guessing it:
+
+```python
+import dlt
+
+
+def collect(audit_date, tables):
+    destination = dlt.config["destination.name"]
+    for dataset_name in {t.dataset for t in tables}:
+        dataset = dlt.dataset(destination=destination, dataset_name=dataset_name)
+        known = {name.lower() for name in dataset.schema.tables}
+        # a table the warehouse does not carry is a note in the window, not a row count of zero
+```
+
+`agents/<name>/agent.py` beside it:
+
+```python
+from .coverage import TABLES, collect, render
+
+
+def validate_input(inputs):
+    audit_date = inputs.get("audit_date") or str(
+        (inputs.get("run_context") or {}).get("interval_start")
+    )[:10]
+    return {**inputs, "audit_date": audit_date, "coverage": render(collect(audit_date, TABLES))}
+```
+
+The `AGENT.md` declares `coverage` as an input described as never set by a caller, and the body
+renders `{{ coverage }}` into a section saying it is the only row evidence the agent has. A body
+placeholder must be declared, which is why the input is in the file although nothing configures
+it.
+
+The hook is also the cheaper run. The counts arrive in the system prompt instead of costing a
+turn each, and a column the warehouse does not have is reported in the window, so the agent puts
+it in its open points rather than guessing around it.
+
+A decorated function owns its own run, so neither `agent.py` nor the `inputs_validator` and
+`outputs_validator` arguments of `run.agent` reach it. It calls the same functions itself, around
+`loop.run`.
 
 ## Code around the loop
 

@@ -106,6 +106,16 @@ dlthub ai init              [--agent] [--overwrite] [--location] [--branch]
 
 `list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name.
 
+`--branch` does not work as of dlt 1.30.1a1. The sparse clone is a `--depth=1` of the default branch, so the named ref is never fetched and the checkout fails with `pathspec '<branch>' did not match any file(s)`. The failure handler then deletes `~/.dlt/repos/<repo>`, so the next install re-clones from scratch. To install a toolkit from a branch, clone it yourself and pass `--location`:
+
+```bash
+git clone --depth 1 --branch <branch> https://github.com/dlt-hub/dlthub-ai-harness.git /tmp/harness
+```
+
+```bash
+dlthub --non-interactive ai toolkit install <name> --location /tmp/harness --overwrite
+```
+
 ## MCP tools
 
 When the `toolkit` feature is enabled, the dlthub MCP server exposes:
@@ -122,6 +132,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `skills/<name>/` | Directory with `SKILL.md` + supporting files, copied as a tree |
 | command | `commands/<name>.md` | Single markdown file, slash-command or prompt template |
 | rule | `rules/<name>.md` | Single markdown file, always-on context injected by the IDE |
+| agent | `dlthub/agents/<name>/` | Directory with `AGENT.md` + optional Python modules, copied as a tree. Needs dlt 1.30.1a1 or later: before that the installer read `agents/` and skipped the folder without saying so |
 | mcp | `plugin.json`, `.mcp.json`, or `mcp.json` | MCP server definitions, merged into platform config |
 | ignore | `.claudeignore` | Glob patterns for files that the AI does not read or index |
 
@@ -132,6 +143,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | native | native | native |
 | command | native | native | converted to skill |
 | rule | native | native | converted to skill |
+| agent | read by dlt | read by dlt | read by dlt |
 | mcp | native (JSON) | native (JSON) | native (TOML) |
 | ignore | native | native | native |
 

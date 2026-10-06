@@ -19,8 +19,9 @@ Reference files beside this skill:
 
 - [agent-md-reference.md](agent-md-reference.md) owns every frontmatter field.
 - [summary-format.md](summary-format.md) owns the shape of `summary` and the link helper.
-- [deployment.md](deployment.md) owns `run.agent`, the profile pin, triggers and the `AGENT__`
-  variables.
+- [deployment.md](deployment.md) owns `run.agent`, the profile pin, triggers, the hook that
+  fetches evidence before the loop, and the `AGENT__` variables.
+- [check_agent.py](check_agent.py) checks one `AGENT.md` against the rules a provider imposes.
 
 ## Terms
 
@@ -104,12 +105,19 @@ the field table, the access axes and the verbs.
 - `access`: what it may touch, per axis: `local`, `data`, `context`.
 - `skills` and `rules`: `<toolkit>:<name>` refs to components it uses.
 
-What the task knows in advance is the decision rule. `job-inspector` grants `local: read`
-and `context: read`: it investigates an open question and cannot know which file or which record
+**Fetch the evidence in Python where the task is fixed, and grant the axis where it is open.**
+What the task knows in advance is the decision rule. `job-inspector` grants `local: read` and
+`context: read`: it investigates an open question and cannot know which file or which record
 answers it. An agent that answers a fixed list of questions grants nothing and declares no
 `tools`: the code around its loop fetches every artifact those questions read before the loop
-starts and hands the model bounded windows. Fetch the evidence in Python where the task is fixed,
-and grant the axis where it is open.
+starts and hands the model bounded windows.
+
+Warehouse rows are the worked example. Every tool the `data` axis buys takes a `pipeline_name`
+and restores that pipeline from the run directory, and an agent job on the platform starts with
+an empty run directory, so the first call fails with `No local state found` and the run aborts
+once `loop_run_args.retries` is spent. An agent that needs rows reads them before the loop with
+`dlt.dataset()` and renders a bounded window into the system prompt. "Row evidence through a
+hook" in [deployment.md](deployment.md) has the shape.
 
 `job-inspector` grants no `data`. It works from run records, logs, job definitions, telemetry and
 source, and a `data` grant would put workspace data in front of a model-driven process.
@@ -128,8 +136,9 @@ a verb you leave out is a tool the model is never offered. Five rules carry most
   without `execute` has no way to read one. Grant it where the task has no other route, and
   write into the body what it may run.
 - **Take the smallest destination access.** Leave `data` out where run records, logs, job
-  definitions, telemetry and source answer the question. Where rows are the task, `data: read`
-  against a read-only credential in the `access` profile is the whole grant.
+  definitions, telemetry and source answer the question. Where rows are the task, read them in a
+  hook around the loop: the tools a `data` grant buys need pipeline state the runner has not got,
+  and the run aborts on the first call.
 - **List the fewest feature groups.** A group brings every tool it holds that the access covers.
   A dependency added to the workspace can contribute tools to a group the agent already lists,
   so keep the workspace to what it needs.
@@ -230,6 +239,17 @@ Read the trace against what you declared. A tool in it that the task does not ne
 axis to drop. A turn count at the limit is a body that did not say where to stop.
 
 ## 8. Check it
+
+Run the checker beside this skill over the folder first. It reads the `AGENT.md` and reports the
+schema size, the optional-property count against the cap, untyped properties, bare objects, the
+`status` and `summary` contract, and a body placeholder no input declares. All of these fail a run
+on the first model call.
+
+```bash
+uv run python .claude/skills/create-background-agent/check_agent.py agents/<name>
+```
+
+Then read the list:
 
 - The folder name is the agent's name; `description` says when to run it.
 - `tools` lists only the feature groups the task needs; `access` only the verbs it needs.

@@ -64,12 +64,24 @@ access:
 | | `write` | `Write`, `Edit`, and whatever else the loop wires under those names |
 | | `execute` | `Bash` (`PowerShell` on Windows), `RunPython`, in the workspace, in the job's own process tree |
 | | `network` | `WebFetch`, `WebSearch` |
-| `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. Mapping the verb to a dlt profile is planned |
+| `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. The tools attach a local dlt pipeline, which an agent job on the platform has no state for, so they fail at run time: see "Rows need a hook, not a grant" below. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
 Credential files (`*secrets.toml`, `.env`) are never readable, whatever `local` says. A tool the
 declaration does not cover is not offered to the model, and the trace of every run lists the tools
 that were wired.
+
+### Rows need a hook, not a grant
+
+Every data tool takes a `pipeline_name` and restores that pipeline from `pipelines_dir` under the
+active profile. An agent job runs on `access` in a fresh run directory, and the pipelines wrote
+their state on `prod` on another machine, so `.dlt/state/access/pipelines/<name>` does not exist
+and the call comes back with `No local state found`. Nothing catches this earlier: the spec
+validates, the deployment succeeds, the MCP server starts and the model is offered the tools.
+
+So an agent that reads warehouse rows takes them in `validate_input` with `dlt.dataset()` and
+hands the model a rendered table, and its `access` block leaves `data` out. "Row evidence through
+a hook" in [deployment.md](deployment.md) has the code.
 
 Repeat the policy in the body as explanation: "you are read-only" helps the model understand its
 role, and the `access` block enforces it for the MCP tools. `local: execute` is the exception: the
@@ -99,9 +111,11 @@ inputs:
 - A required input with no value fails the run like any missing job argument. An optional one
   nobody supplied renders as empty text, so **the body must say what to do with partial input**:
   which combinations are workable, and when to abort.
-- An input the run did not carry at all is also logged as an unresolved placeholder and listed
-  in the trace under `unresolved_placeholders`. The text still renders empty, so a triggered run
-  of an agent with optional inputs warns on every run and works as written.
+- An input the run did not carry at all is listed in the trace under
+  `unresolved_placeholders`. The text renders empty and the run works as written. From dlt
+  1.30.1a1 a declared optional input left unset is not warned about; the warning is kept for a
+  placeholder naming something the file does not declare, and for a required input that is
+  missing.
 - `required: {}` is how "nothing required" is written; `[]` works too.
 - An input the body never names is a warning at manifest time: nothing would read it.
 - There is no `inputs.prompt`. The task is the body.

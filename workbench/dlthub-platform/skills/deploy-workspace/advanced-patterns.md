@@ -45,10 +45,11 @@ overrides the matching `defaults` in the `AGENT.md`. The `access`, `tools`, `ski
 `rules` lists come from the `AGENT.md`: on a referenced agent the decorator drops its argument
 for them, and on a decorated function the argument replaces the list, every axis included.
 
-An agent folder can ship an `agent.py`, which dlt runs around the loop of a job that
-references the agent: `validate_input(inputs)` before it and `validate_output(output)` after
-it. The inspector's `agent.py` writes every run id and job ref in its summary as a link to its
-web UI page, labelled with the run number. The reference fails when
+An agent folder can ship an `agent.py`, which dlt 1.30.1a1 and later runs around the loop of a
+job that references the agent: `validate_input(inputs)` before it and `validate_output(output)`
+after it. A decorated function owns its own run and the module never reaches it. The inspector's
+`agent.py` writes every run id and job ref in its summary as a link to its web UI page, labelled
+with the run number. The reference fails when
 `.claude/dlthub/agents/job-inspector/` is missing, which means the toolkit is not installed in
 the workspace.
 

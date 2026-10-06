@@ -84,9 +84,10 @@ An agent that investigates, inspects or analyses an entity in the workspace take
 An agent writes a run id as a uuid, because that is what a person pastes into `dlthub job runs
 logs`. It cannot write a link: its `run_context` carries the trigger, the run id and the interval,
 and no workspace id or UI base. The ids become links after the loop, in the agent folder's
-`agent.py`. dltHub runs its hooks around the loop of every job referencing the agent,
-`validate_input(inputs)` before and `validate_output(output)` after, so a declared
-`run.agent("<ref>", ...)` gets the links as much as a decorated one.
+`agent.py`. From dlt 1.30.1a1 dltHub imports that module on a declared
+`run.agent("<ref>", ...)` and calls `validate_input(inputs)` before the loop and
+`validate_output(output)` after it. A decorated function owns its own run and the module never
+reaches it, so it calls `validate_output` itself before returning.
 
 ```python
 from .links import link_summary
