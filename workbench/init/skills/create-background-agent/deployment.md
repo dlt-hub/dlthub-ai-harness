@@ -25,7 +25,7 @@ inspector = run.agent(
 )
 ```
 
-`trigger` takes dlt trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
+`trigger` takes dltHub trigger strings: `schedule:0 7 * * *`, `job.fail:<job ref or selector>`,
 `job.success:...`. `job.fail:*` watches every job in the workspace and expands at manifest time,
 never onto the job that declares it; read "Triggers that would loop" below before using it. A run
 started by hand or from the UI arrives with a `manual:` trigger and only the inputs it was given,
@@ -75,7 +75,7 @@ this repo keep a file so a toolkit can install the definition and a grader can r
 ## Profile
 
 **An agent job must never run on the `prod` profile.** The runtime gives an agent job the
-read-only `access` profile when the deployment declares none. A deployment can override that with
+read-only `access` profile when the deployment does not declare a profile. A deployment can override that with
 `require={"profile": ...}`, and pointing it at `prod` puts production credentials in the job
 process, so leave it at `access`.
 
@@ -112,7 +112,7 @@ pip install "pydantic-ai-slim[anthropic,openai,google,mcp,spec]"
 
 Without it the run stops at `MissingDependencyException` before the model is addressed.
 
-The runner takes it from the `agent-loop-pydantic-ai` group, which dlt adds to the workspace
+The runner takes it from the `agent-loop-pydantic-ai` group, which dltHub adds to the workspace
 requirements with that same spec and no version bound. A workspace whose other pins push the
 solver backwards gets an old loop that fails to import, so pin a floor of your own next to the
 rest of the workspace dependencies:
@@ -182,7 +182,7 @@ signature is warned about at deploy time and nothing passes it. Inputs the code 
 stay out of the signature and travel through `loop.run(inputs=...)`; the `AGENT.md` declares them
 because a body placeholder must be declared.
 
-Raise `JobAbortedException` on any path that did not complete a loop run. dlt reads `loop.trace`
+Raise `JobAbortedException` on any path that did not complete a loop run. dltHub reads `loop.trace`
 on every returned dict carrying `status`, so returning from the abort branch fails the run with
 `AgentTraceNotAvailable` and loses the abort reason. The loop records its trace on the way out of
 a normal return, so a loop that started and then raised takes the same path.
@@ -213,14 +213,14 @@ that matches no job is reported at deploy time as `matched no job`.
 
 Two mechanisms sit between a broad selector and a loop, and neither replaces naming the jobs: the
 agent aborts when the run it resolved belongs to its own job, and a job event never fires on a
-manual run. dlt has no manifest validation for this yet, because a selector is expanded to
+manual run. dltHub has no manifest validation for this yet, because a selector is expanded to
 concrete refs at deploy time and nothing compares the result against the jobs that run agents.
 
 ## Pinning the model
 
-An agent definition names no model, so the workspace sets one. The runtime supplies none: a
-workspace with no variables set falls back to the loop's default alias and the run fails on the
-first model call with the provider's own missing-key error, before a turn is taken.
+An agent definition doesn't name a model, so the workspace sets it. The runtime doesn't supply
+one either: a workspace with no variables set falls back to the loop's default alias and the run
+fails on the first model call with the provider's own missing-key error, before a turn is taken.
 `agent.model`, `agent.api_key`, `agent.api_url` and `agent.api_version` are one set: a run takes
 all four from the workspace or all four from the runtime. Setting `api_key` alone leaves `model` unset, so the run sends the
 agent's default model to your endpoint and gets `401 API key is invalid`. Set them as workspace

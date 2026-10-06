@@ -1,6 +1,6 @@
 ---
 name: create-background-agent
-description: "Write a dltHub background agent: an AGENT.md that runs unattended on the platform, on a schedule, after a job fails, or when someone starts it from the web UI. Use when the user wants work to happen on its own after an event ('whenever a job fails, diagnose it for me', 'every Monday summarise what broke'), when they ask how to write, declare or deploy an AGENT.md, how to pick its access, tools, inputs or output, how to set run.agent or AGENT__MODEL, or how to ship an agent in a toolkit. Do NOT use for a host subagent in .claude/agents/, for scheduling a pipeline or a plain job (deploy-workspace), or for diagnosing one failure right now (debug-deployment)."
+description: "Write a dltHub background agent: an AGENT.md that runs unattended on the platform, on a schedule, after a job fails, or when someone starts it from the web UI. Use when the user wants work to happen on its own after an event ('whenever a job fails, diagnose it for me', 'every Monday summarise what broke'), when they ask how to write, declare or deploy an AGENT.md, how to pick its access, tools, inputs or output, how to set run.agent, or how to ship an agent in a toolkit. Do NOT use for a host subagent in .claude/agents/, for scheduling a pipeline or a plain job (deploy-workspace), for diagnosing one failure right now (debug-deployment), or for setting AGENT__MODEL and the other AGENT__ variables, which belong to any agent job including the shipped job-inspector."
 ---
 
 # Create a background agent
@@ -41,7 +41,7 @@ wants:
 
 - **A scheduled pipeline or a plain job.** The work is deterministic and a person wrote the code.
   That is `deploy-workspace` in **dlthub-platform**.
-- **One failure the user wants explained now.** That is `debug-deployment`.
+- **A single failure the user wants explained now.** That is `debug-deployment`.
 - **A host subagent.** A Claude Code agent in `.claude/agents/`, or the equivalent on another
   host, runs inside a conversation. A dltHub agent runs on the platform with no conversation
   around it, which is why it installs under `.claude/dlthub/agents/`.
@@ -61,11 +61,16 @@ workspace root and point the deployment at the folder path. In a toolkit it goes
 `workbench/<toolkit>/dlthub/agents/<name>/`, and `dlthub ai toolkit install <toolkit>` copies it
 to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`, `.agents/dlthub/agents/` on the
 other hosts). The `dlthub/` segment is on both sides: a toolkit's plain `agents/` folder is the
-host's own subagents folder, which dlt neither installs from nor validates, and the hosts scan
-their own folders for native subagents. A
-workspace refers to an installed agent as `<toolkit>:<name>`, and the workspace's toolkit index
-(`.dlt/.toolkits`) travels with every deployment, so the reference resolves on the runner as it
-does locally.
+host's own subagents folder, which dltHub neither installs from nor validates, and the hosts scan
+their own folders for native subagents. A workspace refers to an installed agent as
+`<toolkit>:<name>`, and the workspace's toolkit index (`.dlt/.toolkits`) travels with every
+deployment, so the reference resolves on the runner as it does locally.
+
+Shipping an agent in a toolkit means working in a clone of the AI harness repo
+(`https://github.com/dlt-hub/dlthub-ai-harness`), since the folder lives beside the toolkit's
+skills and `make validate-toolkits` checks it there. The definition then travels to everyone who
+installs the toolkit, and upgrading it costs a change in the repo and a reinstall in every
+workspace. Put an agent only one workspace runs in that workspace's `agents/` folder.
 
 The file is YAML frontmatter and a markdown body. The frontmatter declares what the agent has,
 and the body is its system prompt. Only the body is required: a file with no frontmatter is a
@@ -111,7 +116,7 @@ source, and a `data` grant would put workspace data in front of a model-driven p
 
 ### Hold the grant narrow
 
-The declaration contains important guardrails. dlt wires only what `access` and `tools` name, so
+The declaration contains important guardrails. dltHub wires only what `access` and `tools` name, so
 a verb you leave out is a tool the model is never offered. Five rules carry most of it.
 
 - **Stay on the `pydantic-ai` loop.** The shipped agents are written and graded against it, and

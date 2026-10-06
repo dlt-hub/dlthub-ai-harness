@@ -110,7 +110,7 @@ inputs:
 
 An input that names a workspace entity carries `entity_type`: `job-run`, `job`, `pipeline`,
 `dataset` or `workspace`. The agent receives the bare id (a run id, a job ref, a pipeline name);
-dlt composes the entity reference `job-run/<id>` when it reports.
+dltHub composes the entity reference `job-run/<id>` when it reports.
 
 Declaring it does two things:
 
@@ -130,7 +130,7 @@ answer `N/A` and the run is graded blind.
 
 ## `output`
 
-A JSON Schema of the agent output. Two properties are the contract every agent shares and dlt adds
+A JSON Schema of the agent output. Two properties are the contract every agent shares and dltHub adds
 them, with their descriptions, when a definition leaves them out:
 
 ```yaml
@@ -149,13 +149,13 @@ output:
   required: [status, summary]
 ```
 
-**dlt writes its own description over both**, whatever the file says. The model reads dlt's text,
+**dltHub writes its own description over both**, whatever the file says. The model reads dltHub's text,
 so what `succeeded`, `failed` and `aborted` mean for this agent belongs in the body. A
 description written here documents the contract for the next author.
 
 Declare them anyway: the file then shows the whole contract, and `make validate-toolkits` checks
 they carry the standard values. A declaration that contradicts them (`status` with other values,
-`summary` not a string) fails validation, because dlt would overwrite it and lose your intent. A
+`summary` not a string) fails validation, because dltHub would overwrite it and lose your intent. A
 domain outcome gets its own name: a data-quality agent returns `verdict`, not a second `status`.
 
 Add the agent's own fields next to them. What to know about the schema:
@@ -165,7 +165,7 @@ Add the agent's own fields next to them. What to know about the schema:
   every field whose name does not say it all.
 - **Constrained decoding guarantees shape, not truth.** A misread field is a confident,
   schema-valid, wrong answer. The body has to define what each value means.
-- **The schema reaches the model as declared.** dlt changes one thing: `entity_type` moves into
+- **The schema reaches the model as declared.** dltHub changes one thing: `entity_type` moves into
   `$comment`, because strict validators reject keywords they do not know. Nothing is added or
   relaxed on your behalf, so write what the provider accepts. For example, Anthropic's structured
   output rejects `minimum`, `maximum` and `minLength`. Put numeric bounds in the description.
@@ -201,11 +201,11 @@ defaults:
   loop_run_args: {retries: 1}           # framework-specific; unknown keys are reported, not fatal
 ```
 
-`limits.max_tokens` is counted by dlt after every turn. `loop_run_args` are handed to the
+`limits.max_tokens` is counted by dltHub after every turn. `loop_run_args` are handed to the
 framework: `retries` is how often pydantic-ai lets the model correct a failing tool call; keys the
 loop does not know are listed in the trace as ignored.
 
-A definition sets no `trigger`. `to_agent_definition` drops `defaults` from the manifest and the
+A definition doesn't set a `trigger`. `to_agent_definition` drops `defaults` from the manifest and the
 loop takes `model`, `limits` and `loop_run_args` from it, so a trigger declared here does nothing.
 The trigger belongs to `run.agent(trigger=...)`, where the workspace declares which of its own
 jobs the agent watches. `make validate-toolkits` rejects a `defaults.trigger`.

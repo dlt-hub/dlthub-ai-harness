@@ -54,6 +54,12 @@ change here is a change in every body that states them.
   | `appears to`, `seems to` where the evidence settles it | the claim, with the confidence field carrying the doubt |
   | `not X but Y`, `X, not Y` | what is the case, stated once |
 
+- **Every claim cites the artifact behind it, in the bullet that makes the claim.** The artifact
+  goes in parentheses at the end, written as the command or path the reader runs to open it:
+  (`dlthub job runs logs <run id>` line 52), (`pipelines/github.py` line 16). Quote the words that
+  settle the point rather than paraphrasing them, so the reader validates the finding from the
+  summary alone. A claim resting on nothing the reader can open says so, in the section that
+  carries the doubt: `Confidence` for `job-inspector`.
 - **No verdict label at the top.** State what was found; `passed` and the other output fields
   carry the verdict.
 
@@ -78,7 +84,7 @@ An agent that investigates, inspects or analyses an entity in the workspace take
 An agent writes a run id as a uuid, because that is what a person pastes into `dlthub job runs
 logs`. It cannot write a link: its `run_context` carries the trigger, the run id and the interval,
 and no workspace id or UI base. The ids become links after the loop, in the agent folder's
-`agent.py`. dlt runs its hooks around the loop of every job referencing the agent,
+`agent.py`. dltHub runs its hooks around the loop of every job referencing the agent,
 `validate_input(inputs)` before and `validate_output(output)` after, so a declared
 `run.agent("<ref>", ...)` gets the links as much as a decorated one.
 

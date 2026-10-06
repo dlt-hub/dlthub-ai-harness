@@ -2,7 +2,7 @@
 1. Locally pipelines and datasets run on `dev` profile.
 2. On runtime pipelines (batch jobs) run on `prod` profile
 3. On runtime notebooks (interactive jobs) run on `access` profile. if not defined they run on `prod` profile.
-4. Agent jobs (`run.agent(...)`) **NEVER** run on `prod`. The runtime gives them the `access` profile when the deployment declares none: always pin `require={"profile": "access"}` so the declaration says so, and never override it with `prod`.
+4. Agent jobs (`run.agent(...)`) **NEVER** run on `prod`. The runtime gives them the `access` profile when the deployment does not declare a profile: always pin `require={"profile": "access"}` so the declaration says so, and never override it with `prod`.
    The pin covers profile-scoped secrets only. A variable set with `--workspace` reaches every profile, so scope one an agent must not see with `--profile`. Work needing production write credentials goes in a pipeline or a plain job, not an agent.
 5. If user pins a different profile - it is used to run pipelines and datasets locally.
 6. Get workspace info (via cli or mcp tool) to see a list of profiles. **configured** profiles are one
