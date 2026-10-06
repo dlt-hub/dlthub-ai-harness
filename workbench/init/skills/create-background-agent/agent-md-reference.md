@@ -222,7 +222,7 @@ the `AGENT__MODEL` variable, which every agent job in that workspace reads. `run
 `model=`, and configuration outranks it, so a value in the deployment code is silently beaten by
 the variable; leave it out and the two cannot disagree.
 
-A definition shipped in a workbench toolkit names no model. An alias resolves on Anthropic, OpenAI
+A definition shipped in an AI harness toolkit names no model. An alias resolves on Anthropic, OpenAI
 and Google; an Azure workspace addresses a deployment on its own endpoint and has no alias, so a
 shipped `model: sonnet` is a default it cannot resolve. `make validate-toolkits` rejects one.
 
