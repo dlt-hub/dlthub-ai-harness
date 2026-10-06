@@ -196,10 +196,10 @@ An agent folder travels as ordinary workspace files, so supporting code sits nex
 `AGENT.md` and the deployment reaches it through `sys.path`. The runner unpacks it under the run
 directory, so the same relative path works there.
 
-Code that talks to the platform reads dlt's own `active().runtime_config` for the credential
+Code that talks to the platform reads dltHub's own `active().runtime_config` for the credential
 (`api_key` or `auth_token`, `workspace_id`, `api_base_url`) rather than the environment. The same
 call resolves from `.dlt/config.toml` locally and from the mounted configuration on the runner, so
-there is nothing to guess about which keys the platform injects.
+the same code runs in both places.
 
 The JWT that `dlthub login` writes expires after about an hour, so a fetcher passes a credentials
 object the SDK renews through. A static token makes a long run fail halfway with `token_expired`.
@@ -211,10 +211,10 @@ agent job can fail. The selector expands onto every other job, so a failure ther
 the inspection fails in turn and starts the first agent again. Name the jobs, or tag them. A tag
 that matches no job is reported at deploy time as `matched no job`.
 
-Two mechanisms sit between a broad selector and a loop, and neither replaces naming the jobs: the
-agent aborts when the run it resolved belongs to its own job, and a job event never fires on a
-manual run. dltHub has no manifest validation for this yet, because a selector is expanded to
-concrete refs at deploy time and nothing compares the result against the jobs that run agents.
+Two mechanisms narrow a broad selector. The agent aborts when the run it resolved belongs to its
+own job, and a job event never fires on a manual run. Name the jobs anyway: dltHub has no manifest
+validation for this yet, because a selector is expanded to concrete refs at deploy time and
+nothing compares the result against the jobs that run agents.
 
 ## Pinning the model
 
