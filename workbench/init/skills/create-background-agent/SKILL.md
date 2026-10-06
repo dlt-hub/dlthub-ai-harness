@@ -1,6 +1,6 @@
 ---
 name: create-background-agent
-description: "Write a dltHub background agent: an AGENT.md that runs unattended on the platform, on a schedule, after a job fails, or when someone starts it from the web UI. Use when the user wants work to happen on its own after an event ('whenever a job fails, diagnose it for me', 'every Monday summarise what broke'), when they ask how to write, declare or deploy an AGENT.md, how to pick its access, tools, inputs or output, how to set run.agent or AGENT__MODEL, or how to ship an agent in a toolkit. Do NOT use for a host subagent in .claude/agents/, for scheduling a pipeline or a plain job (deploy-workspace), or for diagnosing one failure right now (debug-deployment). To grade an agent that already runs, use evaluate-background-agent."
+description: "Write a dltHub background agent: an AGENT.md that runs unattended on the platform, on a schedule, after a job fails, or when someone starts it from the web UI. Use when the user wants work to happen on its own after an event ('whenever a job fails, diagnose it for me', 'every Monday summarise what broke'), when they ask how to write, declare or deploy an AGENT.md, how to pick its access, tools, inputs or output, how to set run.agent or AGENT__MODEL, or how to ship an agent in a toolkit. Do NOT use for a host subagent in .claude/agents/, for scheduling a pipeline or a plain job (deploy-workspace), or for diagnosing one failure right now (debug-deployment)."
 ---
 
 # Create a background agent
@@ -209,7 +209,7 @@ each:
 - **An agent job must never run on the `prod` profile.** The runtime defaults it to `access`. Pin
   `require={"profile": "access"}` so the declaration says so, and never override it with `prod`.
   This is rule 4 of the always-loaded `dlthub-platform` profiles rule.
-- **`job.fail:*` with an evaluator in the workspace starts a loop.** Name the jobs to watch, or
+- **`job.fail:*` starts a loop where another agent job can fail.** Name the jobs to watch, or
   tag them.
 - **`agent.verbosity` stays at 1**, the default. At 0 the job log keeps tool names only, and every
   check that reads tool arguments or the agent's own statements goes blind.
@@ -224,7 +224,7 @@ job with its inputs as configuration keys and read the job result it prints, bot
 Read the trace against what you declared. A tool in it that the task does not need is an `access`
 axis to drop. A turn count at the limit is a body that did not say where to stop.
 
-## 8. Check it, then have it graded
+## 8. Check it
 
 - The folder name is the agent's name; `description` says when to run it.
 - `tools` lists only the feature groups the task needs; `access` only the verbs it needs.
@@ -246,5 +246,5 @@ axis to drop. A turn count at the limit is a body that did not say where to stop
   generated.
 
 An agent that runs unattended is read by a person only when its output matters, so nothing tells
-you whether it followed its own instructions. Hand over to (`evaluate-background-agent`) to write
-a grader for it.
+you whether it followed its own instructions. Read a sample of its runs yourself after it goes
+live, against the body you wrote and the trace of each run.

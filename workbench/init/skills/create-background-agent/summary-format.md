@@ -58,8 +58,8 @@ change here is a change in every body that states them.
   carry the verdict.
 
 State the shape in the body and check it. `job-inspector` has the rules under "Summary format".
-An evaluator grading an agent gives each of them a deterministic check, since a heading, a bullet
-and a code span are what data settles. An agent that assembles its summary in Python around the
+A heading, a bullet and a code span are what data settles, so anything reading the summary
+afterwards checks them without a model. An agent that assembles its summary in Python around the
 loop splits what the model wrote into bullets itself.
 
 ## Default sections
@@ -72,24 +72,6 @@ An agent that investigates, inspects or analyses an entity in the workspace take
 | `## Diagnosis` | What happened, where, and why; the bullet that carries the cause quotes its evidence with the source and the line |
 | `## Recommendation` | What the reader does next: the target and the change, written as the instruction itself |
 | `## Confidence` | What this rests on and what it leaves open; when nothing was left open, one bullet says so |
-
-An agent that grades another agent's run opens on the verdict and keeps the evidence
-underneath:
-
-| heading | the bullets answer |
-|---|---|
-| `## Findings` | The counts, any rule broken that outranks the rest, what the graded agent got wrong and why it matters, then one bullet per category with its verdict and every broken check nested under it |
-| `## Recommendation` | What to change in the graded agent's definition so a broken check stops recurring. A report over one run leaves this out, because a change to an agent's instructions rests on a pattern across runs |
-| `## Scope` | How many checks did not apply, then the run or runs graded and what each acted on, each linked |
-| `## Detailed evaluation results` | The tally, then one row per decided check: `check_id`, `category`, `kind`, `results`, `reasoning`. Over a window each check appears once and `results` says how it came back across the runs. A check that answered `N/A` everywhere has no row, and a report that decided nothing writes no table and says so in its place |
-
-Two categories carry most graders, `Instruction following` and `Quality`; one with other
-categories renames those bullets and leaves the rest. A report over many runs takes the same
-sections, with the window, the runs skipped and the reasons under `Scope`, and each broken
-instruction states the runs it broke on.
-
-Changing a section an evaluator grades means changing that evaluator too: its registry holds
-the graded agent's headings, and the checks that read a section by name go with them.
 
 ## Linking the runs and jobs a summary names
 

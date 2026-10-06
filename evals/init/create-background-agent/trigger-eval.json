@@ -20,7 +20,7 @@
     "should_trigger": true
   },
   {
-    "query": "I need the agent to take a run id as input and report back which pipeline it belonged to — how do I declare that so the web UI offers it from the run page?",
+    "query": "I need the agent to take a run id as input and report back which pipeline it belonged to \u2014 how do I declare that so the web UI offers it from the run page?",
     "should_trigger": true
   },
   {
@@ -38,14 +38,6 @@
   {
     "query": "I want a thing that runs every monday at 7 and writes a markdown summary of the week's loads, reads the run records itself and decides what's worth mentioning",
     "should_trigger": true
-  },
-  {
-    "query": "my job_inspector run gave a diagnosis but I don't trust it — is there a way to score whether it actually followed the instructions in its own AGENT.md?",
-    "should_trigger": false
-  },
-  {
-    "query": "write me a rubric with TRUE/FALSE/N/A per instruction so I can grade the agent's last 20 runs in one report",
-    "should_trigger": false
   },
   {
     "query": "the jaffle_shop load job failed about an hour ago, can you pull the logs and tell me why",

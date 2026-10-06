@@ -96,8 +96,8 @@ wrote and reviewed, and an agent proposes it rather than performing it.
 
 Nothing at deploy time rejects an explicit `prod`. Manifest validation rejects a local-only
 profile (`dev`, `tests`) and otherwise takes the name as given, so a typo like `acess` passes too
-and surfaces as missing credentials at run time. An evaluator catches a break after the fact by
-reading the profile off the run record.
+and surfaces as missing credentials at run time. The run record carries the profile the run
+used, so a break shows up there after the fact.
 
 The profile has to be `configured` in the workspace; workspace info lists which ones are. On
 `dlthub local run` the declaration is a warning rather than a switch: the run uses the active
@@ -157,7 +157,7 @@ from helpers import after, before
     trigger="schedule:0 7 * * *",
     require={"profile": "access"},
 )
-async def graded_agent(
+async def wrapped_agent(
     run_context: run.TJobRunContext = None,
     target_run_id: Annotated[
         str,
@@ -208,17 +208,15 @@ object the SDK renews through. A static token makes a long run fail halfway with
 
 ## Triggers that would loop
 
-Do not point an inspecting agent at `job.fail:*` in a workspace that runs an evaluator. The
-selector expands onto every other job, the evaluator included, so a failing evaluation is
-inspected and the inspection starts the evaluator again. Name the jobs, or tag them. A tag that
-matches no job is reported at deploy time as `matched no job`.
+Do not point an agent that reacts to a failure at `job.fail:*` in a workspace where another
+agent job can fail. The selector expands onto every other job, so a failure there is inspected,
+the inspection fails in turn and starts the first agent again. Name the jobs, or tag them. A tag
+that matches no job is reported at deploy time as `matched no job`.
 
-Three mechanisms sit between a broad selector and a loop, and none of them replaces naming the
-jobs: the inspecting agent aborts when the run it resolved belongs to an evaluator job or to its
-own job; an evaluator gives that rule a check of its own, so an inspection that reached one anyway
-comes back FALSE and the loop shows up in the evaluation; a job event never fires on a manual run.
-dlt has no manifest validation for this yet, because a selector is expanded to concrete refs at
-deploy time and nothing compares the result against the jobs that run agents.
+Two mechanisms sit between a broad selector and a loop, and neither replaces naming the jobs: the
+agent aborts when the run it resolved belongs to its own job, and a job event never fires on a
+manual run. dlt has no manifest validation for this yet, because a selector is expanded to
+concrete refs at deploy time and nothing compares the result against the jobs that run agents.
 
 ## Pinning the model
 

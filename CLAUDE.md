@@ -40,7 +40,7 @@ A toolkit is a Claude Code plugin. It can contain:
 - **Agents** (`dlthub/agents/<name>/AGENT.md`) — agent definitions. Frontmatter plus a body that is the system prompt. Name must match the folder. Each declares `access`, `inputs`, `output` (with `status` and `summary`) and `defaults`.
   - `agents/` is the host's own subagents folder; dlt does not install an agent definition from there.
   - The folder holds `AGENT.md`, an optional `agent.py` (`validate_input`, `validate_output`) and the modules it imports. An agent folder imports only its own files.
-  - No README in the folder: a document beside a definition drifts from it. What an author or an operator needs is in two skills under `workbench/init/skills/`, which reach every workspace through `init`: `create-background-agent` for writing and deploying one, `evaluate-background-agent` for grading one.
+  - No README in the folder: a document beside a definition drifts from it. What an author or an operator needs is in `create-background-agent`, a skill under `workbench/init/skills/` that reaches every workspace through `init`.
   - Install path: `.claude/dlthub/agents/<name>/`, under `dlthub/` so it never mixes with the host's native agents.
 
 ### Toolkit Workflow (`rules/workflow.md`)

@@ -70,10 +70,7 @@ diagnose a failed platform job run, classify it and propose a fix → dlthub-pla
 * `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., expose={"tags": ["ingest"]})`. Name the jobs to watch, or tag them.
 * The agent names no model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5, and `AGENT__API_KEY` to the key for that provider.
 
-**Writing a new agent, not installing a shipped one.** Both skills ship with `init`, so they are already present in every workspace and need no install:
-
-* Write and deploy one → `create-background-agent`. It covers the `AGENT.md` fields, the `access` decision, the summary shape, `run.agent`, the profile pin and the trigger strings.
-* Grade one that already runs → `evaluate-background-agent`. It covers turning the graded agent's instructions into checks, the rubric, and the per-run and scheduled deployments.
+**Writing a new agent, not installing a shipped one.** Send the user to `create-background-agent`. It ships with `init`, so it is already present in every workspace and needs no install, and it covers the `AGENT.md` fields, the `access` decision, the summary shape, `run.agent`, the profile pin and the trigger strings.
 
 <!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. -->
 
