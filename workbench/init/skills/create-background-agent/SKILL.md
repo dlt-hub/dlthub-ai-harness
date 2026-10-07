@@ -253,8 +253,9 @@ to stop, and the fix is the body, not a larger `max_tokens`.
 
 Run the checker beside this skill over the folder first. It reports the schema size, the
 optional-property count against the cap, untyped properties, bare objects, the `status` and
-`summary` contract, and a body placeholder no input declares, all of which fail a run on the first
-model call. It also measures the system prompt, body plus every rule and skill the file lists, and
+`summary` contract, a body placeholder no input declares, and a `tools` group with no `access`
+axis to serve it. Each of those either fails a run on the first model call or leaves the agent
+without the tools the file says it has. It also measures the system prompt, body plus every rule and skill the file lists, and
 prints what `max_turns` of it costs against `max_tokens`, which is the number step 7 asks you to
 size. A reference it cannot resolve is a component the agent will not get.
 

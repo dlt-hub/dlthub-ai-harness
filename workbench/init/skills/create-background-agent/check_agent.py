@@ -102,6 +102,24 @@ def check_output_contract(output, errors):
         errors.append(f"output.summary declares type {summary.get('type')!r}, not 'string'")
 
 
+ACCESS_AXES = ("local", "data", "context")
+
+SELF_SERVING_GROUPS = frozenset({"toolkit"})
+"""Groups whose tools ask for no access. Every other group serves nothing without an axis."""
+
+
+def check_access(frontmatter, errors):
+    """A feature group serves only the tools an `access` axis covers, `toolkit` aside."""
+    groups = [g for g in (frontmatter.get("tools") or []) if g not in SELF_SERVING_GROUPS]
+    access = frontmatter.get("access") or {}
+    if groups and not any(access.get(axis) for axis in ACCESS_AXES):
+        errors.append(
+            f"tools lists {', '.join(groups)} but access grants no"
+            f" {', '.join(ACCESS_AXES)} axis; the server then serves the toolkit catalogue"
+            " alone and the agent is offered none of those tools"
+        )
+
+
 def check_body(body, inputs, errors, warnings):
     declared = set((inputs.get("properties") or {}) if isinstance(inputs, dict) else {})
     used = {name.partition(".")[0] for name in PLACEHOLDER.findall(body)}
@@ -215,6 +233,7 @@ def main():
     input_optional = check_schema("inputs", inputs, errors, warnings) if inputs else 0
     output_optional = check_schema("output", output, errors, warnings) if output else 0
     check_body(body, inputs, errors, warnings)
+    check_access(frontmatter, errors)
 
     output_chars = len(json.dumps(output))
     if output_chars > MAX_OUTPUT_CHARS:

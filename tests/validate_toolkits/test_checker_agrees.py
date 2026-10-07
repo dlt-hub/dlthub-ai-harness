@@ -32,6 +32,14 @@ def test_the_status_values_agree() -> None:
     assert check_agent.STATUS_VALUES == V._STATUS_VALUES
 
 
+def test_the_access_axes_agree() -> None:
+    assert tuple(check_agent.ACCESS_AXES) == tuple(V.ACCESS_AXES)
+
+
+def test_the_self_serving_groups_agree() -> None:
+    assert check_agent.SELF_SERVING_GROUPS == V.SELF_SERVING_GROUPS
+
+
 def test_the_checker_passes_the_shipped_inspector() -> None:
     folder = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH / "job-inspector"
     frontmatter, body = check_agent.split_frontmatter((folder / "AGENT.md").read_text())

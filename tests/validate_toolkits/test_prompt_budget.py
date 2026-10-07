@@ -98,3 +98,39 @@ def test_the_inspector_no_longer_inlines_the_interactive_setup_rule() -> None:
     frontmatter, _ = check_agent.split_frontmatter(inspector().read_text())
 
     assert "init:dlthub-workspace" not in (frontmatter.get("rules") or [])
+
+
+def access_errors(**frontmatter) -> list[str]:
+    errors: list[str] = []
+    check_agent.check_access(frontmatter, errors)
+    return errors
+
+
+def test_tools_without_an_axis_fails() -> None:
+    """The server serves the toolkit catalogue alone; every other group's tools need an axis."""
+    errors = access_errors(tools=["jobs", "logs"], access={})
+
+    assert len(errors) == 1
+    assert "jobs, logs" in errors[0]
+
+
+def test_tools_with_an_axis_passes() -> None:
+    assert access_errors(tools=["jobs"], access={"context": ["read"]}) == []
+
+
+def test_the_toolkit_group_asks_for_no_access() -> None:
+    assert access_errors(tools=["toolkit"], access={}) == []
+
+
+def test_no_tools_is_no_finding() -> None:
+    assert access_errors(access={"local": ["read"]}) == []
+
+
+def test_an_empty_axis_list_does_not_count_as_a_grant() -> None:
+    assert len(access_errors(tools=["jobs"], access={"local": []})) == 1
+
+
+def test_the_shipped_inspector_grants_an_axis_for_its_groups() -> None:
+    frontmatter, _ = check_agent.split_frontmatter(inspector().read_text())
+
+    assert access_errors(**frontmatter) == []

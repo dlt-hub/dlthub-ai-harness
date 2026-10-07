@@ -167,7 +167,11 @@ spec = load_agent_spec("agents/<name>")
 **The hooks.** `load_agent_module` imports the agent's `agent.py` the way a run does, under a
 private package named after a hash of the folder. That is why `from .coverage import collect`
 works inside it and a plain `importlib` load of the same file does not, and why a hyphenated
-folder name is importable here and nowhere else. Call it to test your own hook code.
+folder name is importable here and nowhere else. Call it to test your own hook code. It needs
+**dlt 1.30.1a1 or later**: below that the name is not in
+`dlt._workspace.deployment.agent.manifest` at all and the import raises an `ImportError` that
+says nothing about versions, and a workspace on an older pin attaches its hooks through
+`run.agent(inputs_validator=..., outputs_validator=...)` instead.
 
 ```python
 from dlt._workspace.deployment.agent.manifest import load_agent_module
@@ -212,6 +216,12 @@ and `validate_output(output)` after it. A returned value replaces the inputs or 
 loop starts. This is where an agent reads warehouse rows, since the MCP data tools need pipeline
 state a runner has not got; see the `data` axis in
 [agent-md-reference.md](agent-md-reference.md).
+
+`run.agent(inputs_validator=..., outputs_validator=...)` does not replace the module's hooks, it
+runs after them: `_collect_validators` returns the one from `agent.py` first and the one the job
+passed second. So an agent folder shipping an `agent.py` passes neither argument, or its hook runs
+twice on every run. For a hook that queries a warehouse that is every query twice, with nothing in
+the log to say so.
 
 `agents/<name>/coverage.py`, resolving the date column against the schema rather than guessing it:
 

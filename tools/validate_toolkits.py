@@ -12,6 +12,7 @@ import typing
 from pathlib import Path
 
 import yaml
+from dlt._workspace.access import ACCESS_AXES
 from dlt._workspace.deployment.agent.exceptions import InvalidAgentSpec
 from dlt._workspace.deployment.agent.manifest import (
     VALIDATE_INPUT,
@@ -246,6 +247,7 @@ def validate_agents(
         _validate_schema_types(pname, rel, fm, errors, warnings)
         _validate_optional_count(pname, rel, fm, errors, warnings)
         _validate_output_size(pname, rel, fm, errors, warnings)
+        _validate_tools_access(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
         _validate_agent_code(pname, entry, errors)
         _validate_shipped_files(pname, entry, errors)
@@ -490,6 +492,24 @@ def _validate_output_size(
         errors.append(
             f"[{pname}] {rel} output is {size} characters, over the {MAX_OUTPUT_CHARS} a job"
             " has launched with. Keep each item's schema to the fields a reader acts on"
+        )
+
+
+SELF_SERVING_GROUPS = frozenset({"toolkit"})
+"""Groups whose tools carry `RequiresAccess()`. Every other group serves nothing without an axis."""
+
+
+def _validate_tools_access(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Check that a declared feature group has an `access` axis that can serve it."""
+    groups = [g for g in (fm.get("tools") or []) if g not in SELF_SERVING_GROUPS]
+    access = fm.get("access") or {}
+    if groups and not any(access.get(axis) for axis in ACCESS_AXES):
+        errors.append(
+            f"[{pname}] {rel} tools lists {', '.join(groups)} but access grants no"
+            f" {', '.join(ACCESS_AXES)} axis; the server then serves the toolkit catalogue"
+            " alone and the agent is offered none of those tools"
         )
 
 
