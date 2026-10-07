@@ -193,9 +193,14 @@ Six points, with `job-inspector` as the example:
 3. **Say what to do with each input, and with its absence.** Inputs are usually optional. Name
    the fallbacks in order, and the point at which nothing is left to work on and the answer is
    `aborted`.
-4. **Give the first steps concretely.** Which tool or command to run first, what to read, what
-   the tell-tale signs are. A skill reference is good here; a skill the agent has is loaded on
-   demand.
+4. **Give the first steps concretely, and name the page size of every list tool.** Which tool or
+   command to run first, what to read, what the tell-tale signs are. A skill reference is good
+   here; a skill the agent has is loaded on demand. A list tool left to its own default takes the
+   largest page it offers, and the first turn's results are resent on every turn after it: a run
+   that opened with `dlthub_list_jobs {"limit": 100}` and `dlthub_list_runs {"limit": 100}` died
+   at 448,613 tokens against a 400,000 ceiling in seven turns with no wandering, and the same task
+   at `limit: 40` finished at 326,688. Write the number into the body for each list call, and say
+   to page again only when the first page does not answer the question.
 5. **List constraints as rules, not adjectives.** "Never edit code, never deploy, never re-run a
    job" beats "be careful".
 6. **Define every enum the output declares.** A table of value and when it applies. Say what

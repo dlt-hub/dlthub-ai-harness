@@ -201,7 +201,22 @@ class NullModelLoop(PydanticAILoop):
 
     def _build_toolsets(self):
         return []
+
+
+report = await run.agent("<toolkit>:<name>")(**inputs)
+trace = run.agent("<toolkit>:<name>").last_job_result["trace"]
+
+# the one assertion that pays for this section: a placeholder the run did not resolve
+# rendered as empty text, and the agent read a sentence with a hole in it
+assert trace["unresolved_placeholders"] == []
+assert trace["local_tools"] == {"Read": "read", "Glob": "read", "Grep": "read"}
+assert trace["inlined_skills"] == ["<toolkit>:<skill>"]
 ```
+
+Assert `unresolved_placeholders` on every agent. It is empty only when every `{{ ... }}` in the
+body was filled by this run's inputs, so it catches a typo, a renamed input, and a
+`run_context` field the trigger does not carry. The deployed run that finds the same thing costs
+a full token budget.
 
 The AI harness repo wires this into pytest in `tests/agents/conftest.py`, with the plugin hook
 that registers the loop and a fixture that installs the toolkit into a temporary workspace.

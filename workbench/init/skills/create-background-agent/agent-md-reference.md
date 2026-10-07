@@ -101,9 +101,24 @@ shell runs under the job's credentials and nothing gates what it does with them,
 A JSON Schema. Every property is a job configuration key: `dlthub local run <job> -c
 failed_run_id=...`, `jobs.<section>.<job>.failed_run_id` in `config.toml` or the environment, or a
 run argument the trigger carries. The body refers to inputs as `{{ name }}` and to the run itself
-as `{{ run_context.trigger }}`, `{{ run_context.run_id }}`, `{{ run_context.refresh }}` and, on a
-job with an interval, `{{ run_context.interval_start }}` and `{{ run_context.interval_end }}`;
-`run_context` is implicit and never declared.
+as `{{ run_context.trigger }}`, `{{ run_context.run_id }}`, `{{ run_context.refresh }}`,
+`{{ run_context.interval_start }}` and `{{ run_context.interval_end }}`; `run_context` is implicit
+and never declared.
+
+### The interval pair is optional, `schedule:` included
+
+`interval_start` and `interval_end` are `NotRequired` on `TJobRunContext`: the runtime fills them
+or it does not, and a body that reads one has to work when it is empty. What dlt computes per
+trigger is in `compute_run_interval`: `schedule:<cron>` and `every:<period>` carry a real window,
+and `once:`, `manual:`, `http:`, `webhook:`, `tag:`, `deployment:`, `job.success:` and `job.fail:`
+are point-in-time, where `interval_start` equals `interval_end` and the pair says nothing.
+
+A deployed agent job on a `schedule:` trigger was measured without the pair at all. The body
+rendered `{{ run_context.interval_end }}` as empty text and the loop logged `unresolved
+placeholders: run_context.interval_end`, and the run was wasted. "Schedule" reads like "interval"
+and is not a promise of one. So name a fallback for the window the agent audits, usually an
+explicit input with today's date behind it, and assert the placeholder list is empty offline
+before you deploy: "Check it offline, before it costs a run" in [deployment.md](deployment.md).
 
 ```yaml
 inputs:
@@ -235,6 +250,11 @@ the system prompt and the whole history, and `max_tokens` counts input and outpu
 entire run, so the spend is roughly the turn count times a context that grows with it. A measured
 agent on Sonnet came to about 45,000 tokens a turn: one run reached 1,073,446 tokens in 23 turns
 and died on the ceiling, while the same audit finished in 4 turns for 157,241.
+
+The first turn's tool results are the other half of this. A list tool called without a page size
+takes the largest page it offers, and that payload is resent on every turn after it, so two
+oversized opening calls can spend a whole budget in seven well-behaved turns. Step 5 of
+[SKILL.md](SKILL.md) says to name the page size in the body for every list tool the agent calls.
 
 So size `max_turns` from the tokens a turn costs, which the run trace reports, against the
 `max_tokens` you are willing to spend. Raising `max_tokens` on its own buys a wandering agent more

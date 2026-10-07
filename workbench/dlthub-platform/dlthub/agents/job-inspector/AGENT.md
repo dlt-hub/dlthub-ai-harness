@@ -490,6 +490,11 @@ budget of its own, counted under "Length".
 - An empty result or a "not found" is an answer. Do not re-run the call with other arguments,
   read its `--help`, or chase the same fact through another tool. A file you did not find goes
   in `open_points`.
+- Every list call passes a page size, and the page is small: `limit: 20` on
+  `dlthub_list_runs` and `dlthub_list_jobs`, which is enough to see the neighbouring runs.
+  A list result is resent to you on every turn after the one that fetched it, so one large
+  first page is paid again for the rest of the run. Ask for a second page only when the first
+  does not settle the question.
 - A tool error retrying cannot fix, such as an expired credential, a denied permission or a
   server error, ends the inspection: `status: aborted`, naming the tool and quoting what it
   returned.
