@@ -132,7 +132,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `skills/<name>/` | Directory with `SKILL.md` + supporting files, copied as a tree |
 | command | `commands/<name>.md` | Single markdown file, slash-command or prompt template |
 | rule | `rules/<name>.md` | Single markdown file, always-on context injected by the IDE |
-| agent | `dlthub/agents/<name>/` | Directory with `AGENT.md` + optional Python modules, copied as a tree. Needs dlt 1.30.1a1 or later: before that the installer read `agents/` and skipped the folder without saying so |
+| agent | `dlthub/agents/<name>/` | Directory with `AGENT.md` + optional Python modules, copied as a tree. Needs dlt 1.30.1a1 or later: before that the installer read `agents/` and skipped the folder without saying so. dlt 1.31.0 added the `<toolkit>` segment to the install path |
 | mcp | `plugin.json`, `.mcp.json`, or `mcp.json` | MCP server definitions, merged into platform config |
 | ignore | `.claudeignore` | Glob patterns for files that the AI does not read or index |
 
@@ -154,7 +154,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `.claude/skills/<name>/` | `.cursor/skills/<name>/` | `.agents/skills/<name>/` |
 | command | `.claude/commands/<name>.md` | `.cursor/commands/<name>.md` | `.agents/skills/<name>/SKILL.md` |
 | rule | `.claude/rules/<toolkit>-<name>.md` | `.cursor/rules/<toolkit>-<name>.mdc` | `.agents/skills/<toolkit>-<name>/SKILL.md` |
-| agent | `.claude/dlthub/agents/<name>/` | `.cursor/dlthub/agents/<name>/` | `.agents/dlthub/agents/<name>/` |
+| agent | `.claude/dlthub/agents/<toolkit>/<name>/` | `.cursor/dlthub/agents/<toolkit>/<name>/` | `.agents/dlthub/agents/<toolkit>/<name>/` |
 | mcp | `.mcp.json` → `mcpServers` | `.cursor/mcp.json` → `mcpServers` | `.codex/config.toml` → `mcp_servers` |
 | ignore | `.claudeignore` | `.cursorignore` | `.codexignore` |
 

@@ -9,7 +9,7 @@ A **background agent** is a toolkit item alongside skills, commands and rules. I
 unattended: on a schedule, after a job fails, or when someone starts it from the web UI or the
 command line. An agent is an `AGENT.md`, written much like a `SKILL.md`. The working example is
 `workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md`, installed as
-`.claude/dlthub/agents/job-inspector/AGENT.md`.
+`.claude/dlthub/agents/dlthub-platform/job-inspector/AGENT.md`.
 
 **Essential reading**: AI harness `https://dlthub.com/docs/hub/ai-harness/introduction.md`,
 triggers and scheduling `https://dlthub.com/docs/hub/pipeline-operations/triggers.md`, profiles
@@ -60,14 +60,17 @@ workbench/<toolkit>/dlthub/agents/<name>/AGENT.md   # in a toolkit
 
 A folder, like a skill, so a definition can grow supporting files. In a workspace put it at the
 workspace root and point the deployment at the folder path. In a toolkit it goes under
-`workbench/<toolkit>/dlthub/agents/<name>/`, and **dlt 1.30.1a1 or later** copies it on
-`dlthub ai toolkit install <toolkit>` to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`,
-`.agents/dlthub/agents/` on the other hosts). An older dlt reads `<toolkit>/agents` and skips the
-folder without a word: the install reports its skills and rules, `.claude/dlthub/` is never
-created, and `<toolkit>:<name>` does not resolve. Check `dlthub --version`, and read the install
-output for the `+ agent <name>` line. The `dlthub/` segment is on both sides: a toolkit's plain `agents/` folder is the
-host's own subagents folder, which dltHub neither installs from nor validates, and the hosts scan
-their own folders for native subagents. A workspace refers to an installed agent as
+`workbench/<toolkit>/dlthub/agents/<name>/`, and **dlt 1.31.0** copies it on
+`dlthub ai toolkit install <toolkit>` to `.claude/dlthub/agents/<toolkit>/<name>/`
+(`.cursor/dlthub/agents/`, `.agents/dlthub/agents/` on the other hosts). The toolkit segment is
+part of the installed path, so two toolkits may ship an agent of the same name. dlt 1.30.1a1
+wrote the folder flat at `.claude/dlthub/agents/<name>/`, and an older dlt reads
+`<toolkit>/agents` and skips the folder without a word: the install reports its skills and rules,
+`.claude/dlthub/` is never created, and `<toolkit>:<name>` does not resolve. Check
+`dlthub --version`, and read the install output for the `+ agent <name>` line. The `dlthub/`
+segment is on both sides: a toolkit's plain `agents/` folder is the host's own subagents folder,
+which dltHub neither installs from nor validates, and the hosts scan their own folders for native
+subagents. A workspace refers to an installed agent as
 `<toolkit>:<name>`, and the workspace's toolkit index (`.dlt/.toolkits`) travels with every
 deployment, so the reference resolves on the runner as it does locally.
 

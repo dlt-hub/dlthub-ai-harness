@@ -50,8 +50,8 @@ job that references the agent: `validate_input(inputs)` before it and `validate_
 after it. A decorated function owns its own run and the module never reaches it. The inspector's
 `agent.py` writes every run id and job ref in its summary as a link to its web UI page, labelled
 with the run number. The reference fails when
-`.claude/dlthub/agents/job-inspector/` is missing, which means the toolkit is not installed in
-the workspace.
+`.claude/dlthub/agents/dlthub-platform/job-inspector/` is missing, which means the toolkit is
+not installed in the workspace.
 
 **An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
 them. Without it the job runs as a batch job on `prod` and the production credentials land

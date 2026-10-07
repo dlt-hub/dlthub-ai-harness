@@ -181,16 +181,28 @@ assert module.validate_input({"audit_date": "2026-10-01"})["coverage"]
 ```
 
 **The whole loop, with the model answered offline.** Subclass `PydanticAILoop`, return
-pydantic-ai's `TestModel` from `_build_model`, and register the subclass as a loop. The run then
-exercises the input hook, the placeholder substitution, the inlined rules and skills, the tool
-wiring and the output schema, and `TestModel` fills the output from the declared schema so dltHub
-validates it in full. This is how to see which tools the `access` block actually wired: the trace
-lists them.
+pydantic-ai's `TestModel` from `_build_model`, register the subclass through the `plug_agent_loop`
+plugin hook, and name its `LOOP_TYPE` in `loop=` on the job. The run then exercises the input
+hook, the placeholder substitution, the inlined rules and skills, the tool wiring and the output
+schema, and `TestModel` fills the output from the declared schema so dltHub validates it in full.
+This is how to see which tools the `access` block actually wired: the trace lists them.
+
+Both halves are needed. `resolve_agent_loop` asks the registered plugins for a class answering to
+the loop type, so a subclass nobody registered is never reached and `loop="null-pydantic-ai"`
+raises `UnknownAgentLoop`. Leave `loop=` off and the job takes the default `pydantic-ai`, which
+addresses the real provider: the section runs against a live key, or dies on
+`Set the ANTHROPIC_API_KEY environment variable`.
+
+Run this as a script from the workspace root:
 
 ```python
+import asyncio
+
 from pydantic_ai.models.test import TestModel
 
+from dlt.common.configuration.plugins import hookimpl, manager
 from dlt._workspace.deployment.agent.loops.pydantic_ai import PydanticAILoop
+from dlt.hub import run
 
 
 class NullModelLoop(PydanticAILoop):
@@ -203,24 +215,46 @@ class NullModelLoop(PydanticAILoop):
         return []
 
 
-report = await run.agent("<toolkit>:<name>")(**inputs)
-trace = run.agent("<toolkit>:<name>").last_job_result["trace"]
+class NullModelLoopPlugin:
+    @hookimpl(specname="plug_agent_loop")
+    def plug_agent_loop(self, loop_type):
+        return NullModelLoop if loop_type == NullModelLoop.LOOP_TYPE else None
 
-# the one assertion that pays for this section: a placeholder the run did not resolve
-# rendered as empty text, and the agent read a sentence with a hole in it
-assert trace["unresolved_placeholders"] == []
-assert trace["local_tools"] == {"Read": "read", "Glob": "read", "Grep": "read"}
-assert trace["inlined_skills"] == ["<toolkit>:<skill>"]
+
+manager().register(NullModelLoopPlugin(), name="null-model-loop")
+
+job = run.agent("<toolkit>:<name>", loop=NullModelLoop.LOOP_TYPE)
+
+
+async def main():
+    report = await job(**inputs)
+    trace = job.last_job_result["trace"]
+
+    # the one assertion that pays for this section: a placeholder the run did not resolve
+    # rendered as empty text, and the agent read a sentence with a hole in it
+    assert trace["unresolved_placeholders"] == []
+    # `agent.loop` config overrides the `loop=` argument, so check which loop actually ran
+    assert trace["loop_type"] == NullModelLoop.LOOP_TYPE
+    assert trace["local_tools"] == {"Read": "read", "Glob": "read", "Grep": "read"}
+    assert trace["inlined_skills"] == ["<toolkit>:<skill>"]
+    assert report["status"] == "succeeded"
+
+
+asyncio.run(main())
 ```
+
+A declared `run.agent("<ref>")` returns a coroutine when called, so the call is awaited. A
+decorated function returns a coroutine only when it is `async def`.
 
 Assert `unresolved_placeholders` on every agent. It is empty only when every `{{ ... }}` in the
 body was filled by this run's inputs, so it catches a typo, a renamed input, and a
 `run_context` field the trigger does not carry. The deployed run that finds the same thing costs
 a full token budget.
 
-The AI harness repo wires this into pytest in `tests/agents/conftest.py`, with the plugin hook
-that registers the loop and a fixture that installs the toolkit into a temporary workspace.
-`tests/agents/test_agents_run.py` is the shape of a test over it.
+The AI harness repo wires the same loop into pytest in `tests/agents/conftest.py`, where the
+plugin registers on `Container()[PluginContext].manager` and the loop type comes from an
+`AGENT__LOOP` environment variable rather than `loop=`. A fixture there installs the toolkit into
+a temporary workspace, and `tests/agents/test_agents_run.py` is the shape of a test over it.
 
 ## Row evidence through a hook
 
@@ -270,6 +304,15 @@ renders `{{ coverage }}` into a section saying it is the only row evidence the a
 placeholder must be declared, which is why the input is in the file although nothing configures
 it.
 
+**Write every identifier in the form the tools take.** The window is the agent's only route to
+the entities it names, so a short label there costs turns. A hook that rendered a feeding job as
+`__deployment__.ingest_reporting` cost a five-turn run two of its turns: turn 1 on two
+`job not found` errors, turn 2 on a `dlthub_list_jobs` probe to recover the `jobs.` prefix.
+Writing `jobs.__deployment__.ingest_reporting` into the same evidence finished the task in four
+turns with no other change. A job tool takes the full `jobs.<section>.<name>` ref or the job's
+uuid, a run tool takes the run uuid, and the hook already holds both, so render what the tool
+accepts.
+
 The hook is also the cheaper run. The counts arrive in the system prompt instead of costing a
 turn each, and a column the warehouse does not have is reported in the window, so the agent puts
 it in its open points rather than guessing around it.
@@ -290,7 +333,7 @@ from typing import Annotated
 
 from dlt.hub import run
 
-sys.path.insert(0, ".claude/dlthub/agents/<agent>")
+sys.path.insert(0, ".claude/dlthub/agents/<toolkit>/<agent>")
 from helpers import after, before
 
 
