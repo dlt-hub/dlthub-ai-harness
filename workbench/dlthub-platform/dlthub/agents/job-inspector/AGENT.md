@@ -498,8 +498,10 @@ budget of its own, counted under "Length".
 - A tool error retrying cannot fix, such as an expired credential, a denied permission or a
   server error, ends the inspection: `status: aborted`, naming the tool and quoting what it
   returned.
-- Short of turns, write the output you have at `confidence: medium` or `low`, with the gaps in
-  `open_points`.
+- Stop reading after your fifteenth turn. From the sixteenth on, write the output from what you
+  have, at `confidence: medium` or `low`, with every question you did not settle in
+  `open_points`. Writing the output costs a turn, and a run that spends its last one on a further
+  check returns nothing.
 
 ## Constraints
 

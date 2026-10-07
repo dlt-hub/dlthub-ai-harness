@@ -184,7 +184,7 @@ naming the workspace folder and the temp folder for scratch files, the output sc
 descriptions, and the tools `access` and `tools` bought. What it gets as the user turn is the
 agent job's `instructions`, or a bare "Go ahead". Do not restate any of that.
 
-Six points, with `job-inspector` as the example:
+Seven points, with `job-inspector` as the example:
 
 1. **State the role in two sentences, including the unattended setting.** "You run unattended,
    seconds after a job failed. An engineer reads your output only when the failure matters, so it
@@ -208,6 +208,16 @@ Six points, with `job-inspector` as the example:
    job" beats "be careful".
 6. **Define every enum the output declares.** A table of value and when it applies. Say what
    `unknown` or `low` means and that reporting it is a legitimate outcome.
+7. **Reserve turns for the answer.** Writing the summary costs a turn of its own, so an agent
+   that reads until the limit returns nothing, and a run with no summary is worth nothing however
+   well it checked what it was chasing. A run that obeyed every rule above, batched its opening
+   reads and bounded every payload, still spent its tenth turn on one more confirmation and ended
+   with no output. Give a counted cut-off at about half of `max_turns`: "Stop reading after your
+   fifteenth turn. From the sixteenth on, write the answer from what you have." Say in the same
+   place that a question still open at the cut-off goes in the open points. "Short of turns, write
+   what you have" is too soft to act on. One model turn is one request, so the number sits on the
+   same scale as `max_turns`; what that counts, and why the transcript's `turn N` lines run at
+   twice it, is in [agent-md-reference.md](agent-md-reference.md).
 
 State the summary sections in the body and hold to them. Take the default set for this kind of
 agent from [summary-format.md](summary-format.md), which also carries the shape rules the
@@ -253,9 +263,11 @@ and the output schema with no provider key and no tokens spent. A deployed run i
 way to find a typo, and a local run needs the secret workspace variables, which do not sync down.
 
 Read the trace against what you declared. A tool in it that the task does not need is an `access`
-axis to drop. Divide the tokens by the turns: that is what one turn of this agent costs, and
-`max_turns` times it is the run's bill. A turn count at the limit is a body that did not say where
-to stop, and the fix is the body, not a larger `max_tokens`.
+axis to drop. Divide the tokens by `trace["turn_count"]`, the model requests the run made and the
+count the run header prints: that is what one request of this agent costs, and `max_turns` times
+it is the run's bill. The transcript's `turn N` lines run two to a request, so a budget sized off
+them is out by a factor of two. A request count at the limit is a body that did not say where to
+stop, and the fix is the body, not a larger `max_tokens`.
 
 ## 8. Check it
 

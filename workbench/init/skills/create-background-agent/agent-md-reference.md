@@ -243,6 +243,18 @@ defaults:
 framework: `retries` is how often pydantic-ai lets the model correct a failing tool call; keys the
 loop does not know are listed in the trace as ignored.
 
+### What `max_turns` counts
+
+`max_turns` is pydantic-ai's `request_limit`, so it counts model requests. The run ends on
+`UsageLimitExceeded: The next request would exceed the request_limit of <n>`.
+
+The job log counts something else. It prints a `turn N` line for the model's request and another
+for the tool results coming back, two lines to a request, so a run at `max_turns: 10` reaches
+`turn 20` in the transcript before it dies. The run header is the request count again:
+`── succeeded ── 9 turns · 176,583 tokens ──` is nine model requests, and so is
+`trace["turn_count"]`. Size a budget from the header and the trace, and write a cut-off into the
+body as a count of requests, which is what the model itself experiences as its turns.
+
 ### The two limits are one budget
 
 `max_turns` is the budget and `max_tokens` is the ceiling it has to fit under. Every turn resends
