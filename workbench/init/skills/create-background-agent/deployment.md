@@ -121,19 +121,20 @@ rest of the workspace dependencies:
 pydantic-ai-slim>=2.52.0
 ```
 
-A local run reads configuration from the local environment and `.dlt`, and does not fetch the
-workspace variables. `AGENT__MODEL` and `AGENT__API_KEY` set with `dlthub variable set` reach the
-runner only. Without them in the local environment the run falls back to the loop's default model
-with no key and dies inside the provider, on `Set the ANTHROPIC_API_KEY environment variable`,
-which names a variable the workspace never used. Export the same two values before the run:
-
-```bash
-export AGENT__MODEL=anthropic:claude-sonnet-5
-```
+**A local run does not get the secret workspace variables.** Plain ones sync down and resolve, so
+`AGENT__MODEL` is there, and `AGENT__API_KEY` and a destination password are not. The run then
+falls back to the loop's default model with no key and dies inside the provider at `_build_model`,
+on `Set the ANTHROPIC_API_KEY environment variable`, which names a variable the workspace never
+used. The only way through is the person at the keyboard exporting the secrets into their own
+shell:
 
 ```bash
 export AGENT__API_KEY=<the provider key>
 ```
+
+Do not orchestrate that for them, and do not read it back: it is a secret in the session, which
+the `setup-secrets` rules forbid. Ask them to export it and say when it is set. Where that is
+awkward, check the agent offline instead, below.
 
 ```bash
 dlthub local run job_inspector -c failed_run_id=89826ee6-... -c agent.instructions="explain, do not fix"
@@ -148,6 +149,59 @@ to the job's log at the configured verbosity.
 
 Keep `agent.verbosity` at 1, the default. At 0 the log keeps tool names only, and anything reading
 the agent's tool arguments or statements afterwards goes blind.
+
+## Check it offline, before it costs a run
+
+Three calls exercise a definition without a provider key and without spending a token. Run them
+before the first deployed run, and again whenever the frontmatter changes.
+
+**The spec.** `load_agent_spec` reads the `AGENT.md` and holds it to the contract, so a bad
+`access` verb, an empty body or an `inputs.prompt` fails here rather than at manifest time.
+
+```python
+from dlt._workspace.deployment.agent.manifest import load_agent_spec
+
+spec = load_agent_spec("agents/<name>")
+```
+
+**The hooks.** `load_agent_module` imports the agent's `agent.py` the way a run does, under a
+private package named after a hash of the folder. That is why `from .coverage import collect`
+works inside it and a plain `importlib` load of the same file does not, and why a hyphenated
+folder name is importable here and nowhere else. Call it to test your own hook code.
+
+```python
+from dlt._workspace.deployment.agent.manifest import load_agent_module
+
+module = load_agent_module("agents/<name>")
+assert module.validate_input({"audit_date": "2026-10-01"})["coverage"]
+```
+
+**The whole loop, with the model answered offline.** Subclass `PydanticAILoop`, return
+pydantic-ai's `TestModel` from `_build_model`, and register the subclass as a loop. The run then
+exercises the input hook, the placeholder substitution, the inlined rules and skills, the tool
+wiring and the output schema, and `TestModel` fills the output from the declared schema so dltHub
+validates it in full. This is how to see which tools the `access` block actually wired: the trace
+lists them.
+
+```python
+from pydantic_ai.models.test import TestModel
+
+from dlt._workspace.deployment.agent.loops.pydantic_ai import PydanticAILoop
+
+
+class NullModelLoop(PydanticAILoop):
+    LOOP_TYPE = "null-pydantic-ai"
+
+    def _build_model(self):
+        return TestModel(call_tools=[])
+
+    def _build_toolsets(self):
+        return []
+```
+
+The AI harness repo wires this into pytest in `tests/agents/conftest.py`, with the plugin hook
+that registers the loop and a fixture that installs the toolkit into a temporary workspace.
+`tests/agents/test_agents_run.py` is the shape of a test over it.
 
 ## Row evidence through a hook
 

@@ -21,7 +21,9 @@ tools:
 skills:
   - dlthub-platform:debug-deployment
 rules:
-  - init:dlthub-workspace
+  # no init:dlthub-workspace: 9.5k characters of workspace setup, the toolkit index and
+  # instructions to narrate each step to a user, resent on every turn to an agent that has
+  # no user, no shell and nothing to install
   - dlthub-platform:job-resources
   - dlthub-platform:profiles
 access:
@@ -348,9 +350,26 @@ Every `evidence` item says what kind of artifact it is.
 
 ## Summary format
 
-`summary` is exactly three markdown headings in this order, each over short bullets of one or
-two plain sentences, and nothing else: no text before the first heading, none outside a
-bullet, no question or bracketed note beside a heading.
+`summary` is exactly this shape:
+
+```
+## Diagnosis
+- <the cause, with its artifact in parentheses>
+- <a supporting fact>
+
+## Recommendation
+- <the target and the change, as the instruction itself>
+
+## Confidence
+- <what this rests on>
+- <each open point, or one bullet saying nothing was left open>
+```
+
+Three markdown headings in that order, each over short bullets of one or two plain sentences,
+and nothing else: no text before the first heading, none outside a bullet, no question or
+bracketed note beside a heading. The schema calls `summary` "Markdown. What you accomplished",
+which reads as an invitation to write a paragraph. It is not. A summary that is one paragraph
+is a failed run however good the diagnosis in it.
 
 | heading | the bullets answer |
 |---|---|

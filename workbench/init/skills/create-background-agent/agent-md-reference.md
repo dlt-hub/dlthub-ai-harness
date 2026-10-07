@@ -39,9 +39,17 @@ and loads them on demand. Rules are inlined into the system prompt on every loop
 components reach the agent; nothing else installed in the workspace does. A reference that does
 not resolve is skipped with a warning, and the agent runs with less.
 
+**Inlining is paid once a turn.** An inlined component's characters join the system prompt, which
+every turn resends, so a 9,500-character rule on a 20-turn run is 190,000 characters of context.
+List what the agent decides with, and read each component as the agent gets it: a rule written for
+an interactive session carries setup commands, a toolkit index and instructions to explain each
+step to the user, and an unattended agent has no user, no shell without `local: execute`, and no
+toolkit to install. Dropping one such rule cut a measured system prompt by 29% with no change in
+what the agent found.
+
 ```yaml
 skills: [dlthub-platform:debug-deployment]
-rules: [init:dlthub-workspace, dlthub-platform:job-resources]
+rules: [dlthub-platform:job-resources, dlthub-platform:profiles]
 ```
 
 ## `access`
@@ -219,6 +227,19 @@ defaults:
 `limits.max_tokens` is counted by dltHub after every turn. `loop_run_args` are handed to the
 framework: `retries` is how often pydantic-ai lets the model correct a failing tool call; keys the
 loop does not know are listed in the trace as ignored.
+
+### The two limits are one budget
+
+`max_turns` is the budget and `max_tokens` is the ceiling it has to fit under. Every turn resends
+the system prompt and the whole history, and `max_tokens` counts input and output across the
+entire run, so the spend is roughly the turn count times a context that grows with it. A measured
+agent on Sonnet came to about 45,000 tokens a turn: one run reached 1,073,446 tokens in 23 turns
+and died on the ceiling, while the same audit finished in 4 turns for 157,241.
+
+So size `max_turns` from the tokens a turn costs, which the run trace reports, against the
+`max_tokens` you are willing to spend. Raising `max_tokens` on its own buys a wandering agent more
+turns to waste. A body that says where to stop is what brings the turn count down; the limit only
+decides whether the run dies before it gets there.
 
 A definition doesn't set a `trigger`. `to_agent_definition` drops `defaults` from the manifest and the
 loop takes `model`, `limits` and `loop_run_args` from it, so a trigger declared here does nothing.

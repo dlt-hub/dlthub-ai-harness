@@ -112,6 +112,80 @@ def check_body(body, inputs, errors, warnings):
         warnings.append(f"input {name!r} is declared but the body never names it")
 
 
+CHARS_PER_TOKEN = 4
+"""Rough across English prose and the markdown an agent is given. Close enough to size turns."""
+
+HOST_DIRS = (".claude", ".cursor", ".agents")
+"""Where each host installs the components a definition references."""
+
+
+def project_root(start):
+    """The workspace or repo the agent folder sits in, found by the host folder it holds."""
+    for folder in [start, *start.parents]:
+        if (folder / ".dlt").is_dir() or any((folder / host).is_dir() for host in HOST_DIRS):
+            return folder
+    return start
+
+
+def component_path(root, kind, toolkit, name):
+    """An installed component, or the same component in an AI harness checkout."""
+    candidates = []
+    for host in HOST_DIRS:
+        if kind == "rules":
+            candidates += [
+                root / host / "rules" / f"{toolkit}-{name}.md",
+                root / host / "rules" / f"{toolkit}-{name}.mdc",
+                # Codex has no rules of its own, so an install writes them as skills
+                root / host / "skills" / f"{toolkit}-{name}" / "SKILL.md",
+            ]
+        else:
+            candidates.append(root / host / "skills" / name / "SKILL.md")
+    source = "rules" if kind == "rules" else "skills"
+    leaf = f"{name}.md" if kind == "rules" else Path(name) / "SKILL.md"
+    candidates.append(root / "workbench" / toolkit / source / leaf)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def check_prompt_budget(path, frontmatter, body, errors, warnings):
+    """Size the system prompt and the turn budget it has to fit in. Returns a report."""
+    root = project_root(path.parent.resolve())
+    parts = {"body": len(body)}
+    for kind in ("skills", "rules"):
+        for ref in frontmatter.get(kind) or []:
+            toolkit, _, name = ref.rpartition(":")
+            found = component_path(root, kind, toolkit, name)
+            if found is None:
+                warnings.append(
+                    f"{kind[:-1]} {ref!r} does not resolve under {root}; a run skips it with a"
+                    " warning and the agent gets less than the file says"
+                )
+                continue
+            parts[ref] = len(found.read_text(encoding="utf-8"))
+
+    floor = sum(parts.values())
+    floor_tokens = floor // CHARS_PER_TOKEN
+    limits = (frontmatter.get("defaults") or {}).get("limits") or {}
+    max_turns, max_tokens = limits.get("max_turns"), limits.get("max_tokens")
+
+    # the floor is the system prompt alone; a turn also resends the whole history
+    if max_turns and max_tokens and max_turns * floor_tokens > max_tokens:
+        errors.append(
+            f"{max_turns} turns of a ~{floor_tokens:,}-token system prompt is"
+            f" ~{max_turns * floor_tokens:,} tokens, over the max_tokens of {max_tokens:,},"
+            " before a single turn of history. Cut the prompt or cut max_turns"
+        )
+    elif max_turns and max_tokens and max_turns * floor_tokens > max_tokens // 2:
+        warnings.append(
+            f"{max_turns} turns of system prompt alone is ~{max_turns * floor_tokens:,} tokens,"
+            f" over half the max_tokens of {max_tokens:,}. History is counted on top, so the"
+            " run has little room"
+        )
+    return parts, floor, floor_tokens, max_turns, max_tokens
+
+
 def main():
     parser = argparse.ArgumentParser(description="Check an AGENT.md against the run-time rules.")
     parser.add_argument("target", help="Agent folder, or the AGENT.md inside it")
@@ -149,8 +223,24 @@ def main():
             " launched with. Keep each item's schema to the fields a reader acts on"
         )
 
+    parts, floor, floor_tokens, max_turns, max_tokens = check_prompt_budget(
+        path, frontmatter, body, errors, warnings
+    )
+
     print(f"{path}")
     print(f"  body: {len(body.splitlines())} lines, {len(PLACEHOLDER.findall(body))} placeholders")
+    inlined = ", ".join(f"{ref} {size:,}" for ref, size in parts.items() if ref != "body")
+    print(
+        f"  prompt floor: {floor:,} characters, ~{floor_tokens:,} tokens"
+        f" (body {parts['body']:,}{'; ' + inlined if inlined else ''})"
+    )
+    if max_turns and max_tokens:
+        print(
+            f"  turn budget: {max_turns} turns x floor = ~{max_turns * floor_tokens:,} tokens"
+            f" of {max_tokens:,}; history is counted on top of this"
+        )
+    else:
+        print("  turn budget: defaults.limits sets no max_turns and max_tokens pair to size")
     print(f"  inputs: {len((inputs.get('properties') or {}))} properties, {input_optional} optional")
     print(
         f"  output: {len((output.get('properties') or {}))} properties,"

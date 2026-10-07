@@ -21,7 +21,8 @@ Reference files beside this skill:
 - [summary-format.md](summary-format.md) owns the shape of `summary` and the link helper.
 - [deployment.md](deployment.md) owns `run.agent`, the profile pin, triggers, the hook that
   fetches evidence before the loop, and the `AGENT__` variables.
-- [check_agent.py](check_agent.py) checks one `AGENT.md` against the rules a provider imposes.
+- [check_agent.py](check_agent.py) checks one `AGENT.md` against the rules a provider imposes,
+  and sizes its system prompt against the turn budget.
 
 ## Terms
 
@@ -59,9 +60,12 @@ workbench/<toolkit>/dlthub/agents/<name>/AGENT.md   # in a toolkit
 
 A folder, like a skill, so a definition can grow supporting files. In a workspace put it at the
 workspace root and point the deployment at the folder path. In a toolkit it goes under
-`workbench/<toolkit>/dlthub/agents/<name>/`, and `dlthub ai toolkit install <toolkit>` copies it
-to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`, `.agents/dlthub/agents/` on the
-other hosts). The `dlthub/` segment is on both sides: a toolkit's plain `agents/` folder is the
+`workbench/<toolkit>/dlthub/agents/<name>/`, and **dlt 1.30.1a1 or later** copies it on
+`dlthub ai toolkit install <toolkit>` to `.claude/dlthub/agents/<name>/` (`.cursor/dlthub/agents/`,
+`.agents/dlthub/agents/` on the other hosts). An older dlt reads `<toolkit>/agents` and skips the
+folder without a word: the install reports its skills and rules, `.claude/dlthub/` is never
+created, and `<toolkit>:<name>` does not resolve. Check `dlthub --version`, and read the install
+output for the `+ agent <name>` line. The `dlthub/` segment is on both sides: a toolkit's plain `agents/` folder is the
 host's own subagents folder, which dltHub neither installs from nor validates, and the hosts scan
 their own folders for native subagents. A workspace refers to an installed agent as
 `<toolkit>:<name>`, and the workspace's toolkit index (`.dlt/.toolkits`) travels with every
@@ -235,15 +239,24 @@ rather than a switch, so the run uses the active profile and reports the mismatc
 job with its inputs as configuration keys and read the job result it prints, both shown in
 [deployment.md](deployment.md).
 
+Run the offline checks first, in "Check it offline, before it costs a run" in
+[deployment.md](deployment.md). They exercise the hooks, the placeholders, the inlined components
+and the output schema with no provider key and no tokens spent. A deployed run is the expensive
+way to find a typo, and a local run needs the secret workspace variables, which do not sync down.
+
 Read the trace against what you declared. A tool in it that the task does not need is an `access`
-axis to drop. A turn count at the limit is a body that did not say where to stop.
+axis to drop. Divide the tokens by the turns: that is what one turn of this agent costs, and
+`max_turns` times it is the run's bill. A turn count at the limit is a body that did not say where
+to stop, and the fix is the body, not a larger `max_tokens`.
 
 ## 8. Check it
 
-Run the checker beside this skill over the folder first. It reads the `AGENT.md` and reports the
-schema size, the optional-property count against the cap, untyped properties, bare objects, the
-`status` and `summary` contract, and a body placeholder no input declares. All of these fail a run
-on the first model call.
+Run the checker beside this skill over the folder first. It reports the schema size, the
+optional-property count against the cap, untyped properties, bare objects, the `status` and
+`summary` contract, and a body placeholder no input declares, all of which fail a run on the first
+model call. It also measures the system prompt, body plus every rule and skill the file lists, and
+prints what `max_turns` of it costs against `max_tokens`, which is the number step 7 asks you to
+size. A reference it cannot resolve is a component the agent will not get.
 
 ```bash
 uv run python .claude/skills/create-background-agent/check_agent.py agents/<name>

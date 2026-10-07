@@ -79,6 +79,41 @@ An agent that investigates, inspects or analyses an entity in the workspace take
 | `## Recommendation` | What the reader does next: the target and the change, written as the instruction itself |
 | `## Confidence` | What this rests on and what it leaves open; when nothing was left open, one bullet says so |
 
+## Put the skeleton in the body, not the rules
+
+Prose rules about the shape are not enough. An agent given the full rule set in its body returned
+one paragraph that closed with "Full detail in the Gaps/Recommendation/Scope sections" and carried
+no sections at all. It held only once the body contained the literal block below and the body's
+definition of `succeeded` required it.
+
+The reason is in the schema. dltHub overwrites whatever a definition says about `summary` with its
+own description, `Markdown. What you accomplished`, and the model reads that on every run. A
+sentence asking for paragraphs sits next to your rules and wins ties. So show the shape rather
+than describing it, and make writing it part of what `succeeded` means for this agent.
+
+````markdown
+Your `summary` is exactly this shape, with your own headings:
+
+```
+## Diagnosis
+- <one fact, with its artifact in parentheses>
+- <one fact>
+
+## Recommendation
+- <the target and the change, as the instruction itself>
+
+## Confidence
+- <what this rests on>
+- <what it leaves open, or that nothing was left open>
+```
+
+Nothing before the first heading. Nothing outside a bullet. The same three headings on every run.
+A summary that is one paragraph is a failed run however good its findings are.
+````
+
+Change the headings to the ones this agent reports, and keep the last two lines: they are what the
+model weighs against dltHub's own description of the field.
+
 ## Linking the runs and jobs a summary names
 
 An agent writes a run id as a uuid, because that is what a person pastes into `dlthub job runs
