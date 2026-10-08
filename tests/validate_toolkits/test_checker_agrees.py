@@ -40,6 +40,10 @@ def test_the_self_serving_groups_agree() -> None:
     assert check_agent.SELF_SERVING_GROUPS == V.SELF_SERVING_GROUPS
 
 
+def test_the_group_axes_agree() -> None:
+    assert check_agent.GROUP_AXES == V.GROUP_AXES
+
+
 def test_the_checker_passes_the_shipped_inspector() -> None:
     folder = REPO_ROOT / V.AI_DIR / "dlthub-platform" / V._AGENTS_PATH / "job-inspector"
     frontmatter, body = check_agent.split_frontmatter((folder / "AGENT.md").read_text())
@@ -50,3 +54,35 @@ def test_the_checker_passes_the_shipped_inspector() -> None:
     check_agent.check_body(body, frontmatter["inputs"], errors, [])
 
     assert errors == []
+
+
+_ADVICE = "every nested property of a field Python fills belongs in one"
+
+
+def _over_the_cap() -> dict:
+    props = {f"f{n}": {"type": "string"} for n in range(V.MAX_OPTIONAL_PROPERTIES + 1)}
+    return {"output": {"properties": props}}
+
+
+def test_the_optional_cap_advice_agrees() -> None:
+    """A reader who hits the cap in one tool and then the other is told the same thing."""
+    from_validator: list[str] = []
+    V._validate_optional_count("tk", "agents/x/AGENT.md", _over_the_cap(), from_validator, [])
+    from_checker: list[str] = []
+    check_agent.check_schema("output", _over_the_cap()["output"], from_checker, [])
+
+    assert _ADVICE in from_validator[0]
+    assert _ADVICE in from_checker[-1]
+
+
+def test_the_group_axes_check_agrees() -> None:
+    """`pipeline` needs `data`, so `context` alone fails in CI as it does in the workspace."""
+    frontmatter = {"tools": ["pipeline"], "access": {"context": "read"}}
+    from_validator: list[str] = []
+    V._validate_tools_access("tk", "agents/x/AGENT.md", frontmatter, from_validator, [])
+    from_checker: list[str] = []
+    check_agent.check_access(frontmatter, from_checker)
+
+    assert len(from_validator) == 1 and len(from_checker) == 1
+    assert "none of its tools are served" in from_validator[0]
+    assert "none of its tools are served" in from_checker[0]

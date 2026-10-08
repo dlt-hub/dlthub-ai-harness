@@ -56,7 +56,7 @@ def walk_properties(schema, path=""):
 def check_schema(label, schema, errors, warnings):
     if not isinstance(schema, dict):
         errors.append(f"{label} is not a JSON Schema mapping")
-        return
+        return 0
     optional = []
     for path, name, definition, is_required in walk_properties(schema):
         full = f"{label}.{path}{name}"
@@ -76,8 +76,10 @@ def check_schema(label, schema, errors, warnings):
     if len(optional) > MAX_OPTIONAL_PROPERTIES:
         errors.append(
             f"{label} declares {len(optional)} optional properties, over the cap of"
-            f" {MAX_OPTIONAL_PROPERTIES}. List the ones the model always writes in their"
-            f" object's `required` ({', '.join(optional[:6])}, ...)"
+            f" {MAX_OPTIONAL_PROPERTIES}. A property listed in its object's `required` does not"
+            " count, and a nested `required` binds only when the model writes that object, so"
+            " every nested property of a field Python fills belongs in one"
+            f" ({', '.join(optional[:6])}, ...)"
         )
     return len(optional)
 

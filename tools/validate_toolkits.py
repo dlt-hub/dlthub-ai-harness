@@ -457,8 +457,10 @@ def _validate_optional_count(
     if len(optional) > MAX_OPTIONAL_PROPERTIES:
         errors.append(
             f"[{pname}] {rel} output declares {len(optional)} optional properties, over the"
-            f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; list the ones the model never"
-            f" writes in their object's `required` ({', '.join(optional[:6])}, ...)"
+            f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; a property listed in its object's"
+            " `required` does not count, and a nested `required` binds only when the model"
+            " writes that object, so every nested property of a field Python fills belongs in"
+            f" one ({', '.join(optional[:6])}, ...)"
         )
 
 
@@ -495,7 +497,23 @@ def _validate_output_size(
         )
 
 
-SELF_SERVING_GROUPS = frozenset({"toolkit"})
+GROUP_AXES = {
+    "jobs": ("context",),
+    "logs": ("context",),
+    "telemetry": ("context",),
+    "config": ("context",),
+    "context": ("context",),
+    "pipeline": ("data",),
+    "workspace": ("local",),
+    "secrets": ("local",),
+    "restore_pipeline": ("context", "data"),
+    "toolkit": (),
+}
+"""Axes each feature group needs before the server offers any of its tools. The catalogue is in
+`create-background-agent/agent-md-reference.md`. A group not listed is checked against the axes
+as a whole."""
+
+SELF_SERVING_GROUPS = frozenset(group for group, axes in GROUP_AXES.items() if not axes)
 """Groups whose tools carry `RequiresAccess()`. Every other group serves nothing without an axis."""
 
 
@@ -505,9 +523,17 @@ def _validate_tools_access(
     """Check that a declared feature group has an `access` axis that can serve it."""
     groups = [g for g in (fm.get("tools") or []) if g not in SELF_SERVING_GROUPS]
     access = fm.get("access") or {}
-    if groups and not any(access.get(axis) for axis in ACCESS_AXES):
+    for group in [g for g in groups if g in GROUP_AXES]:
+        missing = [axis for axis in GROUP_AXES[group] if not access.get(axis)]
+        if missing:
+            errors.append(
+                f"[{pname}] {rel} tools lists {group} but access grants no"
+                f" {' and no '.join(missing)}; none of its tools are served"
+            )
+    rest = [g for g in groups if g not in GROUP_AXES]
+    if rest and not any(access.get(axis) for axis in ACCESS_AXES):
         errors.append(
-            f"[{pname}] {rel} tools lists {', '.join(groups)} but access grants no"
+            f"[{pname}] {rel} tools lists {', '.join(rest)} but access grants no"
             f" {', '.join(ACCESS_AXES)} axis; the server then serves the toolkit catalogue"
             " alone and the agent is offered none of those tools"
         )
