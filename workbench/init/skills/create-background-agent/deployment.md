@@ -168,10 +168,9 @@ before the first deployed run, and again whenever the frontmatter changes.
 
 Check `dlthub --version` first. The three calls below are written for **dlt 1.31.0**, and run
 unchanged on 1.30.1a1: both have `load_agent_module`, and on both a declared agent job returns a
-coroutine. On 1.30.1a0 the second call raises `ImportError` and the third raises
-`RuntimeError: asyncio.run() cannot be called from a running event loop`; that version runs the
-loop synchronously through `run_declared_agent`, and "On dlt 1.30.1a0" below has the shape that
-works there.
+coroutine. On 1.30.1a0 the second call raises `ImportError`, and the third has to be written
+synchronously: that version runs the loop through `run_declared_agent` and returns the whole job
+result, so "On dlt 1.30.1a0" below has the shape that works there.
 
 **The spec.** `load_agent_spec` reads the `AGENT.md` and holds it to the contract, so a bad
 `access` verb, an empty body or an `inputs.prompt` fails here rather than at manifest time.
@@ -198,36 +197,26 @@ module = load_agent_module("agents/<name>")
 assert module.validate_input({"audit_date": "2026-10-01"})["coverage"]
 ```
 
-**The whole loop, with the model answered offline.** Subclass `PydanticAILoop`, return
-pydantic-ai's `TestModel` from `_build_model`, register the subclass through the `plug_agent_loop`
-plugin hook, and name its `LOOP_TYPE` in `loop=` on the job. The run then exercises the input
-hook, the placeholder substitution, the inlined rules and skills, the local tool wiring and the
-output schema, and `TestModel` fills the output from the declared schema so dltHub validates it in
-full.
+**The whole loop, with the model answered offline.** dltHub's guidance is to test an agent job
+like other Python code: `https://dlthub.com/docs/hub/agents#test-agent-jobs`. The job is a
+function. Pass the inputs as keyword arguments beside a `run_context`, read the agent output off
+the call and the job result off `last_job_result`, and assert on both. Write it as a pytest test,
+so the fixtures below carry the workspace and the loop across the cases.
 
-`trace["local_tools"]` is what the `access` block wired, computed from the grant, so the assertion
-below is the one that catches a verb you did not mean to give. `trace["mcp_features"]` repeats the
-`tools` list from the file and says nothing about the server.
-
-The run below never starts a server: `_build_toolsets` returns `[]`, which keeps the check offline
-and quick, and it is what the harness repo's `tests/agents/conftest.py` does. Drop that override
-and the real workspace MCP server starts over stdio. The trace reads the same either way, so the
-evidence is in the transcript: the server's own banner names the features it assembled and the
-access it was handed, and the loop prints `dlt-workspace-mcp connected`. That is how to check the
-server command resolves and the groups register. `TestModel(call_tools=[])` still keeps the model
-from calling anything.
+To answer the model without a provider key, subclass `PydanticAILoop`, return pydantic-ai's
+`TestModel` from `_build_model`, register the subclass through the `plug_agent_loop` plugin hook,
+and name its `LOOP_TYPE` in `loop=` on the job. The run then exercises the input hook, the
+placeholder substitution, the inlined rules and skills, the local tool wiring and the output
+schema, and `TestModel` fills the output from the declared schema so dltHub validates it in full.
 
 Both halves are needed. `resolve_agent_loop` asks the registered plugins for a class answering to
 the loop type, so a subclass nobody registered is never reached and `loop="null-pydantic-ai"`
 raises `UnknownAgentLoop`. Leave `loop=` off and the job takes the default `pydantic-ai`, which
-addresses the real provider: the section runs against a live key, or dies on
+addresses the real provider: the test runs against a live key, or dies on
 `Set the ANTHROPIC_API_KEY environment variable`.
 
-Run this as a script from the workspace root:
-
 ```python
-import asyncio
-
+import pytest
 from pydantic_ai.models.test import TestModel
 
 from dlt.common.configuration.plugins import hookimpl, manager
@@ -251,15 +240,22 @@ class NullModelLoopPlugin:
         return NullModelLoop if loop_type == NullModelLoop.LOOP_TYPE else None
 
 
-manager().register(NullModelLoopPlugin(), name="null-model-loop")
+@pytest.fixture
+def inspector():
+    manager().register(NullModelLoopPlugin(), name="null-model-loop")
+    return run.agent("<toolkit>:<name>", loop=NullModelLoop.LOOP_TYPE)
 
-job = run.agent("<toolkit>:<name>", loop=NullModelLoop.LOOP_TYPE)
 
+@pytest.mark.asyncio
+async def test_the_agent_runs(inspector) -> None:
+    run_context = {"run_id": "r-test", "trigger": "job.fail:jobs.ingest", "refresh": False}
 
-async def main():
-    report = await job(**inputs)
-    trace = job.last_job_result["trace"]
+    report = await inspector(failed_run_id="r-failed-42", run_context=run_context)
 
+    assert report["status"] == "succeeded"
+    job_result = inspector.last_job_result
+    assert {"type": "job-run", "id": "job-run/r-failed-42"} in job_result["object"]
+    trace = job_result["trace"]
     # the one assertion that pays for this section: a placeholder the run did not resolve
     # rendered as empty text, and the agent read a sentence with a hole in it
     assert trace["unresolved_placeholders"] == []
@@ -267,30 +263,60 @@ async def main():
     assert trace["loop_type"] == NullModelLoop.LOOP_TYPE
     assert trace["local_tools"] == {"Read": "read", "Glob": "read", "Grep": "read"}
     assert trace["inlined_skills"] == ["<toolkit>:<skill>"]
-    assert report["status"] == "succeeded"
-
-
-asyncio.run(main())
+    assert "Bash" not in trace["tools_used"]
+    assert trace["total_tokens"] < 200_000
 ```
+
+Build the `run_context` per call. The run adds its `ai_loop` to the mapping it is handed, in
+place, so a module-level dict shared across tests carries a loop object into the next one.
+
+Pass `run_context` even when the body names no `{{ run_context.* }}` placeholder, because the
+trigger the deployment declares is what the body renders against. Leave it out and dltHub builds a
+local context whose fields are `run_id: local`, `trigger: manual:` and `refresh: False`. A body
+naming `{{ run_context.interval_start }}` and `{{ run_context.interval_end }}` then reports both in
+`unresolved_placeholders`, though the scheduled deployment fills them, and a field the body reads
+that the real trigger does not carry passes on the local context and fails the deployed run.
+
+Assert `unresolved_placeholders` on every agent. It is empty only when every `{{ ... }}` in the
+body was filled by this run's inputs, so it catches a typo, a renamed input, and a `run_context`
+field the trigger does not carry. The deployed run that finds the same thing costs a full token
+budget.
+
+`trace["local_tools"]` is what the `access` block wired, computed from the grant, so that
+assertion is the one that catches a verb you did not mean to give. `trace["tools_used"]` is what
+the model called, and it is empty under `TestModel(call_tools=[])`, so assert it as the bound the
+docs give rather than as evidence of wiring. `trace["mcp_features"]` repeats the `tools` list from
+the file and says nothing about the server.
+
+The run above never starts a server: `_build_toolsets` returns `[]`, which keeps the check offline
+and quick, and it is what the harness repo's `tests/agents/conftest.py` does. Drop that override
+and the real workspace MCP server starts over stdio. The trace reads the same either way, so the
+evidence is in the transcript, in the server's own two lines:
+
+```text
+Starting dlt MCP server with features: config, jobs, logs, secrets, telemetry, workspace
+Access granted to the caller: local:read,context:read
+```
+
+That is how to check the server command resolves and the groups register. The loop's own
+`dlt-workspace-mcp connected` line is not that evidence: it is printed whenever the file lists any
+`tools`, server or no server. `TestModel(call_tools=[])` still keeps the model from calling
+anything.
 
 On dlt 1.31.0 and 1.30.1a1 a declared `run.agent("<ref>")` returns a coroutine when called, so the
 call is awaited, and it returns the agent output: the job result sits on `job.last_job_result`
-beside it. A decorated function returns a coroutine only when it is `async def`.
+beside it. A decorated function returns a coroutine only when it is `async def`; a sync decorated
+function is called without `await` and returns its value directly.
 
 **On dlt 1.30.1a0** the same call is synchronous and returns the whole job result, `trace`
 included, and `last_job_result` is not an attribute of `AgentJobFactory`. Drop the `async def` and
-the `asyncio.run`, and read the trace off the return value:
+read the trace off the return value:
 
 ```python
 result = job(**inputs)
 trace = result["trace"]
 report = result["result"]
 ```
-
-Assert `unresolved_placeholders` on every agent. It is empty only when every `{{ ... }}` in the
-body was filled by this run's inputs, so it catches a typo, a renamed input, and a
-`run_context` field the trigger does not carry. The deployed run that finds the same thing costs
-a full token budget.
 
 The AI harness repo wires the same loop into pytest in `tests/agents/conftest.py`, where the
 plugin registers on `Container()[PluginContext].manager` and the loop type comes from an
