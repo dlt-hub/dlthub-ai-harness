@@ -230,17 +230,15 @@ def check_prompt_budget(path, frontmatter, body, errors, warnings):
     return parts, floor, floor_tokens, max_turns, max_tokens
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Check an AGENT.md against the run-time rules.")
-    parser.add_argument("target", help="Agent folder, or the AGENT.md inside it")
-    args = parser.parse_args()
+def check(target):
+    """Every check in this file over one `AGENT.md`, as `(errors, warnings, report)`.
 
-    path = Path(args.target)
+    `target` is the agent folder or the `AGENT.md` inside it. A pytest case asserts on `errors`;
+    `main` prints all three and sets the exit code.
+    """
+    path = Path(target)
     if path.is_dir():
         path = path / "AGENT.md"
-    if not path.is_file():
-        print(f"{path} not found", file=sys.stderr)
-        return 2
 
     frontmatter, body = split_frontmatter(path.read_text(encoding="utf-8"))
     errors, warnings = [], []
@@ -272,30 +270,71 @@ def main():
         path, frontmatter, body, errors, warnings
     )
 
-    print(f"{path}")
-    print(f"  body: {len(body.splitlines())} lines, {len(PLACEHOLDER.findall(body))} placeholders")
+    report = {
+        "path": path,
+        "body_lines": len(body.splitlines()),
+        "placeholders": len(PLACEHOLDER.findall(body)),
+        "prompt_parts": parts,
+        "prompt_chars": floor,
+        "prompt_tokens": floor_tokens,
+        "max_turns": max_turns,
+        "max_tokens": max_tokens,
+        "input_properties": len(inputs.get("properties") or {}),
+        "input_optional": input_optional,
+        "output_properties": len(output.get("properties") or {}),
+        "output_optional": output_optional,
+        "output_chars": output_chars,
+    }
+    return errors, warnings, report
+
+
+def print_report(errors, warnings, report):
+    parts = report["prompt_parts"]
+    print(f"{report['path']}")
+    print(f"  body: {report['body_lines']} lines, {report['placeholders']} placeholders")
     inlined = ", ".join(f"{ref} {size:,}" for ref, size in parts.items() if ref != "body")
     print(
-        f"  prompt floor: {floor:,} characters, ~{floor_tokens:,} tokens"
+        f"  prompt floor: {report['prompt_chars']:,} characters,"
+        f" ~{report['prompt_tokens']:,} tokens"
         f" (body {parts['body']:,}{'; ' + inlined if inlined else ''})"
     )
-    if max_turns and max_tokens:
+    turns, tokens = report["max_turns"], report["max_tokens"]
+    if turns and tokens:
         print(
-            f"  turn budget: {max_turns} turns x floor = ~{max_turns * floor_tokens:,} tokens"
-            f" of {max_tokens:,}; history is counted on top of this"
+            f"  turn budget: {turns} turns x floor = ~{turns * report['prompt_tokens']:,} tokens"
+            f" of {tokens:,}; history is counted on top of this"
         )
     else:
         print("  turn budget: defaults.limits sets no max_turns and max_tokens pair to size")
-    print(f"  inputs: {len((inputs.get('properties') or {}))} properties, {input_optional} optional")
     print(
-        f"  output: {len((output.get('properties') or {}))} properties,"
-        f" {output_optional} optional of {MAX_OPTIONAL_PROPERTIES}, {output_chars} characters"
+        f"  inputs: {report['input_properties']} properties,"
+        f" {report['input_optional']} optional"
+    )
+    print(
+        f"  output: {report['output_properties']} properties,"
+        f" {report['output_optional']} optional of {MAX_OPTIONAL_PROPERTIES},"
+        f" {report['output_chars']} characters"
     )
     for warning in warnings:
         print(f"  warning: {warning}")
     for error in errors:
         print(f"  error: {error}")
     print(f"{len(errors)} error(s), {len(warnings)} warning(s)")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Check an AGENT.md against the run-time rules.")
+    parser.add_argument("target", help="Agent folder, or the AGENT.md inside it")
+    args = parser.parse_args()
+
+    path = Path(args.target)
+    target = path / "AGENT.md" if path.is_dir() else path
+    if not target.is_file():
+        print(f"{target} not found", file=sys.stderr)
+        return 2
+
+    errors, warnings, report = check(path)
+    print_report(errors, warnings, report)
     return 1 if errors else 0
 
 

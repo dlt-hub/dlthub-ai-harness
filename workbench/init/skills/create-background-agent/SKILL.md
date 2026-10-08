@@ -291,6 +291,34 @@ size. A reference it cannot resolve is a component the agent will not get.
 uv run python .claude/skills/create-background-agent/check_agent.py agents/<name>
 ```
 
+`check(target)` returns `(errors, warnings, report)`, so the same checks run as a pytest case
+beside the ones that run the agent. Keep them in the suite: the CLI catches a frontmatter change
+once, the test catches it on every commit.
+
+```python
+import sys
+
+sys.path.append(".claude/skills/create-background-agent")
+
+from check_agent import check
+
+
+def test_the_agent_file_holds_up() -> None:
+    errors, warnings, report = check("agents/<name>")
+
+    assert errors == []
+    # the system prompt is resent every turn, so hold it where the history still fits
+    assert report["max_turns"] * report["prompt_tokens"] < report["max_tokens"] // 2
+```
+
+Both paths are read from the working directory, so run pytest from the workspace root.
+
+The run itself is tested the way dltHub documents at
+`https://dlthub.com/docs/hub/agents#test-agent-jobs`: await the job with its inputs and a
+`run_context`, assert on the output and on `last_job_result`. The two cover different failures.
+This one reads the file and costs nothing; that one renders the prompt, wires the tools and
+validates the output against the schema. [deployment.md](deployment.md) has the fixtures.
+
 Then read the list:
 
 - The folder name is the agent's name; `description` says when to run it.
