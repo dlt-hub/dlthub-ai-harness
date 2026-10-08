@@ -9,8 +9,8 @@ without opening the result. Every agent writes it the same way. Each agent's bod
 rules again under "Summary format", since the model reads the body and never this file, so a
 change here is a change in every body that states them.
 
-- **Markdown headings over short bullets, and nothing else.** No text before the first heading, no
-  text outside a bullet, no question or bracketed note next to a heading.
+- **Markdown headings, each followed by short bullets.** Put no text before the first heading, no
+  text outside a bullet, and no question or bracketed note next to a heading.
 - **The same headings on every run of one agent**, in the same order, named for what that agent
   reports. Take the default for the kind of agent below and change it where the agent reports
   something else. Declare the set in the body and hold to it.
@@ -79,7 +79,7 @@ An agent that investigates, inspects or analyses an entity in the workspace take
 | `## Recommendation` | What the reader does next: the target and the change, written as the instruction itself |
 | `## Confidence` | What this rests on and what it leaves open; when nothing was left open, one bullet says so |
 
-## Put the skeleton in the body, not the rules
+## Put the skeleton in the body
 
 Prose rules about the shape are not enough. An agent given the full rule set in its body returned
 one paragraph that closed with "Full detail in the Gaps/Recommendation/Scope sections" and carried

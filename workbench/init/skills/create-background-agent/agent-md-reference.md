@@ -11,7 +11,7 @@ Reference: job configuration, which every input is a key of,
 |---|---|
 | `name` | the folder name; state it only to have it in the file |
 | `description` | what the agent does and when to run it; shown in the UI |
-| `tools` | feature groups of the dlthub MCP server the agent gets, and nothing else |
+| `tools` | feature groups of the dlthub MCP server the agent gets |
 | `skills`, `rules` | `<toolkit>:<name>` refs to components the agent uses |
 | `access` | what the agent may touch: `local`, `data`, `context` |
 | `inputs` | JSON Schema of what the agent takes; every input is a job configuration key |
@@ -23,9 +23,9 @@ Reference: job configuration, which every input is a key of,
 
 Feature groups of the dlthub MCP server, the platform-side tools: `jobs`, `logs`, `telemetry`,
 `workspace`, `pipeline`, `toolkit`, `secrets`, `context`, `config`, `restore_pipeline`, plus
-whatever other plugins contribute. The agent gets exactly the groups listed, not the server's
-interactive defaults, and within a group only the tools its `access` covers. No `tools`, no
-server.
+whatever other plugins contribute. The agent gets the groups listed rather than the server's
+interactive defaults, and within a group only the tools its `access` covers. A file that lists no
+`tools` starts no server.
 
 ```yaml
 tools: [jobs, logs, telemetry]
@@ -108,14 +108,14 @@ access:
 | | `write` | `Write`, `Edit`, and whatever else the loop wires under those names |
 | | `execute` | `Bash` (`PowerShell` on Windows), `RunPython`, in the workspace, in the job's own process tree |
 | | `network` | `WebFetch`, `WebSearch` |
-| `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. The tools attach a local dlt pipeline, which an agent job on the platform has no state for, so they fail at run time: see "Rows need a hook, not a grant" below. Mapping the verb to a dlt profile is planned |
+| `data` | `read`, `write` | workspace data through the MCP server's data tools. `read` offers the read tools only and restricts SQL to `SELECT`. The tools attach a local dlt pipeline, which an agent job on the platform has no state for, so they fail at run time: see "Rows come through a hook" below. Mapping the verb to a dlt profile is planned |
 | `context` | `read` | runs, logs, job definitions and telemetry through the MCP server. The only verb served; `write`, `execute` and `deploy` are refused at manifest time until a runtime serves them |
 
 Credential files (`*secrets.toml`, `.env`) are never readable, whatever `local` says. A tool the
 declaration does not cover is not offered to the model, and the trace of every run lists the tools
 that were wired.
 
-### Rows need a hook, not a grant
+### Rows come through a hook
 
 Every data tool takes a `pipeline_name` and restores that pipeline from `pipelines_dir` under the
 active profile. An agent job runs on `access` in a fresh run directory, and the pipelines wrote
@@ -243,8 +243,8 @@ Add the agent's own fields next to them. What to know about the schema:
 - **The model sees the whole schema, descriptions and enums included.** A description is the only
   place semantics travel; an enum says which values are legal, not when to pick which. Describe
   every field whose name does not say it all.
-- **Constrained decoding guarantees shape, not truth.** A misread field is a confident,
-  schema-valid, wrong answer. The body has to define what each value means.
+- **Constrained decoding guarantees the shape of the output alone.** A misread field comes back
+  confident, schema-valid and wrong. The body has to define what each value means.
 - **The schema reaches the model as declared.** dltHub changes one thing: `entity_type` moves into
   `$comment`, because strict validators reject keywords they do not know. Nothing is added or
   relaxed on your behalf, so write what the provider accepts. For example, Anthropic's structured
@@ -300,7 +300,7 @@ died, and a budget read off the transcript was out by a factor of two.
 Size a budget from the header and the trace, and write a cut-off into the body as a count of
 requests, which is what the model itself experiences as its turns.
 
-### The two limits are one budget
+### How `max_turns` and `max_tokens` interact
 
 `max_turns` is the budget and `max_tokens` is the ceiling it has to fit under. Every turn resends
 the system prompt and the whole history, and `max_tokens` counts input and output across the

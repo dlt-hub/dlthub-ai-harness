@@ -184,7 +184,7 @@ spec = load_agent_spec("agents/<name>")
 **The hooks.** `load_agent_module` imports the agent's `agent.py` the way a run does, under a
 private package named after a hash of the folder. That is why `from .coverage import collect`
 works inside it and a plain `importlib` load of the same file does not, and why a hyphenated
-folder name is importable here and nowhere else. Call it to test your own hook code. It needs
+folder name is importable through this call alone. Call it to test your own hook code. It needs
 **dlt 1.30.1a1 or later**: below that the name is not in
 `dlt._workspace.deployment.agent.manifest` at all and the import raises an `ImportError` that
 says nothing about versions, and a workspace on an older pin attaches its hooks through
@@ -209,9 +209,9 @@ and name its `LOOP_TYPE` in `loop=` on the job. The run then exercises the input
 placeholder substitution, the inlined rules and skills, the local tool wiring and the output
 schema, and `TestModel` fills the output from the declared schema so dltHub validates it in full.
 
-Both halves are needed. `resolve_agent_loop` asks the registered plugins for a class answering to
-the loop type, so a subclass nobody registered is never reached and `loop="null-pydantic-ai"`
-raises `UnknownAgentLoop`. Leave `loop=` off and the job takes the default `pydantic-ai`, which
+The subclass and the registration are both needed. `resolve_agent_loop` asks the registered
+plugins for a class answering to the loop type, so a subclass nobody registered is never reached
+and `loop="null-pydantic-ai"` raises `UnknownAgentLoop`. Leave `loop=` off and the job takes the default `pydantic-ai`, which
 addresses the real provider: the test runs against a live key, or dies on
 `Set the ANTHROPIC_API_KEY environment variable`.
 
@@ -305,8 +305,8 @@ Access granted to the caller: local:read,context:read
 
 That is how to check the server command resolves and the groups register. The loop's own
 `dlt-workspace-mcp connected` line is not that evidence: it is printed whenever the file lists any
-`tools`, server or no server. `TestModel(call_tools=[])` still keeps the model from calling
-anything.
+`tools`, with or without a server behind it. `TestModel(call_tools=[])` still keeps the model from
+calling anything.
 
 On dlt 1.31.0 and 1.30.1a1 a declared `run.agent("<ref>")` returns a coroutine when called, so the
 call is awaited, and it returns the agent output: the job result sits on `job.last_job_result`

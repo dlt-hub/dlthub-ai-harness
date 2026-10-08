@@ -103,36 +103,35 @@ defaults:
 ---
 ```
 
-## 3. Declare what it has
+## 3. Declare `tools`, `access`, `skills` and `rules`
 
-Four fields, each the task's narrowest set. [agent-md-reference.md](agent-md-reference.md) has
-the field table, the access axes and the verbs.
+Each field takes the narrowest set the task needs. [agent-md-reference.md](agent-md-reference.md)
+has the field table, the access axes and the verbs.
 
-- `tools`: the feature groups of the dlthub MCP server the agent gets, and nothing else.
+- `tools`: the feature groups of the dlthub MCP server the agent gets.
 - `access`: what it may touch, per axis: `local`, `data`, `context`.
 - `skills` and `rules`: `<toolkit>:<name>` refs to components it uses.
 
-**Fetch the evidence in Python where the task is fixed, and grant the axis where it is open.**
-What the task knows in advance is the decision rule. `job-inspector` grants `local: read` and
-`context: read`: it investigates an open question and cannot know which file or which record
-answers it. An agent that answers a fixed list of questions grants nothing and declares no
-`tools`: the code around its loop fetches every artifact those questions read before the loop
-starts and hands the model bounded windows.
+**Grant an axis only where the agent has to choose what it reads.** `job-inspector` grants
+`local: read` and `context: read` because it investigates an open question and cannot know which
+file or which record answers it. An agent that answers a fixed list of questions grants nothing
+and declares no `tools`: the code around its loop fetches every artifact those questions read
+before the loop starts and hands the model bounded windows.
 
-Warehouse rows are the worked example. Every tool the `data` axis buys takes a `pipeline_name`
+Warehouse rows take the Python route. Every tool the `data` axis buys takes a `pipeline_name`
 and restores that pipeline from the run directory, and an agent job on the platform starts with
 an empty run directory, so the first call fails with `No local state found` and the run aborts
 once `loop_run_args.retries` is spent. An agent that needs rows reads them before the loop with
 `dlt.dataset()` and renders a bounded window into the system prompt. "Row evidence through a
-hook" in [deployment.md](deployment.md) has the shape.
+hook" in [deployment.md](deployment.md) has the code.
 
 `job-inspector` grants no `data`. It works from run records, logs, job definitions, telemetry and
 source, and a `data` grant would put workspace data in front of a model-driven process.
 
 ### Hold the grant narrow
 
-The declaration contains important guardrails. dltHub wires only what `access` and `tools` name, so
-a verb you leave out is a tool the model is never offered. Five rules carry most of it.
+dltHub wires only what `access` and `tools` name, so a verb you leave out is a tool the model is
+never offered.
 
 - **Stay on the `pydantic-ai` loop.** The shipped agents are written and graded against it, and
   the wiring described here is its wiring. Another loop brings its own toolset, which none of
@@ -156,8 +155,8 @@ a verb you leave out is a tool the model is never offered. Five rules carry most
   definition's lists and the same arguments are dropped. Step 6 and
   [deployment.md](deployment.md) have the rest of what the Python overrides.
 
-The same five apply to an agent you adapt from a shipped definition. Copying an `AGENT.md` and
-widening `access` or `tools` is the point where the grant stops being the one that was graded.
+These rules apply equally to an agent adapted from a shipped definition. Copy an `AGENT.md` and
+widen `access` or `tools`, and the grant is no longer the one that was graded.
 
 ## 4. Declare `inputs` and `output`
 
@@ -184,7 +183,7 @@ naming the workspace folder and the temp folder for scratch files, the output sc
 descriptions, and the tools `access` and `tools` bought. What it gets as the user turn is the
 agent job's `instructions`, or a bare "Go ahead". Do not restate any of that.
 
-Seven points, with `job-inspector` as the example:
+These seven points use `job-inspector` as the example:
 
 1. **State the role in two sentences, including the unattended setting.** "You run unattended,
    seconds after a job failed. An engineer reads your output only when the failure matters, so it
@@ -210,13 +209,13 @@ Seven points, with `job-inspector` as the example:
    `dlthub_get_run_logs` and `limit` elsewhere, `dlthub_list_runs` already carries the row counts
    that `dlthub_get_run` would cost a call a run to fetch, and that listing returns the runs of
    archived jobs unless it is given a `job`.
-5. **List constraints as rules, not adjectives.** "Never edit code, never deploy, never re-run a
-   job" beats "be careful".
+5. **Write each constraint as a rule.** "Never edit code, never deploy, never re-run a job" beats
+   "be careful".
 6. **Define every enum the output declares.** A table of value and when it applies. Say what
    `unknown` or `low` means and that reporting it is a legitimate outcome.
 7. **Reserve turns for the answer.** Writing the summary costs a turn of its own, so an agent
    that reads until the limit returns nothing, and a run with no summary is worth nothing however
-   well it checked what it was chasing. A run that obeyed every rule above, batched its opening
+   thoroughly it investigated. A run that obeyed every rule above, batched its opening
    reads and bounded every payload, still spent its tenth turn on one more confirmation and ended
    with no output. Give a counted cut-off at about half of `max_turns`: "Stop reading after your
    fifteenth turn. From the sixteenth on, write the answer from what you have." Say in the same
@@ -292,8 +291,8 @@ uv run python .claude/skills/create-background-agent/check_agent.py agents/<name
 ```
 
 `check(target)` returns `(errors, warnings, report)`, so the same checks run as a pytest case
-beside the ones that run the agent. Keep them in the suite: the CLI catches a frontmatter change
-once, the test catches it on every commit.
+beside the ones that run the agent. Keep the case in the suite so a frontmatter change is checked
+on every commit.
 
 ```python
 import sys
@@ -315,9 +314,9 @@ Both paths are read from the working directory, so run pytest from the workspace
 
 The run itself is tested the way dltHub documents at
 `https://dlthub.com/docs/hub/agents#test-agent-jobs`: await the job with its inputs and a
-`run_context`, assert on the output and on `last_job_result`. The two cover different failures.
-This one reads the file and costs nothing; that one renders the prompt, wires the tools and
-validates the output against the schema. [deployment.md](deployment.md) has the fixtures.
+`run_context`, assert on the output and on `last_job_result`. That test renders the prompt, wires
+the tools and validates the output against the schema, which reading the file cannot reach. Keep
+both. [deployment.md](deployment.md) has the fixtures.
 
 Then read the list:
 
@@ -340,6 +339,6 @@ Then read the list:
   component refs and the `defaults` keys. dlthub validates again when the deployment manifest is
   generated.
 
-An agent that runs unattended is read by a person only when its output matters, so nothing tells
-you whether it followed its own instructions. Read a sample of its runs yourself after it goes
-live, against the body you wrote and the trace of each run.
+An agent that runs unattended is read by a person only when its output matters, so its adherence
+to its own instructions goes unchecked. Read a sample of its runs yourself after it goes live,
+against the body you wrote and the trace of each run.
