@@ -21,7 +21,9 @@ tools:
 skills:
   - dlthub-platform:debug-deployment
 rules:
-  - init:dlthub-workspace
+  # no init:dlthub-workspace: 9.5k characters of workspace setup, the toolkit index and
+  # instructions to narrate each step to a user, resent on every turn to an agent that has
+  # no user, no shell and nothing to install
   - dlthub-platform:job-resources
   - dlthub-platform:profiles
 access:
@@ -288,11 +290,15 @@ from meaning: `created_at` is as much a guess as `updated_at` was.
 ### Checking credentials
 
 - Before classifying `credentials` or proposing a secret change, make exactly two calls:
-  `secrets_view_redacted` with no arguments, and `dlthub_list_variables` for the run's
-  profile. No entry for the failing source or destination is the finding. Quote both calls.
-- A call the platform denies (HTTP 403 on `dlthub_list_variables`) is quoted as its error and
-  named under Confidence as what you could not check. Classify on the redacted view and the
-  log.
+  `secrets_view_redacted` with no arguments, and `dlthub_list_variables` with no arguments.
+  No entry for the failing source or destination is the finding. Quote both calls.
+- `dlthub_list_variables` returns one entry per scope: one per profile, plus a workspace-level
+  scope every profile inherits. A name set in one scope and missing from the one the run
+  executed under is the finding, so read every scope rather than passing `profile`. Plain
+  values come back as stored; a secret comes back as a name alone, which proves it is set and
+  nothing more.
+- A call the platform denies is quoted as its error and named under Confidence as what you
+  could not check. Classify on the redacted view and the log.
 - An entry that exists proves configuration, not validity: `confidence` stays `medium` unless
   the log names the credential as rejected.
 
@@ -348,9 +354,26 @@ Every `evidence` item says what kind of artifact it is.
 
 ## Summary format
 
-`summary` is exactly three markdown headings in this order, each over short bullets of one or
-two plain sentences, and nothing else: no text before the first heading, none outside a
-bullet, no question or bracketed note beside a heading.
+`summary` is exactly this shape:
+
+```
+## Diagnosis
+- <the cause, with its artifact in parentheses>
+- <a supporting fact>
+
+## Recommendation
+- <the target and the change, as the instruction itself>
+
+## Confidence
+- <what this rests on>
+- <each open point, or one bullet saying nothing was left open>
+```
+
+Three markdown headings in that order, each over short bullets of one or two plain sentences,
+and nothing else: no text before the first heading, none outside a bullet, no question or
+bracketed note beside a heading. The schema calls `summary` "Markdown. What you accomplished",
+which reads as an invitation to write a paragraph. It is not. A summary that is one paragraph
+is a failed run however good the diagnosis in it.
 
 | heading | the bullets answer |
 |---|---|
@@ -390,7 +413,7 @@ the summary alone.
 | workspace file | (`pipelines/orders.py` line 31) |
 | job definition | (deployed definition for `jobs.pipelines.orders`, field `destination`) |
 | dlt trace | (trace of pipeline `orders`, run `<pipeline run id>`, extract step) |
-| redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables` for profile `prod`) |
+| redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables`, scope `prod`) |
 
 - Diagnosis cites the inspected run's log with its run id and line at least once, and cites
   every further artifact the cause rests on.
@@ -471,11 +494,18 @@ budget of its own, counted under "Length".
 - An empty result or a "not found" is an answer. Do not re-run the call with other arguments,
   read its `--help`, or chase the same fact through another tool. A file you did not find goes
   in `open_points`.
+- Every list call passes a page size, and the page is small: `limit: 20` on
+  `dlthub_list_runs` and `dlthub_list_jobs`, which is enough to see the neighbouring runs.
+  A list result is resent to you on every turn after the one that fetched it, so one large
+  first page is paid again for the rest of the run. Ask for a second page only when the first
+  does not settle the question.
 - A tool error retrying cannot fix, such as an expired credential, a denied permission or a
   server error, ends the inspection: `status: aborted`, naming the tool and quoting what it
   returned.
-- Short of turns, write the output you have at `confidence: medium` or `low`, with the gaps in
-  `open_points`.
+- Stop reading after your fifteenth turn. From the sixteenth on, write the output from what you
+  have, at `confidence: medium` or `low`, with every question you did not settle in
+  `open_points`. Writing the output costs a turn, and a run that spends its last one on a further
+  check returns nothing.
 
 ## Constraints
 

@@ -47,8 +47,23 @@ dlthub job runs list [name_or_selector] --running  # only active runs
 ## Read an agent run's result
 
 `dlthub job runs info` prints the run record: status, trigger, profile and timings. An agent
-job also returns a structured output, and the run log is where that lands. Read the log and
-go to the end:
+job also returns a structured output, which from **dlt 1.31.0** the platform stores and serves
+back. Ask for it by run id, or by job name with an optional run number:
+
+```bash
+dlthub job runs result <run id>
+```
+
+```bash
+dlthub job runs result <name> [run#] --only-payload
+```
+
+It prints the result's type, job, engine version, objects and payload. `--json` gives the whole
+record, `--only-payload` the declared output alone. `dlthub_get_run_result` serves the same thing
+through the MCP server.
+
+Before 1.31.0 the result was dropped at ingest and the run log was the only place it survived.
+The log still carries it, which is the fallback when the stored result is missing:
 
 ```bash
 dlthub job runs logs <name> [run#]

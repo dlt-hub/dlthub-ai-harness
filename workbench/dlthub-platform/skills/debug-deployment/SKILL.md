@@ -37,7 +37,7 @@ The answer is usually in the log. Read it whole once, then work through it:
 - **Check the neighbouring runs before calling a failure intermittent.** Recurrence is the test. `dlthub job runs list <name_or_selector>` shows the runs before and after this one. If they are clean, the failure is a one-off. If you did not look, you do not know.
 - **Read the job definition when config looks suspect.** Profile, trigger, dependency groups and the arguments the job takes are all in it: see Step 3 and the `job-resources` rule.
 
-An agent job writes its structured output to the end of its run log, under a `Result` banner; `cli-reference.md` says how to read it.
+An agent job's structured output comes back from `dlthub job runs result <run id>`, and is also written to the end of its run log under a `Result` banner; `cli-reference.md` says how to read both.
 
 The `job-inspector` agent (`dlthub/agents/job-inspector/AGENT.md`) runs this same method unattended after a job fails, and adds the rules for the classification and evidence it reports and for when to stop investigating and write its output.
 

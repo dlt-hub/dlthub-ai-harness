@@ -12,6 +12,7 @@ import typing
 from pathlib import Path
 
 import yaml
+from dlt._workspace.access import ACCESS_AXES
 from dlt._workspace.deployment.agent.exceptions import InvalidAgentSpec
 from dlt._workspace.deployment.agent.manifest import (
     VALIDATE_INPUT,
@@ -244,11 +245,18 @@ def validate_agents(
         _validate_entity_types(pname, rel, fm, errors, warnings)
         _validate_output(pname, rel, fm, errors, warnings)
         _validate_schema_types(pname, rel, fm, errors, warnings)
+        _validate_optional_count(pname, rel, fm, errors, warnings)
+        _validate_output_size(pname, rel, fm, errors, warnings)
+        _validate_tools_access(pname, rel, fm, errors, warnings)
         _validate_defaults(pname, rel, fm, errors, warnings)
         _validate_agent_code(pname, entry, errors)
         _validate_shipped_files(pname, entry, errors)
 
     return agent_names
+
+
+_UNTRACKED_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+"""Gitignored tool caches. An install works from a checkout, which never holds them."""
 
 
 def _validate_shipped_files(pname: str, agent_dir: Path, errors: list[str]) -> None:
@@ -257,7 +265,9 @@ def _validate_shipped_files(pname: str, agent_dir: Path, errors: list[str]) -> N
     stray = sorted(
         path.name
         for path in agent_dir.iterdir()
-        if path.name != _AGENT_FILE and not (path.is_file() and path.suffix == ".py")
+        if path.name != _AGENT_FILE
+        and path.name not in _UNTRACKED_DIRS
+        and not (path.is_file() and path.suffix == ".py")
     )
     if stray:
         errors.append(
@@ -425,6 +435,110 @@ def _validate_output(
                 )
 
 
+MAX_OPTIONAL_PROPERTIES = 24
+"""Anthropic refuses more optional properties than this, nested ones counted."""
+
+REJECTED_KEYWORDS = frozenset({"minimum", "maximum", "minLength", "maxLength"})
+"""Anthropic's structured output rejects these keywords; a bound goes in the description."""
+
+MAX_OUTPUT_CHARS = 8000
+"""The model reads the whole output schema on every run, and a large one has stopped a job."""
+
+
+def _validate_optional_count(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Check `output` against the provider's cap. A property in its object's `required` does
+    not count, and a nested `required` binds only when the model writes that object."""
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    optional = _optional_properties(output)
+    if len(optional) > MAX_OPTIONAL_PROPERTIES:
+        errors.append(
+            f"[{pname}] {rel} output declares {len(optional)} optional properties, over the"
+            f" {MAX_OPTIONAL_PROPERTIES} Anthropic accepts; a property listed in its object's"
+            " `required` does not count, and a nested `required` binds only when the model"
+            " writes that object, so every nested property of a field Python fills belongs in"
+            f" one ({', '.join(optional[:6])}, ...)"
+        )
+
+
+def _optional_properties(schema: dict, path: str = "") -> list[str]:
+    optional: list[str] = []
+    props = schema.get("properties")
+    required = schema.get("required")
+    required = set(required) if isinstance(required, list) else set()
+    for name, spec in (props if isinstance(props, dict) else {}).items():
+        if not isinstance(spec, dict):
+            continue
+        here = f"{path}.{name}" if path else name
+        if name not in required:
+            optional.append(here)
+        optional += _optional_properties(spec, here)
+        items = spec.get("items")
+        if isinstance(items, dict):
+            optional += _optional_properties(items, f"{here}[]")
+    return optional
+
+
+def _validate_output_size(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Check the serialized `output` against the size a job has launched with."""
+    output = fm.get("output")
+    if not isinstance(output, dict):
+        return
+    size = len(json.dumps(output))
+    if size > MAX_OUTPUT_CHARS:
+        errors.append(
+            f"[{pname}] {rel} output is {size} characters, over the {MAX_OUTPUT_CHARS} a job"
+            " has launched with. Keep each item's schema to the fields a reader acts on"
+        )
+
+
+GROUP_AXES = {
+    "jobs": ("context",),
+    "logs": ("context",),
+    "telemetry": ("context",),
+    "config": ("context",),
+    "context": ("context",),
+    "pipeline": ("data",),
+    "workspace": ("local",),
+    "secrets": ("local",),
+    "restore_pipeline": ("context", "data"),
+    "toolkit": (),
+}
+"""Axes each feature group needs before the server offers any of its tools. The catalogue is in
+`create-background-agent/agent-md-reference.md`. A group not listed is checked against the axes
+as a whole."""
+
+SELF_SERVING_GROUPS = frozenset(group for group, axes in GROUP_AXES.items() if not axes)
+"""Groups whose tools carry `RequiresAccess()`. Every other group serves nothing without an axis."""
+
+
+def _validate_tools_access(
+    pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
+) -> None:
+    """Check that a declared feature group has an `access` axis that can serve it."""
+    groups = [g for g in (fm.get("tools") or []) if g not in SELF_SERVING_GROUPS]
+    access = fm.get("access") or {}
+    for group in [g for g in groups if g in GROUP_AXES]:
+        missing = [axis for axis in GROUP_AXES[group] if not access.get(axis)]
+        if missing:
+            errors.append(
+                f"[{pname}] {rel} tools lists {group} but access grants no"
+                f" {' and no '.join(missing)}; none of its tools are served"
+            )
+    rest = [g for g in groups if g not in GROUP_AXES]
+    if rest and not any(access.get(axis) for axis in ACCESS_AXES):
+        errors.append(
+            f"[{pname}] {rel} tools lists {', '.join(rest)} but access grants no"
+            f" {', '.join(ACCESS_AXES)} axis; the server then serves the toolkit catalogue"
+            " alone and the agent is offered none of those tools"
+        )
+
+
 def _validate_schema_types(
     pname: str, rel: str, fm: dict, errors: list[str], warnings: list[str]
 ) -> None:
@@ -445,6 +559,16 @@ def _walk_properties(pname: str, where: str, schema: dict, errors: list[str]) ->
             errors.append(
                 f"[{pname}] {where}.{name} names no type; a property carrying an enum alone"
                 " is refused by Anthropic's structured output. Add `type: string`"
+            )
+        if spec.get("type") == "object" and "properties" not in spec:
+            errors.append(
+                f"[{pname}] {where}.{name} is a bare object; a strict validator refuses it and"
+                " OpenAI's structured output falls back. Name its `properties`"
+            )
+        for keyword in sorted(REJECTED_KEYWORDS & set(spec)):
+            errors.append(
+                f"[{pname}] {where}.{name} carries {keyword!r}, which Anthropic's structured"
+                " output rejects. Put the bound in the description"
             )
         _walk_properties(pname, f"{where}.{name}", spec, errors)
         items = spec.get("items")

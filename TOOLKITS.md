@@ -106,6 +106,16 @@ dlthub ai init              [--agent] [--overwrite] [--location] [--branch]
 
 `list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name.
 
+`--branch` does not work as of dlt 1.31.0. The sparse clone is a `--depth=1` of the default branch, so the named ref is never fetched and the checkout fails with `pathspec '<branch>' did not match any file(s)`. The failure handler then deletes `~/.dlt/repos/<repo>`, so the next install re-clones from scratch. To install a toolkit from a branch, clone it yourself and pass `--location`:
+
+```bash
+git clone --depth 1 --branch <branch> https://github.com/dlt-hub/dlthub-ai-harness.git /tmp/harness
+```
+
+```bash
+dlthub --non-interactive ai toolkit install <name> --location /tmp/harness --overwrite
+```
+
 ## MCP tools
 
 When the `toolkit` feature is enabled, the dlthub MCP server exposes:
@@ -122,6 +132,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `skills/<name>/` | Directory with `SKILL.md` + supporting files, copied as a tree |
 | command | `commands/<name>.md` | Single markdown file, slash-command or prompt template |
 | rule | `rules/<name>.md` | Single markdown file, always-on context injected by the IDE |
+| agent | `dlthub/agents/<name>/` | Directory with `AGENT.md` + optional Python modules, copied as a tree. Needs dlt 1.30.1a1 or later: before that the installer read `agents/` and skipped the folder without saying so. dlt 1.31.0 added the `<toolkit>` segment to the install path, so two toolkits may ship an agent of the same name |
 | mcp | `plugin.json`, `.mcp.json`, or `mcp.json` | MCP server definitions, merged into platform config |
 | ignore | `.claudeignore` | Glob patterns for files that the AI does not read or index |
 
@@ -132,6 +143,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | native | native | native |
 | command | native | native | converted to skill |
 | rule | native | native | converted to skill |
+| agent | read by dlt | read by dlt | read by dlt |
 | mcp | native (JSON) | native (JSON) | native (TOML) |
 | ignore | native | native | native |
 
@@ -142,7 +154,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `.claude/skills/<name>/` | `.cursor/skills/<name>/` | `.agents/skills/<name>/` |
 | command | `.claude/commands/<name>.md` | `.cursor/commands/<name>.md` | `.agents/skills/<name>/SKILL.md` |
 | rule | `.claude/rules/<toolkit>-<name>.md` | `.cursor/rules/<toolkit>-<name>.mdc` | `.agents/skills/<toolkit>-<name>/SKILL.md` |
-| agent | `.claude/dlthub/agents/<name>/` | `.cursor/dlthub/agents/<name>/` | `.agents/dlthub/agents/<name>/` |
+| agent | `.claude/dlthub/agents/<toolkit>/<name>/` | `.cursor/dlthub/agents/<toolkit>/<name>/` | `.agents/dlthub/agents/<toolkit>/<name>/` |
 | mcp | `.mcp.json` → `mcpServers` | `.cursor/mcp.json` → `mcpServers` | `.codex/config.toml` → `mcp_servers` |
 | ignore | `.claudeignore` | `.cursorignore` | `.codexignore` |
 
@@ -153,7 +165,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | passthrough | passthrough | passthrough |
 | command | passthrough | passthrough | wrapped with `name`/`description` frontmatter |
 | rule | non-Claude frontmatter stripped (keeps `name`, `description`) | `alwaysApply: true` added, `description` derived from first heading if missing | wrapped with `name`/`description` frontmatter |
-| agent | passthrough (dlt reads it, not the host; see [BACKGROUND_AGENTS.md](BACKGROUND_AGENTS.md)) | passthrough | passthrough |
+| agent | passthrough (dlt reads it, not the host; see [create-background-agent](workbench/init/skills/create-background-agent/SKILL.md)) | passthrough | passthrough |
 | mcp | passthrough (`type` field kept) | `type` field stripped | `type` field stripped, converted to TOML |
 | ignore | passthrough (file renamed) | passthrough (file renamed) | passthrough (file renamed) |
 

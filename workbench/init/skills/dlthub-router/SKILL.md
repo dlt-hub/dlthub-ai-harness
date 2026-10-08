@@ -1,6 +1,6 @@
 ---
 name: dlthub-router
-description: "The entry point for building anything with dlthub. Use this skill to route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'how do I build a pipeline', 'I want to pull data from a REST API', 'ingest from a SQL database', 'ingest CSVs from S3 into a warehouse', 'make reports / dashboards', 'transform / model my data', 'add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', 'my deployed job failed', or seems unsure what to do next after setup. Also use whenever the user expresses a data-engineering goal but no matching workflow toolkit is installed yet — this skill installs it on demand. Do NOT use when the toolkit matching the user's intent is already installed — go straight to its entry skill instead; only route/install when the matching toolkit is missing. Do NOT use when a specific task is already in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user explicitly wants a guided end-to-end demo — use **quick-start** for that."
+description: "The entry point for building anything with dlthub: route the user to the right workflow toolkit and install it on demand. MUST use when the user asks 'what can you do', 'what can I build', 'what are toolkits', 'how do I build a pipeline', 'I want to pull data from a REST API', 'ingest from a SQL database', 'ingest CSVs from S3 into a warehouse', 'make reports / dashboards', 'transform / model my data', 'add data quality checks', 'how do I deploy / schedule a pipeline', 'I'm new to dlthub', 'where do I start', 'my deployed job failed', or seems unsure what to do next after setup. Also use when the user names a data-engineering goal and no matching toolkit is installed yet. Do NOT use when the matching toolkit is already installed: go straight to its entry skill. Do NOT use when a specific task is in progress (debugging a pipeline, validating data, adding endpoints) and its toolkit is installed. Do NOT use when the user wants a guided end-to-end demo: use **quick-start**."
 ---
 
 # dlthub-router
@@ -69,6 +69,8 @@ diagnose a failed platform job run, classify it and propose a fix → dlthub-pla
 * `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
 * `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., expose={"tags": ["ingest"]})`. Name the jobs to watch, or tag them.
 * The agent names no model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5, and `AGENT__API_KEY` to the key for that provider.
+
+**Writing a new agent, not installing a shipped one.** Send the user to `create-background-agent`. It ships with `init`, so it is already present in every workspace and needs no install, and it covers the `AGENT.md` fields, the `access` decision, the summary shape, `run.agent`, the profile pin and the trigger strings.
 
 <!-- Loading the new skill/rule inline is a stopgap: until the harness can hot-reload skills/rules after install, newly installed components aren't natively registered until the next session start. -->
 
