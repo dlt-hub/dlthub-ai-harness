@@ -55,14 +55,6 @@ uv add "dlt[hub]"
 
 If adding `dlt` to `pyproject.toml`, pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions.
 
-**`dlt[hub]` floors `dlthub-client`, it does not pin it.** The platform refuses a client below the minimum it advertises and the SDK says so: `dlthub-client <installed> is below the platform's supported minimum (<wanted>)`. An existing lock keeps the old version through a plain `uv sync`, so upgrade it by name:
-
-```bash
-uv sync --upgrade-package dlthub-client
-```
-
-The platform the dltHub runtime 0.31.0 release serves needs **0.28.7 or later**: it stabilized the public API, and every path, field name and operation id changed with it.
-
 ## 4. Login to dltHub Platform
 
 ```bash
