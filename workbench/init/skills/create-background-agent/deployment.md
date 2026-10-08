@@ -211,9 +211,9 @@ schema, and `TestModel` fills the output from the declared schema so dltHub vali
 
 The subclass and the registration are both needed. `resolve_agent_loop` asks the registered
 plugins for a class answering to the loop type, so a subclass nobody registered is never reached
-and `loop="null-pydantic-ai"` raises `UnknownAgentLoop`. Leave `loop=` off and the job takes the default `pydantic-ai`, which
-addresses the real provider: the test runs against a live key, or dies on
-`Set the ANTHROPIC_API_KEY environment variable`.
+and `loop="null-pydantic-ai"` raises `UnknownAgentLoop`. Leave `loop=` off and the job takes the
+default `pydantic-ai`, which addresses the real provider: the test runs against a live key, or
+dies on `Set the ANTHROPIC_API_KEY environment variable`.
 
 ```python
 import pytest
@@ -226,9 +226,11 @@ from dlt.hub import run
 
 class NullModelLoop(PydanticAILoop):
     LOOP_TYPE = "null-pydantic-ai"
+    output = None
+    """What the model answers. `None` lets `TestModel` fill it from the declared schema."""
 
     def _build_model(self):
-        return TestModel(call_tools=[])
+        return TestModel(call_tools=[], custom_output_args=NullModelLoop.output)
 
     def _build_toolsets(self):
         return []
@@ -248,16 +250,22 @@ def null_model_loop():
 
 @pytest.fixture
 def inspector(null_model_loop):
+    NullModelLoop.output = None
     return run.agent("<toolkit>:<name>", loop=NullModelLoop.LOOP_TYPE)
 
 
 @pytest.mark.asyncio
 async def test_the_agent_runs(inspector) -> None:
     run_context = {"run_id": "r-test", "trigger": "job.fail:jobs.ingest", "refresh": False}
+    # every required property, so dltHub validates the answer the way it validates a real one
+    NullModelLoop.output = {"status": "succeeded", "summary": "- it broke",
+                            "classification": "upstream_data", "confidence": "high",
+                            "evidence": [], "open_points": [], "requires_human": False}
 
     report = await inspector(failed_run_id="r-failed-42", run_context=run_context)
 
     assert report["status"] == "succeeded"
+    assert report["classification"] == "upstream_data"
     job_result = inspector.last_job_result
     assert {"type": "job-run", "id": "job-run/r-failed-42"} in job_result["object"]
     trace = job_result["trace"]
@@ -271,6 +279,25 @@ async def test_the_agent_runs(inspector) -> None:
     assert "Bash" not in trace["tools_used"]
     assert trace["total_tokens"] < 200_000
 ```
+
+Fix the answer through `custom_output_args` wherever the assertion is about a field the model
+writes. Left at `None`, `TestModel` invents a value from the schema, so `report["classification"]`
+reads whatever the generator produced rather than what this agent decided. Give every required
+property, since dltHub validates the fixed answer against the output schema like a real one.
+
+Read each call's output off that call. `last_job_result` is one attribute on the job, so two calls
+awaited together through `asyncio.gather` leave the most recently completed one behind: a run with
+`failed_run_id="r-a"` and one with `"r-b"` both return their own report, and
+`job.last_job_result["object"]` afterwards holds `r-b` alone. Assert on the returned value when
+the calls overlap, and read `last_job_result` only after a single await.
+
+Mock the REST calls the agent's own code makes the usual way. `agent.py` and the code around a
+decorated loop run in the test process, so `validate_input` fetching evidence over HTTP is patched
+like any other client.
+
+Score an unstructured field rather than matching it. `summary` is prose and changes run to run, so
+assert its structure, the headings `summary-format.md` requires, and hand the judgement of its
+content to a cheap model.
 
 Build the `run_context` per call. The run adds its `ai_loop` to the mapping it is handed, in
 place, so a module-level dict shared across tests carries a loop object into the next one.
