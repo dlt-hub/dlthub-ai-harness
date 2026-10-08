@@ -54,7 +54,7 @@ Key decisions:
 - **`cursor_path`**: the field in each record holding the cursor value (e.g. `updated_at`).
 - **`initial_value`**: where the first run starts — also how you **expand or shrink the backfill date range**.
 - **`write_disposition: "merge"` + `primary_key`**: required so updated records upsert instead of duplicating.
-- **`lag`** (Optional): re-load a trailing window each run so late-arriving or back-dated updates are caught. **The unit is inferred from the shape of the cursor value, not from your config** — dlt sniffs it with `detect_datetime_format`: a date (`"2026-08-27"`) gets **days**, a datetime (`"2026-08-27T00:00:00Z"`) gets **seconds**. So "re-load the last 7 days" is `lag=7` on a date cursor but `lag=604800` on a datetime cursor. Requires `merge` + `primary_key`, or the re-fetched rows duplicate. Ref: https://dlthub.com/docs/general-usage/incremental/lag
+- **`lag`** (Optional): re-load a trailing window each run so late-arriving or back-dated updates are caught. **The unit follows the cursor type**: **days** for a date cursor, **seconds** for a datetime one. A `rest_api` config has no type argument, so from dlt 1.31.0 the shape of `initial_value` decides: `"2024-01-01T00:00:00Z"` is a datetime, so the last seven days is `"lag": 604800` as above; `"2024-01-01"` is a date, so it is `"lag": 7`. Leave `initial_value` out and the shape of the cursor value decides, which is all dlt 1.30 and earlier went on. Requires `merge` + `primary_key`, or the re-fetched rows duplicate. Ref: https://dlthub.com/docs/general-usage/incremental/lag
 
 dlt stores the last cursor value in pipeline state and resumes next run — check it with `uv run dlthub local pipeline info <name> -v` (look for `last_value`).
 

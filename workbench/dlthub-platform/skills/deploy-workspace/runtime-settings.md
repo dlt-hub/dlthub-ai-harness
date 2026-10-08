@@ -105,4 +105,13 @@ def daily_load(run_context: TJobRunContext):
 Intervals in `run_context` are always UTC, but align to tick boundaries
 in the declared timezone.
 
+**From dlt 1.31.0 it also sets the run's context timezone**, which is what dlt uses
+to normalize timestamps and to store in load packages. The launcher installs it for
+the whole run, so a job triggered manually or on another job's success gets it with
+no interval involved. A non-UTC value therefore changes how naive and aware
+timestamps are stored for the `timezone` column hint, on both the object and arrow
+paths, so do not reach for it just to make a cron read nicely. It must be a
+canonical IANA name (`Europe/Berlin`, `UTC`); a fixed offset carries no name and dlt
+refuses it. Default is UTC.
+
 Reference: https://dlthub.com/docs/hub/pipeline-operations/triggers.md#timezone

@@ -104,7 +104,22 @@ def check_output_contract(output, errors):
 
 ACCESS_AXES = ("local", "data", "context")
 
-SELF_SERVING_GROUPS = frozenset({"toolkit"})
+GROUP_AXES = {
+    "jobs": ("context",),
+    "logs": ("context",),
+    "telemetry": ("context",),
+    "config": ("context",),
+    "context": ("context",),
+    "pipeline": ("data",),
+    "workspace": ("local",),
+    "secrets": ("local",),
+    "restore_pipeline": ("context", "data"),
+    "toolkit": (),
+}
+"""Axes each feature group needs before the server offers any of its tools. See the catalogue in
+agent-md-reference.md. A group not listed here is checked against the axes as a whole."""
+
+SELF_SERVING_GROUPS = frozenset(group for group, axes in GROUP_AXES.items() if not axes)
 """Groups whose tools ask for no access. Every other group serves nothing without an axis."""
 
 
@@ -112,9 +127,18 @@ def check_access(frontmatter, errors):
     """A feature group serves only the tools an `access` axis covers, `toolkit` aside."""
     groups = [g for g in (frontmatter.get("tools") or []) if g not in SELF_SERVING_GROUPS]
     access = frontmatter.get("access") or {}
-    if groups and not any(access.get(axis) for axis in ACCESS_AXES):
+    known = [g for g in groups if g in GROUP_AXES]
+    for group in known:
+        missing = [axis for axis in GROUP_AXES[group] if not access.get(axis)]
+        if missing:
+            errors.append(
+                f"tools lists {group} but access grants no"
+                f" {' and no '.join(missing)}; none of its tools are served"
+            )
+    rest = [g for g in groups if g not in GROUP_AXES]
+    if rest and not any(access.get(axis) for axis in ACCESS_AXES):
         errors.append(
-            f"tools lists {', '.join(groups)} but access grants no"
+            f"tools lists {', '.join(rest)} but access grants no"
             f" {', '.join(ACCESS_AXES)} axis; the server then serves the toolkit catalogue"
             " alone and the agent is offered none of those tools"
         )

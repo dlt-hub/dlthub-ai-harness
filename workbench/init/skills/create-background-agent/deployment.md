@@ -147,6 +147,17 @@ UI's run dialog. What comes back is a job result: `status` and `summary` lifted 
 `trace` of model, limits, inputs, tools used, turns and tokens. The transcript of the run prints
 to the job's log at the configured verbosity.
 
+A deployed run delivers the same job result to the platform, and **dlt 1.31.0** is where it
+arrives: before that it was dropped at ingest, so a run on the platform had no summary, output or
+trace to show in the web app, CLI or MCP. Read it back with the run id or the job name:
+
+```bash
+dlthub job runs result <run id> --json
+```
+
+`--only-payload` prints the `result` object alone, which is the agent output against the schema
+the `AGENT.md` declares. `dlthub_get_run_result` is the same artifact through the MCP server.
+
 Keep `agent.verbosity` at 1, the default. At 0 the log keeps tool names only, and anything reading
 the agent's tool arguments or statements afterwards goes blind.
 
@@ -154,6 +165,13 @@ the agent's tool arguments or statements afterwards goes blind.
 
 Three calls exercise a definition without a provider key and without spending a token. Run them
 before the first deployed run, and again whenever the frontmatter changes.
+
+Check `dlthub --version` first. The three calls below are written for **dlt 1.31.0**, and run
+unchanged on 1.30.1a1: both have `load_agent_module`, and on both a declared agent job returns a
+coroutine. On 1.30.1a0 the second call raises `ImportError` and the third raises
+`RuntimeError: asyncio.run() cannot be called from a running event loop`; that version runs the
+loop synchronously through `run_declared_agent`, and "On dlt 1.30.1a0" below has the shape that
+works there.
 
 **The spec.** `load_agent_spec` reads the `AGENT.md` and holds it to the contract, so a bad
 `access` verb, an empty body or an `inputs.prompt` fails here rather than at manifest time.
@@ -183,9 +201,21 @@ assert module.validate_input({"audit_date": "2026-10-01"})["coverage"]
 **The whole loop, with the model answered offline.** Subclass `PydanticAILoop`, return
 pydantic-ai's `TestModel` from `_build_model`, register the subclass through the `plug_agent_loop`
 plugin hook, and name its `LOOP_TYPE` in `loop=` on the job. The run then exercises the input
-hook, the placeholder substitution, the inlined rules and skills, the tool wiring and the output
-schema, and `TestModel` fills the output from the declared schema so dltHub validates it in full.
-This is how to see which tools the `access` block actually wired: the trace lists them.
+hook, the placeholder substitution, the inlined rules and skills, the local tool wiring and the
+output schema, and `TestModel` fills the output from the declared schema so dltHub validates it in
+full.
+
+`trace["local_tools"]` is what the `access` block wired, computed from the grant, so the assertion
+below is the one that catches a verb you did not mean to give. `trace["mcp_features"]` repeats the
+`tools` list from the file and says nothing about the server.
+
+The run below never starts a server: `_build_toolsets` returns `[]`, which keeps the check offline
+and quick, and it is what the harness repo's `tests/agents/conftest.py` does. Drop that override
+and the real workspace MCP server starts over stdio. The trace reads the same either way, so the
+evidence is in the transcript: the server's own banner names the features it assembled and the
+access it was handed, and the loop prints `dlt-workspace-mcp connected`. That is how to check the
+server command resolves and the groups register. `TestModel(call_tools=[])` still keeps the model
+from calling anything.
 
 Both halves are needed. `resolve_agent_loop` asks the registered plugins for a class answering to
 the loop type, so a subclass nobody registered is never reached and `loop="null-pydantic-ai"`
@@ -243,8 +273,19 @@ async def main():
 asyncio.run(main())
 ```
 
-A declared `run.agent("<ref>")` returns a coroutine when called, so the call is awaited. A
-decorated function returns a coroutine only when it is `async def`.
+On dlt 1.31.0 and 1.30.1a1 a declared `run.agent("<ref>")` returns a coroutine when called, so the
+call is awaited, and it returns the agent output: the job result sits on `job.last_job_result`
+beside it. A decorated function returns a coroutine only when it is `async def`.
+
+**On dlt 1.30.1a0** the same call is synchronous and returns the whole job result, `trace`
+included, and `last_job_result` is not an attribute of `AgentJobFactory`. Drop the `async def` and
+the `asyncio.run`, and read the trace off the return value:
+
+```python
+result = job(**inputs)
+trace = result["trace"]
+report = result["result"]
+```
 
 Assert `unresolved_placeholders` on every agent. It is empty only when every `{{ ... }}` in the
 body was filled by this run's inputs, so it catches a typo, a renamed input, and a

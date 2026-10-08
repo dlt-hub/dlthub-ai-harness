@@ -198,12 +198,18 @@ Seven points, with `job-inspector` as the example:
    `aborted`.
 4. **Give the first steps concretely, and name the page size of every list tool.** Which tool or
    command to run first, what to read, what the tell-tale signs are. A skill reference is good
-   here; a skill the agent has is loaded on demand. A list tool left to its own default takes the
-   largest page it offers, and the first turn's results are resent on every turn after it: a run
+   here; a skill the agent has is loaded on demand. A list tool left to the model takes the
+   largest page it offers rather than its default of 20, and the first turn's results are resent
+   on every turn after it: a run
    that opened with `dlthub_list_jobs {"limit": 100}` and `dlthub_list_runs {"limit": 100}` died
    at 448,613 tokens against a 400,000 ceiling in seven turns with no wandering, and the same task
    at `limit: 40` finished at 326,688. Write the number into the body for each list call, and say
-   to page again only when the first page does not answer the question.
+   to page again only when the first page does not answer the question. "The catalogue" in
+   [agent-md-reference.md](agent-md-reference.md) names every tool each `tools` group holds, its
+   page parameter and its cap. Read it before writing this part: the parameter is `max_lines` on
+   `dlthub_get_run_logs` and `limit` elsewhere, `dlthub_list_runs` already carries the row counts
+   that `dlthub_get_run` would cost a call a run to fetch, and that listing returns the runs of
+   archived jobs unless it is given a `job`.
 5. **List constraints as rules, not adjectives.** "Never edit code, never deploy, never re-run a
    job" beats "be careful".
 6. **Define every enum the output declares.** A table of value and when it applies. Say what
@@ -216,8 +222,8 @@ Seven points, with `job-inspector` as the example:
    fifteenth turn. From the sixteenth on, write the answer from what you have." Say in the same
    place that a question still open at the cut-off goes in the open points. "Short of turns, write
    what you have" is too soft to act on. One model turn is one request, so the number sits on the
-   same scale as `max_turns`; what that counts, and why the transcript's `turn N` lines run at
-   twice it, is in [agent-md-reference.md](agent-md-reference.md).
+   same scale as `max_turns`, and from dlt 1.31.0 on the same scale as the transcript's `turn N`
+   lines. What `max_turns` counts is in [agent-md-reference.md](agent-md-reference.md).
 
 State the summary sections in the body and hold to them. Take the default set for this kind of
 agent from [summary-format.md](summary-format.md), which also carries the shape rules the
@@ -265,17 +271,19 @@ way to find a typo, and a local run needs the secret workspace variables, which 
 Read the trace against what you declared. A tool in it that the task does not need is an `access`
 axis to drop. Divide the tokens by `trace["turn_count"]`, the model requests the run made and the
 count the run header prints: that is what one request of this agent costs, and `max_turns` times
-it is the run's bill. The transcript's `turn N` lines run two to a request, so a budget sized off
-them is out by a factor of two. A request count at the limit is a body that did not say where to
-stop, and the fix is the body, not a larger `max_tokens`.
+it is the run's bill. From dlt 1.31.0 the transcript's `turn N` lines are the same count; up to
+1.30.1a1 they ran two to a request, so a budget sized off an older transcript is out by a factor
+of two. A request count at the limit is a body that did not say where to stop, and the fix is the
+body, not a larger `max_tokens`.
 
 ## 8. Check it
 
 Run the checker beside this skill over the folder first. It reports the schema size, the
 optional-property count against the cap, untyped properties, bare objects, the `status` and
-`summary` contract, a body placeholder no input declares, and a `tools` group with no `access`
-axis to serve it. Each of those either fails a run on the first model call or leaves the agent
-without the tools the file says it has. It also measures the system prompt, body plus every rule and skill the file lists, and
+`summary` contract, a body placeholder no input declares, and a `tools` group whose `access` axis
+the grant leaves out, per the catalogue in [agent-md-reference.md](agent-md-reference.md). Each of
+those either fails a run on the first model call or leaves the agent without the tools the file
+says it has. It also measures the system prompt, body plus every rule and skill the file lists, and
 prints what `max_turns` of it costs against `max_tokens`, which is the number step 7 asks you to
 size. A reference it cannot resolve is a component the agent will not get.
 

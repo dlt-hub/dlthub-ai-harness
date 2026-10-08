@@ -22,13 +22,49 @@ Reference: job configuration, which every input is a key of,
 ## `tools`
 
 Feature groups of the dlthub MCP server, the platform-side tools: `jobs`, `logs`, `telemetry`,
-`workspace`, `pipeline`, `toolkit`, `secrets`, `context`, `config`, plus whatever other plugins
-contribute. The agent gets exactly the groups listed, not the server's interactive defaults, and
-within a group only the tools its `access` covers. No `tools`, no server.
+`workspace`, `pipeline`, `toolkit`, `secrets`, `context`, `config`, `restore_pipeline`, plus
+whatever other plugins contribute. The agent gets exactly the groups listed, not the server's
+interactive defaults, and within a group only the tools its `access` covers. No `tools`, no
+server.
 
 ```yaml
 tools: [jobs, logs, telemetry]
 ```
+
+### The catalogue
+
+Step 5 of [SKILL.md](SKILL.md) asks for the page size of every list tool in the body. These are
+the groups and what they hold, on `dlthub-client` 0.28.7. Check your own workspace with
+`dlthub ai mcp run --stdio --no-default-features --features <group>`, since a dependency can
+contribute tools to a group an agent already lists.
+
+| group | access it needs | tools | page parameter |
+|---|---|---|---|
+| `jobs` | `context: read` | `dlthub_workspace_info`, `dlthub_this_run`, `dlthub_list_jobs`, `dlthub_get_job`, `dlthub_list_runs`, `dlthub_get_run`, `dlthub_get_run_result`, `dlthub_get_run_trace` | `limit` on both list tools: 20 by default, 100 at most, with `offset` to page. `members` on `dlthub_workspace_info`: 50 by default, 200 at most, 0 to skip |
+| `logs` | `context: read` | `dlthub_get_run_logs`, `dlthub_grep_run_logs` | `max_lines` on `dlthub_get_run_logs`: 200 trailing lines by default, 5000 at most. `max_matches` on `dlthub_grep_run_logs`: 200 by default, 2000 at most, and `context` up to 50 lines a side |
+| `telemetry` | `context: read` | `dlthub_telemetry_status`, `dlthub_list_pipeline_runs`, `dlthub_get_pipeline_run`, `dlthub_get_pipeline_run_trace`, `dlthub_list_pipelines`, `dlthub_list_datasets` | `limit` on the three list tools: 20 for runs, 50 for pipelines and datasets, 100 at most. `days` bounds the window: 7 for runs and pipelines, 30 for datasets, 365 at most. `max_chars` on `dlthub_get_pipeline_run_trace`: 20,000 by default, 200,000 at most |
+| `config` | `context: read` | `dlthub_list_variables`, `dlthub_get_configuration_files` | none |
+| `restore_pipeline` | `context: read` and `data: read` | `dlthub_restore_pipeline_from_run`, `dlthub_restore_pipeline` | `days` on `dlthub_restore_pipeline`: 30 by default, 365 at most |
+| `context` | `context: read` | `search_dlthub_sources` | none |
+| `pipeline` | `data: read` | `list_tables`, `get_table_schema`, `get_table_create_sql`, `preview_table`, `execute_sql_query`, `get_row_counts`, `get_local_pipeline_state`, `export_schema` (`local: write` too) | none; bound `execute_sql_query` with `LIMIT` in the SQL |
+| `workspace` | `local: read`, plus `data: read` for `list_pipelines` | `list_pipelines`, `list_profiles`, `get_workspace_info` | none |
+| `secrets` | `local: read`, `local: write` for the update | `secrets_list`, `secrets_view_redacted`, `secrets_update_fragment` | none |
+| `toolkit` | none | `list_toolkits`, `toolkit_info` | none |
+
+What the table does not show, and a deployed run costs to find out:
+
+- **`dlthub_list_runs` already carries the row counts.** Every row holds the run's
+  `pipeline_run_summaries`: pipeline name, dataset, destination, status, duration and `total_rows`
+  for each pipeline the run executed. `dlthub_get_run` adds nothing on that score and costs a call
+  a run, so a body that says to call it per row spends the budget for figures the listing handed
+  over.
+- **`dlthub_list_runs` without `job` returns the runs of archived jobs beside the live ones.** The
+  workspace-wide listing has no archived filter; only `dlthub_list_jobs` takes one. Two pages of
+  60 can fill with jobs nobody deploys any more and reach back days further than the agent
+  intended. Pass `job` when the question is about one job, and say in the body how far back the
+  window should reach.
+- **`dlthub_get_run_logs` pages on `max_lines`, not `limit`,** and returns trailing lines, so
+  raising it is how a truncated traceback comes back whole.
 
 ## `skills` and `rules`
 
@@ -90,6 +126,13 @@ validates, the deployment succeeds, the MCP server starts and the model is offer
 So an agent that reads warehouse rows takes them in `validate_input` with `dlt.dataset()` and
 hands the model a rendered table, and its `access` block leaves `data` out. "Row evidence through
 a hook" in [deployment.md](deployment.md) has the code.
+
+The `restore_pipeline` group is the other route. `dlthub_restore_pipeline_from_run` and
+`dlthub_restore_pipeline` read the pipeline's state back from the destination telemetry recorded,
+after which the `pipeline` tools work on it by name. It costs the run a model turn and a sync, it
+grants `data: read` to the model for the rest of the run, and it fails unless the profile the job
+runs on holds credentials for that destination. Take it where the agent cannot know in advance
+which pipeline it will need; take the hook everywhere else.
 
 Repeat the policy in the body as explanation: "you are read-only" helps the model understand its
 role, and the `access` block enforces it for the MCP tools. `local: execute` is the exception: the
@@ -248,12 +291,14 @@ loop does not know are listed in the trace as ignored.
 `max_turns` is pydantic-ai's `request_limit`, so it counts model requests. The run ends on
 `UsageLimitExceeded: The next request would exceed the request_limit of <n>`.
 
-The job log counts something else. It prints a `turn N` line for the model's request and another
-for the tool results coming back, two lines to a request, so a run at `max_turns: 10` reaches
-`turn 20` in the transcript before it dies. The run header is the request count again:
-`── succeeded ── 9 turns · 176,583 tokens ──` is nine model requests, and so is
-`trace["turn_count"]`. Size a budget from the header and the trace, and write a cut-off into the
-body as a count of requests, which is what the model itself experiences as its turns.
+From **dlt 1.31.0** the job log counts the same thing: it prints one `turn N` line a request, and
+the run header and `trace["turn_count"]` agree with it. `── succeeded ── 9 turns · 176,583
+tokens ──` is nine model requests. Up to 1.30.1a1 the log printed a second line for the tool
+results coming back, so a run at `max_turns: 10` reached `turn 20` in the transcript before it
+died, and a budget read off the transcript was out by a factor of two.
+
+Size a budget from the header and the trace, and write a cut-off into the body as a count of
+requests, which is what the model itself experiences as its turns.
 
 ### The two limits are one budget
 
@@ -263,10 +308,11 @@ entire run, so the spend is roughly the turn count times a context that grows wi
 agent on Sonnet came to about 45,000 tokens a turn: one run reached 1,073,446 tokens in 23 turns
 and died on the ceiling, while the same audit finished in 4 turns for 157,241.
 
-The first turn's tool results are the other half of this. A list tool called without a page size
-takes the largest page it offers, and that payload is resent on every turn after it, so two
-oversized opening calls can spend a whole budget in seven well-behaved turns. Step 5 of
-[SKILL.md](SKILL.md) says to name the page size in the body for every list tool the agent calls.
+The first turn's tool results are the other half of this. A list tool's default page is 20 and its
+cap is 100, and a model asked to list something reaches for the cap; that payload is resent on
+every turn after it, so two oversized opening calls can spend a whole budget in seven well-behaved
+turns. Step 5 of [SKILL.md](SKILL.md) says to name the page size in the body for every list tool
+the agent calls, and "The catalogue" above has the parameter and the cap per tool.
 
 So size `max_turns` from the tokens a turn costs, which the run trace reports, against the
 `max_tokens` you are willing to spend. Raising `max_tokens` on its own buys a wandering agent more

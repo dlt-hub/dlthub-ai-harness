@@ -106,7 +106,7 @@ dlthub ai init              [--agent] [--overwrite] [--location] [--branch]
 
 `list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name.
 
-`--branch` does not work as of dlt 1.30.1a1. The sparse clone is a `--depth=1` of the default branch, so the named ref is never fetched and the checkout fails with `pathspec '<branch>' did not match any file(s)`. The failure handler then deletes `~/.dlt/repos/<repo>`, so the next install re-clones from scratch. To install a toolkit from a branch, clone it yourself and pass `--location`:
+`--branch` does not work as of dlt 1.31.0. The sparse clone is a `--depth=1` of the default branch, so the named ref is never fetched and the checkout fails with `pathspec '<branch>' did not match any file(s)`. The failure handler then deletes `~/.dlt/repos/<repo>`, so the next install re-clones from scratch. To install a toolkit from a branch, clone it yourself and pass `--location`:
 
 ```bash
 git clone --depth 1 --branch <branch> https://github.com/dlt-hub/dlthub-ai-harness.git /tmp/harness
@@ -132,7 +132,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | `skills/<name>/` | Directory with `SKILL.md` + supporting files, copied as a tree |
 | command | `commands/<name>.md` | Single markdown file, slash-command or prompt template |
 | rule | `rules/<name>.md` | Single markdown file, always-on context injected by the IDE |
-| agent | `dlthub/agents/<name>/` | Directory with `AGENT.md` + optional Python modules, copied as a tree. Needs dlt 1.30.1a1 or later: before that the installer read `agents/` and skipped the folder without saying so. dlt 1.31.0 added the `<toolkit>` segment to the install path |
+| agent | `dlthub/agents/<name>/` | Directory with `AGENT.md` + optional Python modules, copied as a tree. Needs dlt 1.30.1a1 or later: before that the installer read `agents/` and skipped the folder without saying so. dlt 1.31.0 added the `<toolkit>` segment to the install path, so two toolkits may ship an agent of the same name |
 | mcp | `plugin.json`, `.mcp.json`, or `mcp.json` | MCP server definitions, merged into platform config |
 | ignore | `.claudeignore` | Glob patterns for files that the AI does not read or index |
 

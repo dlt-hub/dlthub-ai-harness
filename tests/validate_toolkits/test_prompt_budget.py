@@ -110,12 +110,35 @@ def test_tools_without_an_axis_fails() -> None:
     """The server serves the toolkit catalogue alone; every other group's tools need an axis."""
     errors = access_errors(tools=["jobs", "logs"], access={})
 
-    assert len(errors) == 1
-    assert "jobs, logs" in errors[0]
+    assert len(errors) == 2
+    assert "tools lists jobs but access grants no context" in errors[0]
+    assert "tools lists logs but access grants no context" in errors[1]
 
 
 def test_tools_with_an_axis_passes() -> None:
     assert access_errors(tools=["jobs"], access={"context": ["read"]}) == []
+
+
+def test_a_group_is_checked_against_the_axis_it_needs() -> None:
+    """`pipeline` is served by `data`, so a `context` grant leaves it with nothing."""
+    errors = access_errors(tools=["pipeline"], access={"context": ["read"]})
+
+    assert len(errors) == 1
+    assert "tools lists pipeline but access grants no data" in errors[0]
+
+
+def test_restore_pipeline_needs_both_its_axes() -> None:
+    assert access_errors(tools=["restore_pipeline"], access={"context": ["read"]}) == [
+        "tools lists restore_pipeline but access grants no data; none of its tools are served"
+    ]
+    assert access_errors(
+        tools=["restore_pipeline"], access={"context": ["read"], "data": ["read"]}
+    ) == []
+
+
+def test_an_unknown_group_is_checked_against_the_axes_as_a_whole() -> None:
+    assert len(access_errors(tools=["someplugin"], access={})) == 1
+    assert access_errors(tools=["someplugin"], access={"local": ["read"]}) == []
 
 
 def test_the_toolkit_group_asks_for_no_access() -> None:

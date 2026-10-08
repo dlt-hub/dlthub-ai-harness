@@ -290,11 +290,15 @@ from meaning: `created_at` is as much a guess as `updated_at` was.
 ### Checking credentials
 
 - Before classifying `credentials` or proposing a secret change, make exactly two calls:
-  `secrets_view_redacted` with no arguments, and `dlthub_list_variables` for the run's
-  profile. No entry for the failing source or destination is the finding. Quote both calls.
-- A call the platform denies (HTTP 403 on `dlthub_list_variables`) is quoted as its error and
-  named under Confidence as what you could not check. Classify on the redacted view and the
-  log.
+  `secrets_view_redacted` with no arguments, and `dlthub_list_variables` with no arguments.
+  No entry for the failing source or destination is the finding. Quote both calls.
+- `dlthub_list_variables` returns one entry per scope: one per profile, plus a workspace-level
+  scope every profile inherits. A name set in one scope and missing from the one the run
+  executed under is the finding, so read every scope rather than passing `profile`. Plain
+  values come back as stored; a secret comes back as a name alone, which proves it is set and
+  nothing more.
+- A call the platform denies is quoted as its error and named under Confidence as what you
+  could not check. Classify on the redacted view and the log.
 - An entry that exists proves configuration, not validity: `confidence` stays `medium` unless
   the log names the credential as rejected.
 
@@ -409,7 +413,7 @@ the summary alone.
 | workspace file | (`pipelines/orders.py` line 31) |
 | job definition | (deployed definition for `jobs.pipelines.orders`, field `destination`) |
 | dlt trace | (trace of pipeline `orders`, run `<pipeline run id>`, extract step) |
-| redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables` for profile `prod`) |
+| redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables`, scope `prod`) |
 
 - Diagnosis cites the inspected run's log with its run id and line at least once, and cites
   every further artifact the cause rests on.
