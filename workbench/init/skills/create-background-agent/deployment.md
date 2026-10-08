@@ -240,9 +240,14 @@ class NullModelLoopPlugin:
         return NullModelLoop if loop_type == NullModelLoop.LOOP_TYPE else None
 
 
-@pytest.fixture
-def inspector():
+# session-scoped: pluggy raises `ValueError: Plugin name already registered` on the second test
+@pytest.fixture(scope="session")
+def null_model_loop():
     manager().register(NullModelLoopPlugin(), name="null-model-loop")
+
+
+@pytest.fixture
+def inspector(null_model_loop):
     return run.agent("<toolkit>:<name>", loop=NullModelLoop.LOOP_TYPE)
 
 
