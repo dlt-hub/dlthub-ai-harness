@@ -1,4 +1,4 @@
 {
-  "dependencies": ["init"],
+  "dependencies": ["dlthub-platform"],
   "workflow_entry_skill": "setup-data-quality"
 }

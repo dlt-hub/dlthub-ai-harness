@@ -1,4 +1,4 @@
 {
-  "dependencies": ["init"],
+  "dependencies": ["dlthub-platform"],
   "workflow_entry_skill": "deploy-minimal-ingestion-pipeline"
 }
