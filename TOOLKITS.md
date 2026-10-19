@@ -47,8 +47,8 @@ Each toolkit has `.claude-plugin/plugin.json` — the Claude plugin manifest wit
   "version": "0.1.1",
   "author": {"name": "dlthub"},
   "homepage": "https://dlthub.com/docs",
-  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
-  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
   "keywords": ["dlthub", "etl", "data-pipeline"],
   "mcpServers": {
     "dlt-workspace-mcp": {

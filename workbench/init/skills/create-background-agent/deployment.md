@@ -321,7 +321,7 @@ docs give rather than as evidence of wiring. `trace["mcp_features"]` repeats the
 the file and says nothing about the server.
 
 The run above never starts a server: `_build_toolsets` returns `[]`, which keeps the check offline
-and quick, and it is what the harness repo's `tests/agents/conftest.py` does. Drop that override
+and quick, and it is what the dltHub AI Harness repo's `tests/agents/conftest.py` does. Drop that override
 and the real workspace MCP server starts over stdio. The trace reads the same either way, so the
 evidence is in the transcript, in the server's own two lines:
 
@@ -350,7 +350,7 @@ trace = result["trace"]
 report = result["result"]
 ```
 
-The AI harness repo wires the same loop into pytest in `tests/agents/conftest.py`, where the
+The harness repo wires the same loop into pytest in `tests/agents/conftest.py`, where the
 plugin registers on `Container()[PluginContext].manager` and the loop type comes from an
 `AGENT__LOOP` environment variable rather than `loop=`. A fixture there installs the toolkit into
 a temporary workspace, and `tests/agents/test_agents_run.py` is the shape of a test over it.

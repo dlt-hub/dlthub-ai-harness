@@ -6,8 +6,8 @@
     "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs",
-  "repository": "https://github.com/dlt-hub/dlthub-ai-workbench",
-  "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
   "keywords": ["dlthub", "etl", "data-pipeline", "python"],
   "mcpServers": {
     "dlt-workspace-mcp": {
