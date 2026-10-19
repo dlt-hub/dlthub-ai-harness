@@ -54,7 +54,7 @@ _ROUTER_AGENT_ENTRY = re.compile(r"→\s*([a-z][\w-]*:[a-z][\w-]*)\s*\|")
 MAX_DESCRIPTION_CHARS = 1024
 
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
-_EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
+_EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE"
 
 # argument-hint tokens use the [bracket] convention: "[pipeline-name] [query]"
 _ARGUMENT_HINT_TOKEN = re.compile(r"^\[[\w-]+\]$")

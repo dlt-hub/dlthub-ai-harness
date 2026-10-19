@@ -1,5 +1,5 @@
 [project]
-name = "dlthub-ai-workbench"
+name = "dlthub-ai-harness"
 version = "0.1.0"
 description = "AI toolkits for data engineering with dlt"
 requires-python = ">=3.11"

@@ -1,5 +1,5 @@
 {
-  "name": "dlthub-ai-workbench",
+  "name": "dlthub-ai-harness",
   "owner": {
     "name": "dlthub",
     "email": "dev@dlthub.com"
@@ -7,7 +7,7 @@
   "metadata": {
     "description": "Data engineering agent that creates, extends, and explores dlt data pipelines",
     "version": "0.1.1",
-    "license": "https://github.com/dlt-hub/dlthub-ai-workbench/blob/master/LICENSE"
+    "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE"
   },
   "plugins": [
     {
