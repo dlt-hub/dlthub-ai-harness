@@ -2,7 +2,7 @@
 
 **dlt** (data load tool) is an open-source Python library for loading data from APIs and databases into a warehouse or lakehouse. **dltHub** is the paid platform on top of dlt. It adds features for coding agents: transformations, data quality checks, a managed runtime, managed data apps and an AI workspace.
 
-![AI Harness Components](images/ai_workbench_components.png)
+![dltHub AI Harness components](images/ai_workbench_components.png)
 
 The **dltHub AI Harness** is a collection of toolkits that give AI coding assistants step-by-step workflows to build data pipelines with dlt. You can use the harness as-is or fork and customize it for your own stack. The **`dlthub ai` CLI** installs toolkit components into the right locations for your assistant and runs the workspace MCP server.
 
@@ -35,7 +35,7 @@ A **Toolkit** contains skills, commands, rules, agents, and an MCP server — ti
 
 All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
 
-![AI Harness](images/ai_workbench.png)
+![dltHub AI Harness](images/ai_workbench.png)
 
 ### Toolkit components
 
@@ -86,7 +86,7 @@ uvx dlthub-init@latest <dir>    # scaffold a clean new project into <dir>
 
 ### Existing project
 
-To add the AI harness to an existing project, run the same [`dlthub-init`](https://pypi.org/project/dlthub-init/) **in place**. It merges `pyproject.toml`, keeps `secrets.toml` and adds missing lines to `.gitignore`. Then it pins `dlt[hub]` and runs `uv sync`. Your coding assistant can run it for you:
+To add the harness to an existing project, run the same [`dlthub-init`](https://pypi.org/project/dlthub-init/) **in place**. It merges `pyproject.toml`, keeps `secrets.toml` and adds missing lines to `.gitignore`. Then it pins `dlt[hub]` and runs `uv sync`. Your coding assistant can run it for you:
 
 ```bash
 uvx dlthub-init@latest          # set up AI support in the current directory
@@ -199,6 +199,17 @@ The harness is also available as a Claude Code plugin via the marketplace. Start
 ```
 
 Plugins become active only in a new session. Restart Claude Code with `claude`.
+
+**Moving from the `dlthub-ai-workbench` marketplace.** The marketplace was renamed to `dlthub-ai-harness`, and Claude Code does not carry plugins over to a new marketplace name. If you added the marketplace under its old name, remove it, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
+
+```
+/plugin marketplace remove dlthub-ai-workbench
+/plugin marketplace add dlt-hub/dlthub-ai-harness
+/plugin install init@dlthub-ai-harness --scope project
+/plugin install <toolkit>@dlthub-ai-harness --scope project
+```
+
+If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`.
 
 
 ## The `dlthub ai` CLI

@@ -11,7 +11,7 @@ command line. An agent is an `AGENT.md`, written much like a `SKILL.md`. The wor
 `workbench/dlthub-platform/dlthub/agents/job-inspector/AGENT.md`, installed as
 `.claude/dlthub/agents/dlthub-platform/job-inspector/AGENT.md`.
 
-**Essential reading**: AI harness `https://dlthub.com/docs/hub/ai-harness/introduction.md`,
+**Essential reading**: dltHub AI Harness `https://dlthub.com/docs/hub/ai-harness/introduction.md`,
 triggers and scheduling `https://dlthub.com/docs/hub/pipeline-operations/triggers.md`, profiles
 `https://dlthub.com/docs/hub/pipeline-operations/profiles.md`
 
@@ -74,7 +74,7 @@ subagents. A workspace refers to an installed agent as
 `<toolkit>:<name>`, and the workspace's toolkit index (`.dlt/.toolkits`) travels with every
 deployment, so the reference resolves on the runner as it does locally.
 
-Shipping an agent in a toolkit means working in a clone of the AI harness repo
+Shipping an agent in a toolkit means working in a clone of the harness repo
 (`https://github.com/dlt-hub/dlthub-ai-harness`), since the folder lives beside the toolkit's
 skills and `make validate-toolkits` checks it there. The definition then travels to everyone who
 installs the toolkit, and upgrading it costs a change in the repo and a reinstall in every
