@@ -64,9 +64,11 @@ Route here when the user wants work to happen on its own after an event ("whenev
 ```
 capability                                                        → agent                              | install                                                     | declare
 diagnose a failed platform job run, classify it and propose a fix → dlthub-platform:job-inspector       | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:job-inspector", trigger="job.fail:tag:<tag>", require={"profile": "access"})
+watch the release notes of the APIs production pipelines call, recommend resource and model changes → dlthub-platform:api-change-monitor | dlthub --non-interactive ai toolkit install dlthub-platform | run.agent("dlthub-platform:api-change-monitor", trigger="schedule:0 7 * * 1", require={"profile": "access"})
 ```
 
 * `job-inspector` is read-only: it diagnoses and proposes a fix, it never edits code or redeploys.
+* `api-change-monitor` is read-only: it finds the APIs in the code `__deployment__.py` deploys, reads their release notes and recommends edits to pipeline resources and downstream models. Pin APIs or release note urls with its `apis` input, as `stripe, acme=<url>`. Declare it as one decorated job calling `run_per_api`, which runs the model once per API with notes left; the `dlthub-platform` workflow has the snippet.
 * `<tag>` in the trigger is a tag the workspace puts on its own jobs, `run.pipeline(..., expose={"tags": ["ingest"]})`. Name the jobs to watch, or tag them.
 * The agent names no model. Set `AGENT__MODEL` in the workspace to a `provider:model` id at least as capable as Claude Sonnet 5, and `AGENT__API_KEY` to the key for that provider.
 
