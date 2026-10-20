@@ -14,9 +14,8 @@ on every run, before any guess or search.
 **Reference**: background agents https://dlthub.com/docs/hub/ai-harness/introduction.md,
 deployments https://dlthub.com/docs/hub/pipeline-operations/deployments.md
 
-The agent's `README.md`, next to its `AGENT.md` under
-`.claude/dlthub/agents/dlthub-platform/api-change-monitor/`, explains where sources come from
-and how notes are read.
+The agent's `AGENT.md`, under `.claude/dlthub/agents/dlthub-platform/api-change-monitor/`,
+says what the model reads for each API, and its `registry.py` holds the built-in sources.
 
 The helper `check_source.py` next to this file runs the agent's own reader. Run it from the
 workspace root; `<skill dir>` is this skill's folder, `.claude/skills/add-api-change-source`

@@ -31,22 +31,15 @@ def test_bytecode_beside_a_module_passes(tmp_path: Path) -> None:
     assert shipped_errors(tmp_path) == []
 
 
-def test_a_readme_beside_the_definition_passes(tmp_path: Path) -> None:
-    write(tmp_path / V._AGENT_FILE, "# an agent\n")
-    write(tmp_path / "README.md", "# how it works\n")
-
-    assert shipped_errors(tmp_path) == []
-
-
 def test_every_stray_file_is_listed(tmp_path: Path) -> None:
     write(tmp_path / V._AGENT_FILE, "# an agent\n")
-    write(tmp_path / "NOTES.md", "notes\n")
+    write(tmp_path / "README.md", "notes\n")
     write(tmp_path / "data.json", "{}\n")
 
     errors = shipped_errors(tmp_path)
 
     assert len(errors) == 1
-    assert "NOTES.md" in errors[0] and "data.json" in errors[0]
+    assert "README.md" in errors[0] and "data.json" in errors[0]
 
 
 def test_the_shipped_agent_folders_hold_nothing_else() -> None:
