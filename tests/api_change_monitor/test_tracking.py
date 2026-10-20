@@ -102,7 +102,9 @@ def test_the_report_lists_carried_and_resolved_findings(tmp_path: Path) -> None:
     summary = merged["summary"]
     # carried from the earlier report, so it is open but not new
     assert summary.startswith("**1 open finding: 1 act now, 0 new.**")
-    assert "| 2026-08-01 passed | pipedrive | act |" in summary
+    assert (
+        "| 2026-08-01 passed | pipedrive | Reminder: Deprecated API v1 endpoints are now out of support | act |"
+    ) in summary
     assert merged["tracked"] == tracked and merged["requires_human"] is True
 
     workspace(root, "https://api.pipedrive.com/api/v2/")
@@ -175,7 +177,8 @@ def test_a_finding_reported_again_without_a_date_keeps_the_earlier_one(tmp_path:
     assert {f: tracked[0][f] for f in tracking.DATE_FIELDS} == {
         "announced_date": "2026-10-14", "effective_date": "2027-05-01", "removal_date": "2027-06-01"
     }
-    assert "| on upgrade, by 2027-05-01 | pipedrive | upgrade |" in merged["summary"]
+    assert "| on upgrade, by 2027-05-01 | pipedrive |" in merged["summary"]
+    assert "| upgrade |" in merged["summary"]
 
 
 def test_older_reports_fill_dates_the_newest_report_lost(tmp_path: Path) -> None:

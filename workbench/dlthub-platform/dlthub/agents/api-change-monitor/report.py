@@ -38,6 +38,8 @@ class ApiResult:
     latest: str = ""
     # every source of the API failed to load in the job
     unread: bool = False
+    # model files in this workspace reading the API's datasets; None when none was found
+    downstream: Optional[List[str]] = None
 
 
 # what each impact asks of the reader, and the group it is counted in
@@ -45,12 +47,13 @@ _LABELS = {
     "action_required": ("act", "act now"),
     "unknown": ("check", "act now"),
     "on_upgrade": ("upgrade", "plan ahead"),
-    "schema_change": ("schema", "plan ahead"),
-    "table_only": ("table", "plan ahead"),
+    "schema_change": ("table change", "plan ahead"),
+    "table_only": ("table change", "plan ahead"),
     "opportunity": ("adopt", "to adopt"),
 }
 GROUPS = ["act now", "plan ahead", "to adopt"]
-ACTION_CHARS = 110
+ACTION_CHARS = 160
+CHANGE_CHARS = 80
 OPEN_SHOWN = 3
 
 
@@ -88,9 +91,36 @@ def _short_location(change: Dict[str, Any]) -> str:
     return f"`{path.rsplit('/', 1)[-1]}:{line}`"
 
 
+# the place a recommendation opens with, as `In `a.py` line 8 and line 14, `
+_LEADING_PLACE = re.compile(
+    r"^(?:in|at)\s+`?[\w./-]+\.\w+`?"
+    r"(?:[,\s]*(?:and\s+|&\s*)?(?:lines?\s+)?\d+(?:\s*[-\u2013]\s*\d+)?)*,?\s*",
+    re.I,
+)
+
+
+# a file and line named inside a sentence, as ` (`a.py` line 16)` or ` in a.py line 18`
+_INLINE_PLACE = re.compile(
+    r"\s*(?:\(|\bin\s+)?`?[\w./-]+\.(?:py|sql|toml|ya?ml|json)`?"
+    r"(?:[,\s]*(?:and\s+|&\s*)?(?:lines?\s+)?\d+(?:\s*[-\u2013]\s*\d+)?)*\)?",
+    re.I,
+)
+
+
+def _edit(change: Dict[str, Any]) -> str:
+    """The edit to show: the `action`, else the start of the recommendation, else the title."""
+    text = str(change.get("action") or "").strip()
+    if not text:
+        text = re.split(r"(?<=[.;])\s", str(change.get("recommendation", "")).strip())[0]
+        # the report adds the place once, so the sentence drops its own references
+        text = _INLINE_PLACE.sub("", _LEADING_PLACE.sub("", text))
+    text = text.rstrip(" .;")
+    return text[:1].upper() + text[1:] if text else str(change.get("title", ""))
+
+
 def _action(change: Dict[str, Any]) -> str:
-    """The short edit the model wrote, or its title, with the place it lands."""
-    text = _short(change.get("action") or change.get("title", ""), ACTION_CHARS)
+    """The exact edit, with the place it lands."""
+    text = _short(_edit(change), ACTION_CHARS)
     where = _short_location(change)
     return f"{text} ({where})" if where and where.strip("`").split(":")[0] not in text else text
 
@@ -113,17 +143,39 @@ def _headline(rows: List[Dict[str, Any]], resolved: List[Dict[str, Any]]) -> str
     return f"**{len(rows)} open finding{plural}: {', '.join(parts)}, {new} new.{done}**"
 
 
-def _table(rows: List[Dict[str, Any]], today: str) -> List[str]:
-    lines = ["| when | api | impact | action |", "|---|---|---|---|"]
+_MODEL_FILE = re.compile(r"`?([\w./-]+\.sql|[\w./-]*(?:models|transformations|transforms|marts|staging)/[\w./-]+\.py)`?")
+
+
+def _transformations(change: Dict[str, Any], downstream: Optional[List[str]]) -> str:
+    """The models a change breaks, or why none is named."""
+    found = [m for where in change.get("affected") or [] for m in _MODEL_FILE.findall(str(where))]
+    names = list(dict.fromkeys(f"`{path.rsplit('/', 1)[-1]}`" for path in found))
+    if names:
+        return ", ".join(names)
+    if not downstream:
+        return "no transformations in the workspace"
+    return "none affected"
+
+
+def _table(
+    rows: List[Dict[str, Any]], today: str, downstream: Optional[Dict[str, Optional[List[str]]]] = None
+) -> List[str]:
+    lines = [
+        "| when | api | api change | impact | transformations | action |",
+        "|---|---|---|---|---|---|",
+    ]
     for c in rows[:TABLE_ROWS]:
-        lines.append(f"| {_when(c, today)} | {c['api']} | {_LABELS[c['impact']][0]} | {_action(c)} |")
+        change = _short(str(c.get("title", "")).rstrip(" ."), CHANGE_CHARS)
+        models = _transformations(c, (downstream or {}).get(c["api"]))
+        cells = [_when(c, today), c["api"], change, _LABELS[c["impact"]][0], models, _action(c)]
+        lines.append(f"| {' | '.join(cells)} |")
     if len(rows) > TABLE_ROWS:
         lines.append(f"\n{len(rows) - TABLE_ROWS} more findings are in the `changes` field.")
     return lines
 
 
 def _open_line(points: List[Tuple[str, str]]) -> str:
-    unique = list(dict.fromkeys(f"{api}: {_short(text, 120)}" for api, text in points))
+    unique = list(dict.fromkeys(f"{api}: {_short(str(text).rstrip(' .;'), 120)}" for api, text in points))
     if not unique:
         return ""
     more = f" (+{len(unique) - OPEN_SHOWN} more)" if len(unique) > OPEN_SHOWN else ""
@@ -178,7 +230,8 @@ def summary(
     rows = _rows(changes)
     parts = [_headline(rows, resolved or [])]
     if rows:
-        parts.append("\n".join(_table(rows, until)))
+        downstream = {r.api: r.downstream for r in results}
+        parts.append("\n".join(_table(rows, until, downstream)))
     tail = [_open_line(points), _resolved_line(resolved or []), _coverage_line(results, sources, since, history_note)]
     parts.extend(line for line in tail if line)
     return "\n\n".join(parts)

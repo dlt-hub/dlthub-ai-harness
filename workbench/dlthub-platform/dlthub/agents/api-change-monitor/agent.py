@@ -361,6 +361,7 @@ async def run_per_api(
     previous, note = load_previous(str(run_context.get("run_id") or ""))
     prep = prepare(inputs, Path.cwd(), date.today(), first_run=not previous)
     loop = run_context["ai_loop"]
+    models = discovery.model_lines(prep.root)
     results: List[report.ApiResult] = []
     spent = 0
     for api in prep.apis:
@@ -373,6 +374,7 @@ async def run_per_api(
             origin=_origin(api),
             latest=_coverage_note(prep, api.name, date.today()),
             unread=bool(sources_of(api)) and len(prep.problems.get(api.name, [])) >= len(sources_of(api)),
+            downstream=discovery.downstream(prep.root, api, models) or None,
         )
         results.append(result)
         if not needs_model(prep, api):

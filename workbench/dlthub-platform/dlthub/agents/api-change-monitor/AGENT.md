@@ -95,7 +95,10 @@ output:
             description: What the change is, as the "Kind" table in your system prompt defines it.
           title:
             type: string
-            description: The change in one line, naming the endpoint, operation or field.
+            description: >
+              What changed in the API, in at most 10 words, naming the endpoint, version or
+              field, such as "v1 deal and person endpoints retired". Not the release note's
+              headline.
           announced_date:
             type: string
             description: The date the note was published, its `published` line, as YYYY-MM-DD; empty when not dated.
@@ -136,9 +139,9 @@ output:
           action:
             type: string
             description: >
-              The edit in at most 12 words, starting with a verb, such as "Replace the
-              `creator.property` filter in JQL". No file or line: the report adds them.
-              Empty for `not_used`.
+              The exact edit in at most 20 words, as "Recommendations" defines it: what
+              changes from what to what. No file or line: the report adds them. Empty for
+              `not_used`.
           recommendation:
             type: string
             description: The change to make, naming the file, the resource or model and the value. Empty for `not_used`.
@@ -420,6 +423,27 @@ You cannot tell, so never conclude that nothing breaks.
 
 ## Recommendations
 
+`title` says what changed in the API and `action` what to edit; the report shows them side by
+side. `title` is the API's change in at most 10 words, never the note's headline: "v1 deal
+and person endpoints retired", not "Reminder: Deprecated API v1 endpoints are now out of
+support".
+
+`action` is the edit itself, read in a table cell next to the change. It names the setting,
+field or value as it stands in the code and what it becomes, starting with a verb:
+
+| vague, never | exact |
+|---|---|
+| Update base_url API version to a supported version | Change `v39.0` to `v67.0` in `base_url` |
+| Replace the creator.property filter in JQL | Replace `creator.property[profile].team = "data"` in `JQL` with a custom field filter |
+| Prepare downstream models for the schema change | Read `billing_cycle_anchor` as an object with `type` and `timestamp`, not a timestamp |
+| Update the endpoint path | Change `crm-pipelines/v1/pipelines/deals` to `crm/pipelines/2026-03/deals` |
+
+When the notes do not give the new value, the action says exactly what to look up and where:
+"Find the `2026-03` path that replaces `crm-pipelines/v1/pipelines/deals` in the HubSpot
+Pipelines API reference". For an `unknown`: "Check whether `deals` and `persons` are among
+the retired v1 endpoints".
+
+
 - Name the target and the value: "Change `api_version` in `pipelines/acme.py` line 12 to
   `2026-07`" is a recommendation; "upgrade the API version" describes one.
 - A model change names the model file, the column and what replaces it.
@@ -443,16 +467,16 @@ It is exactly this shape:
 ```
 **<n> open findings: <a> act now, <p> plan ahead, <new> new.**
 
-| when | api | impact | action |
-|---|---|---|---|
-| <YYYY-MM-DD, `passed` after a date already gone, `on upgrade`, or `not dated`> | <api> | <act, check, upgrade, schema, table or adopt> | <the `action` field, then (`file.py:line`)> |
+| when | api | api change | impact | transformations | action |
+|---|---|---|---|---|---|
+| <YYYY-MM-DD, `passed` after a date already gone, `on upgrade`, or `not dated`> | <api> | <the `title` field> | <act, check, upgrade, table change or adopt> | <the model files in `affected`, `no transformations in the workspace` when the API's line says none, else `none affected`> | <the `action` field, then (`file.py:line`)> |
 
 **Open:** <api: the open point, in a few words>; <next one>
 **Coverage:** <n> APIs, <n> notes since <date>; gaps: <undated or silent sources>.
 ```
 
 - One row per `action_required` (act), `unknown` (check), `on_upgrade` (upgrade),
-  `schema_change` (schema), `table_only` (table) and `opportunity` (adopt) change. Act and
+  `schema_change` and `table_only` (table change) and `opportunity` (adopt) change. Act and
   check first, then the rest, each by date. At most 25 rows.
 - No finding: the status line reads `**No open findings.**` and no table follows.
 - Leave out the Open line when nothing is open. Keep the Coverage line.

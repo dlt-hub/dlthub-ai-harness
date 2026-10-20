@@ -243,8 +243,12 @@ async def test_api_change_monitor_job_runs_the_model_once_per_api_with_notes(
     assert report["changes"][0]["api"] == "shopify"
     summary = report["summary"]
     assert summary.startswith("**1 open finding: 1 act now, 1 new.**")
-    assert "| when | api | impact | action |" in summary
-    assert "| shopify | act | Replace the `automaticDiscounts` query with `discountNodes`" in summary
+    assert "| when | api | api change | impact | transformations | action |" in summary
+    # the workspace has no transformations, so the row says so instead of naming a model
+    assert (
+        "| shopify | automaticDiscounts removed in 2027-01 | act | no transformations in the workspace |"
+        " Replace the `automaticDiscounts` query with `discountNodes`"
+    ) in summary
     assert "1 model run," in summary.splitlines()[-1]
     trace = api_change_monitor.last_job_result["trace"]
     assert trace["unresolved_placeholders"] == []
