@@ -258,21 +258,25 @@ def validate_agents(
 _UNTRACKED_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
 """Gitignored tool caches. An install works from a checkout, which never holds them."""
 
+_AGENT_README = "README.md"
+"""How the agent works, for its authors and operators; the contract stays in `AGENT.md`."""
+
 
 def _validate_shipped_files(pname: str, agent_dir: Path, errors: list[str]) -> None:
-    """Check that the agent folder holds only the `AGENT.md` and Python modules."""
+    """Check that the agent folder holds only `AGENT.md`, a README and Python modules."""
     # an install copies the folder verbatim, so a stray file lands in every workspace
     stray = sorted(
         path.name
         for path in agent_dir.iterdir()
-        if path.name != _AGENT_FILE
+        if path.name not in (_AGENT_FILE, _AGENT_README)
         and path.name not in _UNTRACKED_DIRS
         and not (path.is_file() and path.suffix == ".py")
     )
     if stray:
         errors.append(
             f"[{pname}] {_AGENTS_PATH}/{agent_dir.name} holds {', '.join(stray)}. An install"
-            f" copies the folder verbatim. Keep only {_AGENT_FILE} and Python modules"
+            f" copies the folder verbatim. Keep only {_AGENT_FILE}, {_AGENT_README} and"
+            " Python modules"
         )
 
 
