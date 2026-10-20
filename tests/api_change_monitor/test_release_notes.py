@@ -343,3 +343,16 @@ def test_triage_rules_out_only_notes_whose_names_all_missed() -> None:
     assert pinned.pinned == ["v1"] and "- names the pinned version: `v1`" in release_notes._head(pinned)
     assert kept == [called, pinned, unnamed, imminent, stray]
     assert "Remove `unused_field`" in agent.render_ruled_out(ruled_out, ["a"])
+
+
+def test_field_only_notes_are_kept_when_the_models_are_elsewhere() -> None:
+    Note = release_notes.Note
+    fields_only = Note("stripe", "Changes", "u", SINCE, [], "`a_b`, `c_d` and `e_f` change type.")
+    other_endpoint = Note("stripe", "Removed", "u", SINCE, [], "`GET /v1/disputes` is removed.")
+
+    _, ruled_out = agent.triage([fields_only, other_endpoint], {}, external=["stripe"])
+    assert ruled_out == [other_endpoint]
+
+    # with the models here, three names nobody reads are enough to rule it out
+    _, ruled_out = agent.triage([fields_only], {})
+    assert ruled_out == [fields_only]

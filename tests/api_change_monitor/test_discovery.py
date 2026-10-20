@@ -147,3 +147,33 @@ def test_every_way_of_calling_an_api_in_code_is_found(tmp_path: Path) -> None:
     assert set(apis) == {"acme-desk.com", "api.acme.io", "rest.example-erp.com"}
     assert apis["acme-desk.com"].hosts == {"*.acme-desk.com"}
     assert apis["api.acme.io"].evidence == ["pipelines/calls.py line 8"]
+
+
+def test_downstream_models_are_found_by_the_dataset_a_pipeline_loads(tmp_path: Path) -> None:
+    files = {
+        "__deployment__.py": "from pipelines import pay, gh\n__all__ = ['pay', 'gh']\n",
+        "pipelines/__init__.py": "",
+        "pipelines/pay.py": (
+            'client = {"base_url": "https://api.stripe.com/v1/"}\n'
+            'pipeline = dlt.pipeline(pipeline_name="pay", dataset_name="stripe_data")\n'
+        ),
+        "pipelines/gh.py": (
+            'client = {"base_url": "https://api.github.com/"}\n'
+            'pipeline = dlt.pipeline(pipeline_name="gh", dataset_name="github_data")\n'
+        ),
+        "transformations/repos.sql": "select id from github_data.repo\n",
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    apis = {api.name: api for api in discovery.discover(tmp_path)}
+    models = discovery.model_lines(tmp_path)
+
+    assert discovery.datasets(tmp_path, apis["stripe"]) == ["stripe_data"]
+    assert discovery.downstream(tmp_path, apis["github"], models) == ["transformations/repos.sql"]
+    # stripe's tables are read by models somewhere else
+    assert discovery.downstream(tmp_path, apis["stripe"], models) == []
+    assert agent._downstream_line(tmp_path, apis["stripe"]) == (
+        "downstream models: none in this workspace;"
+        " possible downstream models of dataset `stripe_data` are not visible here"
+    )

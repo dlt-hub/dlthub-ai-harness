@@ -12,12 +12,11 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from .redact import redact
-from .tracking import DATE_FIELDS, key
+from .tracking import DATE_FIELDS, key, locations
 
 # the order rows take in the table, most urgent first
-IMPACT_ORDER = ["action_required", "unknown", "on_upgrade", "table_only", "opportunity"]
+IMPACT_ORDER = ["action_required", "unknown", "on_upgrade", "schema_change", "table_only", "opportunity"]
 TABLE_ROWS = 25
-CELL_CHARS = 300
 OPEN_CHARS = 220
 
 
@@ -41,132 +40,128 @@ class ApiResult:
     unread: bool = False
 
 
-def _cell(text: str) -> str:
-    flat = " ".join(str(text).replace("|", "/").split())
-    return flat if len(flat) <= CELL_CHARS else flat[: CELL_CHARS - 1] + "…"
+# what each impact asks of the reader, and the group it is counted in
+_LABELS = {
+    "action_required": ("act", "act now"),
+    "unknown": ("check", "act now"),
+    "on_upgrade": ("upgrade", "plan ahead"),
+    "schema_change": ("schema", "plan ahead"),
+    "table_only": ("table", "plan ahead"),
+    "opportunity": ("adopt", "to adopt"),
+}
+GROUPS = ["act now", "plan ahead", "to adopt"]
+ACTION_CHARS = 110
+OPEN_SHOWN = 3
 
 
 def _rows(changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Changes worth a row, most urgent first, then by the date they land."""
-    listed = [c for c in changes if c.get("impact") in IMPACT_ORDER]
+    """Changes worth a row: act now first, then plan ahead, then to adopt, each by date."""
+    listed = [c for c in changes if c.get("impact") in _LABELS]
     return sorted(
         listed,
-        key=lambda c: (IMPACT_ORDER.index(c["impact"]), c.get("effective_date") or "9999"),
+        key=lambda c: (
+            GROUPS.index(_LABELS[c["impact"]][1]),
+            c.get("effective_date") or "9999",
+            IMPACT_ORDER.index(c["impact"]),
+        ),
     )
 
 
-def _where(location: str) -> str:
-    """A location as `path` line N, whatever quoting the model gave it."""
-    path, _, rest = location.strip().partition(" ")
-    return f"`{path.strip('`')}` {rest}".strip()
-
-
-def _lands(change: Dict[str, Any]) -> str:
+def _when(change: Dict[str, Any], today: str = "") -> str:
+    """When a change lands, in the fewest words: a date, `passed`, an upgrade or `now`."""
     day = change.get("effective_date") or ""
-    removed = change.get("removal_date") or ""
     if change.get("impact") == "on_upgrade":
-        text = f"on upgrade, pinned version ends {day}" if day else "on upgrade"
-    else:
-        text = day or "now"
-    return f"{text}, removed {removed}" if removed and removed != day else text
+        return f"on upgrade, by {day}" if day else "on upgrade"
+    if not day:
+        # a schema change waits on a release or an upgrade, so no date is no "now"
+        return "not dated" if change.get("impact") == "schema_change" else "now"
+    return f"{day} passed" if today and day < today else day
 
 
-def _models(change: Dict[str, Any]) -> List[str]:
-    """The affected locations that are downstream models rather than pipeline code."""
-    found = []
-    for where in change.get("affected") or []:
-        path = where.split(" ")[0].strip("`")
-        if path.endswith(".sql") or "/models/" in f"/{path}" or "transformations/" in path:
-            found.append(f"`{path}`")
-    return list(dict.fromkeys(found))
+def _short_location(change: Dict[str, Any]) -> str:
+    """The first file and line the fix names, as `file.py:12`."""
+    found = locations(str(change.get("recommendation", "")))
+    found = found or locations(", ".join(change.get("affected") or []))
+    if not found:
+        return ""
+    path, line = found[0]
+    return f"`{path.rsplit('/', 1)[-1]}:{line}`"
 
 
-def _per_api(rows: List[Dict[str, Any]], impact: str, today: str = "") -> List[str]:
-    """One bullet per API with changes of one impact: how many, how soon, which models."""
-    bullets = []
-    for api in dict.fromkeys(c["api"] for c in rows if c["impact"] == impact):
-        own = [c for c in rows if c["api"] == api and c["impact"] == impact]
-        days = sorted(c["effective_date"] for c in own if c.get("effective_date"))
-        models = list(dict.fromkeys(m for c in own for m in _models(c)))
-        text = f"- `{api}`: {len(own)} change{'s' if len(own) > 1 else ''}"
-        if impact == "on_upgrade":
-            text += f", pinned version ends {days[0]}" if days else ", no end date given"
-        elif days:
-            text += f", earliest {days[0]}" + (" (passed)" if today and days[0] < today else "")
-        if models:
-            verb = "affects" if impact == "opportunity" else "breaks"
-            text += f", {verb} {', '.join(models)}"
-        bullets.append(text)
-    return bullets
+def _action(change: Dict[str, Any]) -> str:
+    """The short edit the model wrote, or its title, with the place it lands."""
+    text = _short(change.get("action") or change.get("title", ""), ACTION_CHARS)
+    where = _short_location(change)
+    return f"{text} ({where})" if where and where.strip("`").split(":")[0] not in text else text
 
 
 def _short(text: str, limit: int = OPEN_CHARS) -> str:
     """One line of at most `limit` characters, cut at a word."""
-    flat = " ".join(str(text).split())
+    flat = " ".join(str(text).replace("|", "/").split())
     return flat if len(flat) <= limit else flat[: flat.rfind(" ", 0, limit - 1)] + "…"
 
 
-def _open_questions(points: List[Tuple[str, str]]) -> List[str]:
-    """One bullet per open point, under the API it came from, without repeats."""
-    seen: Dict[str, None] = {}
-    for api, text in points:
-        seen.setdefault(f"- `{api}`: {_short(text)}", None)
-    return list(seen)
+def _headline(rows: List[Dict[str, Any]], resolved: List[Dict[str, Any]]) -> str:
+    """One bold line: how many findings are open, by group, and how many were resolved."""
+    done = f" {len(resolved)} resolved." if resolved else ""
+    if not rows:
+        return f"**No open findings.**{done}"
+    counts = {group: sum(_LABELS[c["impact"]][1] == group for c in rows) for group in GROUPS}
+    parts = [f"{n} {group}" for group, n in counts.items() if n]
+    new = sum(not c.get("first_reported") for c in rows)
+    plural = "" if len(rows) == 1 else "s"
+    return f"**{len(rows)} open finding{plural}: {', '.join(parts)}, {new} new.{done}**"
 
 
-def _history(carried: int, resolved: List[Dict[str, Any]], note: str) -> List[str]:
-    """What became of the findings earlier reports listed."""
-    if "not read" in note or "local run" in note:
-        return [f"- Earlier findings: {note}; every finding counts as new."]
-    if "first report" in note:
-        return [f"- Earlier findings: none, this is the {note.split(':')[0]}."]
-    lines = [f"- Earlier findings: {carried} still open, {len(resolved)} resolved ({note})."]
+def _table(rows: List[Dict[str, Any]], today: str) -> List[str]:
+    lines = ["| when | api | impact | action |", "|---|---|---|---|"]
+    for c in rows[:TABLE_ROWS]:
+        lines.append(f"| {_when(c, today)} | {c['api']} | {_LABELS[c['impact']][0]} | {_action(c)} |")
+    if len(rows) > TABLE_ROWS:
+        lines.append(f"\n{len(rows) - TABLE_ROWS} more findings are in the `changes` field.")
+    return lines
+
+
+def _open_line(points: List[Tuple[str, str]]) -> str:
+    unique = list(dict.fromkeys(f"{api}: {_short(text, 120)}" for api, text in points))
+    if not unique:
+        return ""
+    more = f" (+{len(unique) - OPEN_SHOWN} more)" if len(unique) > OPEN_SHOWN else ""
+    return f"**Open:** {'; '.join(unique[:OPEN_SHOWN])}{more}"
+
+
+def _resolved_line(resolved: List[Dict[str, Any]]) -> str:
+    if not resolved:
+        return ""
+    items = []
     for item in resolved:
-        changed = ", ".join(f"`{line['location']}`" for line in item.get("lines") or [])
-        lines.append(f"- Resolved: `{item.get('api')}` {_short(item.get('title', ''), 120)} ({changed} changed).")
-    return lines
+        lines = [line["location"] for line in item.get("lines") or []]
+        place = lines[0].replace(" line ", ":").rsplit("/", 1)[-1] if lines else ""
+        items.append(f"{item.get('api')}: {_short(item.get('title', ''), 60)}" + (f" (`{place}` changed)" if place else ""))
+    return f"**Resolved:** {'; '.join(items)}"
 
 
-def _scope(
-    results: List[ApiResult], rows: List[Dict[str, Any]], sources: List[Dict[str, Any]], since: str, until: str
-) -> List[str]:
-    """What the report covered, for a reader deciding how far to trust it."""
+def _coverage_line(
+    results: List[ApiResult], sources: List[Dict[str, Any]], since: str, note: str
+) -> str:
+    """What the report covered and what it could not, in one line."""
     notes = sum(r.kept + r.ruled_out for r in results)
-    window = f"{since} to {until}" if until else f"from {since}"
-    lines = [
-        f"- {window}: {len(results)} APIs, {notes} release notes read,"
-        f" {len(rows)} change{'' if len(rows) == 1 else 's'} affect this workspace."
-    ]
     searched = {s["api"] for s in sources if s.get("origin") == "searched"}
-    counts = [
-        f"`{r.api}` {'found by web search' if r.api in searched else r.kept + r.ruled_out}"
-        for r in results
-        if r.status != "not_run"
-    ]
-    if counts:
-        lines.append(f"- Release notes per API: {', '.join(counts)}.")
-    with_rows = {c["api"] for c in rows}
-    quiet = [f"`{r.api}`" for r in results if r.api not in with_rows and r.status != "not_run"]
-    if quiet:
-        lines.append(f"- No change for this workspace: {', '.join(quiet)}.")
-    newest = [f"`{r.api}` {r.latest}" for r in results if r.latest and r.latest != "undated"]
-    if newest:
-        lines.append(f"- Newest release note seen: {', '.join(newest)}.")
-    gaps = [f"`{r.api}` publishes no dates" for r in results if r.latest == "undated"]
-    for r in results:
-        if old := re.search(r"\((\d+) days ago\)", r.latest):
-            gaps.append(f"`{r.api}` newest entry is {old.group(1)} days old")
-    gaps += [f"`{r.api}` release notes could not be read" for r in results if r.unread and r.api not in searched]
-    if gaps:
-        lines.append(f"- Coverage gaps: {'; '.join(gaps)}. Finding nothing there is no proof nothing changed.")
-    for r in results:
-        if r.status == "not_run":
-            lines.append(f"- Not checked: `{r.api}`, {r.reason}.")
-    ran = [r for r in results if r.turns]
-    skipped = [f"`{r.api}`" for r in results if r.status == "skipped"]
-    cost = f"- Cost: {len(ran)} model run{'' if len(ran) == 1 else 's'}, {sum(r.tokens for r in results):,} tokens"
-    lines.append(cost + (f"; no run needed for {', '.join(skipped)}." if skipped else "."))
-    return lines
+    gaps = [f"{r.api} undated" for r in results if r.latest == "undated"]
+    gaps += [f"{r.api} silent {m.group(1)}d" for r in results if (m := re.search(r"\((\d+) days ago\)", r.latest))]
+    gaps += [f"{r.api} found by search" for r in results if r.api in searched]
+    gaps += [f"{r.api} unreadable" for r in results if r.unread and r.api not in searched]
+    gaps += [f"{r.api} not checked ({r.reason})" for r in results if r.status == "not_run"]
+    if "not read" in note or "local run" in note:
+        gaps.append("no earlier report, all findings shown as new")
+    ran = sum(1 for r in results if r.turns)
+    tokens = sum(r.tokens for r in results)
+    apis = f"{len(results)} API{'' if len(results) == 1 else 's'}"
+    text = f"**Coverage:** {apis}, {notes} notes since {since}"
+    text += f"; gaps: {', '.join(gaps)}" if gaps else ""
+    if not ran:
+        return text + ". No model run needed."
+    return text + f". {ran} model run{'' if ran == 1 else 's'}, {round(tokens / 1000)}k tokens."
 
 
 def summary(
@@ -176,40 +171,16 @@ def summary(
     points: List[Tuple[str, str]],
     since: str,
     until: str = "",
-    history: Optional[List[str]] = None,
+    resolved: Optional[List[Dict[str, Any]]] = None,
+    history_note: str = "",
 ) -> str:
-    """The report's markdown: five bullet sections, then the table of changes."""
+    """The report's markdown: a status line, one table, then open, resolved and coverage."""
     rows = _rows(changes)
-    sections = [
-        ("Action required", _per_api(rows, "action_required", until) + _per_api(rows, "unknown", until),
-         "No change lands now on a resource or model of this workspace."),
-        ("On upgrade", _per_api(rows, "on_upgrade"), "No change waits on a version upgrade."),
-        ("Opportunities", _per_api(rows, "opportunity"), "No enhancement or new endpoint applies."),
-        ("Open questions", _open_questions(points), "Nothing was left open."),
-    ]
-    parts = []
-    for heading, bullets, empty in sections:
-        parts.append(f"## {heading}\n" + "\n".join(bullets or [f"- {empty}"]))
-    scope = _scope(results, rows, sources, since, until) + (history or [])
-    parts.append("## Scope\n" + "\n".join(scope))
+    parts = [_headline(rows, resolved or [])]
     if rows:
-        table = [
-            "| api | lands | impact | change | where | change to make | reported |",
-            "|---|---|---|---|---|---|---|",
-        ]
-        for c in rows[:TABLE_ROWS]:
-            where = ", ".join(_where(w) for w in c.get("affected") or [])
-            # a finding an earlier report listed shows the date it was first listed
-            reported = c.get("first_reported") or "new"
-            table.append(
-                f"| `{c['api']}` | {_cell(_lands(c))} | {c['impact']} | {_cell(c.get('title', ''))}"
-                f" | {_cell(where)} | {_cell(c.get('recommendation', ''))} | {reported} |"
-            )
-        if len(rows) > TABLE_ROWS:
-            table.append(f"\n{len(rows) - TABLE_ROWS} more changes are in the `changes` field.")
-        parts.append("## Changes\n" + "\n".join(table))
-    else:
-        parts.append("## Changes\n- No change touches this workspace.")
+        parts.append("\n".join(_table(rows, until)))
+    tail = [_open_line(points), _resolved_line(resolved or []), _coverage_line(results, sources, since, history_note)]
+    parts.extend(line for line in tail if line)
     return "\n\n".join(parts)
 
 
@@ -267,12 +238,9 @@ def merge(
     earlier = {item["key"]: item for item in tracked or [] if not item.get("new", True)}
     rows = [_with_earlier(c, earlier.get(key(c))) for c in changes]
     rows += [{**item, "carried": True} for item in carried or []]
-    # every earlier finding still open counts, whether the model listed it again or not
-    still_open = sum(not item.get("new", True) for item in tracked or [])
-    history = _history(still_open, resolved or [], history_note) if history_note else []
     return {
         "status": "failed" if failed else "succeeded",
-        "summary": summary(results, rows, sources, points, since, until, history),
+        "summary": summary(results, rows, sources, points, since, until, resolved, history_note),
         "since": since,
         "sources": sources,
         "changes": changes,

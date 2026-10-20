@@ -100,15 +100,17 @@ def test_the_report_lists_carried_and_resolved_findings(tmp_path: Path) -> None:
     merged = report.merge([quiet], "2026-10-20", "2026-10-27", tracked, carried, resolved, "compared with run #4")
 
     summary = merged["summary"]
-    assert "- `pipedrive`: 1 change, earliest 2026-08-01 (passed), breaks `transformations/deals.sql`" in summary
-    assert "- Earlier findings: 1 still open, 0 resolved (compared with run #4)." in summary
-    assert summary.splitlines()[-1].endswith("| 2026-10-20 |")
+    # carried from the earlier report, so it is open but not new
+    assert summary.startswith("**1 open finding: 1 act now, 0 new.**")
+    assert "| 2026-08-01 passed | pipedrive | act |" in summary
     assert merged["tracked"] == tracked and merged["requires_human"] is True
 
     workspace(root, "https://api.pipedrive.com/api/v2/")
     tracked, carried, resolved = tracking.track([], first, root, TODAY, [])
     merged = report.merge([quiet], "2026-10-20", "2026-10-27", tracked, carried, resolved, "compared with run #5")
-    assert "- Resolved: `pipedrive` Reminder: Deprecated API v1 endpoints are now out of support (`pipelines/pipedrive.py line 2` changed)." in merged["summary"]
+    assert merged["summary"].startswith("**No open findings.** 1 resolved.")
+    assert "**Resolved:** pipedrive: Reminder: Deprecated API v1" in merged["summary"]
+    assert "(`pipedrive.py:2` changed)" in merged["summary"]
     assert merged["tracked"] == [] and merged["requires_human"] is False
 
 
@@ -173,18 +175,19 @@ def test_a_finding_reported_again_without_a_date_keeps_the_earlier_one(tmp_path:
     assert {f: tracked[0][f] for f in tracking.DATE_FIELDS} == {
         "announced_date": "2026-10-14", "effective_date": "2027-05-01", "removal_date": "2027-06-01"
     }
-    assert "| on upgrade, pinned version ends 2027-05-01, removed 2027-06-01 |" in merged["summary"]
-    assert "pinned version ends 2027-05-01, breaks" in merged["summary"]
+    assert "| on upgrade, by 2027-05-01 | pipedrive | upgrade |" in merged["summary"]
 
 
 def test_older_reports_fill_dates_the_newest_report_lost(tmp_path: Path) -> None:
     """Google Ads: run 1 had the end date, run 2 dropped it, run 3 is compared with both."""
     root = workspace(tmp_path)
     dated = {**pipedrive_finding(), "impact": "on_upgrade", "effective_date": "2027-05-01",
-             "removal_date": "", "announced_date": ""}
+             "removal_date": "", "announced_date": "",
+             "title": "Removal of Customer.conversion_tracking_setting.enhanced_conversions_for_leads_enabled"}
     run1, _, _ = tracking.track([dated], [], root, date(2026, 10, 13), [])
-    # run 2 rewords the finding and has no date: the line still ties the two together
-    reworded = {**dated, "title": "Field removed in v26", "effective_date": ""}
+    # run 2 rewords the finding and has no date: the line and the title's words tie them
+    reworded = {**dated, "effective_date": "",
+                "title": "Removal of enhanced_conversions_for_leads_enabled in ConversionTrackingSetting"}
     run2 = [{**run1[0], "key": tracking.key(reworded), "title": reworded["title"],
              "effective_date": "", "first_reported": "2026-10-20"}]
 
@@ -192,7 +195,7 @@ def test_older_reports_fill_dates_the_newest_report_lost(tmp_path: Path) -> None
 
     assert combined[0]["effective_date"] == "2027-05-01"
     assert combined[0]["first_reported"] == "2026-10-13"
-    assert combined[0]["title"] == "Field removed in v26"
+    assert combined[0]["title"] == reworded["title"]
     # a finding only an older report had is not brought back
     assert len(tracking.combine([[], run1])) == 0
 
@@ -228,3 +231,37 @@ def test_findings_naming_one_shared_line_among_several_are_the_same(tmp_path: Pa
     tracked, carried, _ = tracking.track([again], first, root, TODAY, [])
 
     assert carried == [] and len(tracked) == 1 and tracked[0]["new"] is False
+
+
+def test_a_finding_an_older_report_held_twice_is_carried_once(tmp_path: Path) -> None:
+    root = workspace(tmp_path)
+    (root / "pipelines" / "pipedrive.py").write_text('"""Deals."""\nEMAIL = "x"\nAUTH = "token"\n')
+    one = {**pipedrive_finding(), "title": "API token deprecation", "effective_date": "2026-10-27",
+           "recommendation": "Replace auth in `pipelines/pipedrive.py` line 2 and line 3."}
+    two = {**one, "title": "Phased end-of-life for API tokens",
+           "recommendation": "Replace auth in `pipelines/pipedrive.py` line 3."}
+    # an older report saved both copies under different keys
+    previous = [
+        {**one, "key": tracking.key(one), "first_reported": "2026-10-20",
+         "lines": tracking.fingerprint(one, root)},
+        {**two, "key": tracking.key(two), "first_reported": "2026-10-20",
+         "lines": tracking.fingerprint(two, root)},
+    ]
+
+    tracked, carried, resolved = tracking.track([one], previous, root, TODAY, [])
+
+    assert len(tracked) == 1 and carried == [] and resolved == []
+
+
+def test_two_changes_on_one_line_stay_two_findings(tmp_path: Path) -> None:
+    """HubSpot: the v1 sunset and the v1-v3 end of support both fix the same endpoint line."""
+    root = workspace(tmp_path)
+    sunset = {**pipedrive_finding(), "title": "Pipelines API V1 Sunset: December 4, 2026",
+              "effective_date": "2026-12-04"}
+    legacy = {**pipedrive_finding(), "title": "Legacy APIs and Apps: What's Going Unsupported and When",
+              "effective_date": "2027-09-01"}
+    first, _, _ = tracking.track([sunset, legacy], [], root, date(2026, 10, 20), [])
+
+    tracked, carried, _ = tracking.track([sunset], first, root, TODAY, [])
+
+    assert len(tracked) == 2 and [c["title"] for c in carried] == [legacy["title"]]

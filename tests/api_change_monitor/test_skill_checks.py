@@ -61,9 +61,9 @@ def test_coverage_records_the_newest_entry_and_undated_sources() -> None:
     assert coverage.undated == ["policy"]
 
 
-def test_the_scope_names_coverage_gaps() -> None:
+def test_the_coverage_line_names_the_gaps() -> None:
     results = [
-        report.ApiResult("jira", "succeeded", kept=2, latest="2026-10-16"),
+        report.ApiResult("jira", "succeeded", kept=2, turns=3, tokens=40_000, latest="2026-10-16"),
         report.ApiResult("github", "skipped", ruled_out=3, latest="2026-03-10 (231 days ago)"),
         report.ApiResult("salesforce", "skipped", latest="undated"),
         report.ApiResult("acme", "skipped", unread=True),
@@ -71,26 +71,26 @@ def test_the_scope_names_coverage_gaps() -> None:
 
     summary = report.merge(results, "2026-09-27", "2026-10-27")["summary"]
 
-    assert "- Newest release note seen: `jira` 2026-10-16, `github` 2026-03-10 (231 days ago)." in summary
-    assert (
-        "- Coverage gaps: `salesforce` publishes no dates; `github` newest entry is 231 days old;"
-        " `acme` release notes could not be read. Finding nothing there is no proof nothing changed."
-    ) in summary
+    assert summary.splitlines()[-1] == (
+        "**Coverage:** 4 APIs, 5 notes since 2026-09-27; gaps: salesforce undated,"
+        " github silent 231d, acme unreadable. 1 model run, 40k tokens."
+    )
 
 
 @pytest.mark.parametrize(
-    "change, lands",
+    "change, when",
     [
-        ({"impact": "action_required", "effective_date": "2027-06-01", "removal_date": "2028-06-01"},
-         "2027-06-01, removed 2028-06-01"),
-        ({"impact": "action_required", "effective_date": "2026-12-04", "removal_date": "2026-12-04"},
-         "2026-12-04"),
-        ({"impact": "on_upgrade", "effective_date": "", "removal_date": ""}, "on upgrade"),
-        ({"impact": "action_required", "effective_date": "", "removal_date": ""}, "now"),
+        ({"impact": "action_required", "effective_date": "2027-06-01"}, "2027-06-01"),
+        ({"impact": "action_required", "effective_date": "2026-08-01"}, "2026-08-01 passed"),
+        ({"impact": "on_upgrade", "effective_date": ""}, "on upgrade"),
+        ({"impact": "on_upgrade", "effective_date": "2027-05-01"}, "on upgrade, by 2027-05-01"),
+        ({"impact": "action_required", "effective_date": ""}, "now"),
+        # a schema change waits on a release or an upgrade, so no date is not "now"
+        ({"impact": "schema_change", "effective_date": ""}, "not dated"),
     ],
 )
-def test_the_table_keeps_the_dates_apart(change: dict, lands: str) -> None:
-    assert report._lands(change) == lands
+def test_the_when_column_says_when_in_few_words(change: dict, when: str) -> None:
+    assert report._when(change, "2026-10-27") == when
 
 
 @pytest.mark.parametrize(

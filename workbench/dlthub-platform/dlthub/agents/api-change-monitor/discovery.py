@@ -312,6 +312,28 @@ def model_lines(root: Path) -> List[Tuple[str, str]]:
     return found
 
 
+_DATASET = re.compile(r"""dataset_name\s*[=:]\s*f?["']([A-Za-z_][\w]*)["']""")
+
+
+def datasets(root: Path, api: "FoundApi") -> List[str]:
+    """The datasets the files calling an API load into, from their `dataset_name`."""
+    found: List[str] = []
+    for path in api_files(root, api):
+        for line in _lines(path):
+            found.extend(_DATASET.findall(line))
+    return list(dict.fromkeys(found))
+
+
+def downstream(root: Path, api: "FoundApi", models: List[Tuple[str, str]]) -> Optional[List[str]]:
+    """Model files reading an API's datasets, or None when its datasets are unknown."""
+    names = datasets(root, api)
+    if not names:
+        return None
+    pattern = re.compile(rf"\b({'|'.join(map(re.escape, names))})\b")
+    files = [where.rsplit(" line ", 1)[0] for where, line in models if pattern.search(line)]
+    return list(dict.fromkeys(files))
+
+
 _PIN = re.compile(
     # a name holding `version` set to a date or a dotted number, or a version segment in a url
     r"(?i)version[\w-]*[\"']?\s*[:=]\s*[\"']?(\d{4}-\d{2}(?:-\d{2})?|v?\d+(?:\.\d+)+)"

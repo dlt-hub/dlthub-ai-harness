@@ -1,4 +1,4 @@
-"""Tests for how one job merges its per-API runs into one report."""
+"""Tests for how one job merges its per-API runs into one short report."""
 
 from dlt._workspace.deployment.agent.manifest import load_agent_module
 
@@ -10,21 +10,21 @@ agent = load_agent_module(
 report = agent.report
 
 
-def change(impact: str, day: str = "", affected: tuple = (), title: str = "x") -> dict:
+def change(impact: str, day: str = "", affected: tuple = (), title: str = "x", action: str = "") -> dict:
     return {
         "api": "wrong", "kind": "breaking", "title": title, "effective_date": day,
         "announced_date": "", "removal_date": "",
-        "source_url": "u", "impact": impact, "affected": list(affected),
-        "recommendation": "Change | this\nnow.",
+        "source_url": "u", "impact": impact, "affected": list(affected), "loaded_tables": [],
+        "action": action, "recommendation": "Change | this\nnow.",
     }
 
 
-def test_runs_merge_into_one_report_with_a_table() -> None:
+def test_runs_merge_into_one_short_report_with_a_table() -> None:
     github = report.ApiResult(
         "github", "succeeded", turns=4, tokens=1000, kept=3, ruled_out=17,
         output={
             "changes": [
-                change("on_upgrade", "", ["`pipelines/gh.py` line 7"]),
+                change("on_upgrade", "", ["`pipelines/gh.py` line 7"], action="Read `resources.core`"),
                 change("not_used"),
             ],
             "sources": [{"api": "github", "url": "g", "origin": "registry"}],
@@ -33,8 +33,11 @@ def test_runs_merge_into_one_report_with_a_table() -> None:
     )
     zendesk = report.ApiResult(
         "zendesk", "succeeded", turns=3, tokens=500, kept=2,
-        output={"changes": [change("action_required", "2026-08-06",
-                                   ["pipelines/z.py line 23", "transformations/asset_costs.sql line 2"])]},
+        output={"changes": [change(
+            "action_required", "2026-08-06",
+            ["pipelines/z.py line 23", "transformations/asset_costs.sql line 2"],
+            action="Sum `purchase_cost__amount` | not the object",
+        )]},
     )
     stripe = report.ApiResult("stripe", "skipped", ruled_out=4, sources=["s"])
 
@@ -45,27 +48,21 @@ def test_runs_merge_into_one_report_with_a_table() -> None:
     assert {c["api"] for c in merged["changes"]} == {"github", "zendesk"}
     assert merged["sources"][-1] == {"api": "stripe", "url": "s", "origin": "registry"}
     assert merged["runs"][2] == {"api": "stripe", "status": "skipped", "turns": 0, "tokens": 0}
-    summary = merged["summary"]
-    # a date before the report's own is marked, since that change already landed
-    assert "- `zendesk`: 1 change, earliest 2026-08-06 (passed), breaks `transformations/asset_costs.sql`" in summary
-    assert "- `github`: 1 change, no end date given" in summary
     # the job names the API of every open point, which a run cannot do itself
-    assert "## Open questions\n- `github`: check x" in summary
     assert merged["open_points"] == ["`github`: check x"]
-    scope = summary.split("## Scope\n")[1].split("\n\n")[0].splitlines()
-    assert scope == [
-        "- 2026-01-01 to 2026-10-20: 3 APIs, 26 release notes read, 2 changes affect this workspace.",
-        "- Release notes per API: `github` 20, `zendesk` 2, `stripe` 4.",
-        "- No change for this workspace: `stripe`.",
-        "- Cost: 2 model runs, 1,500 tokens; no run needed for `stripe`.",
+    assert merged["summary"].splitlines() == [
+        "**2 open findings: 1 act now, 1 plan ahead, 2 new.**",
+        "",
+        "| when | api | impact | action |",
+        "|---|---|---|---|",
+        # act now first, a date already gone marked, the cell keeps no pipe
+        "| 2026-08-06 passed | zendesk | act | Sum `purchase_cost__amount` / not the object (`z.py:23`) |",
+        "| on upgrade | github | upgrade | Read `resources.core` (`gh.py:7`) |",
+        "",
+        "**Open:** github: check x",
+        "",
+        "**Coverage:** 3 APIs, 26 notes since 2026-01-01. 2 model runs, 2k tokens.",
     ]
-    rows = summary.split("## Changes\n")[1].splitlines()
-    # action required first, the cell keeps no pipe and no line break
-    assert rows[2].startswith("| `zendesk` | 2026-08-06 | action_required |")
-    assert rows[2].endswith("| Change / this now. | new |")
-    assert "| `pipelines/z.py` line 23, `transformations/asset_costs.sql` line 2 |" in rows[2]
-    assert rows[3].startswith("| `github` | on upgrade | on_upgrade |")
-    assert len(rows) == 4
 
 
 def test_a_run_that_did_not_finish_fails_the_job_and_says_why() -> None:
@@ -75,19 +72,22 @@ def test_a_run_that_did_not_finish_fails_the_job_and_says_why() -> None:
 
     assert merged["status"] == "failed"
     assert merged["open_points"] == ["`jira` was not checked: the job spent its 3,000,000 tokens."]
-    assert "- Not checked: `jira`, the job spent its 3,000,000 tokens." in merged["summary"]
-    assert merged["summary"].endswith("## Changes\n- No change touches this workspace.")
+    assert merged["summary"].splitlines() == [
+        "**No open findings.**",
+        "",
+        "**Coverage:** 1 API, 0 notes since 2026-01-01; gaps: jira not checked (the job spent"
+        " its 3,000,000 tokens). No model run needed.",
+    ]
 
 
-def test_a_long_open_point_is_cut_at_a_word() -> None:
-    point = "word " * 80
-    result = report.ApiResult("hubspot", "succeeded", output={"open_points": [point, point]})
+def test_open_points_are_cut_short_and_listed_three_at_most() -> None:
+    points = ["word " * 80, "word " * 80, "second", "third", "fourth"]
+    result = report.ApiResult("hubspot", "succeeded", output={"open_points": points})
 
-    bullets = report.merge([result], "2026-01-01")["summary"].split("## Open questions\n")[1]
-    first = bullets.split("\n\n")[0].splitlines()
+    line = next(l for l in report.merge([result], "2026-01-01")["summary"].splitlines() if l.startswith("**Open:**"))
 
-    # repeats collapse into one bullet
-    assert len(first) == 1 and first[0].endswith("word…") and len(first[0]) < 240
+    # repeats collapse, each point is cut at a word, the rest is counted
+    assert line.count("hubspot:") == 3 and "word…;" in line and line.endswith("(+1 more)")
 
 
 def test_an_open_question_the_note_leaves_is_no_failed_run() -> None:
@@ -108,7 +108,22 @@ def test_an_open_question_the_note_leaves_is_no_failed_run() -> None:
 
     merged = report.merge([pipedrive], "2026-09-20")
     assert merged["status"] == "succeeded" and merged["runs"][0]["status"] == "succeeded"
-    assert "## Open questions\n- `pipedrive`: The note does not list" in merged["summary"]
+    assert "**Open:** pipedrive: The note does not list" in merged["summary"]
+    assert "| 2026-08-01 | pipedrive | check |" in merged["summary"]
 
     # release notes nobody could read or find are a failure on the job's side
     assert report.merge([pipedrive, unread], "2026-09-20")["status"] == "failed"
+
+
+def test_a_schema_change_for_possible_downstream_models_is_a_row() -> None:
+    schema = {
+        **change("schema_change", "", action="Expect `billing_cycle_anchor` as an object"),
+        "loaded_tables": ["stripe_data.subscriptions.billing_cycle_anchor"],
+        "recommendation": "In `pipelines/stripe.py` line 7, expect an object.",
+    }
+    stripe = report.ApiResult("stripe", "succeeded", output={"changes": [schema]})
+
+    summary = report.merge([stripe], "2026-09-20", "2026-10-20")["summary"]
+
+    assert summary.startswith("**1 open finding: 1 plan ahead, 1 new.**")
+    assert "| not dated | stripe | schema | Expect `billing_cycle_anchor` as an object (`stripe.py:7`) |" in summary

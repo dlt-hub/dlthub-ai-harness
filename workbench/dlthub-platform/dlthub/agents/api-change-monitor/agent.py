@@ -159,7 +159,9 @@ def link_calls(notes: List[release_notes.Note], paths: List[Tuple[str, str]]) ->
 
 
 def triage(
-    notes: List[release_notes.Note], pins: Dict[str, List[str]]
+    notes: List[release_notes.Note],
+    pins: Dict[str, List[str]],
+    external: Optional[List[str]] = None,
 ) -> Tuple[List[release_notes.Note], List[release_notes.Note]]:
     """Notes the model reads, and notes the hook rules out as touching nothing here."""
     kept, ruled_out = [], []
@@ -168,6 +170,9 @@ def triage(
         # a missed endpoint is strong evidence, a few missed names are not: one stray
         # identifier such as an exception class must not hide a note
         named = release_notes.endpoints(text) or len(release_notes.fields(text)) >= MIN_FIELDS
+        # with the models elsewhere, a field no local file names may still be read there
+        if note.api in (external or []):
+            named = bool(release_notes.endpoints(text))
         note.pinned = names_pin(note, pins.get(note.api, []))
         pinned = bool(note.pinned)
         flagged = {"imminent", "not parsed"} & set(note.labels)
@@ -192,6 +197,16 @@ def render_ruled_out(ruled_out: List[release_notes.Note], apis: List[str]) -> st
     return "\n".join(lines) or "None."
 
 
+def _downstream_line(root: Path, api: FoundApi) -> str:
+    """Where the models reading an API's tables are, for the schema change rule."""
+    names = discovery.datasets(root, api)
+    files = discovery.downstream(root, api, discovery.model_lines(root))
+    if files:
+        return f"downstream models: {', '.join(f'`{f}`' for f in files)}"
+    loaded = f"dataset {', '.join(f'`{n}`' for n in names)}" if names else "its tables"
+    return f"downstream models: none in this workspace; possible downstream models of {loaded} are not visible here"
+
+
 def render_apis(apis: List[FoundApi], problems: Dict[str, List[str]]) -> str:
     """One bullet per API: how it was found and where its release notes come from."""
     lines = []
@@ -214,8 +229,10 @@ def render_apis(apis: List[FoundApi], problems: Dict[str, List[str]]) -> str:
             elif api.known and api.known.workspace and not api.url:
                 state += " (the workspace's own source)"
         lines.append(f"- `{api.name}`: {how} ({where}); {state}")
-        pins = discovery.pinned_versions(Path.cwd(), api)
+        root = Path.cwd()
+        pins = discovery.pinned_versions(root, api)
         lines.append(f"  - pinned version: {'; '.join(pins)}" if pins else "  - pinned version: none found")
+        lines.append(f"  - {_downstream_line(root, api)}")
     return "\n".join(lines)
 
 
@@ -269,7 +286,8 @@ def prepare(inputs: Dict[str, Any], root: Path, today: date, first_run: bool = T
         link_calls(own, discovery.resource_paths(root, files))
         link_models(own, models)
         link_models(own, discovery.code_lines(root, files), into="code")
-    kept, ruled_out = triage(notes, pins)
+    external = [api.name for api in apis if not discovery.downstream(root, api, models)]
+    kept, ruled_out = triage(notes, pins, external)
     return Prep(root, since, apis, kept, ruled_out, problems, coverage)
 
 

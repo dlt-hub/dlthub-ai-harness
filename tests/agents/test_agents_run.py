@@ -106,6 +106,8 @@ def monitor_report() -> dict:
                 "source_url": "https://shopify.dev/changelog/automatic-discounts-removed",
                 "impact": "action_required",
                 "affected": ["pipelines/shopify_pipeline.py line 4"],
+                "loaded_tables": [],
+                "action": "Replace the `automaticDiscounts` query with `discountNodes`",
                 "recommendation": "Replace the automaticDiscounts query with discountNodes.",
             }
         ],
@@ -240,10 +242,13 @@ async def test_api_change_monitor_job_runs_the_model_once_per_api_with_notes(
     assert report["status"] == "succeeded" and report["requires_human"] is True
     assert report["changes"][0]["api"] == "shopify"
     summary = report["summary"]
-    assert summary.startswith("## Action required\n- `shopify`: 1 change")
-    assert "- No change for this workspace: `stripe`." in summary
-    assert "; no run needed for `stripe`." in summary
-    assert "## Changes\n| api | lands | impact |" in summary
+    assert summary.startswith("**1 open finding: 1 act now, 1 new.**")
+    assert "| when | api | impact | action |" in summary
+    assert "| shopify | act | Replace the `automaticDiscounts` query with `discountNodes`" in summary
+    assert "1 model run," in summary.splitlines()[-1]
     trace = api_change_monitor.last_job_result["trace"]
     assert trace["unresolved_placeholders"] == []
     assert "automaticDiscounts` query is removed" in trace["inputs"]["release_notes"]
+    # the workspace holds no transformations: the run still works and says where models are
+    assert "downstream models: none in this workspace" in trace["inputs"]["apis_found"]
+    assert "### Downstream model files\n\nNone found." in trace["inputs"]["workspace_usage"]

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .redact import redact
 
-TRACKED_IMPACTS = ("action_required", "unknown", "on_upgrade")
+TRACKED_IMPACTS = ("action_required", "unknown", "on_upgrade", "schema_change")
 DATE_FIELDS = ("announced_date", "effective_date", "removal_date")
 
 _FILE = re.compile(r"`?([\w./-]+\.(?:py|sql|toml|ya?ml|json))`?")
@@ -107,7 +107,10 @@ def track(
         item.update({f: same[f] for f in DATE_FIELDS if same and same.get(f) and not item.get(f)})
         tracked.append({**item, "new": same is None})
     carried, resolved = [], []
-    for item in earlier.values():
+    for found, item in list(earlier.items()):
+        # an older report may hold the same finding twice: one copy matched, drop the others
+        if any(_same_finding({found: item}, new, new.get("lines") or []) for new in tracked):
+            continue
         # an API whose run failed keeps its findings; a deleted pipeline resolves its own
         if item.get("api") in unchecked_apis or still_open(item, root):
             carried.append({**item, "new": False})
@@ -133,10 +136,27 @@ def combine(reports: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     return newest
 
 
+_FILLER = {"a", "an", "the", "and", "or", "of", "for", "to", "in", "on", "from", "with", "is", "are", "be", "now", "new"}
+
+
+def _words(title: str) -> set:
+    words = re.findall(r"[a-z0-9]+", str(title).lower())
+    # plurals fold into one word, so `tokens` meets `token`
+    return {w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words if w not in _FILLER}
+
+
+def _similar(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+    """True when two findings share a date, or half the words of the shorter title."""
+    if a.get("effective_date") and a.get("effective_date") == b.get("effective_date"):
+        return True
+    ours, theirs = _words(a.get("title", "")), _words(b.get("title", ""))
+    return bool(ours and theirs) and len(ours & theirs) >= max(2, min(len(ours), len(theirs)) / 2)
+
+
 def _same_finding(
     earlier: Dict[str, Dict[str, Any]], change: Dict[str, Any], lines: List[Dict[str, str]]
 ) -> Optional[Dict[str, Any]]:
-    """Pop the earlier finding a reworded one repeats: same line, or same change and file."""
+    """Pop the earlier finding a reworded one repeats: a shared line and a similar change."""
     wanted = {(line["location"], line["text"]) for line in lines}
     files = {line["location"].rsplit(" line ", 1)[0] for line in lines}
     targets = set(locations(str(change.get("recommendation", ""))))
@@ -144,10 +164,11 @@ def _same_finding(
         if item.get("api") != change.get("api"):
             continue
         theirs = item.get("lines") or []
-        if wanted & {(line["location"], line["text"]) for line in theirs}:
-            return earlier.pop(found)
+        shared = wanted & {(line["location"], line["text"]) for line in theirs}
         # an older report may hold fewer fingerprints, so its recommendation is read again
-        if targets & set(locations(str(item.get("recommendation", "")))):
+        shared = shared or targets & set(locations(str(item.get("recommendation", ""))))
+        # one line can carry two changes, so a shared line needs a similar change too
+        if shared and _similar(change, item):
             return earlier.pop(found)
         # the model may target another line of the same file for the same dated change
         same_change = (
