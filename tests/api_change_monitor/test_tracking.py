@@ -3,6 +3,8 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from dlt._workspace.deployment.agent.manifest import load_agent_module
 
 from tests.utils import REPO_ROOT
@@ -193,3 +195,36 @@ def test_older_reports_fill_dates_the_newest_report_lost(tmp_path: Path) -> None
     assert combined[0]["title"] == "Field removed in v26"
     # a finding only an older report had is not brought back
     assert len(tracking.combine([[], run1])) == 0
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Replace auth in `pipelines/z.py` line 8 and line 14.", [("pipelines/z.py", 8), ("pipelines/z.py", 14)]),
+        ("In pipelines/z.py lines 8 and 14, migrate.", [("pipelines/z.py", 8), ("pipelines/z.py", 14)]),
+        ("verify `models/d.sql` lines 3-4", [("models/d.sql", 3), ("models/d.sql", 4)]),
+        ("`models/x.sql` line 2, 5 and 7", [("models/x.sql", 2), ("models/x.sql", 5), ("models/x.sql", 7)]),
+        # a number after the line list belongs to the sentence, not to the file
+        ("In `pipelines/gh.py` line 7 from `2022` to 26 versions", [("pipelines/gh.py", 7)]),
+        ("change `a.py` line 3 and `b.sql` line 9", [("a.py", 3), ("b.sql", 9)]),
+        ("see `a.py`, then line 4", []),
+        ("`a.py` lines 10-900", [("a.py", 10)]),
+    ],
+)
+def test_every_line_a_recommendation_names_is_read(text: str, expected: list) -> None:
+    assert tracking.locations(text) == expected
+
+
+def test_findings_naming_one_shared_line_among_several_are_the_same(tmp_path: Path) -> None:
+    """Zendesk: run 4 targeted lines 8 and 14, run 5 only line 14 under another title."""
+    root = workspace(tmp_path)
+    (root / "pipelines" / "pipedrive.py").write_text('"""Deals."""\nEMAIL = "x"\nAUTH = "token"\n')
+    earlier = {**pipedrive_finding(), "title": "API token deprecation", "effective_date": "2026-10-27",
+               "recommendation": "Replace auth in `pipelines/pipedrive.py` line 2 and line 3."}
+    first, _, _ = tracking.track([earlier], [], root, date(2026, 10, 20), [])
+    again = {**earlier, "title": "Phased end-of-life for API tokens", "effective_date": "2026-07-28",
+             "recommendation": "Replace auth in `pipelines/pipedrive.py` line 3."}
+
+    tracked, carried, _ = tracking.track([again], first, root, TODAY, [])
+
+    assert carried == [] and len(tracked) == 1 and tracked[0]["new"] is False

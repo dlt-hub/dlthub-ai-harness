@@ -17,8 +17,14 @@ from .redact import redact
 TRACKED_IMPACTS = ("action_required", "unknown", "on_upgrade")
 DATE_FIELDS = ("announced_date", "effective_date", "removal_date")
 
-# `pipelines/a.py` line 12, pipelines/a.py line 12, `models/x.sql` lines 3-4
-_LOCATION = re.compile(r"`?([\w./-]+\.(?:py|sql|toml|ya?ml|json))`?,? lines? (\d+)")
+_FILE = re.compile(r"`?([\w./-]+\.(?:py|sql|toml|ya?ml|json))`?")
+# the line list right after a file: `line 8 and line 14`, `lines 8 and 14`, `lines 3-4`
+_LINE_LIST = re.compile(
+    r"[`\s,]*\blines?\s+(\d+(?:\s*[-\u2013]\s*\d+)?"
+    r"(?:\s*(?:,|\band\b|&)\s*(?:lines?\s+)?\d+(?:\s*[-\u2013]\s*\d+)?)*)"
+)
+_NUMBER = re.compile(r"(\d+)(?:\s*[-\u2013]\s*(\d+))?")
+MAX_RANGE = 20
 
 
 def key(change: Dict[str, Any]) -> str:
@@ -36,13 +42,27 @@ def _line(root: Path, path: str, number: int) -> Optional[str]:
     return redact(lines[number - 1].strip()) if 0 < number <= len(lines) else None
 
 
+def locations(text: str) -> List[Tuple[str, int]]:
+    """`(path, line)` for every line a text names after a file, ranges spread out."""
+    found: List[Tuple[str, int]] = []
+    for match in _FILE.finditer(text):
+        listed = _LINE_LIST.match(text, match.end())
+        if not listed:
+            continue
+        for first, last in _NUMBER.findall(listed.group(1)):
+            start = int(first)
+            end = int(last) if last and 0 <= int(last) - start <= MAX_RANGE else start
+            found.extend((match.group(1), number) for number in range(start, end + 1))
+    return list(dict.fromkeys(found))
+
+
 def fingerprint(change: Dict[str, Any], root: Path) -> List[Dict[str, str]]:
     """The lines a finding's fix changes, from its recommendation, else its locations."""
-    found = _LOCATION.findall(str(change.get("recommendation", "")))
-    found = found or _LOCATION.findall(" ".join(change.get("affected") or []))
+    found = locations(str(change.get("recommendation", "")))
+    found = found or locations(", ".join(change.get("affected") or []))
     lines = []
-    for path, number in dict.fromkeys(found):
-        text = _line(root, path, int(number))
+    for path, number in found:
+        text = _line(root, path, number)
         if text:
             lines.append({"location": f"{path} line {number}", "text": text})
     return lines
@@ -119,11 +139,15 @@ def _same_finding(
     """Pop the earlier finding a reworded one repeats: same line, or same change and file."""
     wanted = {(line["location"], line["text"]) for line in lines}
     files = {line["location"].rsplit(" line ", 1)[0] for line in lines}
+    targets = set(locations(str(change.get("recommendation", ""))))
     for found, item in list(earlier.items()):
         if item.get("api") != change.get("api"):
             continue
         theirs = item.get("lines") or []
         if wanted & {(line["location"], line["text"]) for line in theirs}:
+            return earlier.pop(found)
+        # an older report may hold fewer fingerprints, so its recommendation is read again
+        if targets & set(locations(str(item.get("recommendation", "")))):
             return earlier.pop(found)
         # the model may target another line of the same file for the same dated change
         same_change = (
