@@ -38,7 +38,7 @@
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
       "description": "Deploy dlthub workspace and pipelines to the dltHub platform",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "data",
       "tags": ["dlthub", "deploy", "platform"]
     },
@@ -46,7 +46,7 @@
       "name": "init",
       "source": "./workbench/init",
       "description": "Shared rules, secrets handling, and workspace MCP for dlthub",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "init", "rules", "secrets", "mcp"]
     },
@@ -110,7 +110,7 @@
       "name": "performance",
       "source": "./workbench/performance",
       "description": "Tune dlt pipeline performance — diagnose the bottleneck stage (extract, normalize, load) and apply the right lever: parallelism, workers, memory buffers, file rotation, and batching.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "data",
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
     }

@@ -1,7 +1,7 @@
 {
   "name": "dlthub-platform",
   "description": "Deploy dlthub workspace and pipelines to the dltHub Platform",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": {
     "name": "ScaleVector GmbH"
   },
