@@ -1,10 +1,10 @@
 # SQL database pipeline
 
 ## Workflow Entry
-**ALWAYS** start with **Find source** (`find-sql-database-source`) SKILL — identify the database, explore available tables, and pick what to load
+**ALWAYS** start with **Find SQL database source** (`find-sql-database-source`) SKILL — identify the database, explore available tables, and pick what to load
 
 ## Core workflow
-1. **Find source** (`find-sql-database-source`) — classify the database type, explore schemas and tables, gather connection details, pick first table and destination
+1. **Find SQL database source** (`find-sql-database-source`) — classify the database type, explore schemas and tables, gather connection details, pick first table and destination
 2. **Create pipeline** (`create-sql-database-pipeline`) — scaffold with `dlthub pipeline init sql_database`, write code, set up credentials, test load, choose backend
 3. **Debug pipeline** (`debug-sql-database-pipeline`) — run it, inspect traces and load packages, fix connection or driver errors
 4. **Validate data** (`validate-sql-database-data`) — inspect schema and data, fix types and column mappings, iterate until correct

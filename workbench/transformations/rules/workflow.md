@@ -29,7 +29,10 @@ When the user's needs go beyond this toolkit, hand over to:
 
 - **rest-api-pipeline**
   - At `annotate-sources` step 1, when a stated source has no local dlt pipeline yet
-  - At `create-transformation` step 8 (Run), when the run fails with a pipeline state or infrastructure error — use the `debug-pipeline` skill
+  - At `create-transformation` step 8 (Run), when the run fails with a pipeline state or infrastructure error and the source is a REST API — use the `debug-pipeline` skill
+- **sql-database-pipeline**
+  - At `annotate-sources` step 1, when a stated SQL database source has no local dlt pipeline yet — start at `find-sql-database-source`
+  - At `create-transformation` step 8 (Run), when the run fails with a pipeline state or infrastructure error and the source is a SQL database — use the `debug-sql-database-pipeline` skill
 - **data-exploration** — after `create-transformation`, when the user wants to explore, visualise, or validate the CDM output interactively
 - **dlthub-platform** — when the transformation is working and the user wants to deploy or schedule it on the dltHub platform, or, once it runs there, wants every future failure diagnosed unattended by the `job-inspector` background agent
 - **data-quality** — after `create-transformation`, when the user wants to add quality checks on the transformed tables

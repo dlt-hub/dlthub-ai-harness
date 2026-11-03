@@ -1,7 +1,7 @@
 {
   "name": "transformations",
   "description": "Transform raw dlt pipeline data into a Canonical Data Model. Build an ontology, design a CDM with Kimball dimensional modeling, write @dlt.hub.transformation functions, and validate the output.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "ScaleVector GmbH"
   },

@@ -30,7 +30,7 @@
       "name": "data-exploration",
       "source": "./workbench/data-exploration",
       "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
     },
@@ -54,7 +54,7 @@
       "name": "transformations",
       "source": "./workbench/transformations",
       "description": "Transform raw dlt pipeline data into a Canonical Data Model. Annotate sources, build an ontology, design a CDM with Kimball dimensional modeling, and write @dlt.hub.transformation functions.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
     },
@@ -62,7 +62,7 @@
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
       "description": "Build SQL database pipelines with dlt: connect to any SQLAlchemy-supported database, load tables to a destination, tune performance with backends.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"]
     },
@@ -70,7 +70,7 @@
       "name": "data-quality",
       "source": "./workbench/data-quality",
       "description": "Add checks and metrics to dlt pipelines — inspect schema for candidates, define column-level validations and load metrics, run them on every pipeline load, and review results with failure diagnosis.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "data",
       "tags": ["dlthub", "data-quality", "validation", "checks", "metrics"]
     },

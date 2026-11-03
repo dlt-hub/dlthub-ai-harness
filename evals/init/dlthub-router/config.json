@@ -8,6 +8,9 @@
     },
     "with-dlthub-platform": {
       "toolkits": ["dlthub-platform"]
+    },
+    "with-sql-database": {
+      "toolkits": ["sql-database-pipeline"]
     }
   }
 }

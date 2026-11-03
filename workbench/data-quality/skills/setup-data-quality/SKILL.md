@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 
 Before any discovery step, check what is already known:
 
-1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, or from `transformations` after `create-transformation`), skip `list_pipelines` discovery.
+1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, from `sql-database-pipeline` after `validate-sql-database-data`, or from `transformations` after `create-transformation`), skip `list_pipelines` discovery.
 
 ## Steps
 
