@@ -2,7 +2,7 @@
 
 ## Core rules
 
-**Continuous data quality, not ad-hoc.** This toolkit sets up persistent checks and metrics that run on every pipeline load. For one-off data sanity checks during development, use the **data-exploration** toolkit or the `validate-data` step in **rest-api-pipeline** instead.
+**Continuous data quality, not ad-hoc.** This toolkit sets up persistent checks and metrics that run on every pipeline load. For one-off data sanity checks during development, use the **data-exploration** toolkit or the `validate-data` step in **rest-api-pipeline** (`validate-sql-database-data` in **sql-database-pipeline**) instead.
 
 **Use the dlthub data quality API, not notebooks.** When the user asks to "set up data quality" or "monitor data quality", invoke `setup-data-quality`. Never generate a custom Marimo notebook as a data quality solution.
 

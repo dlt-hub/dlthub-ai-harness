@@ -68,7 +68,7 @@ Run the pipeline:
 uv run python <name>_pipeline.py
 ```
 
-Use `debug-pipeline` after each run to inspect traces and load packages.
+Use `debug-sql-database-pipeline` after each run to inspect traces and load packages.
 
 ### 5. Review consistency with existing tables
 
@@ -96,6 +96,6 @@ Available tables: <list all table names>
 
 ## Next steps
 
-- **All tables loaded correctly** → use `validate-data` to check schemas and data
-- **Errors on the new table** → use `debug-pipeline` to inspect traces
+- **All tables loaded correctly** → use `validate-sql-database-data` to check schemas and data
+- **Errors on the new table** → use `debug-sql-database-pipeline` to inspect traces
 - **New table needs incremental loading** → use `adjust-table`

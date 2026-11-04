@@ -56,7 +56,7 @@ Route here when the user wants work to happen on its own after an event ("whenev
 
 **"my job failed" routes four ways.** Pick by where it ran, and by whether the user wants this failure handled or all future ones:
 
-* A local pipeline or transformation run, fix it now → that toolkit's own debug skill, `debug-pipeline` or `debug-transformation`. A dlt **load job** in a failed load package belongs here, on the user's machine.
+* A local pipeline or transformation run, fix it now → that toolkit's own debug skill, `debug-pipeline`, `debug-sql-database-pipeline` or `debug-transformation`. A dlt **load job** in a failed load package belongs here, on the user's machine.
 * A deployed **platform job run** failed, look at it now → `debug-deployment` in **dlthub-platform**.
 * Every future failure of a deployed job, unattended → `job-inspector`, below.
 * Nothing deployed yet → deploy first. The agent triggers on platform job runs, so it has nothing to watch until then.

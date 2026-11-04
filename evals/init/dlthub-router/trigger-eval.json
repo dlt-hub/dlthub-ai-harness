@@ -69,7 +69,8 @@
     "query": "my pipeline run failed with failed load jobs, why?",
     "should_trigger": false,
     "by_workspace": {
-      "with-rest-api": { "should_trigger": false, "expect": "debug-pipeline" }
+      "with-rest-api": { "should_trigger": false, "expect": "debug-pipeline" },
+      "with-sql-database": { "should_trigger": false, "expect": "debug-sql-database-pipeline" }
     }
   },
   {
@@ -118,5 +119,12 @@
   {
     "query": "fix the TypeError on line 42 of my pipeline script, it says NoneType has no attribute get",
     "should_trigger": false
+  },
+  {
+    "query": "I want to load tables from my Postgres database into DuckDB with dlt",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-sql-database": { "should_trigger": false, "expect": "find-sql-database-source" }
+    }
   }
 ]
