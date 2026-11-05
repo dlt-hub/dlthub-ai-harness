@@ -172,7 +172,7 @@ def project_root(start):
 
 
 def component_path(root, kind, toolkit, name):
-    """An installed component, or the same component in an AI harness checkout."""
+    """An installed component, or the same component in a dltHub AI Harness checkout."""
     candidates = []
     for host in HOST_DIRS:
         if kind == "rules":
