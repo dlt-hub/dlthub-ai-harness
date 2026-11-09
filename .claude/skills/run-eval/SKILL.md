@@ -2,6 +2,8 @@
 name: run-eval
 description: "Run trigger evaluation for a skill and analyze results. Use when the user wants to run evals, check trigger accuracy, analyze clashes, or improve a skill description based on eval results. Use when user says 'run eval', 'test triggers', 'check skill triggering', or 'analyze eval results'."
 argument-hint: "[toolkit] [skill] [workspace]"
+metadata:
+  internal: true
 ---
 
 # Run trigger eval and analyze results

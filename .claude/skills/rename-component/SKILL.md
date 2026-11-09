@@ -2,6 +2,8 @@
 name: rename-component
 description: Rename a skill, command, rule, or agent within a toolkit and update all references. Use when the user wants to rename a plugin component.
 argument-hint: <toolkit:old-name> <new-name>
+metadata:
+  internal: true
 ---
 
 # Rename toolkit component

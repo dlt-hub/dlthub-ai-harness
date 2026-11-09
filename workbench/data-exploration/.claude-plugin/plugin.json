@@ -1,7 +1,7 @@
 {
   "name": "data-exploration",
-  "description": "Quick insights from dlt pipeline data. Connect to a pipeline, profile tables, plan charts, and assemble marimo dashboards.",
-  "version": "0.1.2",
+  "description": "Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub].",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },

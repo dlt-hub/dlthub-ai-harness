@@ -1,7 +1,7 @@
 {
   "name": "sql-database-pipeline",
-  "description": "Build SQL database pipelines with dlt: connect to any SQL source, load tables to a destination, tune performance with backends",
-  "version": "0.2.0",
+  "description": "Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
+  "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"
   },
