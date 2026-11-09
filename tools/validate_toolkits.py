@@ -42,6 +42,20 @@ _INDEX_FILES = (
 )
 # `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# no marketplace installs `dlt[hub]` or `init`, so every skill of these toolkits carries the
+# shared prerequisites block. Not `init` (circular), `bootstrap`, `one-shot`, `dlthub-init-skills`.
+_PREREQUISITES_TEMPLATE = "templates/prerequisites.md"
+_PREREQUISITES_TOOLKITS = (
+    "quick-start",
+    "rest-api-pipeline",
+    "sql-database-pipeline",
+    "filesystem-pipeline",
+    "data-exploration",
+    "transformations",
+    "data-quality",
+    "dlthub-platform",
+    "performance",
+)
 # an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 
@@ -766,7 +780,7 @@ def _validate_skills(
                 f"[{pname}] {skill_dir.name}/SKILL.md missing 'description' in frontmatter"
             )
         elif len(fm_desc) > MAX_DESCRIPTION_CHARS:
-            warnings.append(
+            errors.append(
                 f"[{pname}] {skill_dir.name}/SKILL.md description is {len(fm_desc)} chars, "
                 f"over the {MAX_DESCRIPTION_CHARS} cap"
             )
@@ -1003,6 +1017,40 @@ def validate(
     return errors, warnings, all_skills
 
 
+def validate_prerequisites(root: Path) -> list[str]:
+    """Each public SKILL.md has the template verbatim right after its first heading."""
+    template = (root / _PREREQUISITES_TEMPLATE).read_text()
+    errors: list[str] = []
+    for toolkit in _PREREQUISITES_TOOLKITS:
+        for skill in sorted((root / AI_DIR / toolkit / "skills").glob("*/SKILL.md")):
+            _, body = split_frontmatter(skill)
+            heading = re.search(r"^# .*\n", body, re.M)
+            rel = skill.relative_to(root)
+            if not heading:
+                errors.append(f"{rel}: no first heading to put the prerequisites after")
+            elif not body[heading.end() :].startswith("\n" + template):
+                errors.append(
+                    f"{rel}: prerequisites block missing or differs from {_PREREQUISITES_TEMPLATE}"
+                )
+    return errors
+
+
+def validate_codex_rules(root: Path) -> list[str]:
+    """Generated Codex rule skills are current and their descriptions fit the cap."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gen_codex_rules  # type: ignore[import-not-found]  # sibling script
+
+    errors = [
+        f"{p.relative_to(root)} is stale; run `python tools/gen_codex_rules.py`"
+        for p in gen_codex_rules.stale()
+    ]
+    for t in gen_codex_rules.TOOLKITS:
+        fm, _ = split_frontmatter(gen_codex_rules.target(t))
+        if len(fm.get("description", "")) > MAX_DESCRIPTION_CHARS:
+            errors.append(f"{t}-rules description is over the {MAX_DESCRIPTION_CHARS} cap")
+    return errors
+
+
 def main():
     root = Path(__file__).resolve().parent.parent
     only = sys.argv[1] if len(sys.argv) > 1 else None
@@ -1013,6 +1061,8 @@ def main():
         print(f"Validating plugins in {root}\n")
 
     errors, warnings, all_skills = validate(root, only)
+    errors += validate_prerequisites(root)
+    errors += validate_codex_rules(root)
 
     for w in warnings:
         print(f"  WARN  {w}")
