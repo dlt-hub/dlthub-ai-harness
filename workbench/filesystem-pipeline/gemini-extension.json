@@ -1,0 +1,5 @@
+{
+  "name": "filesystem-pipeline",
+  "version": "0.1.1",
+  "description": "Load CSV, Parquet, JSONL or custom files from local disk, S3, GCS, Azure or SFTP into a destination with dlt. Requires dlt[hub]."
+}

@@ -1,0 +1,31 @@
+{
+  "name": "data-exploration",
+  "version": "0.1.1",
+  "description": "Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "marimo",
+    "ibis",
+    "data-exploration",
+    "dashboards",
+    "altair"
+  ],
+  "skills": [
+    "./skills/",
+    "./codex/skills/"
+  ],
+  "interface": {
+    "displayName": "data-exploration",
+    "shortDescription": "dltHub toolkit",
+    "longDescription": "Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub].",
+    "developerName": "ScaleVector GmbH",
+    "category": "Data",
+    "capabilities": []
+  }
+}

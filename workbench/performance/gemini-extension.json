@@ -1,0 +1,5 @@
+{
+  "name": "performance",
+  "version": "0.2.0",
+  "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub]."
+}

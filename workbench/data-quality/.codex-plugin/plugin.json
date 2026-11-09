@@ -1,0 +1,30 @@
+{
+  "name": "data-quality",
+  "version": "0.1.1",
+  "description": "Add column-level checks and load metrics to dlt pipelines, run them on every load and review failures with diagnosis. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "data-quality",
+    "validation",
+    "checks",
+    "metrics"
+  ],
+  "skills": [
+    "./skills/",
+    "./codex/skills/"
+  ],
+  "interface": {
+    "displayName": "data-quality",
+    "shortDescription": "dltHub toolkit",
+    "longDescription": "Add column-level checks and load metrics to dlt pipelines, run them on every load and review failures with diagnosis. Requires dlt[hub].",
+    "developerName": "ScaleVector GmbH",
+    "category": "Data",
+    "capabilities": []
+  }
+}

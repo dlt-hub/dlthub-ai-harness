@@ -1,0 +1,5 @@
+{
+  "name": "data-exploration",
+  "version": "0.1.1",
+  "description": "Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub]."
+}

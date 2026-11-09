@@ -1,0 +1,16 @@
+{
+  "name": "bootstrap",
+  "version": "0.1.1",
+  "description": "Set up the Python environment for a dlthub workspace. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "workspace",
+    "prepare"
+  ]
+}

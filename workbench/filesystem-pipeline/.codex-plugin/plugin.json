@@ -1,0 +1,34 @@
+{
+  "name": "filesystem-pipeline",
+  "version": "0.1.1",
+  "description": "Load CSV, Parquet, JSONL or custom files from local disk, S3, GCS, Azure or SFTP into a destination with dlt. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "filesystem",
+    "s3",
+    "gcs",
+    "azure",
+    "sftp",
+    "csv",
+    "parquet",
+    "jsonl"
+  ],
+  "skills": [
+    "./skills/",
+    "./codex/skills/"
+  ],
+  "interface": {
+    "displayName": "filesystem-pipeline",
+    "shortDescription": "dltHub toolkit",
+    "longDescription": "Load CSV, Parquet, JSONL or custom files from local disk, S3, GCS, Azure or SFTP into a destination with dlt. Requires dlt[hub].",
+    "developerName": "ScaleVector GmbH",
+    "category": "Data",
+    "capabilities": []
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "bootstrap",
+  "version": "0.1.1",
+  "description": "Set up the Python environment for a dlthub workspace. Requires dlt[hub]."
+}

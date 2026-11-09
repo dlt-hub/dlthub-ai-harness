@@ -1,0 +1,5 @@
+{
+  "name": "quick-start",
+  "version": "0.1.1",
+  "description": "A guided path from ingestion to visualization, transformation and deployment in 3-5 prompts. Requires dlt[hub]."
+}

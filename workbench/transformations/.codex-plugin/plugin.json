@@ -1,0 +1,31 @@
+{
+  "name": "transformations",
+  "version": "0.1.1",
+  "description": "Turn raw dlt pipeline data into a Canonical Data Model: annotate sources, build an ontology, design a Kimball-style model and write @dlt.hub.transformation functions. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "transformation",
+    "cdm",
+    "kimball",
+    "ibis",
+    "dimensional-modeling"
+  ],
+  "skills": [
+    "./skills/",
+    "./codex/skills/"
+  ],
+  "interface": {
+    "displayName": "transformations",
+    "shortDescription": "dltHub toolkit",
+    "longDescription": "Turn raw dlt pipeline data into a Canonical Data Model: annotate sources, build an ontology, design a Kimball-style model and write @dlt.hub.transformation functions. Requires dlt[hub].",
+    "developerName": "ScaleVector GmbH",
+    "category": "Data",
+    "capabilities": []
+  }
+}
