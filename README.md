@@ -33,7 +33,7 @@ The harness gives your coding assistant **toolkits**. Each toolkit holds a guide
 
 A **Toolkit** contains skills, commands, rules, agents, and an MCP server — tied together by a **workflow** that tells the assistant which skill to run at each step and how to use the MCP server.
 
-All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using the Claude marketplace, install the `init` plugin separately.
+All toolkits depend on `init` for shared rules, secrets handling, and the MCP server. When using the `dlthub ai` CLI, `init` is installed automatically as a dependency. When using a marketplace, install the `init` plugin separately (see [Install and update by host](#install-and-update-by-host-marketplaces)).
 
 ![dltHub AI Harness](images/ai_workbench.png)
 
@@ -177,28 +177,97 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 **Codex** — launch the Codex CLI via `codex` or use the Codex chat in the UI. Restart Codex after setup for the MCP server to take effect.
 
-### Claude Code marketplace plugin (Early Access)
+### Install and update by host (marketplaces)
 
-> **Early Access:** The Claude Code plugin does not link toolkits as well as `dlthub ai toolkit install`. To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub). The plugin path is for a project you set up from inside Claude Code with the `bootstrap` toolkit.
+Besides `dlthub ai toolkit install`, each assistant can install the harness from its own plugin marketplace or catalog. Replace `<toolkit>` with a toolkit name from [Available toolkits](#available-toolkits).
 
-The harness is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
+> **Marketplaces install only the toolkit you pick.** Every toolkit needs `dlt[hub]` in your project and the `init` toolkit (shared rules, secrets handling, MCP server). No marketplace installs these for you. Run [`dlthub-init`](#new-project-recommended) first, then install `init` and the toolkits you want. This path is Early Access: it does not link toolkits as well as `dlthub ai toolkit install`. To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub).
+
+#### Claude Code
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-harness
 /plugin install init@dlthub-ai-harness --scope project
-/plugin install quick-start@dlthub-ai-harness --scope project
-/plugin install bootstrap@dlthub-ai-harness --scope project
-/plugin install rest-api-pipeline@dlthub-ai-harness --scope project
-/plugin install sql-database-pipeline@dlthub-ai-harness --scope project
-/plugin install filesystem-pipeline@dlthub-ai-harness --scope project
-/plugin install dlthub-platform@dlthub-ai-harness --scope project
-/plugin install data-exploration@dlthub-ai-harness --scope project
-/plugin install transformations@dlthub-ai-harness --scope project
-/plugin install data-quality@dlthub-ai-harness --scope project
-/plugin install performance@dlthub-ai-harness --scope project
+/plugin install <toolkit>@dlthub-ai-harness --scope project
 ```
 
-Plugins become active only in a new session. Restart Claude Code with `claude`.
+Plugins become active only in a new session. Restart Claude Code with `claude`, or run `/reload-plugins`. To install everything, repeat the last line for each toolkit.
+
+**Update:** `claude plugin marketplace update dlthub-ai-harness` refreshes the catalog only and leaves installed plugins at their version. Then run `claude plugin update <toolkit>@dlthub-ai-harness` for each plugin, or open `/plugin`, go to **Marketplaces**, select `dlthub-ai-harness` and choose **Update marketplace** to update all plugins installed from it. Automatic updates are off for third-party marketplaces. Turn them on under `/plugin` > **Marketplaces** > **Enable auto-update**. Even then, a plugin updates only when its `version` changes, so we bump the version on every release.
+
+#### Cursor
+
+Available from release vX (Cursor catalog).
+
+- **Teams:** an admin opens **Dashboard > Plugins & MCPs > Team Marketplaces > Add Marketplace > Import from Repo** and pastes `https://github.com/dlt-hub/dlthub-ai-harness`. Members then find the toolkits in **Customize**.
+- **Individuals:** open **Customize** in the sidebar, find the plugin and select **Install**, choosing project or user scope. The Cursor docs only list the Cursor Marketplace and cursor.directory as sources for individuals, so installing straight from our repo needs a team marketplace (to be confirmed).
+
+**Update:** with Auto Refresh (GitHub imports, Cursor GitHub App required) Cursor re-indexes after pushes, at most every 10 minutes. Otherwise an admin clicks **Refresh**. Until the re-index runs, nothing changes, so after a release we request one. A running Cloud Agent keeps its old version. Docs do not say how individuals update.
+
+#### GitHub Copilot CLI
+
+Available from release vX (Copilot catalog).
+
+```bash
+copilot plugin marketplace add dlt-hub/dlthub-ai-harness
+copilot plugin install init@dlthub-ai-harness
+copilot plugin install <toolkit>@dlthub-ai-harness
+```
+
+**Update:** `copilot plugin update <toolkit>` per plugin. `copilot plugin list` shows what is installed. The Copilot docs do not document a marketplace refresh command, so check `copilot plugin marketplace --help`.
+
+#### Codex
+
+Available from release vX (Codex catalog).
+
+```bash
+codex plugin marketplace add dlt-hub/dlthub-ai-harness
+```
+
+Then run `/plugins` in Codex (or open the Plugins directory in the ChatGPT desktop app), pick the `dlthub-ai-harness` marketplace and install `init` and your toolkits. Start a new session afterwards.
+
+**Update:** `codex plugin marketplace upgrade dlthub-ai-harness` refreshes the catalog, then reinstall the plugins from `/plugins`. The Codex docs do not describe an in-place plugin update.
+
+#### Gemini CLI
+
+Available from release vX (Gemini extension).
+
+```bash
+gemini extensions install https://github.com/dlt-hub/dlthub-ai-harness
+```
+
+Pass `--ref <tag>` to pin a version. Add `--auto-update` to install if you want automatic updates.
+
+**Update:** `gemini extensions update <name>` or `gemini extensions update --all`. Installs are copies, so nothing changes until you run it, unless you used `--auto-update`.
+
+#### skills.sh
+
+```bash
+npx skills add dlt-hub/dlthub-ai-harness     # add -a <agent> to target one assistant
+```
+
+**Update:** `npx skills check` shows available updates, `npx skills update` applies them. This installs skills only, not rules, commands or the MCP server.
+
+#### dlthub CLI
+
+```bash
+uv run dlthub ai toolkit install <toolkit> --overwrite
+```
+
+`--overwrite` replaces the installed copy with the current `master` of the harness. `init` is installed automatically as a dependency.
+
+### Moving from the `dlthub-ai-workbench` marketplace
+
+The marketplace was renamed to `dlthub-ai-harness`, and Claude Code does not carry plugins over to a new marketplace name. If you added the marketplace under its old name, remove it, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
+
+```
+/plugin marketplace remove dlthub-ai-workbench
+/plugin marketplace add dlt-hub/dlthub-ai-harness
+/plugin install init@dlthub-ai-harness --scope project
+/plugin install <toolkit>@dlthub-ai-harness --scope project
+```
+
+If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`.
 
 **Moving from the `dlthub-ai-workbench` marketplace.** The marketplace was renamed to `dlthub-ai-harness`, and Claude Code does not carry plugins over to a new marketplace name. If you added the marketplace under its old name, remove it, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
 

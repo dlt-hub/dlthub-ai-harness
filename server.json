@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.dlt-hub/dlt-workspace-mcp",
+  "title": "dlt workspace MCP",
+  "description": "Workspace MCP server for dlt pipelines: inspect pipelines, schemas and runs. Needs dlt[hub].",
+  "repository": {
+    "url": "https://github.com/dlt-hub/dlthub-ai-harness",
+    "source": "github"
+  },
+  "websiteUrl": "https://dlthub.com/docs",
+  "version": "1.32.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "dlt",
+      "version": "1.32.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        { "type": "positional", "value": "ai" },
+        { "type": "positional", "value": "mcp" },
+        { "type": "named", "name": "--stdio" }
+      ]
+    }
+  ]
+}
