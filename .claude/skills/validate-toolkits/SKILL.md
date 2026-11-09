@@ -2,6 +2,8 @@
 name: validate-toolkits
 description: Validate toolkit components and project docs — check external doc URLs, cross-references between skills/commands/rules, and verify README.md and CLAUDE.md are in sync with actual toolkit state. Use when the user asks to validate, review, or check toolkit quality.
 argument-hint: <toolkit-path>
+metadata:
+  internal: true
 ---
 
 # Validate toolkit components
