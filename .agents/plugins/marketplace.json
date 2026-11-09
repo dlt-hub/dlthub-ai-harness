@@ -1,0 +1,164 @@
+{
+  "name": "dlthub-ai-harness",
+  "interface": {
+    "displayName": "dlthub-ai-harness"
+  },
+  "plugins": [
+    {
+      "name": "rest-api-pipeline",
+      "source": {
+        "source": "local",
+        "path": "./workbench/rest-api-pipeline"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "bootstrap",
+      "source": {
+        "source": "local",
+        "path": "./workbench/bootstrap"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "data-exploration",
+      "source": {
+        "source": "local",
+        "path": "./workbench/data-exploration"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "dlthub-platform",
+      "source": {
+        "source": "local",
+        "path": "./workbench/dlthub-platform"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "init",
+      "source": {
+        "source": "local",
+        "path": "./workbench/init"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "transformations",
+      "source": {
+        "source": "local",
+        "path": "./workbench/transformations"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "sql-database-pipeline",
+      "source": {
+        "source": "local",
+        "path": "./workbench/sql-database-pipeline"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "data-quality",
+      "source": {
+        "source": "local",
+        "path": "./workbench/data-quality"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "filesystem-pipeline",
+      "source": {
+        "source": "local",
+        "path": "./workbench/filesystem-pipeline"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "quick-start",
+      "source": {
+        "source": "local",
+        "path": "./workbench/quick-start"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "one-shot",
+      "source": {
+        "source": "local",
+        "path": "./workbench/one-shot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "dlthub-init-skills",
+      "source": {
+        "source": "local",
+        "path": "./workbench/dlthub-init-skills"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    },
+    {
+      "name": "performance",
+      "source": {
+        "source": "local",
+        "path": "./workbench/performance"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "sql-database-pipeline",
+  "version": "0.2.0",
+  "description": "Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "etl",
+    "data-pipeline",
+    "python",
+    "sql",
+    "database"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "sql-database-pipeline",
+    "shortDescription": "dltHub toolkit",
+    "longDescription": "Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
+    "developerName": "ScaleVector GmbH",
+    "category": "Data",
+    "capabilities": []
+  }
+}

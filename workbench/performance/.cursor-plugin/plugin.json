@@ -1,0 +1,19 @@
+{
+  "name": "performance",
+  "version": "0.2.1",
+  "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "performance",
+    "optimization",
+    "parallelism",
+    "throughput",
+    "memory"
+  ]
+}

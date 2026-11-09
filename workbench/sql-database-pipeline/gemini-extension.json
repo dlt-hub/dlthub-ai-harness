@@ -1,0 +1,5 @@
+{
+  "name": "sql-database-pipeline",
+  "version": "0.2.0",
+  "description": "Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub]."
+}

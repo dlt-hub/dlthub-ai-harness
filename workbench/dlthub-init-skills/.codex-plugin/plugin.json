@@ -1,0 +1,23 @@
+{
+  "name": "dlthub-init-skills",
+  "version": "0.1.0",
+  "description": "Build and deploy a minimal custom REST API pipeline to the dltHub platform after running uvx dlthub-init. Requires dlt[hub].",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "dlthub-init-skills",
+    "shortDescription": "dltHub toolkit",
+    "longDescription": "Build and deploy a minimal custom REST API pipeline to the dltHub platform after running uvx dlthub-init. Requires dlt[hub].",
+    "developerName": "ScaleVector GmbH",
+    "category": "Data",
+    "capabilities": []
+  }
+}
