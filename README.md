@@ -200,7 +200,7 @@ The harness is also available as a Claude Code plugin via the marketplace. Start
 
 Plugins become active only in a new session. Restart Claude Code with `claude`.
 
-**Moving from the `dlthub-ai-workbench` marketplace.** The marketplace was renamed to `dlthub-ai-harness`, and Claude Code does not carry plugins over to a new marketplace name. If you added the marketplace under its old name, remove it, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
+**Moving from the `dlthub-ai-workbench` marketplace.** The marketplace was renamed to `dlthub-ai-harness`. If you added it under its old name, your plugins keep working: an update keeps the old local name. But the `@dlthub-ai-harness` commands in this README do not find the marketplace, and teammates who add it now get the new name. To match, remove the marketplace, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
 
 ```
 /plugin marketplace remove dlthub-ai-workbench
@@ -209,7 +209,7 @@ Plugins become active only in a new session. Restart Claude Code with `claude`.
 /plugin install <toolkit>@dlthub-ai-harness --scope project
 ```
 
-If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`.
+If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`. An old key does not load the plugin and shows no error.
 
 
 ## The `dlthub ai` CLI
