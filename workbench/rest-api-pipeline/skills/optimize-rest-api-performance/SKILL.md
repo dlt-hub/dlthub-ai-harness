@@ -6,6 +6,16 @@ argument-hint: "[pipeline-name] [symptom]"
 
 # Optimize REST API extraction
 
+## Prerequisites
+Skip this if you already checked it in this session.
+1. Run `uv run dlthub ai status`. It fails if `dlt[hub]` is missing.
+2. Check that the `setup-secrets` skill and the `dlt-workspace-mcp` tools are available. If not, `init` is missing.
+3. If anything is missing, tell the user that this skill does not work without `dlt[hub]` and `init`.
+4. Ask the user to allow `uvx dlthub-init@latest`. It installs both in place.
+   - On agents other than Claude Code, Cursor and Codex, ask the user to install the `init` plugin from the marketplace they used.
+5. After the install, tell the user to restart the session, because rules and MCP load only at session start.
+6. If the user refuses, stop. Do not run other steps of this skill.
+
 Source-specific tuning for `rest_api` pipelines. REST extraction is almost always network-bound, so the wins come from issuing more requests concurrently and fetching fewer, larger pages. Work the loop — **diagnose → pick the fix → apply → measure → repeat**, one change at a time. Combine these with the source-agnostic stage levers in the **performance** toolkit's `optimize-performance` skill.
 
 **Essential reading:** https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced
