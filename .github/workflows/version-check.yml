@@ -1,0 +1,27 @@
+name: Version check
+
+on:
+  pull_request:
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Only devel or hotfix/* may target master
+        if: github.base_ref == 'master'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "devel" ] && [[ "$HEAD_REF" != hotfix/* ]]; then
+            echo "::error::PRs to master must come from 'devel' (release) or 'hotfix/*'. Got '$HEAD_REF'. Target 'devel' instead."
+            exit 1
+          fi
+
+      - name: Toolkit versions bumped
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 .github/scripts/version_check.py "origin/$BASE_REF"
