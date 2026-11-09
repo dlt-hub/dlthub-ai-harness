@@ -38,3 +38,7 @@ Releases are manual, by one owner.
 - [ ] Request a Cursor re-index
 - [ ] Upload the OpenAI ZIP
 - [ ] Announce the release
+
+## Public marketplaces
+
+Prepared submission material for the Anthropic directory, Cursor, awesome-copilot and the MCP Registry (`server.json` at the repo root) is in [docs/marketplaces/](docs/marketplaces/). Nothing is submitted yet; each file lists its blockers (missing READMEs, unpinned MCP launcher, proprietary license).
