@@ -110,7 +110,7 @@ Ask the user — **do not proceed until all five questions are answered**:
 
 - Normalization needed → `backend="sqlalchemy"` (any size)
 - No normalization, small data (< 100k rows) → `backend="sqlalchemy"` (simpler, no extra deps)
-- No normalization, medium/large data → `backend="pyarrow"` or `backend="connectorx"`
+- No normalization, medium/large data → `backend="pyarrow"` first; consider `connectorx` only if the table comfortably fits in RAM or you have confirmed streaming works for it (it reads the full result into memory by default)
 
 Suggest starting with a single small or representative table to validate the pipeline end-to-end before adding more.
 

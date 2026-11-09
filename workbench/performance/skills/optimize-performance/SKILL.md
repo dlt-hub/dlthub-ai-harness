@@ -155,6 +155,8 @@ Load runs **one file per thread**, so parallelism needs **many normalize-output 
 
 **Load-stage peak RAM ≈ `[load] workers` × file size**, held in Python, *plus* whatever the destination allocates. This bites with `insert_values` (duckdb's default loader format), where each job is a file of SQL text. With wide rows both extremes overflow a small box: one un-rotated file is a single huge job, and rotating without touching `workers` just hands the default 20 threads a file each. Rotation is therefore a *time* lever and a *memory* lever in opposite directions — rotate for parallelism, then set `workers` so `workers × file size` fits the box.
 
+**Faster loader format (MSSQL / MySQL / Postgres).** If load is slow because the destination uses `insert_values`, switch to **parquet via ADBC** (dlt ≥ 1.19; docs claim large gains, our local benchmark saw ~1.7–4.7x on load time, so measure; Postgres needs `loader_file_format="parquet"`, no `dbc`): `uv add adbc-driver-manager dbc && uv run dbc install mssql` (or `mysql`; MySQL also needs `loader_file_format="parquet"`). SQLite is excluded by design. Full steps and verification in `optimize-sql-performance` ("Fast loading with ADBC + parquet"). The `workers × file size` memory rule above applies to parquet files too (the MSSQL job ingests per row-group to bound memory).
+
 ## Source-specific tuning (separate toolkits)
 
 The biggest extraction wins are source-specific and live in the pipeline toolkit for your source — **not in this toolkit**. Pick the row for your source. If you arrived here from that toolkit it is already installed; otherwise install it first, then run its optimize skill:
