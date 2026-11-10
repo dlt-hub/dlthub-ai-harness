@@ -2,6 +2,8 @@
 name: create-eval
 description: "Create trigger evaluation setup for a toolkit skill. Use when the user wants to test whether a skill's description triggers correctly, set up eval workspaces, or generate trigger test queries for a skill. Use when user says 'create eval', 'test triggers', 'eval skill', or wants to measure skill triggering accuracy."
 argument-hint: "[toolkit] [skill]"
+metadata:
+  internal: true
 ---
 
 # Create trigger eval for a skill

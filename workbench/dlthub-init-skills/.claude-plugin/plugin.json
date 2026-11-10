@@ -1,6 +1,6 @@
 {
   "name": "dlthub-init-skills",
-  "description": "Build and deploy a minimal custom REST API pipeline to dltHub Platform after uvx dlthub-init setup",
+  "description": "Build and deploy a minimal custom REST API pipeline to the dltHub platform after running uvx dlthub-init. Requires dlt[hub].",
   "version": "0.1.0",
   "author": {
     "name": "ScaleVector GmbH"

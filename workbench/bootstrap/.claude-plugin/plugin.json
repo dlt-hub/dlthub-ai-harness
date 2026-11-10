@@ -1,6 +1,6 @@
 {
   "name": "bootstrap",
-  "description": "Prepare Python environment for dlthub workspace",
+  "description": "Set up the Python environment for a dlthub workspace. Requires dlt[hub].",
   "version": "0.1.1",
   "author": {
     "name": "ScaleVector GmbH"

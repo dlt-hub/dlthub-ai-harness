@@ -1,6 +1,6 @@
 {
   "name": "performance",
-  "description": "Tune dlt pipeline performance — diagnose the bottleneck stage (extract, normalize, load) and apply the right lever: parallelism, workers, memory buffers, file rotation, and batching.",
+  "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
   "version": "0.2.1",
   "author": {
     "name": "ScaleVector GmbH"
