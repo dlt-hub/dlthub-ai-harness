@@ -17,8 +17,8 @@ def semver(v):
     return tuple(map(int, m.groups())) if m else None
 
 def mkt_version(mkt, toolkit):
-    src = f"./workbench/{toolkit}"
-    return next((p.get("version") for p in (mkt or {}).get("plugins", []) if p.get("source") == src), None)
+    """Return the version of the marketplace entry whose name is the toolkit."""
+    return next((p.get("version") for p in (mkt or {}).get("plugins", []) if p.get("name") == toolkit), None)
 
 def main(base):
     changed = git("diff", "--name-only", f"{base}...HEAD").splitlines()
@@ -28,15 +28,21 @@ def main(base):
     for t in toolkits:
         pj = f"workbench/{t}/.claude-plugin/plugin.json"
         old_p, new_p = show(base, pj), show("HEAD", pj)
+        head_mkt_version = mkt_version(head_mkt, t)
+        if new_p is not None and new_p.get("version") != head_mkt_version:
+            errors.append(f"Toolkit '{t}': version in {pj} is {new_p.get('version')} but marketplace.json "
+                          f"has {head_mkt_version}. Make them equal.")
         if old_p is None or new_p is None:
             continue  # toolkit added or removed in this PR: nothing to compare
         for label, old, new in [
             (pj, old_p.get("version"), new_p.get("version")),
-            (f".claude-plugin/marketplace.json (entry '{t}')", mkt_version(base_mkt, t), mkt_version(head_mkt, t)),
+            (f".claude-plugin/marketplace.json (entry '{t}')", mkt_version(base_mkt, t), head_mkt_version),
         ]:
             if old is None:
                 continue  # entry did not exist on base
-            if semver(new) is None or semver(new) <= semver(old):
+            if semver(old) is None:
+                errors.append(f"Toolkit '{t}': base version in {label} is '{old}', not X.Y.Z. Fix it on base.")
+            elif semver(new) is None or semver(new) <= semver(old):
                 errors.append(f"Toolkit '{t}' changed but version in {label} is {new} (base: {old}). Bump it, "
                               "otherwise Claude Code will not update users.")
     for e in errors:

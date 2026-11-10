@@ -13,7 +13,7 @@ Claude Code updates a user's plugin only when `version` goes up. If a PR changes
 - `workbench/<toolkit>/.claude-plugin/plugin.json`
 - the matching entry in `.claude-plugin/marketplace.json`
 
-The `Version check` workflow fails the PR (naming the toolkit) if either is not higher than on the base branch. Check locally with `python3 .github/scripts/version_check.py origin/devel`.
+The two versions must be equal. The `Version check` workflow fails the PR (naming the toolkit) if they differ, or if either is not higher than on the base branch. Check locally with `python3 .github/scripts/version_check.py origin/devel`.
 
 ## Release flow
 
