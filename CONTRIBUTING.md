@@ -1,5 +1,7 @@
 # Contributing
 
+This guide is for the dltHub team only. We do not accept outside contributions to the harness.
+
 ## Branches
 
 - `master` is the release branch and the GitHub default. Users install from it.
