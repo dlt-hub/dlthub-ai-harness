@@ -30,6 +30,26 @@ Releases are manual, by one owner.
 2. PR to `master`, merge, then release as above (tag, checklist).
 3. Merge `master` back into `devel` so the fix and version bump are not lost.
 
+## After a release
+
+Users get the latest commit on `master`, not the tag. The tag marks the release and holds the notes. Each channel picks up the new code differently:
+
+| Channel | Reads from | How users get the update |
+|---|---|---|
+| Claude Code | `master` (default branch) | Auto-update is off for third-party marketplaces. Users run `/plugin marketplace update dlthub-ai-harness`, then `/plugin update <toolkit>`. A toolkit updates only if its `version` changed. |
+| `dlthub ai` CLI | `master` | Users run the install or update command again. |
+| Cursor | the repo, after a re-index | We request a re-index (checklist). |
+| OpenAI / Codex directory | the ZIP we upload | We upload a new ZIP, which OpenAI reviews again. |
+| skills.sh | `master` (default branch) | Users run `npx skills add` again. |
+
+So a merge to `master` is the release, and a toolkit without a version bump does not reach Claude Code users.
+
+To stay on one release, a user can add the marketplace at its tag, for example:
+
+```
+/plugin marketplace add https://github.com/dlt-hub/dlthub-ai-harness.git#v0.2.0
+```
+
 ## Release checklist
 
 - [ ] Version check is green; every changed toolkit has a bumped version in `plugin.json` and `marketplace.json`
