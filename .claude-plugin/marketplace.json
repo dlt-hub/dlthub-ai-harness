@@ -31,7 +31,7 @@
       "name": "data-exploration",
       "source": "./workbench/data-exploration",
       "description": "Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub].",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "marimo", "ibis", "data-exploration", "dashboards", "altair"]
@@ -40,7 +40,7 @@
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
       "description": "Prepare and deploy your dlthub workspace and pipelines to the dltHub platform, and debug failed deployments. Requires dlt[hub].",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "deploy", "platform"]
@@ -58,7 +58,7 @@
       "name": "transformations",
       "source": "./workbench/transformations",
       "description": "Turn raw dlt pipeline data into a Canonical Data Model: annotate sources, build an ontology, design a Kimball-style model and write @dlt.hub.transformation functions. Requires dlt[hub].",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "transformation", "cdm", "kimball", "ibis", "dimensional-modeling"]
@@ -67,7 +67,7 @@
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
       "description": "Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"]
@@ -76,7 +76,7 @@
       "name": "data-quality",
       "source": "./workbench/data-quality",
       "description": "Add column-level checks and load metrics to dlt pipelines, run them on every load and review failures with diagnosis. Requires dlt[hub].",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "data-quality", "validation", "checks", "metrics"]
@@ -121,7 +121,7 @@
       "name": "performance",
       "source": "./workbench/performance",
       "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
