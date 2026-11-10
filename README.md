@@ -10,6 +10,8 @@ The **dltHub AI Harness** is a collection of toolkits that give AI coding assist
 
 The dltHub AI Harness is tested with **Claude Code**, **Cursor** and **Codex**. Other AI coding assistants can work too. When you start, use `accept edits` (Claude) or `--approval-mode` (Codex). Then you review each change and learn the dltHub AI workflows.
 
+> We launched **dltHub** in March 2026. You can now run your dlt pipelines on a managed, agent-native platform with transformations, data quality and observability built in. [Learn more](https://dlthub.com/) or [deploy your first pipeline](https://dlthub.com/docs/hub/getting-started/onboarding).
+
 ## The dltHub AI Harness supports the iterative data engineering workflow
 
 Building data pipelines is iterative and covers two major phases: ingestion and transformations. Each phase repeats the same cycle:
