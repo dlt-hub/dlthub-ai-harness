@@ -1,7 +1,5 @@
 # dltHub AI Harness
 
-> We launched **dltHub** in March 2026. You can now run your dlt pipelines on a managed, agent-native platform with transformations, data quality and observability built in. [Learn more](https://dlthub.com/) or [deploy your first pipeline](https://dlthub.com/docs/hub/getting-started/onboarding).
-
 **dlt** (data load tool) is an open-source Python library for loading data from APIs and databases into a warehouse or lakehouse. **dltHub** is the paid platform on top of dlt. It adds features for coding agents: transformations, data quality checks, a managed runtime, managed data apps and an AI workspace.
 
 ![dltHub AI Harness components](images/ai_workbench_components.png)
@@ -11,6 +9,8 @@ The **dltHub AI Harness** is a collection of toolkits that give AI coding assist
 **Build** toolkits cover ingestion (REST API, SQL), transformation and data quality. **Run** toolkits cover deployment and exploration. The REST API toolkit is backed by the [dltHub context](https://dlthub.com/context) — over 9,700 source definitions the agent queries to find verified connectors before writing code. New users can start with the `quick-start` toolkit for a guided end-to-end run from data to dashboard.
 
 The dltHub AI Harness is tested with **Claude Code**, **Cursor** and **Codex**. Other AI coding assistants can work too. When you start, use `accept edits` (Claude) or `--approval-mode` (Codex). Then you review each change and learn the dltHub AI workflows.
+
+> We launched **dltHub** in March 2026. You can now run your dlt pipelines on a managed, agent-native platform with transformations, data quality and observability built in. [Learn more](https://dlthub.com/) or [deploy your first pipeline](https://dlthub.com/docs/hub/getting-started/onboarding).
 
 ## The dltHub AI Harness supports the iterative data engineering workflow
 
