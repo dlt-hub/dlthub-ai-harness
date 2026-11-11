@@ -1,7 +1,7 @@
 {
   "name": "rest-api-pipeline",
   "description": "Build dlt pipelines for REST APIs: find a source, scaffold the pipeline, add endpoints and incremental loading, debug it, validate the data and view it in a report. Requires dlt[hub].",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "ScaleVector GmbH"
   },
