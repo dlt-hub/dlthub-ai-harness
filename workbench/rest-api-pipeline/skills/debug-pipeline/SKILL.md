@@ -1,6 +1,6 @@
 ---
 name: debug-pipeline
-description: Debug and inspect a dlt pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, data, and diagnose errors like missing credentials or failed load jobs.
+description: Debug and inspect a dlt pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, data, and diagnose errors like missing credentials or failed load jobs. Also covers pipelines built on a verified source.
 argument-hint: "[pipeline-name] [issue]"
 ---
 
@@ -46,9 +46,22 @@ uv run python <source>_pipeline.py
 
 Common exceptions and what they mean:
 - `ConfigFieldMissingException` - config / secrets are missing. inspect exception message
-- `PipelineFailedException` - pipeline failed in one of the steps. inspect exception trace to find a root cause. find **load_id** to identify load package that failed
+- `PipelineStepFailed` - pipeline failed in one of the steps (`.step` names it). inspect exception trace to find a root cause. find **load_id** to identify load package that failed
 
 In extract step most of the exceptions are coming from source/resource code that you wrote!
+
+### The pipeline uses a verified source
+
+A verified source lives in its own folder that `dlthub pipeline init <source> <destination>` created, e.g. `hubspot/`, imported by `hubspot_pipeline.py`. It is also recorded in `.dlt/.sources`. Its maintenance notes come before the code:
+1. **Version**: `<source>/version.py` holds `__version__`. A copy without it predates 1.0.0 and has no maintenance notes.
+2. **Read `<source>/README.md`.** Search it for the exception, the error message, the resource and the argument:
+   - **Operations** lists known failures, per backend and per version of the API or library.
+   - The **Changelog** lists fixes and, for each version, an **Upgrade** line.
+3. **Compare with the latest notes upstream**: `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. If a newer version fixes the issue, propose updating the source instead of patching it.
+4. **Backend switched** (`backend="python"` ↔ `"pyarrow"`) on a pipeline that already loaded data: the existing tables do not fit the new format. See `troubleshoot-pipeline-run`, **Switching between Python objects and Arrow**.
+5. **Do not patch the source before steps 2–3.** Local changes make later updates conflict.
+
+To update a verified source, follow `troubleshoot-pipeline-run`, section **Verified sources**. If the source makes HTTP calls with dlt's `requests` helper or `RESTClient`, the sections below on retries, rate limits and pagination apply to it too.
 
 ### First run of the pipeline
 
@@ -111,7 +124,7 @@ Likely a wrong or missing `data_selector`. dlt auto-detects the data array in th
 
 Inspect pipeline state to check the stored cursor value:
 ```
-uv run dlthub local pipeline info <pipeline_name> -v
+uv run dlthub -v local pipeline info <pipeline_name>
 ```
 Look for `last_value` in the resource state — verify it updates between runs. Also check logs for `"Bind incremental on <resource_name>"` to confirm the incremental param was bound.
 Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
@@ -121,7 +134,7 @@ Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 You can inspect last pipeline run:
 
 ```
-uv run dlthub local pipeline trace <pipeline_name> -vv
+uv run dlthub -vv local pipeline trace <pipeline_name>
 ```
 Shows config/secret resolution, step timing, failures.
 
@@ -129,19 +142,22 @@ Shows config/secret resolution, step timing, failures.
 Each pipeline run generated one or more load packages. Use trace tool to find their ids.
 
 ```
-uv run dlthub local pipeline load-package <pipeline_name> -v           # most recent package
-uv run dlthub local pipeline load-package <pipeline_name> <load_id> -v # specific package
+uv run dlthub -v local pipeline load-package <pipeline_name>             # most recent package
+uv run dlthub -v local pipeline load-package <pipeline_name> <load_id>   # specific package
+uv run dlthub local pipeline load-package <pipeline_name> <load_id> job <pattern>   # full error history of matching jobs, across retries
 ```
-Shows package state, per-job details (table, file type, size, timing), and **error messages for failed jobs**. With `-v` also shows schema updates applied.
+Shows package state, per-job details (table, file type, size, timing), and **error messages for failed jobs**, including jobs pending a retry. With `-v` also shows the tables and columns created at the destination.
+
+**A failed load job stays pending.** Since dlt 1.30, a job that fails on load is queued for retry, its package stays pending and the run raises `LoadClientJobTerminalRetry`. Read the job with `load-package` above. To recover a package that cannot load (retry, fail a job, abort), see `troubleshoot-pipeline-run`, section **Recover a failed load**.
 
 ```
 uv run dlthub local pipeline failed-jobs <pipeline_name>
 ```
-Scans all packages for failed jobs and displays error messages from the destination.
+Scans completed packages for failed jobs and displays error messages from the destination. It does not list a job that is pending a retry.
 
 ### Inspecting raw load files
 
-Load packages are stored at `~/.dlt/pipelines/<pipeline_name>/load/loaded/<load_id>/`. Job files live in `completed_jobs/` and `failed_jobs/` subdirectories.
+A pipeline's working directory is `.dlt/state/<profile>/pipelines/<pipeline_name>/`. The profile is `dev` unless another one is pinned (`uv run dlthub profile info`). Completed packages are stored under `load/loaded/<load_id>/`, with job files in `completed_jobs/` and `failed_jobs/` subdirectories.
 
 File format depends on the destination:
 
@@ -154,7 +170,7 @@ File format depends on the destination:
 
 Inspect gzipped files with `zcat`:
 ```
-zcat ~/.dlt/pipelines/<pipeline_name>/load/loaded/<load_id>/completed_jobs/<file>.gz
+zcat .dlt/state/<profile>/pipelines/<pipeline_name>/load/loaded/<load_id>/completed_jobs/<file>.gz
 ```
 Useful for verifying data transformations and debugging destination errors.
 
