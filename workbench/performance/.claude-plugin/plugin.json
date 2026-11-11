@@ -1,7 +1,7 @@
 {
   "name": "performance",
   "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "author": {
     "name": "ScaleVector GmbH"
   },
