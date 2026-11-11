@@ -4,7 +4,7 @@
 **ALWAYS** start with **Optimize performance** (`optimize-performance`) SKILL — diagnose which stage (extract / normalize / load) is the bottleneck, then apply the matching lever
 
 ## Core workflow
-1. **Diagnose** (`optimize-performance`) — enable `progress="log"`, inspect the trace, and identify the slow or memory-heavy stage
+1. **Diagnose** (`optimize-performance`) — enable `progress="log"`, inspect the trace (`dlthub local pipeline trace <pipeline_name> metrics` shows rows, files and sizes of each step), and identify the slow or memory-heavy stage
 2. **Apply levers** (`optimize-performance`) — tune extract/normalize/load parallelism, workers, buffers, and file rotation; combine with the calling pipeline toolkit's source-specific optimize skill
 3. **Re-measure** (`optimize-performance`) — re-run, compare stage durations and peak memory, change one lever at a time
 
