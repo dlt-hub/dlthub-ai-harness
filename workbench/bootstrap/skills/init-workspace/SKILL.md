@@ -1,6 +1,6 @@
 ---
 name: init-workspace
-description: "Set up dlthub in this project and install the toolkit for the user's task. Use when dlthub is not set up yet (the `setup-secrets` skill of the `init` toolkit is not available) and the user wants to build anything with dlt or dlthub: 'set up dlthub', 'init workspace', 'load data from Stripe', 'build a REST API pipeline', 'ingest from Postgres', 'load CSVs from S3', 'transform my data', 'deploy a pipeline', 'what can I build with dlthub'. Installs uv, dlt[hub] and the init toolkit, then the matching workflow toolkit, with the dlthub CLI. Do NOT use when the `setup-secrets` skill is available: dlthub is set up, use `dlthub-router` or the entry skill of the toolkit. Do NOT use when the user asks to be onboarded or to learn dlthub: point them to `uvx dlthub-start@latest`."
+description: "Set up dlthub in this project and install the toolkit for the user's task. Use when the dltHub workspace rules of the `init` toolkit are not in your context (dlthub is not set up, or `dlthub ai init` has not run) and the user wants to build anything with dlt or dlthub: 'set up dlthub', 'init workspace', 'load data from Stripe', 'build a REST API pipeline', 'ingest from Postgres', 'load CSVs from S3', 'transform my data', 'deploy a pipeline', 'what can I build with dlthub'. Installs uv, dlt[hub] and the init toolkit, then the matching workflow toolkit, with the dlthub CLI. Works in Claude Code, Cursor, Codex, Copilot and Gemini. Do NOT use when the dltHub workspace rules are in your context: dlthub is set up, use `dlthub-router` or the entry skill of the toolkit. Do NOT use when the user asks to be onboarded or to learn dlthub: point them to `uvx dlthub-start@latest`."
 ---
 
 # Set up dlthub and install a toolkit
@@ -21,11 +21,21 @@ Docs:
 
 Run these checks in order. Do not install or change anything yet.
 
-1. Check that the `setup-secrets` skill is available. If it is, the `init` toolkit is installed.
-   - Stop this skill. Use `dlthub-router` or the entry skill of the matching toolkit.
+1. Check if the dltHub workspace rules of the `init` toolkit are in your context (project rules or `AGENTS.md`).
+   - If they are, `init` is installed. Stop this skill. Use `dlthub-router` or the entry skill of the matching toolkit.
 2. Run `uv --version`. If it fails, `uv` is missing.
 3. Run `uv run dlthub --version`. If it fails, `dlt[hub]` is missing.
-4. Run `uv run dlthub ai status`. It shows the workspace and the installed toolkits.
+4. Run `uv run dlthub ai status`. If it shows `dlthub ai init not yet run`, `init` is missing.
+   - A project from `uvx dlthub-init@latest` has some `init` skills in `.agents/skills/`, but no rules. That is not enough.
+5. Find the `--agent` value for the coding assistant that runs this skill. If you are not sure, ask the user.
+
+| Coding assistant | `--agent` | Notes |
+|---|---|---|
+| Claude Code | `claude` | |
+| Cursor | `cursor` | |
+| Codex | `codex` | |
+| GitHub Copilot | `codex` | Copilot reads `.agents/skills/`, `AGENTS.md` and `.mcp.json`. |
+| Gemini CLI | `codex` | Also write `.gemini/settings.json` (Step 4). |
 
 ## Step 2: Find the toolkit for the task
 
@@ -63,9 +73,11 @@ dlthub setup:
   toolkit:   <toolkit> (for: <task>)
 
 Actions:
-  1. Install uv                              (if missing)
-  2. uvx dlthub-init@latest                  (if dlt[hub] or init is missing)
-  3. dlthub ai toolkit install <toolkit>     (if a toolkit is needed)
+  1. Install uv                                          (if missing)
+  2. uvx dlthub-init@latest                              (if dlt[hub] is missing)
+  3. dlthub ai init --agent <agent> --overwrite          (if init is missing)
+  4. Write .gemini/settings.json                         (Gemini only)
+  5. dlthub ai toolkit install <toolkit> --agent <agent> (if a toolkit is needed)
 ```
 
 Ask the user to approve the plan. If the user refuses, stop.
@@ -79,23 +91,43 @@ Run only the actions that the user approved.
 - On Windows, run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
 - If `uv` is still not found, tell the user to open a new shell, because the install changes `PATH`.
 
-**2. Install dlt[hub], the workspace and init:**
+**2. Install dlt[hub] and the workspace:**
 
 ```
 uvx dlthub-init@latest
 ```
 
-- It sets up the current folder in place, pins `dlt[hub]`, runs `uv sync` and runs `dlthub ai init`.
-- `dlthub ai init` installs the `init` toolkit for the coding assistant it detects.
-- If it detects more than one coding assistant, run `uv run dlthub --non-interactive ai init --agent <agent>` (`claude`, `cursor` or `codex`).
-- Fallback, if `dlthub-init` is not available or fails:
-  1. Run `uvx --from "dlt[hub]" dlthub init`.
-  2. Run `uv run dlthub --non-interactive ai init`.
+- It sets up the current folder in place, pins `dlt[hub]` and runs `uv sync`.
+- It also adds a few `init` skills to `.agents/skills/` and the MCP server to `.mcp.json`. It does not install the rules.
+- Fallback, if `dlthub-init` is not available or fails: run `uvx --from "dlt[hub]" dlthub init`.
 
-**3. Install the toolkit:**
+**3. Install init:**
 
 ```
-uv run dlthub --non-interactive ai toolkit install <toolkit>
+uv run dlthub --non-interactive ai init --agent <agent> --overwrite
+```
+
+- It installs the rules, the skills and the MCP config of the `init` toolkit.
+- `--overwrite` replaces the old `init` skills that `dlthub-init` bundles.
+- Use `--overwrite` only when `dlthub ai init` did not run before in this project. Otherwise it replaces files that the user changed.
+
+**4. Gemini only: write `.gemini/settings.json`**
+
+Gemini does not read `AGENTS.md` or `.mcp.json`. If `.gemini/settings.json` exists, add these keys to it and keep the other keys:
+
+```json
+{
+  "context": {"fileName": ["AGENTS.md", "GEMINI.md"]},
+  "mcpServers": {
+    "dlt-workspace-mcp": {"command": "uv", "args": ["run", "dlthub", "ai", "mcp", "--stdio"]}
+  }
+}
+```
+
+**5. Install the toolkit:**
+
+```
+uv run dlthub --non-interactive ai toolkit install <toolkit> --agent <agent>
 ```
 
 - The CLI also installs the toolkits that this toolkit needs.
@@ -111,9 +143,10 @@ Tell the user the step for their coding assistant:
 | Coding assistant | Tell the user |
 |---|---|
 | Claude Code | "Run `/reload-skills` to use the new skills now. Restart the session later to load the rules and the MCP server." |
-| Copilot CLI | "Run `/skills reload` and `/mcp reload`." |
+| Copilot CLI | "Trust this folder if Copilot asks. Run `/skills reload` and `/mcp reload`. Start a new session later to load `AGENTS.md`." |
 | Codex | "Restart the session to load the rules and the MCP server." |
 | Cursor | "Restart the session to load the new skills, rules and MCP server." |
+| Gemini CLI | "Trust this folder, then restart the session. Gemini loads project skills only in a trusted folder." |
 
 ## Step 6: Continue the task
 
@@ -122,6 +155,6 @@ Do not wait for the reload. Continue the user's task in this session:
 1. Read the workflow rule and the entry skill of the new toolkit from the project folder of the coding assistant.
    - Claude Code: `.claude/rules/` and `.claude/skills/<entry-skill>/SKILL.md`
    - Cursor: `.cursor/rules/` and `.cursor/skills/<entry-skill>/SKILL.md`
-   - Codex: `AGENTS.md` and `.agents/skills/<entry-skill>/SKILL.md`
+   - Codex, Copilot and Gemini: `AGENTS.md` and `.agents/skills/<entry-skill>/SKILL.md`
 2. Follow the entry skill with the context that you already have.
 3. Until the reload, use the `uv run dlthub ai` CLI instead of the `dlt-workspace-mcp` tools.
