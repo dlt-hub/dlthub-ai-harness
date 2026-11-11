@@ -75,7 +75,7 @@ fs = fsspec_from_resource(files)            # authenticated fsspec client for bu
 ## 4. Measure, then repeat
 
 - Re-run and compare extract time in `pipeline.last_trace` against step 1.
-- **Errors on large files / under concurrency** → see `create-filesystem-pipeline` "Debug — first run" (it escalates to **rest-api-pipeline** → `debug-pipeline` for anything it doesn't cover).
+- **Errors on large files / under concurrency** → see `create-filesystem-pipeline` "Debug — first run" (it escalates to `troubleshoot-pipeline-run` for anything it doesn't cover).
 - **Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
   - **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (object-store throughput, network bandwidth) that tuning can't move.
   - **Repeat** with the next matching lever, one at a time. "Fast enough" is the user's call — a minor improvement may already be enough, so confirm before another round rather than chasing micro-gains.
