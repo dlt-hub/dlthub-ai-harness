@@ -169,13 +169,13 @@ the docs.
 
 **Expected about $2,260.00 per month; in a heavy month up to about $3,510.00** (if runs take as long as the slowest 10%).
 
-| Job | Every 15 min | Hourly | Every 6 h | Daily |
-|---|---|---|---|---|
-| orders_sync | **$960.00** | $240.00 | $40.00 | $10.00 |
-| crm_hourly | $4,800.00 | **$1,200.00** | $200.00 | $50.00 |
-| warehouse_daily | $9,600.00 | $2,400.00 | $400.00 | **$100.00** |
+**What each job would cost at another schedule**
 
-Current schedule in bold.
+| Job | Now | Every 15 min | Hourly | Every 6 h | Daily |
+|---|---|---|---|---|---|
+| orders_sync | $960.00 (every 15 min) | $960.00 | $240.00 | $40.00 | $10.00 |
+| crm_hourly | $1,200.00 (hourly) | $4,800.00 | $1,200.00 | $200.00 | $50.00 |
+| warehouse_daily | $100.00 (daily) | $9,600.00 | $2,400.00 | $400.00 | $100.00 |
 
 **Ways to cut cost**
 - orders_sync every 30 min instead of every 15 min: saves $480.00/month.

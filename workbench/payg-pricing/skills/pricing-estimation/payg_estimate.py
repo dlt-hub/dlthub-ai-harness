@@ -264,7 +264,6 @@ def estimate(data: dict) -> dict:
         {
             "job": j["name"],
             "usd": [_hours(s, j["stats"], j["multiplier"])[0] * rate for _, s in LADDER],
-            "current": [runs_per_month(s) == j["runs_month"] for _, s in LADDER],
         }
         for j in jobs
         if j["stats"] is not None
@@ -373,16 +372,17 @@ def summary(est: dict) -> str:
     if est["ladder"]:
         out += [
             "",
-            "| Job | " + " | ".join(n for n, _ in LADDER) + " |",
-            "|---" * (len(LADDER) + 1) + "|",
+            "**What each job would cost at another schedule**",
+            "",
+            "| Job | Now | " + " | ".join(n for n, _ in LADDER) + " |",
+            "|---" * (len(LADDER) + 2) + "|",
         ]
+        by_name = {j["name"]: j for j in est["jobs"]}
         for row in est["ladder"]:
-            cells = [
-                f"**{_usd(u, True)}**" if cur else _usd(u, True)
-                for u, cur in zip(row["usd"], row["current"])
-            ]
-            out.append(f"| {row['job']} | " + " | ".join(cells) + " |")
-        out.append("\nCurrent schedule in bold.")
+            job = by_name[row["job"]]
+            now = f"{_usd(job['usd_expected'], True)} ({job['label']})"
+            cells = [_usd(u, True) for u in row["usd"]]
+            out.append(f"| {row['job']} | {now} | " + " | ".join(cells) + " |")
     if est["savings"]:
         out += ["", "**Ways to cut cost**"]
         for s in est["savings"]:

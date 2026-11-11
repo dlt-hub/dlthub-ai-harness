@@ -258,7 +258,11 @@ def test_summary_markdown() -> None:
     assert "| orders_sync | every 15 min | 2,880 |" in md
     assert "Expected about $2,260.00 per month" in md
     assert "up to about $3,510.00" in md
-    assert "| orders_sync | **$960.00** |" in md  # current cadence in bold
+    # the what-if table names today's cost in its own column instead of bold formatting
+    assert "| Job | Now | Every 15 min | Hourly | Every 6 h | Daily |" in md
+    assert "| orders_sync | $960.00 (every 15 min) | $960.00 | $240.00 |" in md
+    assert "| warehouse_daily | $100.00 (daily) |" in md
+    assert "in bold" not in md and "**$960.00**" not in md
     assert "saves $480.00/month" in md
     assert "measure after the change" in md
 
