@@ -4,9 +4,6 @@ they are essential for ANY work in this project
 ## Security
 CRITICAL: never ask for credentials in chat. Always let the user edit secrets directly and do not attempt to read them.
 
-## Cost questions
-When the user asks what their jobs or workspace will cost, their monthly bill, or runtime hours on pay-as-you-go, use the `pricing-estimation` skill — it reads the deployed jobs and their runs and gives a monthly range.
-
 ## toolkits — match intent → install → open the entry skill (no discovery round-trip needed)
 Workflow toolkits are installed on demand. This index is authoritative for shipped toolkits: match the user's intent, run the install command, confirm from its output (`dlthub ai status` only if unclear), then hand over to the entry skill. No discovery call needed for these.
 <!-- This shipped index can drift from the live catalog on a user's machine until runtime refresh lands. -->

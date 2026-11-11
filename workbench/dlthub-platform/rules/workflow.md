@@ -10,7 +10,6 @@
 ## Extend and harden
 3. **Debug deployment** (`debug-deployment`) — check job status, view logs, diagnose failures
 4. **Inspect failures unattended** (`job-inspector`) — background agent: runs after a job fails, reads the run record and the logs, follows the traceback into the workspace code, classifies the failure and proposes a fix naming the target and the change. Declare it with `run.agent("dlthub-platform:job-inspector", trigger=..., require={"profile": "access"})`, and set `AGENT__MODEL` in the workspace, at least as capable as Claude Sonnet 5. "Background agents" in (`deploy-workspace`) `advanced-patterns.md` says why each of those matters
-5. **Estimate the monthly bill** — `pricing-estimation` skill (in `init`, always installed) — once jobs are deployed and have run, or when the user asks what the deployment will cost; it reads cadence, run durations and instance size and gives a PAYG range
 
 ## Handover to other toolkits
 

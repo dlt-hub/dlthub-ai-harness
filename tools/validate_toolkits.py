@@ -840,13 +840,23 @@ def _validate_rules(pname: str, plugin_dir: Path, errors: list[str]) -> None:
             )
 
 
+def _unlisted_toolkits(root: Path) -> set[str]:
+    """Toolkits whose toolkit.json sets `"listed": false`."""
+    return {
+        path.parents[1].name
+        for path in (root / AI_DIR).glob("*/.claude-plugin/toolkit.json")
+        if json.loads(path.read_text(encoding="utf-8")).get("listed", True) is False
+    }
+
+
 def validate_index_drift(
     root: Path,
     marketplace_names: set[str],
     errors: list[str],
 ) -> None:
-    """Check that each intent index lists exactly the workflow toolkits of the marketplace."""
-    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS
+    """Check that each intent index lists exactly the marketplace's listed workflow toolkits."""
+    # every workspace loads the index; an unlisted toolkit is installed by name only
+    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS - _unlisted_toolkits(root)
 
     for rel in _INDEX_FILES:
         path = root / rel

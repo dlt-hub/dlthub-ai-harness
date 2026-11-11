@@ -19,10 +19,14 @@ scope for this iteration.
 ## Audience and placement
 
 - **Runs in the customer's coding agent, inside their trial workspace.**
-- Lives at `workbench/init/skills/pricing-estimation/SKILL.md`. An install copies only the toolkit
-  directory, so a skill at the repo root never reaches a workspace; `init` is installed into every
-  workspace, so any toolkit can name the skill like a local one (same reason
-  `create-background-agent` lives there).
+- **Only PAYG customers get it.** Lives in its own unlisted toolkit,
+  `workbench/payg-pricing/skills/pricing-estimation/SKILL.md` (`"listed": false`, like
+  `bootstrap`): hidden from `dlthub ai toolkit list`, the router and the always-loaded intent
+  index, installed by name with `uv run dlthub --non-interactive ai toolkit install payg-pricing`.
+  An install copies only the toolkit directory, so a skill at the repo root never reaches a
+  workspace. It was first placed in `init`, but then every workspace — PAYG or not — would get it
+  and quote PAYG prices, which confuses customers on other plans.
+- The validator's intent-index check skips toolkits with `"listed": false`.
 
 ## Pricing model (PAYG)
 
@@ -93,11 +97,10 @@ in a scratch block is fine for the arithmetic; don't show code unless asked.
 
 ## Wiring
 
-- One line in `workbench/init/rules/dlthub-workspace.md` (always loaded) pointing to
-  `pricing-estimation` for "what will this cost" questions.
-- Outgoing handover in `workbench/dlthub-platform/rules/workflow.md`: after `deploy-workspace`,
-  when the user asks what the deployment will cost → `pricing-estimation` (in `init`, so it is a
-  local skill reference, not a toolkit handover — check what the validator expects).
+- No pointers from shared files (`init` rule, `AGENTS.md`, other toolkits' workflows): those
+  reach every workspace. The toolkit's own `rules/workflow.md` makes `pricing-estimation` its
+  entry skill and hands over to **performance** and **dlthub-platform**.
+- PAYG customers get the install command from wherever they sign up for PAYG (outside this repo).
 - Skill description triggers on: cost, price, bill, spend, "how much will this cost", runtime
   hours, PAYG estimate. Excludes: changing instance size or cadence (that is `deploy-workspace` /
   `optimize-performance`).
