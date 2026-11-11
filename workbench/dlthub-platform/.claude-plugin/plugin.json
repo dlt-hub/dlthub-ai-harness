@@ -1,7 +1,7 @@
 {
   "name": "dlthub-platform",
   "description": "Prepare and deploy your dlthub workspace and pipelines to the dltHub platform, and debug failed deployments. Requires dlt[hub].",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": {
     "name": "ScaleVector GmbH"
   },
