@@ -1,7 +1,7 @@
 {
   "name": "filesystem-pipeline",
   "description": "Load CSV, Parquet, JSONL or custom files from local disk, S3, GCS, Azure or SFTP into a destination with dlt. Requires dlt[hub].",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "ScaleVector GmbH"
   },
