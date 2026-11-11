@@ -33,11 +33,24 @@
   .chip span { font-size: 12px; color: var(--muted); }
   section { margin-top: 28px; }
   h2 { font-size: 20px; margin: 0 0 10px; }
-  .points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .point { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--teal); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
-  .point b { color: var(--ink); display: block; margin-bottom: 2px; }
-  ul.included { margin: 0; padding-left: 18px; columns: 2; column-gap: 28px; }
-  ul.included li { margin-bottom: 4px; break-inside: avoid; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .vs > div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .vs h3 { margin: 0 0 6px; font-size: 14px; color: var(--ink); }
+  .vs .hint { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .vs ul, .inc ul { list-style: none; margin: 0; padding: 0; }
+  .vs li { padding: 5px 0 5px 24px; position: relative; font-size: 14px; border-top: 1px solid var(--bg); }
+  .vs li:first-child { border-top: 0; }
+  .vs .moves li::before { content: "↕"; position: absolute; left: 4px; color: var(--accent); font-weight: 700; }
+  .vs .stays { background: var(--lime-tint); border-color: transparent; }
+  .vs .stays li { border-top-color: rgba(107, 115, 16, .12); }
+  .vs .stays li::before { content: "✕"; position: absolute; left: 5px; color: var(--lime-ink); font-weight: 700; }
+  .vs + .note { margin: 8px 0 0; }
+  .free { font-family: "DM Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--lime-ink); background: var(--lime-tint); font-weight: 600; font-size: 12px; border-radius: 6px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+  .inc { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .inc p { margin: 0 0 6px; font-size: 14px; }
+  .inc ul { columns: 2; column-gap: 24px; }
+  .inc li { padding: 4px 0 4px 24px; position: relative; font-size: 14px; break-inside: avoid; }
+  .inc li::before { content: "✓"; position: absolute; left: 4px; color: var(--teal); font-weight: 700; }
   .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -62,8 +75,8 @@
   footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
   @media (max-width: 640px) {
     .chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .points { grid-template-columns: 1fr; }
-    ul.included { columns: 1; }
+    .vs { grid-template-columns: 1fr; }
+    .inc ul { columns: 1; }
     .big { font-size: 32px; }
     header .meta { text-align: left; }
   }
@@ -72,12 +85,13 @@
     body { background: #fff; font-size: 12px; }
     .page { max-width: none; padding: 0; }
     header { border-radius: 10px; }
-    .hero, .scroll, .bars, .point { break-inside: avoid; }
+    .hero, .scroll, .bars, .vs, .inc { break-inside: avoid; }
     section { break-inside: avoid; margin-top: 14px; }
     .hero { padding: 16px; margin-top: 14px; }
     .big { font-size: 28px; }
     .chips { margin-top: 10px; }
-    .point { font-size: 12px; padding: 8px 10px; }
+    .vs li, .inc li, .inc p { font-size: 12px; padding-top: 3px; padding-bottom: 3px; }
+    .vs > div, .inc { padding: 8px 12px; }
     h2 { font-size: 16px; margin-bottom: 6px; }
     .scroll { overflow: visible; }
     table { font-size: 11px; }
@@ -121,23 +135,34 @@
 
   <section>
     <h2>Why the bill is predictable</h2>
-    <div class="points">
-      <div class="point"><b>One unit: runtime</b>$rate_line</div>
-      <div class="point"><b>You set the drivers</b>The bill follows how often jobs run, how long they take and their instance size. All three are in your hands.</div>
-      <div class="point"><b>No per-row fees</b>Data volume only matters through how long runs take. There are no per-row or per-connector charges.</div>
+    <div class="vs">
+      <div class="moves"><h3>Moves your bill <span class="hint">· all in your hands</span></h3><ul>
+        <li>How often jobs run</li>
+        <li>How long each run takes</li>
+        <li>Instance size (1× small, 2× medium, …)</li>
+      </ul></div>
+      <div class="stays"><h3>Doesn't</h3><ul>
+        <li>Number of rows loaded</li>
+        <li>Number of sources or connectors</li>
+        <li>Data volume, except through run time</li>
+      </ul></div>
     </div>
+    <p class="note">$rate_line</p>
   </section>
 
   <section>
-    <h2>What's included</h2>
-    <ul class="included">
-      <li>Deploy pipelines, notebooks and apps from your workspace</li>
-      <li>Schedules and event triggers for every job</li>
-      <li>Run history and logs for every run</li>
-      <li>Instance size chosen per job</li>
-      <li>Interactive apps (dashboards, notebooks, MCP servers) on the same runtime</li>
-      <li>No servers or scheduler to run yourself</li>
-    </ul>
+    <h2>Included in the $rate_short/hour <span class="free">no extra fees</span></h2>
+    <div class="inc">
+      <p>Every job you run on dltHub comes with:</p>
+      <ul>
+        <li>Deployment from your workspace</li>
+        <li>Schedules and event triggers</li>
+        <li>Run history and logs</li>
+        <li>Instance size per job</li>
+        <li>Dashboards, notebooks and MCP servers on the same runtime</li>
+        <li>No servers or scheduler to run yourself</li>
+      </ul>
+    </div>
   </section>
 
   <section>

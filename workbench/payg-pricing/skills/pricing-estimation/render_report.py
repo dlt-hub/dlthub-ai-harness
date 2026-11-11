@@ -202,7 +202,9 @@ def render(est: dict) -> str:
         "usd_expected": _usd(est["usd_expected"]),
         "usd_high": _usd(est["usd_high"]),
         "chips": "".join(f'<div class="chip"><b>{v}</b><span>{k}</span></div>' for v, k in chips),
-        "rate_line": f"{_usd(est['rate'])} per runtime hour, times the instance size multiplier.",
+        "rate_line": f"You pay {_usd(est['rate'])} per runtime hour, times the instance size"
+        " multiplier.",
+        "rate_short": _usd(est["rate"]),
         "job_rows": "".join(rows),
         "runs_total": _num(est["runs_per_month"]),
         "hours_expected": _num(round(est["hours_expected"], 1)),
