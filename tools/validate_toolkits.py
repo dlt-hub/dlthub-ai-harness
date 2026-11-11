@@ -42,20 +42,6 @@ _INDEX_FILES = (
 )
 # `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
-# no marketplace installs `dlt[hub]` or `init`, so every skill of these toolkits carries the
-# shared prerequisites block. Not `init` (circular), `bootstrap`, `one-shot`, `dlthub-init-skills`.
-_PREREQUISITES_TEMPLATE = "templates/prerequisites.md"
-_PREREQUISITES_TOOLKITS = (
-    "quick-start",
-    "rest-api-pipeline",
-    "sql-database-pipeline",
-    "filesystem-pipeline",
-    "data-exploration",
-    "transformations",
-    "data-quality",
-    "dlthub-platform",
-    "performance",
-)
 # an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 
@@ -1018,19 +1004,22 @@ def validate(
 
 
 def validate_prerequisites(root: Path) -> list[str]:
-    """Each public SKILL.md has the template verbatim right after its first heading."""
-    template = (root / _PREREQUISITES_TEMPLATE).read_text()
+    """Each public SKILL.md has its rendered block right after its first heading."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import prerequisites  # type: ignore[import-not-found]  # sibling script
+
     errors: list[str] = []
-    for toolkit in _PREREQUISITES_TOOLKITS:
-        for skill in sorted((root / AI_DIR / toolkit / "skills").glob("*/SKILL.md")):
+    for toolkit in prerequisites.TOOLKITS:
+        block = prerequisites.render(root, toolkit)
+        for skill in prerequisites.skills(root, toolkit):
             _, body = split_frontmatter(skill)
             heading = re.search(r"^# .*\n", body, re.M)
             rel = skill.relative_to(root)
             if not heading:
                 errors.append(f"{rel}: no first heading to put the prerequisites after")
-            elif not body[heading.end() :].startswith("\n" + template):
+            elif not body[heading.end() :].startswith("\n" + block):
                 errors.append(
-                    f"{rel}: prerequisites block missing or differs from {_PREREQUISITES_TEMPLATE}"
+                    f"{rel}: prerequisites block is stale; run `python tools/prerequisites.py`"
                 )
     return errors
 
