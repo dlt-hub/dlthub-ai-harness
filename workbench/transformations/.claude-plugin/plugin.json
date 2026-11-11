@@ -1,7 +1,7 @@
 {
   "name": "transformations",
   "description": "Turn raw dlt pipeline data into a Canonical Data Model: annotate sources, build an ontology, design a Kimball-style model and write @dlt.hub.transformation functions. Requires dlt[hub].",
-  "version": "0.1.3",
+  "version": "0.1.2",
   "author": {
     "name": "ScaleVector GmbH"
   },
