@@ -58,7 +58,7 @@ A `--profile prod` simulation is the fastest way to catch missing prod credentia
 ```bash
 dlthub run my_pipeline.py              # sync code + run batch job on cloud
 dlthub run my_pipeline.py -f           # sync + run, stream logs while running
-dlthub run my_pipeline.py --refresh    # sync + run with a refresh signal
+dlthub run my_pipeline.py --refresh    # sync + refresh run: reloads data only with auto_refresh_pipeline_mode (Step 4)
 dlthub serve my_notebook.py           # sync code + run interactive job on cloud
 dlthub serve my_notebook.py -f        # sync + serve, stream logs
 ```
@@ -124,7 +124,9 @@ See [advanced-patterns.md](advanced-patterns.md) for full examples of each patte
 - **Followup jobs** -- chain pipelines with `trigger=ingest_job.success`. The transform runs automatically after ingest succeeds. Use when you have non-incremental pipelines that should run in sequence.
 - **Scheduler-driven intervals** -- for incremental pipelines, declare `interval={"start": "2026-01-01T00:00:00Z"}` and read `run_context["interval_start"]` / `interval_end` from the scheduler. Runtime handles continuity and refresh resets.
 - **Freshness gates** -- `freshness=[upstream.is_fresh]` prevents a job from running until upstream's interval is complete. Use for transforms that shouldn't observe half-loaded data.
-- **Refresh cascade** -- a backfill job with `refresh="always"` cascades a full-refresh signal to all downstream jobs without loading data itself.
+- **Refresh runs** -- `--refresh` on `dlthub run`, `dlthub job trigger` or `dlthub local run` starts a run with the refresh signal. A refresh run drops or truncates production data, so confirm with the user first.
+  - **Recommended:** set `auto_refresh_pipeline_mode="drop_sources"` (or `drop_resources` / `drop_data`) on `@run.pipeline` / `@run.job`, or under `[jobs]` in config. Every pipeline in the job then reloads in a refresh run. Without it, pipelines do not reload, unless the code reads `run_context["refresh"]`. Interval jobs still restart from `interval.start`.
+  - **Refresh cascade:** `refresh_propagation="always"` on a backfill job sends the signal to all downstream jobs. `"auto"` (the default) passes on a signal the job received, and `"block"` stops it. `refresh=` is the deprecated name.
 - **Non-pipeline jobs** -- `@run.job` for general batch work (DQ checks, reports), `@run.interactive` for MCP servers, dashboards, REST APIs.
 - **Dependency groups** -- `require={"dependency_groups": ["ibis"]}` installs extra packages only for jobs that need them. Declare groups in `[dependency-groups]` in `pyproject.toml`.
 - **Timeouts** -- `execute={"timeout": "6h"}` overrides the default 120-minute limit. Use for backfill or long-running jobs.

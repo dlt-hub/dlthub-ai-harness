@@ -4,7 +4,7 @@
 **ALWAYS** start with **Find source** (`find-source`) SKILL — discover the right dlt source for the user's data provider
 
 ## Core workflow
-1. **Create pipeline** (`create-rest-api-pipeline`) — scaffold, write code, configure credentials
+1. **Create pipeline** (`create-rest-api-pipeline`) — scaffold, write code, configure credentials. For a verified source, `find-source` (step 8) scaffolds it with `dlthub pipeline init` instead, then continue at **Debug pipeline**
 2. **Debug pipeline** (`debug-pipeline`) — run it, inspect traces and load packages, fix errors
 3. **Validate data** (`validate-data`) — inspect schema and data, fix types and structures, iterate until user is satisfied
 
@@ -37,4 +37,5 @@ When the user's needs go beyond this toolkit, hand over to:
   - **Later** (after `adjust-endpoint`, incremental loading, `new-endpoint`, or a subsequent `debug-pipeline` run): when the pipeline is refined and the user wants to deploy or schedule it on dltHub
   - **Unattended** (once the job runs on dltHub): when the user wants every future failure of the deployed job diagnosed without watching for it — declare the `job-inspector` background agent, see the dlthub-platform workflow
 - **filesystem-pipeline** — from (`find-source`) when the user's data source is file-based (S3, GCS, local CSV, SFTP, etc.) rather than a REST API
+- **sql-database-pipeline** — from (`find-source`) when the user's data source is a SQL database (Postgres, MySQL, MS SQL, Oracle, etc.) rather than a REST API; start at `find-sql-database-source`
 - **performance** — after `optimize-rest-api-performance`, when the pipeline works but is slow or memory-heavy and needs source-agnostic stage tuning (extract/normalize/load workers, buffers, file rotation); start at `optimize-performance`
