@@ -766,7 +766,7 @@ def _validate_skills(
                 f"[{pname}] {skill_dir.name}/SKILL.md missing 'description' in frontmatter"
             )
         elif len(fm_desc) > MAX_DESCRIPTION_CHARS:
-            warnings.append(
+            errors.append(
                 f"[{pname}] {skill_dir.name}/SKILL.md description is {len(fm_desc)} chars, "
                 f"over the {MAX_DESCRIPTION_CHARS} cap"
             )
@@ -1024,6 +1024,22 @@ def validate_prerequisites(root: Path) -> list[str]:
     return errors
 
 
+def validate_codex_rules(root: Path) -> list[str]:
+    """Generated Codex rule skills are current and their descriptions fit the cap."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gen_codex_rules  # type: ignore[import-not-found]  # sibling script
+
+    errors = [
+        f"{p.relative_to(root)} is stale; run `python tools/gen_codex_rules.py`"
+        for p in gen_codex_rules.stale()
+    ]
+    for t in gen_codex_rules.TOOLKITS:
+        fm, _ = split_frontmatter(gen_codex_rules.target(t))
+        if len(fm.get("description", "")) > MAX_DESCRIPTION_CHARS:
+            errors.append(f"{t}-rules description is over the {MAX_DESCRIPTION_CHARS} cap")
+    return errors
+
+
 def main():
     root = Path(__file__).resolve().parent.parent
     only = sys.argv[1] if len(sys.argv) > 1 else None
@@ -1035,6 +1051,7 @@ def main():
 
     errors, warnings, all_skills = validate(root, only)
     errors += validate_prerequisites(root)
+    errors += validate_codex_rules(root)
 
     for w in warnings:
         print(f"  WARN  {w}")

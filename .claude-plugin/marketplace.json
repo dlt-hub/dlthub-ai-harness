@@ -49,7 +49,7 @@
       "name": "init",
       "source": "./workbench/init",
       "description": "Shared rules, secrets handling, background agent authoring and the workspace MCP server used by the other dlthub toolkits. Requires dlt[hub].",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "init", "rules", "secrets", "mcp"]
