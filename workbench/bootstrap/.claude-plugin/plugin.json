@@ -1,7 +1,7 @@
 {
   "name": "bootstrap",
-  "description": "Set up the Python environment for a dlthub workspace. Requires dlt[hub].",
-  "version": "0.1.1",
+  "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
+  "version": "0.2.0",
   "author": {
     "name": "ScaleVector GmbH"
   },

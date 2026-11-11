@@ -1,7 +1,7 @@
 {
   "name": "quick-start",
   "description": "A guided path from ingestion to visualization, transformation and deployment in 3-5 prompts. Requires dlt[hub].",
-  "version": "0.1.3",
+  "version": "0.1.2",
   "author": {
     "name": "ScaleVector GmbH"
   },

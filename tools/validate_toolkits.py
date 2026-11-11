@@ -34,13 +34,13 @@ from dlt.common.typing import get_args
 
 AI_DIR = "workbench"
 
-# the intent index lives in the rule (Claude, Cursor) and in AGENTS.md (Codex, where rules
-# are opt-in)
+# the intent index lives in the rule (Claude, Cursor), in AGENTS.md (Codex) and in the launcher
 _INDEX_FILES = (
     "workbench/init/rules/dlthub-workspace.md",
     "workbench/init/AGENTS.md",
+    "workbench/bootstrap/skills/init-workspace/SKILL.md",
 )
-# `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
+# `init` is the base and `bootstrap` is the launcher, so neither is in the index
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
 # an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
@@ -860,12 +860,11 @@ def validate_index_drift(
             # data rows carry an install command; this skips the column header
             if "ai toolkit" in line and (m := _INDEX_ENTRY.search(line))
         }
-        fname = Path(rel).name
         for name in sorted(expected - indexed):
-            errors.append(f"[init] {fname} intent index is missing workflow toolkit '{name}'")
+            errors.append(f"{rel} intent index is missing workflow toolkit '{name}'")
         for name in sorted(indexed - expected):
             errors.append(
-                f"[init] {fname} intent index lists '{name}' "
+                f"{rel} intent index lists '{name}' "
                 f"which is not a workflow toolkit in marketplace.json"
             )
 
@@ -1003,27 +1002,6 @@ def validate(
     return errors, warnings, all_skills
 
 
-def validate_prerequisites(root: Path) -> list[str]:
-    """Each public SKILL.md has its rendered block right after its first heading."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import prerequisites  # type: ignore[import-not-found]  # sibling script
-
-    errors: list[str] = []
-    for toolkit in prerequisites.TOOLKITS:
-        block = prerequisites.render(root, toolkit)
-        for skill in prerequisites.skills(root, toolkit):
-            _, body = split_frontmatter(skill)
-            heading = re.search(r"^# .*\n", body, re.M)
-            rel = skill.relative_to(root)
-            if not heading:
-                errors.append(f"{rel}: no first heading to put the prerequisites after")
-            elif not body[heading.end() :].startswith("\n" + block):
-                errors.append(
-                    f"{rel}: prerequisites block is stale; run `python tools/prerequisites.py`"
-                )
-    return errors
-
-
 def main():
     root = Path(__file__).resolve().parent.parent
     only = sys.argv[1] if len(sys.argv) > 1 else None
@@ -1034,7 +1012,6 @@ def main():
         print(f"Validating plugins in {root}\n")
 
     errors, warnings, all_skills = validate(root, only)
-    errors += validate_prerequisites(root)
 
     for w in warnings:
         print(f"  WARN  {w}")

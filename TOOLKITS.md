@@ -28,12 +28,13 @@ workbench/
       rule-name.md
     mcp.json
     .claudeignore
-  bootstrap/                # unlisted toolkit
+  bootstrap/                # launcher: the marketplace entry point
     .claude-plugin/
       plugin.json
-      toolkit.json          # {"dependencies": ["init"], "listed": false}
-    commands/
-      init-workspace.md
+      toolkit.json          # {"listed": false}, no dependencies
+    skills/
+      init-workspace/
+        SKILL.md
 ```
 
 ## plugin.json
