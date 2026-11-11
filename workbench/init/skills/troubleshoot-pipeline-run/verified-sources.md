@@ -3,6 +3,14 @@
 Verified sources: https://dlthub.com/docs/dlt-ecosystem/verified-sources.md
 Source code and the latest notes: https://github.com/dlt-hub/verified-sources (folder `sources/<source>/`)
 
+## Find the docs page
+
+The docs page has the setup, credentials, resources and arguments of the source. Read it before you write or change the pipeline, and follow it like a skill.
+1. `<source>/README.md` links it in its first lines. Add `.md` to the URL for the markdown version.
+2. Without the link, try `https://dlthub.com/docs/dlt-ecosystem/verified-sources/<source>.md`. Most pages are named after the source folder.
+3. If the URL returns 404, the page has another name: find the source in the index, https://dlthub.com/docs/dlt-ecosystem/verified-sources.md.
+4. A few sources have no page. Use the README and the code.
+
 ## What `dlthub pipeline init` copies
 
 `dlthub pipeline init <source> <destination>` copies a verified source into the project:

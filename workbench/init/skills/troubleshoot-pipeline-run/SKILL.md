@@ -142,7 +142,11 @@ Escalate in this order and do not skip a step:
 
 ## 6. Verified sources
 
-A verified source lives in its own `<source>/` folder, which `dlthub pipeline init` created. `<source>/version.py` holds the installed version. Read `<source>/README.md` before the code. It answers two questions:
+A verified source lives in its own `<source>/` folder, which `dlthub pipeline init` created. `<source>/version.py` holds the installed version.
+
+**Before you change the pipeline, read the source's docs page and follow it like a skill**: setup, credentials, resources and arguments. `<source>/README.md` links it in its first lines; add `.md` to the URL for the markdown version. Without the link, see [verified-sources.md](verified-sources.md).
+
+Then read `<source>/README.md` before the code. It answers two questions:
 - **What do I do when something goes wrong?** → **Maintenance & Troubleshooting** (**Operations** in older copies): limits, quirks, failures and their workarounds. Search it for the exception, the error message, the resource, the argument and the backend (`python` / `pyarrow`).
 - **Can I upgrade safely from my version?** → **Changelog**: compare it with the latest notes, `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. Entries above the installed version are fixes the copy does not have. If one matches, propose an update instead of patching the code.
 - **Backend changed** on a pipeline that already loaded data → **Switching between Python objects and Arrow** in section 7.
