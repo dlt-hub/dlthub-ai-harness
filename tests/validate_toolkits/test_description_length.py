@@ -1,4 +1,4 @@
-"""A skill description over the length limit is an error.
+"""A skill description over the length limit is a warning.
 
 Codex drops a skill whose description is longer than 1024 chars.
 """
@@ -22,7 +22,7 @@ def length_warnings(root: Path, name: str) -> list[str]:
         errors,
         warnings,
     )
-    return [e for e in errors if "chars" in e]
+    return [w for w in warnings if "chars" in w]
 
 
 def test_description_at_the_cap_is_fine(tmp_path: Path) -> None:
@@ -32,7 +32,7 @@ def test_description_at_the_cap_is_fine(tmp_path: Path) -> None:
     assert length_warnings(root, "one-shot") == []
 
 
-def test_description_over_the_cap_errors(tmp_path: Path) -> None:
+def test_description_over_the_cap_warns(tmp_path: Path) -> None:
     root = fake_root(tmp_path, [])
     over = V.MAX_DESCRIPTION_CHARS + 1
     toolkit(root, "one-shot", skills=("deploy",), skill_description="x" * over)
