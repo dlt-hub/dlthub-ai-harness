@@ -1,12 +1,13 @@
 ---
 name: pricing-estimation
-description: "Estimate what a dltHub workspace will cost per month on pay-as-you-go (PAYG) pricing, from the jobs the customer deployed in their trial workspace: how often each job runs, how long its runs take and which instance size it uses. Use when the user asks what their pipelines or jobs will cost, how much dltHub will cost per month, what their bill or spend will be, how many runtime hours they use, or wants a PAYG estimate, a cost range, or ways to lower the cost. Do NOT use to change a job's schedule, instance size or timeout (deploy-workspace), or to make a slow job faster (performance toolkit, optimize-performance)."
+description: "Estimate what a dltHub workspace will cost per month on pay-as-you-go (PAYG) pricing, from the jobs the customer deployed in their trial workspace: how often each job runs, how long its runs take and which instance size it uses. Use when the user asks what their pipelines or jobs will cost, how much dltHub will cost per month, what their bill or spend will be, how many runtime hours they use, or wants a PAYG estimate, a cost range, ways to lower the cost, or a shareable cost report for their manager or team. Do NOT use to change a job's schedule, instance size or timeout (deploy-workspace), or to make a slow job faster (performance toolkit, optimize-performance)."
 ---
 
 # Pricing estimation (PAYG)
 
 Turn the customer's trial workspace into a **predictable** monthly bill: a per-job table, an
-expected-to-high range, and the cheapest ways to lower it. Output is markdown tables, inline.
+expected-to-high range, and the cheapest ways to lower it. Output is markdown tables, inline,
+plus an optional one-page HTML report to share.
 
 ## Price (single source of truth)
 
@@ -64,11 +65,15 @@ assumptions, and flag it to verify.
 Per job:
 
 1. `runs_month = runs_per_day × 30` (cron: fires per month)
-2. `hours_expected = runs_month × avg_min / 60 × multiplier`
-3. `hours_high = runs_month × slow_min / 60 × multiplier`
-4. `hours_failed = runs_month × failed_share × failed_min / 60 × multiplier`, added to both
+2. `ok_runs = runs_month × (1 − failed_share)` — failed runs are counted once, in step 5
+3. `hours_expected = ok_runs × avg_min / 60 × multiplier`
+4. `hours_high = ok_runs × slow_min / 60 × multiplier`
+5. `hours_failed = runs_month × failed_share × failed_min / 60 × multiplier`, added to both
    expected and high
-5. `cost = hours × $10`
+6. `cost = hours × $10`
+
+Always-on jobs: `hours = uptime_h_per_day × 30 × multiplier`, the same for expected and high;
+they have no runs, so leave them out of the cadence ladder.
 
 Total = sum over jobs, for expected and high. Round hours to 1 decimal, dollars to 2. Do the
 arithmetic in a scratch Python block; don't show the code unless asked.
@@ -102,9 +107,30 @@ Keep prose minimal. In this order:
    - Trial data volumes may differ from production.
    - A first backfill runs longer than steady-state runs; the estimate covers steady state.
    - Scheduled jobs keep running — and billing — until you remove their trigger or undeploy them;
-    the trial ending does not stop them.
-  - Billed time may include container start-up and any per-run minimum that the run timing
-    doesn't show; short, frequent jobs are most affected.
+     the trial ending does not stop them.
+   - Billed time may include container start-up and any per-run minimum that the run timing
+     doesn't show; short, frequent jobs are most affected.
+
+## Step 5: Shareable report (offer, don't push)
+
+After the estimate, ask once: *"Want a one-page report you can share with your team or
+manager?"* Only on a yes:
+
+1. Ask, optionally: *"Roughly how many engineer hours a month would running these pipelines
+   yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate?"* If they
+   skip it, leave `engineering` out — **never invent hours or rates**.
+2. Write the estimate to `reports/payg-estimate.json` in the shape documented at the top of
+   `render_report.py` (next to this file): the rate from **Price** above, today's date, one entry
+   per job with the same numbers you used in Step 3, the cost-cutting options as `savings`
+   (`usd_per_month: null` where it can't be computed) and your assumptions as plain sentences.
+3. Run the script that sits next to this `SKILL.md`:
+   `uv run python <this skill's folder>/render_report.py reports/payg-estimate.json --out reports/payg-cost-estimate.html`
+4. Check that the totals it prints match your Step 4 figures, then tell the user: open the file
+   in a browser, or use Print → Save as PDF to send it on.
+
+The report is one self-contained HTML file (no scripts, nothing downloaded). Its fixed text —
+why the bill is predictable, what's included — lives in `report-template.html`; don't edit it
+per customer.
 
 ## Worked example
 

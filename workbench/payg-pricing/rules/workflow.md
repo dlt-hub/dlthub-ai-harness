@@ -5,6 +5,7 @@
 
 ## Core workflow
 1. **Pricing estimation** (`pricing-estimation`) — read the deployed jobs, their runs and instance sizes; give a monthly cost range, a what-if cadence ladder and ways to cut cost
+2. **Shareable report** (`pricing-estimation`, Step 5) — on request, a one-page HTML report for a manager or technical decision maker: the monthly cost, why it is predictable, what is included, ways to lower it and an optional engineering-time comparison
 
 ## Handover to other toolkits
 
