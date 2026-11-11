@@ -53,10 +53,10 @@ In extract step most of the exceptions are coming from source/resource code that
 ### The pipeline uses a verified source
 
 A verified source lives in its own folder that `dlthub pipeline init <source> <destination>` created, e.g. `hubspot/`, imported by `hubspot_pipeline.py`. It is also recorded in `.dlt/.sources`. Its maintenance notes come before the code:
-1. **Version**: `<source>/version.py` holds `__version__`. A copy without it predates 1.0.0 and has no maintenance notes.
-2. **Read `<source>/README.md`.** Search it for the exception, the error message, the resource and the argument:
-   - **Operations** lists known failures, per backend and per version of the API or library.
-   - The **Changelog** lists fixes and, for each version, an **Upgrade** line.
+1. **Version**: `<source>/version.py` holds `__version__`. A copy without it predates the first numbered version, has no maintenance notes and cannot be upgraded in place.
+2. **Read `<source>/README.md`.** It answers two questions. Search it for the exception, the error message, the resource and the argument:
+   - **What do I do when something goes wrong?** → **Maintenance & Troubleshooting** (**Operations** in older copies) lists limits, quirks, failures and their workarounds.
+   - **Can I upgrade safely?** → the **Changelog** lists fixes and, for each version, an **Upgrade** line.
 3. **Compare with the latest notes upstream**: `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. If a newer version fixes the issue, propose updating the source instead of patching it.
 4. **Backend switched** (`backend="python"` ↔ `"pyarrow"`) on a pipeline that already loaded data: the existing tables do not fit the new format. See `troubleshoot-pipeline-run`, **Switching between Python objects and Arrow**.
 5. **Do not patch the source before steps 2–3.** Local changes make later updates conflict.

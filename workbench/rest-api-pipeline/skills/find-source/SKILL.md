@@ -98,7 +98,7 @@ Only when the user picked a verified source in step 5. Do NOT use `create-rest-a
    uv run dlthub --non-interactive pipeline init <source> <destination>
    ```
    It copies the source code into `<source>/`, adds an example script `<source>_pipeline.py`, and writes config and secret placeholders. Install the dependencies it reports.
-2. **Read `<source>/README.md`** and the docs page it links. In a versioned source, the maintenance notes list known limits per backend and per API version under **Operations**.
+2. **Read `<source>/README.md`** and the docs page it links. In a versioned source, **Maintenance & Troubleshooting** (**Operations** in older versions) lists known limits, quirks and their workarounds, and the **Changelog** says what changed in each version.
 3. **Trim `<source>_pipeline.py`** to the resources the user asked for. Do not edit the code in `<source>/`: local changes block later updates of the source.
 4. **Credentials** → `setup-secrets`. Write placeholders only; the user fills in the values.
 5. **Get feedback** on the files you changed, then run it with `debug-pipeline` (it has a section on verified sources), then `validate-data`.
