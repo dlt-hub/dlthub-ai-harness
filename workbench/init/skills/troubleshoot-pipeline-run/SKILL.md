@@ -142,9 +142,9 @@ Escalate in this order and do not skip a step:
 
 ## 6. Verified sources
 
-A verified source lives in its own `<source>/` folder, which `dlthub pipeline init` created. Read its maintenance notes in `<source>/README.md` before the code. `<source>/version.py` holds the installed version.
-- **Operations**: search for the exception, the error message, the resource, the argument and the backend (`python` / `pyarrow`).
-- **Changelog**: compare it with the latest notes, `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. Entries above the installed version are fixes the copy does not have. If one matches, propose an update instead of patching the code.
+A verified source lives in its own `<source>/` folder, which `dlthub pipeline init` created. `<source>/version.py` holds the installed version. Read `<source>/README.md` before the code. It answers two questions:
+- **What do I do when something goes wrong?** → **Maintenance & Troubleshooting** (**Operations** in older copies): limits, quirks, failures and their workarounds. Search it for the exception, the error message, the resource, the argument and the backend (`python` / `pyarrow`).
+- **Can I upgrade safely from my version?** → **Changelog**: compare it with the latest notes, `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. Entries above the installed version are fixes the copy does not have. If one matches, propose an update instead of patching the code.
 - **Backend changed** on a pipeline that already loaded data → **Switching between Python objects and Arrow** in section 7.
 
 **Update** only with the user's OK:
@@ -216,7 +216,7 @@ This covers changing a live resource from yielding Python objects (dicts) to Arr
 | | Python objects | Arrow tables, DataFrames |
 |---|---|---|
 | dlt columns | `_dlt_load_id` and `_dlt_id`, both NOT NULL | none by default |
-| nested data | lists become child tables, dicts become flattened columns | per the Arrow types (in verified sources, Operations says how) |
+| nested data | lists become child tables, dicts become flattened columns | per the Arrow types (in verified sources, see Maintenance & Troubleshooting) |
 | column types | inferred from the values | taken from the Arrow schema |
 
 Because dlt never alters existing columns, a switch on a pipeline that already loaded data leaves tables made for the other format:
