@@ -52,14 +52,15 @@ In extract step most of the exceptions are coming from source/resource code that
 
 ### The pipeline uses a verified source
 
-A verified source lives in its own folder that `dlthub pipeline init <source> <destination>` created, e.g. `hubspot/`, imported by `hubspot_pipeline.py`. It is also recorded in `.dlt/.sources`. Its maintenance notes come before the code:
-1. **Version**: `<source>/version.py` holds `__version__`. A copy without it predates 1.0.0 and has no maintenance notes.
-2. **Read `<source>/README.md`.** Search it for the exception, the error message, the resource and the argument:
-   - **Operations** lists known failures, per backend and per version of the API or library.
-   - The **Changelog** lists fixes and, for each version, an **Upgrade** line.
-3. **Compare with the latest notes upstream**: `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. If a newer version fixes the issue, propose updating the source instead of patching it.
-4. **Backend switched** (`backend="python"` ↔ `"pyarrow"`) on a pipeline that already loaded data: the existing tables do not fit the new format. See `troubleshoot-pipeline-run`, **Switching between Python objects and Arrow**.
-5. **Do not patch the source before steps 2–3.** Local changes make later updates conflict.
+A verified source lives in its own folder that `dlthub pipeline init <source> <destination>` created, `<source>/`, imported by `<source>_pipeline.py`. It is also recorded in `.dlt/.sources`. Its maintenance notes come before the code:
+1. **Version**: `<source>/version.py` holds `__version__`. A copy without it predates the first numbered version, has no maintenance notes and cannot be upgraded in place.
+2. **Read `<source>/README.md`.** It answers two questions. Search it for the exception, the error message, the resource and the argument:
+   - **What do I do when something goes wrong?** → **Maintenance & Troubleshooting** (**Operations** in older copies) lists limits, quirks, failures and their workarounds.
+   - **Can I upgrade safely?** → the **Changelog** lists fixes and, for each version, an **Upgrade** line.
+3. **Read the docs page before you change the pipeline script, and follow it like a skill**: setup, credentials, resources and arguments. A wrong argument or a missing config key is a common cause. `<source>/README.md` links the page in its first lines; add `.md` to the URL for the markdown version.
+4. **Compare with the latest notes upstream**: `https://raw.githubusercontent.com/dlt-hub/verified-sources/master/sources/<source>/README.md`. If a newer version fixes the issue, propose updating the source instead of patching it.
+5. **Backend switched** (`backend="python"` ↔ `"pyarrow"`) on a pipeline that already loaded data: the existing tables do not fit the new format. See `troubleshoot-pipeline-run`, **Switching between Python objects and Arrow**.
+6. **Do not patch the source before steps 2–4.** Local changes make later updates conflict.
 
 To update a verified source, follow `troubleshoot-pipeline-run`, section **Verified sources**. If the source makes HTTP calls with dlt's `requests` helper or `RESTClient`, the sections below on retries, rate limits and pagination apply to it too.
 

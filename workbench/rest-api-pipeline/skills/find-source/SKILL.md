@@ -30,7 +30,9 @@ If the request looks like a specific API/service name, run:
 ```
 dlthub --non-interactive pipeline init --list-sources
 ```
-Search the output (case-insensitive) for the source name. If found, ensure that the verified source contains the data that the user needs (ask the user explicitly) skip to **step 5**
+Search the output (case-insensitive) for the source name. If found:
+- **Read its docs page** to check that the source has the data the user needs, then ask the user explicitly. The page is `https://dlthub.com/docs/dlt-ecosystem/verified-sources/<source>.md`. A few pages are named differently from the source: if the URL returns 404, find the source in the index, `https://dlthub.com/docs/dlt-ecosystem/verified-sources.md`.
+- Skip to **step 5**.
 
 ### 3. Search dlthub context
 
@@ -98,7 +100,8 @@ Only when the user picked a verified source in step 5. Do NOT use `create-rest-a
    uv run dlthub --non-interactive pipeline init <source> <destination>
    ```
    It copies the source code into `<source>/`, adds an example script `<source>_pipeline.py`, and writes config and secret placeholders. Install the dependencies it reports.
-2. **Read `<source>/README.md`** and the docs page it links. In a versioned source, the maintenance notes list known limits per backend and per API version under **Operations**.
-3. **Trim `<source>_pipeline.py`** to the resources the user asked for. Do not edit the code in `<source>/`: local changes block later updates of the source.
-4. **Credentials** → `setup-secrets`. Write placeholders only; the user fills in the values.
-5. **Get feedback** on the files you changed, then run it with `debug-pipeline` (it has a section on verified sources), then `validate-data`.
+2. **Read the docs page in full before you write or change the pipeline, and follow it like a skill.** Its setup, credentials, resources and arguments are your instructions. `<source>/README.md` links it in its first lines; add `.md` to the URL for the markdown version. Without the link, find the page as in step 2.
+3. **Read `<source>/README.md`.** In a versioned source, **Maintenance & Troubleshooting** (**Operations** in older versions) lists known limits, quirks and their workarounds, and the **Changelog** says what changed in each version.
+4. **Trim `<source>_pipeline.py`** to the resources the user asked for. Do not edit the code in `<source>/`: local changes block later updates of the source.
+5. **Credentials** → `setup-secrets`. Write placeholders only; the user fills in the values.
+6. **Get feedback** on the files you changed, then run it with `debug-pipeline` (it has a section on verified sources), then `validate-data`.
