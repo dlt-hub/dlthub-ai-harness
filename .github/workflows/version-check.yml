@@ -1,0 +1,34 @@
+name: Version check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Only devel or hotfix/* may target master
+        if: github.base_ref == 'master'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::PRs to master must come from a branch in $BASE_REPO, not from fork '$HEAD_REPO'."
+            exit 1
+          fi
+          if [ "$HEAD_REF" != "devel" ] && [[ "$HEAD_REF" != hotfix/* ]]; then
+            echo "::error::PRs to master must come from 'devel' (release) or 'hotfix/*'. Got '$HEAD_REF'. Target 'devel' instead."
+            exit 1
+          fi
+
+      - name: Toolkit versions bumped
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 .github/scripts/version_check.py "origin/$BASE_REF"
