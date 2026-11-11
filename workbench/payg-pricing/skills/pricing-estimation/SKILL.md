@@ -18,6 +18,11 @@ plus an optional one-page HTML report to share.
   them from memory. A job with no `instance` set runs on the smallest tier.
 - Check dlthub.com for current pricing.
 
+
+**You never do arithmetic.** `payg_estimate.py`, next to this file, computes every number: runs
+per month, run-time statistics, hours, costs, the what-if table and every saving. Your job is to
+copy facts into a JSON file, choose which changes to propose, and paste the script's output.
+
 ## Step 1: Read the workspace
 
 Run from the project root. **Jobs are the scheduled unit, not pipelines** — a pipeline split into
@@ -32,84 +37,77 @@ uv run dlthub --non-interactive deploy --show-manifest   # require.instance.size
 
 CLI reference: https://dlthub.com/docs/hub/command-line-interface.md
 
-Per job, collect:
+Write `reports/payg-estimate.json` in the shape documented at the top of `payg_estimate.py`. Per
+job, **copy, don't compute**:
 
-| Field | How |
+| Field | What to copy |
 |---|---|
-| Runs per day | From the trigger: every N min → 1440 / N (every 5 min → 288, every 15 min → 96, every 30 min → 48), hourly → 24, every 2 h → 12, every 6 h → 4, every 12 h → 2, daily → 1. For cron, count fires per month (≈30 days), so weekday-only or weekly crons are counted correctly, and use that as `runs_month` directly |
-| Average run | Mean duration of recent **successful** runs, in minutes |
-| Slow run | 90th-percentile duration of the same runs; with fewer than 5 runs use the longest run and say so |
-| Failed share | Failed runs / all recent runs |
-| Failed run | Mean wall-clock duration of the failed runs, in minutes |
-| Instance size | From the manifest; none set = smallest tier |
+| `schedule` | The trigger as written: `{"every": 15, "unit": "minutes"}` (or `"hours"` / `"days"`), or `{"cron": "0 9 * * 1-5"}`. Don't convert it to runs per day |
+| `runs` | Each recent run's duration in minutes and its status (`"ok"` / `"failed"`), as listed — up to the last 20. Don't average them |
+| `size`, `multiplier` | Size from the manifest (none set = smallest tier); multiplier from the instance-size docs |
 
-- **Failed runs are billed too.** Keep them out of the average and slow durations, but record
-  `failed_share` and `failed_min` so Step 3 can add their cost.
 - **Interactive / served jobs** (`@run.interactive`, `dlthub serve` — MCP servers, dashboards,
-  notebooks, APIs) have no runs per day. Ask how many hours per day they stay up;
-  `hours = uptime_h_per_day × 30 × multiplier`. Mark it *customer assumption*.
-- **Job triggered by another job** runs at the upstream job's cadence.
+  notebooks, APIs) have no runs. Ask how many hours per day they stay up and use
+  `{"always_on_hours_per_day": <answer>}` as the schedule.
+- **Job triggered by another job:** use the upstream job's schedule.
+- Add the rate from **Price** above as `rate_usd_per_hour`, and today's `date`.
 
 ## Step 2: Ask only for the gaps
 
 Ask the customer when a job has **no successful runs**, is **manual-only**, or **nothing is
-deployed yet**: how long a run takes and how often it should run in production. Mark those rows
-*customer assumption*.
+deployed yet**: how long a run takes (typical and slow) and how often it should run in
+production. Pass the answer as `"assumed": {"avg_minutes": ..., "slow_minutes": ...}` instead of
+`runs`; the script marks it as the customer's estimate.
 
-**Never guess a duration.** Every number depends on it. The only exception: the customer
-explicitly waves it off ("assume something light") — then pick a value, state it in the
-assumptions, and flag it to verify.
+**Never guess a duration.** The only exception: the customer explicitly waves it off ("assume
+something light") — then pick a value, pass it as `assumed`, and say so in `notes`.
 
-## Step 3: Compute
+## Step 3: Choose the changes to propose
 
-Per job:
+Add `levers` — the changes, not their savings. The script prices each one:
 
-1. `runs_month = runs_per_day × 30` (cron: fires per month)
-2. `ok_runs = runs_month × (1 − failed_share)` — failed runs are counted once, in step 5
-3. `hours_expected = ok_runs × avg_min / 60 × multiplier`
-4. `hours_high = ok_runs × slow_min / 60 × multiplier`
-5. `hours_failed = runs_month × failed_share × failed_min / 60 × multiplier`, added to both
-   expected and high
-6. `cost = hours × $10`
+- run less often: `{"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}}`
+- smaller instance, only if the job could fit: `{"job": "crm", "size": "small", "multiplier": 1}`
+- shorter uptime for an always-on job: `{"job": "dashboard", "always_on_hours_per_day": 4}`
+- anything that changes run time, which can't be priced before it's measured — incremental
+  loading, merging small jobs: `{"label": "Incremental loading for crm", "unquantified": true}`
 
-Always-on jobs: `hours = uptime_h_per_day × 30 × multiplier`, the same for expected and high;
-they have no runs, so leave them out of the cadence ladder.
+Put any other context (where durations came from, caveats specific to this workspace) in
+`notes` as plain sentences, without numbers you worked out yourself.
 
-Total = sum over jobs, for expected and high. Round hours to 1 decimal, dollars to 2. Do the
-arithmetic in a scratch Python block; don't show the code unless asked.
+## Step 4: Run the script and present
 
-## Step 4: Present
+```sh
+uv run python <this skill's folder>/payg_estimate.py summary reports/payg-estimate.json
+```
 
-Keep prose minimal. In this order:
+**Paste its output as it is** — assumptions, per-job table, monthly range, what-if table, ways to
+cut cost. Don't round, re-add or restate the numbers in your own words. If a number looks wrong,
+fix the facts in the JSON and run it again.
 
-1. **Assumptions** — jobs found, where each number came from (workspace or customer), the rate,
-   the multipliers used, ×30 days per month, the failure share per job.
-2. **Per-job table** — job, cadence, runs/month, average / slow run, size, hours/month,
-   $/month (expected).
-3. **Monthly range** — "Expected about $<expected> per month; in a heavy month up to about
-   $<high> (if runs take as long as your slowest 10%)." Show a range, not a single guess.
-4. **What-if cadence ladder** — each job's monthly cost at every 15 min / hourly / every 6 h /
-   daily. Skip cadences that make no sense for the job.
-5. **Ways to cut cost** — each with its dollar saving per month where it can be computed:
-   - run less often (from the ladder)
-   - smaller instance, only if the job fits in it — runs may get longer, so say so
-   - incremental loading, so each run moves less data and finishes sooner (saving depends on
-     new run time — measure after the change)
-   - merge small jobs that run at the same cadence, to save per-run startup time (same: measure
-     after the change)
+Then add, in a sentence or two:
 
-   For making runs faster, hand over to the **performance** toolkit (`optimize-performance`);
-   install it if absent: `uv run dlthub --non-interactive ai toolkit install performance`.
-   **Only propose.** Never change a schedule, instance size or timeout yourself — those spend
-   budget on every run and need the user's explicit yes (see the `job-resources` rule of
-   **dlthub-platform**).
-6. **Caveats**
-   - Trial data volumes may differ from production.
-   - A first backfill runs longer than steady-state runs; the estimate covers steady state.
-   - Scheduled jobs keep running — and billing — until you remove their trigger or undeploy them;
-     the trial ending does not stop them.
-   - Billed time may include container start-up and any per-run minimum that the run timing
-     doesn't show; short, frequent jobs are most affected.
+- For making runs faster, hand over to the **performance** toolkit (`optimize-performance`);
+  install it if absent: `uv run dlthub --non-interactive ai toolkit install performance`.
+- **Only propose.** Never change a schedule, instance size or timeout yourself — those spend
+  budget on every run and need the user's explicit yes (see the `job-resources` rule of
+  **dlthub-platform**).
+- **Caveats**
+  - Trial data volumes may differ from production.
+  - A first backfill runs longer than steady-state runs; the estimate covers steady state.
+  - Scheduled jobs keep running — and billing — until you remove their trigger or undeploy them;
+    the trial ending does not stop them.
+  - Billed time may include container start-up and any per-run minimum that the run timing
+    doesn't show; short, frequent jobs are most affected.
+
+### How the script calculates (for explaining, not for doing)
+
+- Runs per month: from the schedule over 30 days; cron is counted day by day, so weekday-only and
+  weekly crons are not overcounted.
+- Average run: mean of successful runs. Slow run: 90th percentile, or the longest run when there
+  are fewer than 5. Failed runs are billed once, for the time they ran.
+- Hours = runs × run time × instance multiplier; always-on jobs: hours per day × 30 × multiplier.
+- Cost = hours × the rate. Heavy month = every run as slow as the slow run.
 
 ## Step 5: Shareable report (offer, don't push)
 
@@ -117,16 +115,11 @@ After the estimate, ask once: *"Want a one-page report you can share with your t
 manager?"* Only on a yes:
 
 1. Ask, optionally: *"Roughly how many engineer hours a month would running these pipelines
-   yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate?"* If they
-   skip it, leave `engineering` out — **never invent hours or rates**.
-2. Write the estimate to `reports/payg-estimate.json` in the shape documented at the top of
-   `render_report.py` (next to this file): the rate from **Price** above, today's date, one entry
-   per job with the same numbers you used in Step 3, the cost-cutting options as `savings`
-   (`usd_per_month: null` where it can't be computed) and your assumptions as plain sentences.
-3. Run the script that sits next to this `SKILL.md`:
-   `uv run python <this skill's folder>/render_report.py reports/payg-estimate.json --out reports/payg-cost-estimate.html`
-4. Check that the totals it prints match your Step 4 figures, then tell the user: open the file
-   in a browser, or use Print → Save as PDF to send it on.
+   yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate?"* Add the
+   answer as `engineering`; if they skip it, leave it out — **never invent hours or rates**.
+2. Run:
+   `uv run python <this skill's folder>/payg_estimate.py report reports/payg-estimate.json --out reports/payg-cost-estimate.html`
+3. Tell the user: open the file in a browser, or use Print → Save as PDF to send it on.
 
 The report is one self-contained HTML file (no scripts, nothing downloaded). Its fixed text —
 why the bill is predictable, what's included — lives in `report-template.html`; don't edit it
@@ -134,20 +127,47 @@ per customer.
 
 ## Worked example
 
-Workspace with 3 jobs. Multipliers illustrative (small 1×, medium 2× at time of writing — read the docs).
+Three jobs whose run times the customer gave (no runs yet). Multipliers are illustrative — read
+the docs.
 
-**Assumptions:** 3 jobs read from the workspace; durations from the last 20 successful runs;
-no failed runs in the sample; ×30 days per month; $10/runtime hour; small 1×, medium 2×.
+```json
+{
+  "rate_usd_per_hour": 10,
+  "date": "2026-11-11",
+  "jobs": [
+    {"name": "orders_sync", "schedule": {"every": 15, "unit": "minutes"},
+     "size": "small", "multiplier": 1, "assumed": {"avg_minutes": 2, "slow_minutes": 3}},
+    {"name": "crm_hourly", "schedule": {"every": 1, "unit": "hours"},
+     "size": "medium", "multiplier": 2, "assumed": {"avg_minutes": 5, "slow_minutes": 8}},
+    {"name": "warehouse_daily", "schedule": {"cron": "0 2 * * *"},
+     "size": "small", "multiplier": 1, "assumed": {"avg_minutes": 20, "slow_minutes": 30}}
+  ],
+  "levers": [
+    {"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}},
+    {"job": "crm_hourly", "schedule": {"every": 2, "unit": "hours"}},
+    {"job": "crm_hourly", "size": "small", "multiplier": 1},
+    {"label": "Incremental loading for warehouse_daily", "unquantified": true}
+  ]
+}
+```
 
-| Job | Cadence | Runs/month | Average / slow run | Size | Hours/month | $/month |
+`payg_estimate.py summary` prints:
+
+**Assumptions**
+- $10 per runtime hour; 30 days per month.
+- Instance multipliers (from the dltHub docs): small 1×, medium 2×.
+- orders_sync: run time is the customer's estimate.
+- crm_hourly: run time is the customer's estimate.
+- warehouse_daily: run time is the customer's estimate.
+
+| Job | Schedule | Runs/month | Average / slow run | Size | Hours/month | $/month |
 |---|---|---|---|---|---|---|
 | orders_sync | every 15 min | 2,880 | 2 / 3 min | small (1×) | 96.0 | $960.00 |
 | crm_hourly | hourly | 720 | 5 / 8 min | medium (2×) | 120.0 | $1,200.00 |
 | warehouse_daily | daily | 30 | 20 / 30 min | small (1×) | 10.0 | $100.00 |
-| **Total** | | | | | **226.0** | **$2,260.00** |
+| **Total** | | 3,630 | | | **226.0** | **$2,260.00** |
 
-**Expected about $2,260.00 per month; in a heavy month up to about $3,510.00** (if runs take
-as long as your slowest 10%: 144.0 + 192.0 + 15.0 = 351.0 hours).
+**Expected about $2,260.00 per month; in a heavy month up to about $3,510.00** (if runs take as long as the slowest 10%).
 
 | Job | Every 15 min | Hourly | Every 6 h | Daily |
 |---|---|---|---|---|
@@ -155,20 +175,21 @@ as long as your slowest 10%: 144.0 + 192.0 + 15.0 = 351.0 hours).
 | crm_hourly | $4,800.00 | **$1,200.00** | $200.00 | $50.00 |
 | warehouse_daily | $9,600.00 | $2,400.00 | $400.00 | **$100.00** |
 
-Current cadence in bold.
+Current schedule in bold.
 
 **Ways to cut cost**
-- orders_sync every 30 min instead of 15: saves $480.00/month.
-- crm_hourly every 2 h: saves $600.00/month.
-- crm_hourly on small instead of medium, if it fits in memory: up to $600.00/month, less if runs
-  get longer.
+- orders_sync every 30 min instead of every 15 min: saves $480.00/month.
+- crm_hourly every 2 h instead of hourly: saves $600.00/month.
+- crm_hourly on small instead of medium (if it fits): saves $600.00/month.
+- Incremental loading for warehouse_daily: saving depends on the new run time — measure after the change.
 
 ## Principles
 
-- **Read before you ask.** The workspace has the real cadence, durations and sizes; ask only for
-  what it can't tell you.
+- **Read before you ask.** The workspace has the real schedules, run times and sizes; ask only
+  for what it can't tell you.
 - **Never guess a duration.**
+- **Never do arithmetic.** Copy facts in, paste the script's output out.
 - **Jobs, not pipelines.** Each scheduled job is its own row.
-- **Show a range, not a point.** Expected and heavy-month figures make the price predictable; neither is a hard bound.
-- **Show your sources.** Every number says whether it came from the workspace or the customer.
+- **Show a range, not a point.** Expected and heavy-month figures make the price predictable;
+  neither is a hard bound.
 - **Propose, never apply.** Cost levers are the user's decision.

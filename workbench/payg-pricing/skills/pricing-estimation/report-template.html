@@ -53,7 +53,8 @@
   .inc li::before { content: "✓"; position: absolute; left: 4px; color: var(--teal); font-weight: 700; }
   .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td:first-child { white-space: normal; overflow-wrap: anywhere; }
   th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tr.total td { font-weight: 700; color: var(--ink); border-bottom: 0; }
