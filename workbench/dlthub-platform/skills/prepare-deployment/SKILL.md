@@ -120,6 +120,8 @@ def ingest_data():
 
 **DO NOT** add triggers or schedules at this point -- just the bare minimum to register the job. Scheduling is added in the deployment step.
 
+**Refresh runs (recommended):** add `auto_refresh_pipeline_mode="drop_sources"` to the decorator, e.g. `@run.pipeline("my_pipeline", auto_refresh_pipeline_mode="drop_sources")`. Then a refresh run (`--refresh`) reloads every pipeline in the job. Without it, a refresh run does not reload the pipeline. Modes and the refresh cascade: the `deploy-workspace` skill, advanced-patterns.md, "Refresh runs and the refresh cascade".
+
 ### 5c. Create or update `__deployment__.py`
 
 1. **Import decorated functions** (`from my_pipeline import ingest_data`)
