@@ -65,7 +65,7 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
 | `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlthub`; installs what's missing; initializes the workspace; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlthub"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
+| `bootstrap` | Setup | `init-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor, Codex, Copilot and Gemini | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -147,7 +147,7 @@ uvx dlthub-start@latest
 
 ### Browse and install toolkits
 
-> **If `dlthub` is not installed**, do [New project](#new-project-recommended) or [Existing project](#existing-project) first. The `bootstrap` toolkit's `/init-workspace` also works. The toolkit commands below need `dlthub` in your environment.
+> **If `dlthub` is not installed**, do [New project](#new-project-recommended) or [Existing project](#existing-project) first. In a coding assistant, the `bootstrap` plugin's `/init-workspace` skill also works. The toolkit commands below need `dlthub` in your environment.
 
 
 ```bash
@@ -158,7 +158,6 @@ If you are not sure which toolkits you need, install all of them:
 
 ```bash
 uv run dlthub ai toolkit install quick-start
-uv run dlthub ai toolkit install bootstrap
 uv run dlthub ai toolkit install rest-api-pipeline
 uv run dlthub ai toolkit install sql-database-pipeline
 uv run dlthub ai toolkit install filesystem-pipeline
@@ -181,15 +180,22 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin does not link toolkits as well as `dlthub ai toolkit install`. To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub). The plugin path is for a project you set up from inside Claude Code with the `bootstrap` toolkit.
+> **Early Access:** To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub).
 
-The harness is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
+Install only the `bootstrap` plugin from the marketplace. Start a Claude Code session and run:
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-harness
+/plugin install bootstrap@dlthub-ai-harness --scope project
+```
+
+Then say what you want to build, for example *"load data from the Stripe API"*. The `init-workspace` skill installs `uv` and `dlt[hub]`, then installs `init` and the toolkit for your task with the `dlthub` CLI. Every toolkit then comes from one channel, so you do not get two copies.
+
+**Toolkit plugins (deprecated).** The marketplace still lists each toolkit as a plugin, so current users keep getting updates. Do not install them together with `bootstrap`: the `dlthub` CLI does not see plugins and installs a second copy.
+
+```
 /plugin install init@dlthub-ai-harness --scope project
 /plugin install quick-start@dlthub-ai-harness --scope project
-/plugin install bootstrap@dlthub-ai-harness --scope project
 /plugin install rest-api-pipeline@dlthub-ai-harness --scope project
 /plugin install sql-database-pipeline@dlthub-ai-harness --scope project
 /plugin install filesystem-pipeline@dlthub-ai-harness --scope project
@@ -200,7 +206,7 @@ The harness is also available as a Claude Code plugin via the marketplace. Start
 /plugin install performance@dlthub-ai-harness --scope project
 ```
 
-Plugins become active only in a new session. Restart Claude Code with `claude`.
+A new plugin becomes active after `/reload-plugins` or in a new session.
 
 **Moving from the `dlthub-ai-workbench` marketplace.** The marketplace was renamed to `dlthub-ai-harness`. If you added it under its old name, your plugins keep working: an update keeps the old local name. But the `@dlthub-ai-harness` commands in this README do not find the marketplace, and teammates who add it now get the new name. To match, remove the marketplace, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
 

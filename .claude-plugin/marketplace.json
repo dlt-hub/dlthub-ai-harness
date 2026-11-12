@@ -21,8 +21,8 @@
     {
       "name": "bootstrap",
       "source": "./workbench/bootstrap",
-      "description": "Set up the Python environment for a dlthub workspace. Requires dlt[hub].",
-      "version": "0.1.1",
+      "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
+      "version": "0.2.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "workspace", "setup"]
