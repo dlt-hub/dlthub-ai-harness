@@ -34,11 +34,10 @@ from dlt.common.typing import get_args
 
 AI_DIR = "workbench"
 
-# the intent index lives in the rule (Claude, Cursor), in AGENTS.md (Codex) and in the launcher
+# the intent index lives in the rule (Claude, Cursor) and in AGENTS.md (Codex)
 _INDEX_FILES = (
     "workbench/init/rules/dlthub-workspace.md",
     "workbench/init/AGENTS.md",
-    "workbench/bootstrap/skills/init-workspace/SKILL.md",
 )
 # `init` is the base and `bootstrap` is the launcher, so neither is in the index
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
