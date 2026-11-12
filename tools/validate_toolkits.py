@@ -42,6 +42,8 @@ _INDEX_FILES = (
 )
 # `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# only the Cortex Code agent installs this one, so no other agent is routed to it
+_UNINDEXED_TOOLKITS = {"snowflake-platform"}
 # an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 
@@ -846,7 +848,7 @@ def validate_index_drift(
     errors: list[str],
 ) -> None:
     """Check that each intent index lists exactly the workflow toolkits of the marketplace."""
-    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS
+    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS - _UNINDEXED_TOOLKITS
 
     for rel in _INDEX_FILES:
         path = root / rel

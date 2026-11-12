@@ -1,0 +1,12 @@
+{
+  "name": "snowflake-platform",
+  "description": "Run dlt pipelines on Snowflake with Cortex Code: set up the Snowflake destination, then let a Cortex agent write table and column comments and build a semantic view. Requires dlt[hub].",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": ["dlthub", "snowflake", "cortex", "cortex-code", "semantic-view"]
+}
