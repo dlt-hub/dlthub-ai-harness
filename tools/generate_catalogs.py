@@ -3,8 +3,9 @@
 
 The launcher (bootstrap) installs the other toolkits with the dlthub CLI
 (dlt-hub/dlthub-ai-harness-internal#128). Add --check to fail on stale files.
-Formats: https://cursor.com/docs/reference/plugins and
-https://developers.openai.com/codex/plugins/build; Copilot reads the Claude one.
+Copilot reads the Claude format. Cursor and Codex formats:
+https://cursor.com/docs/reference/plugins and
+https://developers.openai.com/codex/plugins/build
 """
 
 import argparse
@@ -54,7 +55,9 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
 def generate(root: Path) -> dict[str, str]:
     """Return the text of each generated file keyed by path relative to root."""
     market = json.loads((root / ".claude-plugin" / "marketplace.json").read_text())
-    entry = next(p for p in market["plugins"] if p["name"] == LAUNCHER)
+    entry = next((p for p in market["plugins"] if p["name"] == LAUNCHER), None)
+    if entry is None:
+        sys.exit(f"ERROR: no '{LAUNCHER}' entry in .claude-plugin/marketplace.json")
     # Copilot and Cursor read the Claude catalog format as is.
     claude_format = dumps({**market, "plugins": [entry]})
     out = {
