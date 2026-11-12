@@ -125,6 +125,15 @@
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
+    },
+    {
+      "name": "snowflake-platform",
+      "source": "./workbench/snowflake-platform",
+      "description": "Run dlt pipelines on Snowflake with Cortex Code: set up the Snowflake destination, then let a Cortex agent write table and column comments and build a semantic view. Requires dlt[hub].",
+      "version": "0.1.0",
+      "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+      "category": "data",
+      "tags": ["dlthub", "snowflake", "cortex", "cortex-code", "semantic-view"]
     }
   ]
 }
