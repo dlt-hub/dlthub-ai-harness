@@ -221,6 +221,23 @@ If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-a
 
 **Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `bootstrap` catalogs for Cursor, Codex, Copilot and Gemini from the Claude files. Gemini installs only a repo root, so `skills/` is a generated copy of `workbench/bootstrap/skills/`. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
 
+```
+SOURCE (you edit these)
+  .claude-plugin/marketplace.json
+  workbench/bootstrap/.claude-plugin/plugin.json
+  workbench/bootstrap/skills/
+            │
+            ▼   uv run python tools/generate_catalogs.py
+GENERATED (do not edit)
+  .github/plugin/marketplace.json                 → Copilot catalog
+  .cursor-plugin/marketplace.json                 → Cursor catalog
+  workbench/bootstrap/.cursor-plugin/plugin.json  → Cursor manifest
+  .agents/plugins/marketplace.json                → Codex catalog
+  workbench/bootstrap/.codex-plugin/plugin.json   → Codex manifest
+  gemini-extension.json                           → Gemini manifest (repo = extension)
+  skills/init-workspace/SKILL.md                  → Gemini copy of the skill
+```
+
 
 ## The `dlthub ai` CLI
 
