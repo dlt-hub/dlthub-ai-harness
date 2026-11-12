@@ -11,6 +11,7 @@ and geminicli.com/docs/extensions/reference.
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -18,6 +19,11 @@ ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = "bootstrap"
 # Gemini loads skills only from this folder at the extension (repo) root.
 GEMINI_SKILLS = "skills"
+_EDIT_HINT = (
+    "Do not edit it by hand. Edit .claude-plugin/marketplace.json, "
+    f"workbench/{LAUNCHER}/.claude-plugin/plugin.json or workbench/{LAUNCHER}/skills/, "
+    "then run: uv run python tools/generate_catalogs.py"
+)
 # Fields copied from the Claude plugin.json into every host manifest.
 _META = (
     "name",
@@ -104,6 +110,19 @@ def stale_copies(out_dir: Path, files: dict[str, str]) -> list[str]:
     return sorted(rel for p in found if (rel := str(p.relative_to(out_dir))) not in files)
 
 
+def report(changed: list[str], stale: list[str]) -> int:
+    """Print each file that differs from the source and return the exit code."""
+    if not changed and not stale:
+        print("Catalogs are up to date.")
+        return 0
+    # GitHub Actions shows these lines as errors on the files in the PR.
+    ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    for rel in changed + stale:
+        print(f"::error file={rel}::Generated file. {_EDIT_HINT}" if ci else f"  DIFF  {rel}")
+    print(f"These generated files differ from the source. {_EDIT_HINT}")
+    return 1
+
+
 def main() -> None:
     """Write the generated files, or with --check report the stale ones."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -119,15 +138,7 @@ def main() -> None:
     ]
     stale = stale_copies(args.out, files)
     if args.check:
-        for rel in changed:
-            print(f"  DIFF  {rel}")
-        for rel in stale:
-            print(f"  STALE {rel}")
-        if changed or stale:
-            print("Run: uv run python tools/generate_catalogs.py")
-        else:
-            print("Catalogs are up to date.")
-        sys.exit(1 if changed or stale else 0)
+        sys.exit(report(changed, stale))
     for rel in changed:
         path = args.out / rel
         path.parent.mkdir(parents=True, exist_ok=True)

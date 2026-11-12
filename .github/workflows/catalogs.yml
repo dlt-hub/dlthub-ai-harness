@@ -1,8 +1,10 @@
 name: Check catalogs
 
 on:
-  pull_request:
+  push:
     branches: [master, devel]
+  # Every PR, also a PR stacked on another branch.
+  pull_request:
 
 jobs:
   catalogs:
@@ -14,5 +16,5 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check host catalogs and manifests are generated from the Claude ones
+      - name: Generated host catalogs are not edited by hand
         run: python tools/generate_catalogs.py --check
