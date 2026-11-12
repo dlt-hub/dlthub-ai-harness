@@ -1,0 +1,26 @@
+{
+  "name": "dlthub-ai-harness",
+  "owner": {
+    "name": "dlthub",
+    "email": "dev@dlthub.com"
+  },
+  "metadata": {
+    "description": "Data engineering agent that creates, extends, and explores dlt data pipelines",
+    "version": "0.1.1"
+  },
+  "plugins": [
+    {
+      "name": "bootstrap",
+      "source": "./workbench/bootstrap",
+      "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
+      "version": "0.2.1",
+      "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+      "category": "data",
+      "tags": [
+        "dlthub",
+        "workspace",
+        "setup"
+      ]
+    }
+  ]
+}

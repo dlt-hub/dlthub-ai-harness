@@ -1,0 +1,5 @@
+{
+  "name": "dlthub-ai-harness",
+  "version": "0.2.1",
+  "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI."
+}
