@@ -1,5 +1,0 @@
-{
-  "name": "data-quality",
-  "version": "0.1.2",
-  "description": "Add column-level checks and load metrics to dlt pipelines, run them on every load and review failures with diagnosis. Requires dlt[hub]."
-}

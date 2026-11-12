@@ -16,7 +16,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "bootstrap",
-    "shortDescription": "dltHub toolkit",
+    "shortDescription": "dltHub toolkit launcher",
     "longDescription": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
     "developerName": "ScaleVector GmbH",
     "category": "Data",

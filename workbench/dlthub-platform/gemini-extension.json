@@ -1,5 +1,0 @@
-{
-  "name": "dlthub-platform",
-  "version": "0.3.1",
-  "description": "Prepare and deploy your dlthub workspace and pipelines to the dltHub platform, and debug failed deployments. Requires dlt[hub]."
-}
