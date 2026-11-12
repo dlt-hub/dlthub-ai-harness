@@ -1,11 +1,11 @@
 ---
 name: init-workspace
-description: "Set up dlthub in this project and install the toolkit for the user's task. Use when the dltHub workspace rules of the `init` toolkit are not in your context and not on disk (dlthub is not set up, or `dlthub ai init` has not run) and the user wants to build anything with dlt or dlthub: 'set up dlthub', 'init workspace', 'load data from Stripe', 'build a REST API pipeline', 'ingest from Postgres', 'load CSVs from S3', 'transform my data', 'deploy a pipeline', 'what can I build with dlthub'. Installs uv, dlt[hub] and the init toolkit, then the matching workflow toolkit, with the dlthub CLI. Works in Claude Code, Cursor, Codex, Copilot and Gemini. Do NOT use when the dltHub workspace rules are in your context, or on disk in `.claude/rules/init-dlthub-workspace.md` or `AGENTS.md`: dlthub is set up, use `dlthub-router` or the entry skill of the toolkit. Do NOT use when the user asks to be onboarded or to learn dlthub: point them to `uvx dlthub-start@latest`."
+description: "Set up dlthub in this project and install the toolkit for the user's task. Use when the dltHub workspace rules of the `init` toolkit are not in your context and not on disk (dlthub is not set up, or `dlthub ai init` has not run) and the user wants to build anything with dlt or dlthub: 'set up dlthub', 'init workspace', 'load data from Stripe', 'build a REST API pipeline', 'ingest from Postgres', 'load CSVs from S3', 'transform my data', 'deploy a pipeline', 'what can I build with dlthub'. Installs uv, dlt[hub] and the init toolkit with the dlthub CLI, then hands over to `dlthub-router` to install the matching workflow toolkit. Works in Claude Code, Cursor, Codex, Copilot and Gemini. Do NOT use when the dltHub workspace rules are in your context, or on disk in `.claude/rules/init-dlthub-workspace.md` or `AGENTS.md`: dlthub is set up, use `dlthub-router` or the entry skill of the toolkit. Do NOT use when the user asks to be onboarded or to learn dlthub: point them to `uvx dlthub-start@latest`."
 ---
 
 # Set up dlthub and install a toolkit
 
-Set up dlthub in the current project, then install the toolkit that the user needs.
+Set up dlthub in the current project. Then hand over to `dlthub-router` from the `init` toolkit, which installs the toolkit that the user needs.
 Use the `dlthub` CLI for every install, so that each toolkit has only one copy.
 
 Docs:
@@ -29,7 +29,7 @@ Run these checks in order. Do not install anything yet.
    - If one of these is true, `init` is installed. Stop this skill. Use `dlthub-router` or the entry skill of the matching toolkit.
    - The files are on disk but not in your context after `/reload-skills` and before the restart. They still count.
 2. Run `uv --version`. If it fails, `uv` is missing.
-3. Run `test -f pyproject.toml`. Note if `pyproject.toml` exists. Step 4 uses this result.
+3. Run `test -f pyproject.toml`. Note if `pyproject.toml` exists. Step 3 uses this result.
 4. Run `uv run --no-sync dlthub --version`. If it fails, `dlt[hub]` is missing.
    - `--no-sync` does not install packages and does not write `uv.lock`. It can create an empty `.venv/`. This is expected.
 5. If `dlt[hub]` is installed, run `uv run --no-sync dlthub ai status`. If it shows `dlthub ai init not yet run`, `init` is missing.
@@ -44,31 +44,7 @@ Run these checks in order. Do not install anything yet.
 | GitHub Copilot | `codex` | Copilot reads `.agents/skills/`, `AGENTS.md` and `.mcp.json`. |
 | Gemini CLI | `codex` | Also write `.gemini/settings.json` (Step 4). |
 
-## Step 2: Find the toolkit for the task
-
-Skip this step if the user only asked to set up dlthub.
-
-Match the user's task to one row of this index. Note the toolkit and its entry skill.
-
-```
-intent                                                  → toolkit                | install                                                            | entry skill
-ingest from REST / HTTP APIs — production-grade pipeline → rest-api-pipeline     | dlthub --non-interactive ai toolkit install rest-api-pipeline      | find-source
-ingest from SQL databases (Postgres, MySQL, Snowflake…) → sql-database-pipeline  | dlthub --non-interactive ai toolkit install sql-database-pipeline  | find-sql-database-source
-load files (CSV/Parquet/JSONL) from disk/S3/GCS/Azure/SFTP → filesystem-pipeline | dlthub --non-interactive ai toolkit install filesystem-pipeline    | create-filesystem-pipeline
-explore & profile loaded data, build charts & dashboards → data-exploration      | dlthub --non-interactive ai toolkit install data-exploration       | explore-data
-transform & model loaded data (dimensional / Kimball)   → transformations        | dlthub --non-interactive ai toolkit install transformations        | annotate-sources
-add data quality checks (column expectations, validation rules) → data-quality   | dlthub --non-interactive ai toolkit install data-quality           | setup-data-quality
-deploy / schedule pipelines on the dltHub platform      → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | setup-runtime
-a deployed job failed: read its logs and find the cause → dlthub-platform        | dlthub --non-interactive ai toolkit install dlthub-platform        | debug-deployment
-guided end-to-end tour, ingest to dashboard (uses the real toolkits) → quick-start | dlthub --non-interactive ai toolkit install quick-start          | quick-start
-test/try dlthub end-to-end — minimal pipeline + educational test deploy, NOT production → one-shot       | dlthub --non-interactive ai toolkit install one-shot               | deploy-run-sample-pipeline
-build and deploy a minimal custom REST API pipeline after uvx dlthub-init setup → dlthub-init-skills | dlthub --non-interactive ai toolkit install dlthub-init-skills     | deploy-minimal-ingestion-pipeline
-optimize / speed up a slow or memory-heavy pipeline — parallelism, workers, batching → performance | dlthub --non-interactive ai toolkit install performance            | optimize-performance
-```
-
-If no row matches, run `uv run dlthub --non-interactive ai toolkit list` after Step 4, and pick the best match.
-
-## Step 3: Show the plan
+## Step 2: Show the plan
 
 Show the user what is missing and what you will run:
 
@@ -78,7 +54,7 @@ dlthub setup:
   pyproject.toml:  exists / missing
   dlt[hub]:        ✓ installed (x.y.z) / ✗ missing
   init:            ✓ installed / ✗ missing
-  toolkit:         <toolkit> (for: <task>)
+  task:            <task>
 
 Actions:
   1. Install uv                                          (if missing)
@@ -86,12 +62,12 @@ Actions:
      + uv add "dlt[hub]" "fastmcp>=3.1.0"                (if pyproject.toml exists)
   3. dlthub ai init --agent <agent> --overwrite          (if init is missing)
   4. Write .gemini/settings.json                         (Gemini only)
-  5. dlthub ai toolkit install <toolkit> --agent <agent> (if a toolkit is needed)
+  5. dlthub-router picks and installs the toolkit        (if the user has a task)
 ```
 
 Ask the user to approve the plan. If the user refuses, stop.
 
-## Step 4: Install
+## Step 3: Install dlthub and init
 
 Run only the actions that the user approved.
 
@@ -132,7 +108,7 @@ Then run `uv run dlthub --version`.
 uv run dlthub --non-interactive ai init --agent <agent> --overwrite
 ```
 
-- It installs the rules, the skills and the MCP config of the `init` toolkit.
+- It installs the rules, the skills and the MCP config of the `init` toolkit. This includes `dlthub-router` and the toolkit index.
 - `--overwrite` replaces the old `init` skills that `dlthub-init` bundles.
 - Use `--overwrite` only when `dlthub ai init` did not run before in this project. Otherwise it replaces files that the user changed.
 
@@ -149,22 +125,34 @@ Gemini does not read `AGENTS.md` or `.mcp.json`. If `.gemini/settings.json` exis
 }
 ```
 
-**5. Install the toolkit:**
+**5. Check the status:**
 
-```
-uv run dlthub --non-interactive ai toolkit install <toolkit> --agent <agent>
-```
-
-- The CLI also installs the toolkits that this toolkit needs.
-- The output shows the entry skill of the toolkit, for example `Use find-source skill to start!`.
-
-Then run `uv run dlthub ai status`. If it shows a WARNING about the MCP server, fix it before you continue:
+Run `uv run dlthub ai status`. If it shows a WARNING about the MCP server, fix it before you continue:
 - If the WARNING says `pip install "fastmcp"`, run `uv add "fastmcp>=3.1.0"`. Then run `uv run dlthub ai status` again.
 - For a different WARNING, show it to the user and stop.
+
+## Step 4: Hand over to dlthub-router
+
+Skip this step if the user only asked to set up dlthub.
+
+`dlthub-router` from `init` picks the toolkit for the task and installs it. Do not pick the toolkit yourself.
+The router and the init rules are on disk now, but not in your context until the reload. Read them from the project folder:
+
+| Coding assistant | Init rules (with the toolkit index) | Router |
+|---|---|---|
+| Claude Code | `.claude/rules/init-dlthub-workspace.md` | `.claude/skills/dlthub-router/SKILL.md` |
+| Cursor | `.cursor/rules/init-dlthub-workspace.mdc` | `.cursor/skills/dlthub-router/SKILL.md` |
+| Codex, Copilot and Gemini | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
+
+Follow the router to pick and install the toolkit, with these changes:
+- Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit> --agent <agent>`.
+- Until the reload, use the `uv run dlthub ai` CLI instead of the `dlt-workspace-mcp` tools.
+- Stop before the router hands over to the entry skill. Do Step 5 first.
 
 ## Step 5: Tell the user how to load the new files
 
 The new skills, rules and MCP server load at session start. The agent cannot reload them itself.
+The router says that no restart is needed. That is true only when `init` was loaded at session start. Here it was not.
 Tell the user the step for their coding assistant:
 
 | Coding assistant | Tell the user |
@@ -177,11 +165,5 @@ Tell the user the step for their coding assistant:
 
 ## Step 6: Continue the task
 
-Do not wait for the reload. Continue the user's task in this session:
-
-1. Read the workflow rule and the entry skill of the new toolkit from the project folder of the coding assistant.
-   - Claude Code: `.claude/rules/` and `.claude/skills/<entry-skill>/SKILL.md`
-   - Cursor: `.cursor/rules/` and `.cursor/skills/<entry-skill>/SKILL.md`
-   - Codex, Copilot and Gemini: `AGENTS.md` and `.agents/skills/<entry-skill>/SKILL.md`
-2. Follow the entry skill with the context that you already have.
-3. Until the reload, use the `uv run dlthub ai` CLI instead of the `dlt-workspace-mcp` tools.
+Do not wait for the reload. Continue with the handover step of `dlthub-router`:
+read the workflow rule and the entry skill of the new toolkit from the project folder, and follow the entry skill with the context that you already have.
