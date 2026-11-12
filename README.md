@@ -219,6 +219,8 @@ A new plugin becomes active after `/reload-plugins` or in a new session.
 
 If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`. An old key does not load the plugin and shows no error.
 
+**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `bootstrap` catalogs for Cursor, Codex, Copilot and Gemini from the Claude files. Gemini installs only a repo root, so `skills/` is a generated copy of `workbench/bootstrap/skills/`. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
+
 
 ## The `dlthub ai` CLI
 
