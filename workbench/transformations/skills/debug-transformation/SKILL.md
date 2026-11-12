@@ -104,27 +104,27 @@ uv run dlthub local pipeline trace <pipeline_name>
 
 Read the error messages before taking any recovery action. Most failures are fixable without touching destination state.
 
-### Step 2: Clear stale packages
+### Step 2: Abort stale packages
 
-If a prior run failed mid-load and left pending packages that keep retrying old (broken) SQL:
+A run first loads the packages that a failed run left pending, and exits without extracting. A pending transformation package holds the old (broken) SQL, so running again after you fix the SQL retries the old SQL. Abort the pending packages:
 
 ```bash
-uv run dlthub local pipeline drop-pending-packages <pipeline_name>
+uv run dlthub local pipeline abort-packages <pipeline_name>
 ```
 
-<!-- TODO: remove when dlt issue is resolved — drop-pending-packages is a workaround for stuck packages; track https://github.com/dlt-hub/dlt/issues/3375 -->
+It aborts the oldest pending package and moves its unfinished jobs to `failed_jobs`. It deletes the other pending packages and restores local state and schemas to where they were before the package. `drop-pending-packages` is a deprecated alias of this command.
 
-Re-run after clearing. If the underlying SQL was fixed, this is often all that is needed.
+Re-run after aborting. If the underlying SQL was fixed, this is often all that is needed.
 
 ### Step 3: Reconcile local state
 
-If local pipeline state has drifted from the destination (e.g. after a partial load or schema change):
+If local pipeline state no longer matches the destination, for example after the pipeline ran on another machine or its working directory was lost:
 
 ```bash
 uv run dlthub local pipeline sync <pipeline_name>
 ```
 
-If no recoverable destination state exists, `sync` may not resolve partial retries — use `drop-pending-packages` first.
+`sync` deletes the local working directory (pending packages, unsynced state, schemas) and restores it from the destination. Do not use it to clear pending packages: abort does that (step 2).
 
 ### Step 4: Selective drop (last resort)
 
@@ -133,11 +133,12 @@ If no recoverable destination state exists, `sync` may not resolve partial retri
 Only if the steps above do not resolve the failure and incorrect schema or tables were already loaded to the destination:
 
 ```bash
-uv run dlthub local pipeline drop <pipeline_name> <resource>   # drop a specific resource
-uv run dlthub local pipeline drop <pipeline_name> --drop-all   # only with explicit user confirmation
+uv run dlthub --non-interactive -y local pipeline drop <pipeline_name> <resource>   # drop a specific resource
+uv run dlthub --non-interactive -y local pipeline drop <pipeline_name> --drop-all   # only with explicit user confirmation
 ```
 
 **Safety rules before dropping:**
+- `drop` asks `[y/N]`, and `-y` answers yes. Pass it only after the user confirmed the drop
 - Prefer dropping specific resources over `--drop-all`
 - Confirm pipeline name, destination, dataset, and which resources will be dropped before executing
 - `drop` removes destination tables and resets matching local state — this forces a full reload and may remove good data alongside bad
