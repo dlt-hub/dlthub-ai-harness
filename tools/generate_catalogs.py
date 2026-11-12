@@ -20,7 +20,7 @@ LAUNCHER = "bootstrap"
 # Gemini loads skills only from this folder at the extension (repo) root.
 GEMINI_SKILLS = "skills"
 _EDIT_HINT = (
-    "Do not edit it by hand. Edit .claude-plugin/marketplace.json, "
+    "Do not edit generated files by hand. Edit .claude-plugin/marketplace.json, "
     f"workbench/{LAUNCHER}/.claude-plugin/plugin.json or workbench/{LAUNCHER}/skills/, "
     "then run: uv run python tools/generate_catalogs.py"
 )
