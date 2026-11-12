@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Generate the Cursor, Copilot, Codex and Gemini catalogs for the launcher.
+"""Generate the launcher catalogs for Cursor, Copilot, Codex, Gemini and CoCo.
 
 The launcher (bootstrap) installs the other toolkits with the dlthub CLI
 (dlt-hub/dlthub-ai-harness-internal#128). Add --check to fail on stale files.
-Gemini installs only a repo root and reads skills/ there, so we copy the skills.
-Copilot reads the Claude format. Cursor, Codex and Gemini formats are at
-cursor.com/docs/reference/plugins, developers.openai.com/codex/plugins/build
-and geminicli.com/docs/extensions/reference.
+Gemini and CoCo install a repo root and read skills/ there, so we copy them.
+Format docs: cursor.com, developers.openai.com/codex, geminicli.com, snowflake.
 """
 
 import argparse
@@ -17,8 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = "bootstrap"
-# Gemini loads skills only from this folder at the extension (repo) root.
-GEMINI_SKILLS = "skills"
+# Gemini and CoCo load skills only from this folder at the repo root.
+ROOT_SKILLS = "skills"
 _EDIT_HINT = (
     "Do not edit generated files by hand. Edit .claude-plugin/marketplace.json, "
     f"workbench/{LAUNCHER}/.claude-plugin/plugin.json or workbench/{LAUNCHER}/skills/, "
@@ -97,15 +95,19 @@ def generate(root: Path) -> dict[str, str]:
         "version": plugin["version"],
         "description": plugin["description"],
     })
+    # CoCo reads .cortex-plugin first; root .claude-plugin is only a catalog.
+    meta = {k: plugin[k] for k in _META if k in plugin}
+    cortex = {**meta, "skills": f"./{ROOT_SKILLS}/"}
+    out[".cortex-plugin/plugin.json"] = dumps(cortex)
     skills_dir = root / rel / "skills"
     for path in sorted(p for p in skills_dir.rglob("*") if p.is_file()):
-        out[f"{GEMINI_SKILLS}/{path.relative_to(skills_dir)}"] = path.read_text()
+        out[f"{ROOT_SKILLS}/{path.relative_to(skills_dir)}"] = path.read_text()
     return out
 
 
 def stale_copies(out_dir: Path, files: dict[str, str]) -> list[str]:
-    """Return files in the Gemini skills folder that the generator no longer makes."""
-    skills_dir = out_dir / GEMINI_SKILLS
+    """Return files in the root skills folder that the generator no longer makes."""
+    skills_dir = out_dir / ROOT_SKILLS
     found = (p for p in skills_dir.rglob("*") if p.is_file())
     return sorted(rel for p in found if (rel := str(p.relative_to(out_dir))) not in files)
 

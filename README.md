@@ -65,7 +65,7 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
 | `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `bootstrap` | Setup | `init-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor, Codex, Copilot and Gemini | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
+| `bootstrap` | Setup | `init-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor, Codex, Copilot, Gemini and CoCo | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -219,7 +219,7 @@ A new plugin becomes active after `/reload-plugins` or in a new session.
 
 If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`. An old key does not load the plugin and shows no error.
 
-**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `bootstrap` catalogs for Cursor, Codex, Copilot and Gemini from the Claude files. Gemini installs only a repo root, so `skills/` is a generated copy of `workbench/bootstrap/skills/`. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
+**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `bootstrap` catalogs for Cursor, Codex, Copilot, Gemini and CoCo (Snowflake Cortex Code) from the Claude files. Gemini and CoCo install a repo root, so `skills/` is a generated copy of `workbench/bootstrap/skills/`. CoCo installs the launcher with `cortex plugin install dlt-hub/dlthub-ai-harness`. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
 
 ```
 SOURCE (you edit these)
@@ -235,7 +235,8 @@ GENERATED (do not edit)
   .agents/plugins/marketplace.json                → Codex catalog
   workbench/bootstrap/.codex-plugin/plugin.json   → Codex manifest
   gemini-extension.json                           → Gemini manifest (repo = extension)
-  skills/init-workspace/SKILL.md                  → Gemini copy of the skill
+  .cortex-plugin/plugin.json                      → CoCo manifest (repo = plugin)
+  skills/init-workspace/SKILL.md                  → Gemini and CoCo copy of the skill
 ```
 
 
