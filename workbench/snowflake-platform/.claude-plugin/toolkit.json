@@ -1,5 +1,5 @@
 {
-  "dependencies": ["init"],
+  "dependencies": ["init", "dlthub-platform"],
   "workflow_entry_skill": "setup-snowflake-destination",
   "listed": false
 }

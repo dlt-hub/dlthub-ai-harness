@@ -17,7 +17,7 @@ This toolkit is for the Cortex Code agent (CoCo) that works on a dlt project wit
 
 ### Outgoing (from snowflake-platform)
 
-- **dlthub-platform** → `setup-runtime` — from (`annotate-with-cortex`), when the annotation job must be deployed; the pipeline name, dataset and the job module are known, so skip discovery. Then `prepare-deployment` and `deploy-workspace`
+- **dlthub-platform** → `setup-runtime` — from (`annotate-with-cortex`), when the annotation job must be deployed. It is a dependency of this toolkit, so it is installed already. The pipeline name, dataset and the job module are known, so skip discovery. Then `prepare-deployment` and `deploy-workspace`
 - **transformations** → `create-ontology` — from (`annotate-with-cortex`), when the user has no business context yet and wants an ontology that the Cortex agent keeps word for word
 - **rest-api-pipeline** → `find-source` — when there is no pipeline that loads into Snowflake yet and the source is a REST API
 

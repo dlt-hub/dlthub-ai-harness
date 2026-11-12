@@ -110,9 +110,8 @@ always do. Never put the call inside the load function: if the user's pipeline s
 Deployment itself is the dlthub-platform toolkit's job, so hand over to it instead of improvising:
 `setup-runtime` checks the workspace and the login, `prepare-deployment` creates or extends
 `__deployment__.py` and the profile config, `deploy-workspace` runs `dlthub deploy --dry-run`,
-deploys and shows the logs. If those skills are not installed in the project, install the toolkit
-first with `uv run dlthub --non-interactive ai toolkit install dlthub-platform`, then start with
-`setup-runtime`. The deployment bundles everything `.gitignore` does not exclude; keep large
+deploys and shows the logs. The dlthub-platform toolkit is a dependency of this toolkit, so those
+skills are installed with it; start with `setup-runtime`. The deployment bundles everything `.gitignore` does not exclude; keep large
 files out or the upload fails with HTTP 413.
 
 Do not add schedules, instance sizes or timeouts to jobs on your own, and do not deploy unless the
