@@ -256,19 +256,23 @@ Common first-run errors:
 
 ### 11. Suggest backend after a successful test run
 
-Using the data volume noted in step 1, recommend the right backend:
+Pick a backend from the data you have measured, not from row count alone. The table below is a **starting hypothesis**: deviate when the data, the destination or a measurement says otherwise.
 
-| Scale | Rows / Size | Recommended backend | chunk_size |
-| --- | --- | --- | --- |
-| Small | < 100k rows / < 500 MB | `sqlalchemy` (default) | any |
-| Medium | 100k – 10M rows / 500 MB – 10 GB | `pyarrow` (needs `numpy`) | 5000 |
-| Large | > 10M rows / > 10 GB | `connectorx` (MySQL/Postgres) or `pyarrow` | 50000 |
+| Situation | Reasonable starting point | Why / what to check |
+| --- | --- | --- |
+| Small table, or you need dlt to normalize nested data into child tables | `sqlalchemy` (default) | Max type fidelity; slowest, but normalize is what unnests JSON/arrays. Arrow backends skip normalize, so nested values stay as JSON/struct columns. |
+| Medium/large flat table, destination accepts parquet | `pyarrow` (needs `numpy`), `chunk_size` ~ 5,000–50,000 | Arrow-native, reads in `chunk_size` batches so memory stays bounded. |
+| Fastest bulk reads wanted | `connectorx` (MySQL/Postgres/…), **only after sizing the table** | See the memory warning below. |
+
+**Size the table before choosing, and compare it with the memory of the machine that will run it.** Get row count and average row width (`SELECT count(*)`, a sampled `avg(length(...))`, or the DB's table stats). On the dltHub platform the default instance is small (a few GiB of RAM) and there is no automatic spill to disk. A job that runs out of RAM is killed (exit 137), stalls (exit 247), or hangs with pinned memory until `execute.timeout`. Fix this in the pipeline first (backend, chunking, incremental or partitioned backfill, buffers). Raising the instance size is a last resort, see `optimize-performance` in the performance toolkit.
 
 Backend options:
-- **`sqlalchemy`** — safest, works with every destination, but slowest.
-- **`pyarrow`** — 20–30x faster; preserves decimal/date types precisely. Also requires `numpy`.
-- **`pandas`** — convenient for DataFrame workflows, but loses precision on decimal and date columns.
-- **`connectorx`** — fastest overall (2x over pyarrow, Rust-based); uses its own connection string format, bypasses SQLAlchemy.
+- **`sqlalchemy`**: safest, works with every destination, but slowest, and it is the only one that benefits from dlt normalization of nested data.
+- **`pyarrow`**: typically one to two orders of magnitude faster than `sqlalchemy` on flat tables in local benchmarks; preserves decimal/date types; reads in batches of `chunk_size`. Also requires `numpy`.
+- **`pandas`**: convenient for DataFrame workflows, but loses precision on decimal and date columns.
+- **`connectorx`**: often the fastest reader (Rust, own connection string format, bypasses SQLAlchemy). **By default it materializes the entire query result in memory, and `chunk_size` is ignored**, so peak memory grows with the table, and dlt may copy it again for type fixes. Do not use it by default on tables that are a sizable fraction of available RAM. Options: restrict the query (`included_columns`, incremental filters, date-range slices), or try streaming via `backend_kwargs={"return_type": "arrow_stream", "batch_size": N}`. **Verify the peak memory of the streaming mode on your source before relying on it** (see `optimize-sql-performance`). SQLite sources need an absolute path.
+
+Loading into **MSSQL / MySQL / Postgres** is a separate bottleneck from the backend: install an ADBC driver to load parquet instead of `INSERT`s. See `optimize-sql-performance`.
 
 Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration#configuring-the-backend
 

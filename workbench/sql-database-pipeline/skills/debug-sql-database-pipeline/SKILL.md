@@ -89,8 +89,8 @@ The default `sqlalchemy` backend fetches rows one at a time through Python objec
 | Backend | Speed | Notes |
 | --- | --- | --- |
 | `sqlalchemy` | baseline | Default; safe but slow |
-| `pyarrow` | ~20–30x faster | Best general upgrade; also needs `numpy` (`uv add numpy`) |
-| `connectorx` | ~2x faster than pyarrow | Rust-based; great for large MySQL/PostgreSQL tables; uses its own connection string format |
+| `pyarrow` | often 10–30x faster on flat tables (local benchmark) | Good general upgrade; reads in `chunk_size` batches; also needs `numpy` (`uv add numpy`) |
+| `connectorx` | often faster than `pyarrow` on reads | Rust-based; own connection string format. Materializes the **whole result** in memory by default and ignores `chunk_size`, so size the table first (see `optimize-sql-performance`) |
 
 Apply by passing `backend=` to `sql_table` or `sql_database`:
 ```python
