@@ -66,22 +66,27 @@ def worked_example() -> dict:
 @pytest.mark.parametrize(
     "schedule, runs",
     [
-        (every(5), 8640),
-        (every(15), 2880),
-        (every(30), 1440),
-        (every(1, "hours"), 720),
-        (every(6, "hours"), 120),
-        (every(1, "days"), 30),
-        ({"cron": "*/15 * * * *"}, 2880),
-        ({"cron": "0 * * * *"}, 720),
-        ({"cron": "0 2 * * *"}, 30),
-        ({"cron": "0 9 * * 1-5"}, 22),  # weekdays only: not 30
-        ({"cron": "0 9 * * 1"}, 5),  # weekly on Mondays
-        ({"cron": "30 8,17 * * *"}, 60),
+        # an average month is 365 / 12 days
+        (every(5), 8760),
+        (every(15), 2920),
+        (every(30), 1460),
+        (every(1, "hours"), 730),
+        (every(6, "hours"), 365 / 3),
+        (every(1, "days"), 365 / 12),
+        ({"cron": "*/15 * * * *"}, 2920),
+        ({"cron": "0 * * * *"}, 730),
+        ({"cron": "0 2 * * *"}, 365 / 12),  # same as every 1 day
+        ({"cron": "0 9 * * 1-5"}, 261 / 12),  # weekdays only: not 30
+        ({"cron": "0 9 * * MON-FRI"}, 261 / 12),  # names work too
+        ({"cron": "0 9 * * 1"}, 52 / 12),  # weekly on Mondays
+        ({"cron": "30 8,17 * * *"}, 2 * 365 / 12),
+        ({"cron": "0 2 4 * *"}, 1),  # monthly on the 4th
+        ({"cron": "0 0 1 7 *"}, 1 / 12),  # yearly, in July
+        ({"cron": "0 2 L * *"}, 1),  # last day of the month
     ],
 )
-def test_runs_per_month(schedule: dict, runs: int) -> None:
-    assert pe.runs_per_month(schedule) == runs
+def test_runs_per_month(schedule: dict, runs: float) -> None:
+    assert pe.runs_per_month(schedule) == pytest.approx(runs)
 
 
 @pytest.mark.parametrize(
@@ -90,7 +95,10 @@ def test_runs_per_month(schedule: dict, runs: int) -> None:
         ("0 */6 * * *", "4× a day"),
         ("0 2 * * *", "daily"),
         ("0 * * * *", "hourly"),
-        ("0 9 * * 1-5", "22× a month"),
+        ("0 9 * * 1-5", "21.8× a month"),
+        ("0 9 * * 1", "4.3× a month"),
+        ("0 2 4 * *", "1× a month"),
+        ("0 0 1 7 *", "1× a year"),
     ],
 )
 def test_cron_labels_are_readable(cron: str, label: str) -> None:
@@ -136,10 +144,10 @@ def test_job_without_runs_or_assumption_fails() -> None:
 def test_worked_example_totals() -> None:
     est = pe.estimate(worked_example())
 
-    assert [round(j["hours_expected"], 1) for j in est["jobs"]] == [96.0, 120.0, 10.0]
-    assert round(est["usd_expected"], 2) == 2260.00
-    assert round(est["usd_high"], 2) == 3510.00
-    assert est["runs_per_month"] == 3630
+    assert [round(j["hours_expected"], 1) for j in est["jobs"]] == [97.3, 121.7, 10.1]
+    assert round(est["usd_expected"], 2) == 2291.39
+    assert round(est["usd_high"], 2) == 3558.75
+    assert est["runs_per_month"] == pytest.approx(2920 + 730 + 365 / 12)
 
 
 def test_failed_runs_are_billed_once() -> None:
@@ -158,8 +166,8 @@ def test_failed_runs_are_billed_once() -> None:
     }
     est = pe.estimate(data)
 
-    # 30 runs: 27 ok x 6 min + 3 failed x 3 min = 171 min
-    assert round(est["hours_expected"], 4) == round(171 / 60, 4)
+    # 365 / 12 runs, 10% failed: 0.9 x 6 min + 0.1 x 3 min = 5.7 min per run
+    assert est["hours_expected"] == pytest.approx(365 / 12 * 5.7 / 60)
 
 
 def test_always_on_job() -> None:
@@ -176,7 +184,7 @@ def test_always_on_job() -> None:
     }
     est = pe.estimate(data)
 
-    assert est["hours_expected"] == est["hours_high"] == 480
+    assert est["hours_expected"] == est["hours_high"] == pytest.approx(8 * 2 * 365 / 12)
     assert est["usd_per_run"] is None
 
 
@@ -190,26 +198,26 @@ def test_cost_per_run_leaves_always_on_jobs_out() -> None:
     })
     est = pe.estimate(data)
 
-    assert round(est["usd_expected"], 2) == 5260.00
-    assert round(est["usd_per_run"], 4) == round(2260 / 3630, 4)
+    assert round(est["usd_expected"], 2) == 5333.06
+    assert est["usd_per_run"] == pytest.approx(2291.39 / 3680.42, abs=1e-4)
 
 
 def test_ladder() -> None:
     est = pe.estimate(worked_example())
     ladder = {row["job"]: row["usd"] for row in est["ladder"]}
 
-    assert [round(v) for v in ladder["orders_sync"]] == [960, 240, 40, 10]
-    assert [round(v) for v in ladder["crm_hourly"]] == [4800, 1200, 200, 50]
-    assert [round(v) for v in ladder["warehouse_daily"]] == [9600, 2400, 400, 100]
+    assert [round(v, 2) for v in ladder["orders_sync"]] == [973.33, 243.33, 40.56, 10.14]
+    assert [round(v, 2) for v in ladder["crm_hourly"]] == [4866.67, 1216.67, 202.78, 50.69]
+    assert [round(v, 2) for v in ladder["warehouse_daily"]] == [9733.33, 2433.33, 405.56, 101.39]
 
 
 def test_levers_are_priced_by_the_script() -> None:
     est = pe.estimate(worked_example())
     savings = [(s["label"], s["usd_per_month"]) for s in est["savings"]]
 
-    assert savings[0] == ("orders_sync every 30 min instead of every 15 min", 480)
-    assert savings[1] == ("crm_hourly every 2 h instead of hourly", 600)
-    assert savings[2] == ("crm_hourly on small instead of medium (if it fits)", 600)
+    assert savings[0] == ("orders_sync every 30 min instead of every 15 min", 486.67)
+    assert savings[1] == ("crm_hourly every 2 h instead of hourly", 608.33)
+    assert savings[2] == ("crm_hourly on small instead of medium (if it fits)", 608.33)
     assert savings[3] == ("Incremental loading for warehouse_daily", None)
 
 
@@ -243,7 +251,7 @@ def test_engineering_comparison() -> None:
     est = pe.estimate(data)
 
     assert est["engineering"]["usd_per_month"] == 4000
-    assert round(est["engineering"]["difference_usd"], 2) == 1740
+    assert round(est["engineering"]["difference_usd"], 2) == 1708.61
 
 
 def test_assumptions_are_generated() -> None:
@@ -259,7 +267,7 @@ def test_assumptions_are_generated() -> None:
     est = pe.estimate(data)
     text = " ".join(est["assumptions"])
 
-    assert "30 days per month" in text
+    assert "30.4 days per month (365 / 12)" in text
     assert "orders_sync: 3 recent runs" in text and "fewer than 5" in text
     assert "crm_hourly: run time is the customer's estimate" in text
     assert "small 1×" in text and "medium 2×" in text
@@ -271,17 +279,17 @@ def test_assumptions_are_generated() -> None:
 def test_summary_markdown() -> None:
     md = pe.summary(pe.estimate(worked_example()))
 
-    assert "| orders_sync | every 15 min | 2,880 |" in md
-    assert "Expected about $2,260.00 per month" in md
-    assert "up to about $3,510.00" in md
+    assert "| orders_sync | every 15 min | 2,920 |" in md
+    assert "Expected about $2,291.39 per month" in md
+    assert "up to about $3,558.75" in md
     # the what-if table names today's cost in its own column instead of bold formatting
     assert "| Job | Now | Every 15 min | Hourly | Every 6 h | Daily |" in md
-    assert "| orders_sync | $960.00 (every 15 min) | $960.00 | $240.00 |" in md
-    assert "| warehouse_daily | $100.00 (daily) |" in md
-    assert "in bold" not in md and "**$960.00**" not in md
-    assert "saves $480.00/month" in md
+    assert "| orders_sync | $973.33 (every 15 min) | $973.33 | $243.33 |" in md
+    assert "| warehouse_daily | $101.39 (daily) |" in md
+    assert "in bold" not in md and "**$973.33**" not in md
+    assert "saves $486.67/month" in md
     assert (
-        "crm_hourly on small instead of medium (if it fits): saves up to $600.00/month if the"
+        "crm_hourly on small instead of medium (if it fits): saves up to $608.33/month if the"
         " run time doesn't change; no saving if it runs 2× slower or more." in md
     )
     assert "measure after the change" in md
@@ -298,7 +306,7 @@ def test_report_is_self_contained_and_escaped() -> None:
     assert "<script" not in page.lower()
     assert "http://" not in page and "https://" not in page
     assert "<b>orders</b>" not in page and "&lt;b&gt;orders&lt;/b&gt;" in page
-    assert "$2,260" in page and "Engineering time" in page
+    assert "$2,291" in page and "Engineering time" in page
     assert "$usd" not in page and "$job_rows" not in page
 
 
@@ -311,7 +319,7 @@ def test_report_without_engineering_leaves_the_section_out() -> None:
 def test_report_marks_size_saving_as_upper_bound() -> None:
     page = pe.report(pe.estimate(worked_example()))
 
-    assert "up to −$600 / month" in page
+    assert "up to −$608 / month" in page
     assert "if the run time doesn&#x27;t change; no saving if it runs 2× slower or more" in page
 
 
@@ -321,7 +329,7 @@ def test_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     src.write_text(json.dumps(worked_example()), encoding="utf-8")
 
     pe.main(["summary", str(src)])
-    assert "Expected about $2,260.00" in capsys.readouterr().out
+    assert "Expected about $2,291.39" in capsys.readouterr().out
 
     pe.main(["report", str(src), "--out", str(out)])
     assert out.read_text(encoding="utf-8").startswith("<!doctype html>")

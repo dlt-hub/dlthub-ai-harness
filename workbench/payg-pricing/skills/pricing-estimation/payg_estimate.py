@@ -36,7 +36,7 @@ Input (JSON):
       "notes": ["Durations from the last 20 runs per job."]             # optional, no numbers
     }
 
-Standard library only.
+Standard library plus croniter, which ships with dlt, so every dlt workspace has it.
 """
 
 import argparse
@@ -44,15 +44,16 @@ import html
 import json
 import math
 import sys
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from string import Template
 
+from croniter import croniter
+
 TEMPLATE = Path(__file__).with_name("report-template.html")
-DAYS_PER_MONTH = 30
+DAYS_PER_MONTH = 365 / 12  # the average month, so monthly and yearly crons count right
 MINUTES_PER_MONTH = DAYS_PER_MONTH * 24 * 60
-# a fixed 30-day window starting on a Monday, so calendar crons count the same every time
-CRON_WINDOW_START = datetime(2026, 1, 5)
+CRON_YEAR = 2026  # any non-leap year: every date and month once
 UNIT_MINUTES = {"minutes": 1, "hours": 60, "days": 1440}
 LADDER = [
     ("Every 15 min", {"every": 15, "unit": "minutes"}),
@@ -66,42 +67,20 @@ FEW_RUNS = 5
 # --- schedules -------------------------------------------------------------------------------
 
 
-def _cron_field(field: str, low: int, high: int) -> set[int]:
-    values: set[int] = set()
-    for part in field.split(","):
-        step = 1
-        if "/" in part:
-            part, step_s = part.split("/")
-            step = int(step_s)
-        if part == "*":
-            start, end = low, high
-        elif "-" in part:
-            start, end = (int(x) for x in part.split("-"))
-        else:
-            start = end = int(part)
-        values.update(range(start, end + 1, step))
-    return values
-
-
 def _cron_days(expr: str) -> list[int]:
-    """Runs on each of the 30 days in the window."""
-    fields = expr.split()
-    if len(fields) != 5:
-        raise ValueError(f"schedule cron {expr!r} must have 5 fields")
-    minute, hour, dom, month, dow = fields
-    minutes, hours = _cron_field(minute, 0, 59), _cron_field(hour, 0, 23)
-    doms, months = _cron_field(dom, 1, 31), _cron_field(month, 1, 12)
-    dows = {d % 7 for d in _cron_field(dow, 0, 7)}  # 0 and 7 are both Sunday
-    dom_any, dow_any = dom == "*", dow == "*"
-    per_day = []
-    for day in range(DAYS_PER_MONTH):
-        date = CRON_WINDOW_START + timedelta(days=day)
-        cron_dow = (date.weekday() + 1) % 7  # cron: Sunday = 0
-        dom_ok, dow_ok = date.day in doms, cron_dow in dows
-        # standard cron: when both day fields are restricted, either one matching is enough
-        day_ok = (dom_ok or dow_ok) if not (dom_any or dow_any) else (dom_ok and dow_ok)
-        per_day.append(len(minutes) * len(hours) if date.month in months and day_ok else 0)
-    return per_day
+    """Runs on each day of a full year, so every month and every day of the month counts."""
+    if len(expr.split()) != 5 or not croniter.is_valid(expr):
+        raise ValueError(f"schedule cron {expr!r} is not a valid 5-field cron")
+    minute, hour = croniter.expand(expr)[0][:2]
+    per_day_max = (60 if minute == ["*"] else len(minute)) * (24 if hour == ["*"] else len(hour))
+    first = datetime(
+        CRON_YEAR, 1, 1, 0 if hour == ["*"] else hour[0], 0 if minute == ["*"] else minute[0]
+    )
+    days = (date(CRON_YEAR + 1, 1, 1) - date(CRON_YEAR, 1, 1)).days
+    # whether the job runs on a day only depends on the day fields, so check its first time
+    return [
+        per_day_max if croniter.match(expr, first + timedelta(days=d)) else 0 for d in range(days)
+    ]
 
 
 def _cron_label(expr: str) -> str:
@@ -110,19 +89,22 @@ def _cron_label(expr: str) -> str:
     if len(days) == 1:  # the same number of runs every day
         k = per_day[0]
         return "daily" if k == 1 else "hourly" if k == 24 else f"{k}× a day"
-    return f"{sum(per_day)}× a month"
+    per_year = sum(per_day)
+    if per_year < 12:
+        return f"{per_year}× a year"
+    return f"{_num(per_year / 12)}× a month"
 
 
-def runs_per_month(schedule: dict) -> int:
-    """Runs in 30 days for a schedule; always-on jobs have none."""
+def runs_per_month(schedule: dict) -> float:
+    """Runs in an average month for a schedule; always-on jobs have none."""
     if "always_on_hours_per_day" in schedule:
         return 0
     if "cron" in schedule:
-        return sum(_cron_days(schedule["cron"]))
+        return sum(_cron_days(schedule["cron"])) / 12
     unit = schedule.get("unit")
     if "every" not in schedule or unit not in UNIT_MINUTES:
         raise ValueError(f"schedule {schedule!r} needs 'every' and a unit in {list(UNIT_MINUTES)}")
-    return math.ceil(MINUTES_PER_MONTH / (float(schedule["every"]) * UNIT_MINUTES[unit]))
+    return MINUTES_PER_MONTH / (float(schedule["every"]) * UNIT_MINUTES[unit])
 
 
 def schedule_label(schedule: dict) -> str:
@@ -305,7 +287,7 @@ def _assumptions(jobs: list[dict], rate: float, notes: list[str]) -> list[str]:
     for j in jobs:
         sizes.setdefault(j.get("size", "?"), j["multiplier"])
     lines = [
-        f"{_usd(rate)} per runtime hour; {DAYS_PER_MONTH} days per month.",
+        f"{_usd(rate)} per runtime hour; {_num(DAYS_PER_MONTH)} days per month (365 / 12).",
         "Instance multipliers (from the dltHub docs): "
         + ", ".join(f"{s} {_num(m)}×" for s, m in sizes.items())
         + ".",
@@ -359,14 +341,14 @@ def summary(est: dict) -> str:
         "|---|---|---|---|---|---|---|",
     ]
     for j in est["jobs"]:
-        runs = "—" if j["stats"] is None else f"{j['runs_month']:,}"
+        runs = "—" if j["stats"] is None else _num(j["runs_month"])
         out.append(
             f"| {j['name']} | {j['label']} | {runs} | {_run_time(j)} | "
             f"{j.get('size', '?')} ({_num(j['multiplier'])}×) | "
             f"{j['hours_expected']:,.1f} | {_usd(j['usd_expected'], True)} |"
         )
     out.append(
-        f"| **Total** | | {est['runs_per_month']:,} | | | "
+        f"| **Total** | | {_num(est['runs_per_month'])} | | | "
         f"**{est['hours_expected']:,.1f}** | **{_usd(est['usd_expected'], True)}** |"
     )
     out += [
@@ -462,7 +444,7 @@ def report(est: dict) -> str:
             elif s["break_even_slowdown"]:
                 label = (
                     f'{_e(s["label"])}<br><span class="tag">'
-                    f'{_e(_upper_bound_note(s["break_even_slowdown"]))}</span>'
+                    f"{_e(_upper_bound_note(s['break_even_slowdown']))}</span>"
                 )
                 bars.append(_bar(label, f"up to −{_usd(usd)} / month", 100 * usd / total))
             else:

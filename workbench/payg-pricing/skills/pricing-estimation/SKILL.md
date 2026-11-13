@@ -102,11 +102,12 @@ Then add, in a sentence or two:
 
 ### How the script calculates (for explaining, not for doing)
 
-- Runs per month: from the schedule over 30 days; cron is counted day by day, so weekday-only and
-  weekly crons are not overcounted.
+- A month is 365 / 12 ≈ 30.4 days. Runs per month: from the schedule; cron is counted over a full
+  year and divided by 12 (with croniter), so weekday-only, weekly, monthly and yearly crons count
+  right.
 - Average run: mean of successful runs. Slow run: 90th percentile, or the longest run when there
   are fewer than 5. Failed runs are billed once, for the time they ran.
-- Hours = runs × run time × instance multiplier; always-on jobs: hours per day × 30 × multiplier.
+- Hours = runs × run time × instance multiplier; always-on jobs: hours per day × 30.4 × multiplier.
 - Cost = hours × the rate. Heavy month = every run as slow as the slow run.
 
 ## Step 5: Shareable report (offer, don't push)
@@ -154,7 +155,7 @@ the docs.
 `payg_estimate.py summary` prints:
 
 **Assumptions**
-- $10 per runtime hour; 30 days per month.
+- $10 per runtime hour; 30.4 days per month (365 / 12).
 - Instance multipliers (from the dltHub docs): small 1×, medium 2×.
 - orders_sync: run time is the customer's estimate.
 - crm_hourly: run time is the customer's estimate.
@@ -162,25 +163,25 @@ the docs.
 
 | Job | Schedule | Runs/month | Average / slow run | Size | Hours/month | $/month |
 |---|---|---|---|---|---|---|
-| orders_sync | every 15 min | 2,880 | 2 / 3 min | small (1×) | 96.0 | $960.00 |
-| crm_hourly | hourly | 720 | 5 / 8 min | medium (2×) | 120.0 | $1,200.00 |
-| warehouse_daily | daily | 30 | 20 / 30 min | small (1×) | 10.0 | $100.00 |
-| **Total** | | 3,630 | | | **226.0** | **$2,260.00** |
+| orders_sync | every 15 min | 2,920 | 2 / 3 min | small (1×) | 97.3 | $973.33 |
+| crm_hourly | hourly | 730 | 5 / 8 min | medium (2×) | 121.7 | $1,216.67 |
+| warehouse_daily | daily | 30.4 | 20 / 30 min | small (1×) | 10.1 | $101.39 |
+| **Total** | | 3,680.4 | | | **229.1** | **$2,291.39** |
 
-**Expected about $2,260.00 per month; in a heavy month up to about $3,510.00** (if runs take as long as the slowest 10%).
+**Expected about $2,291.39 per month; in a heavy month up to about $3,558.75** (if runs take as long as the slowest 10%).
 
 **What each job would cost at another schedule**
 
 | Job | Now | Every 15 min | Hourly | Every 6 h | Daily |
 |---|---|---|---|---|---|
-| orders_sync | $960.00 (every 15 min) | $960.00 | $240.00 | $40.00 | $10.00 |
-| crm_hourly | $1,200.00 (hourly) | $4,800.00 | $1,200.00 | $200.00 | $50.00 |
-| warehouse_daily | $100.00 (daily) | $9,600.00 | $2,400.00 | $400.00 | $100.00 |
+| orders_sync | $973.33 (every 15 min) | $973.33 | $243.33 | $40.56 | $10.14 |
+| crm_hourly | $1,216.67 (hourly) | $4,866.67 | $1,216.67 | $202.78 | $50.69 |
+| warehouse_daily | $101.39 (daily) | $9,733.33 | $2,433.33 | $405.56 | $101.39 |
 
 **Ways to cut cost**
-- orders_sync every 30 min instead of every 15 min: saves $480.00/month.
-- crm_hourly every 2 h instead of hourly: saves $600.00/month.
-- crm_hourly on small instead of medium (if it fits): saves up to $600.00/month if the run time doesn't change; no saving if it runs 2× slower or more.
+- orders_sync every 30 min instead of every 15 min: saves $486.67/month.
+- crm_hourly every 2 h instead of hourly: saves $608.33/month.
+- crm_hourly on small instead of medium (if it fits): saves up to $608.33/month if the run time doesn't change; no saving if it runs 2× slower or more.
 - Incremental loading for warehouse_daily: saving depends on the new run time — measure after the change.
 
 ## Principles
