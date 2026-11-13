@@ -52,6 +52,7 @@ job, **copy, don't compute**:
 | `schedule` | The trigger as written: `{"every": 15, "unit": "minutes"}` (or `"hours"` / `"days"`), or `{"cron": "0 9 * * 1-5"}`. Don't convert it to runs per day |
 | `runs` | Each recent run's duration in minutes and its status (`"ok"` / `"failed"`), as listed — up to the last 20. Don't average them. A job whose runs all failed is fine: it is billed for the failed time |
 | `size`, `multiplier` | Size from the manifest (none set = smallest tier); multiplier from the instance-size docs |
+| `loading` | `"incremental"` or `"full"`, from the customer's answer (Step 3). Leave it out when they don't know: the script treats the job as incremental and says so |
 
 - **Interactive / served jobs** (`@run.interactive`, `dlthub serve` — MCP servers, dashboards,
   notebooks, APIs) have no runs. Ask how many hours per day they stay up and use
@@ -80,6 +81,11 @@ job, **copy, don't compute**:
   as `rate_per_hour`, and today's `date`.
 
 ## Step 3: Ask only for the gaps
+
+Ask once, for the jobs with a time schedule: *"Does each of these jobs load only new data since
+the last run (incremental), or reload everything on every run?"* Set `loading` per job from the
+answer. Incremental runs get shorter when they run more often; full loads don't. If the customer
+doesn't know, leave `loading` out.
 
 Ask the customer when a job has **no successful runs**, is **manual-only**, or **nothing is
 deployed yet**: how long a run takes (typical and slow) and how often it should run in
@@ -137,6 +143,12 @@ Then add, in a sentence or two:
   table they move with their upstream jobs.
 - Average run: mean of successful runs. Slow run: 90th percentile, or the longest run when there
   are fewer than 5. Failed runs are billed once, for the time they ran.
+- Another schedule (what-if table and schedule levers): an incremental, time-triggered job's run
+  is about 20% start-up time and 80% loading new data. The new data per run grows with the time
+  between runs, so twice as often each run is 40% shorter (hourly at 20 min → every 30 min at
+  12 min), and half as often 80% longer. A schedule change only saves or adds the start-up part,
+  and running more often can cost more. Full-load and event-triggered jobs keep their measured
+  run time. A job with no `loading` answer counts as incremental, and the assumptions say so.
 - Hours = runs × run time × instance multiplier; always-on jobs: hours per day × 30.4 × multiplier.
 - Cost = hours × the rate, in the workspace's currency. Heavy month = every run as slow as the slow run.
 
@@ -159,8 +171,8 @@ per customer.
 ## Worked example
 
 A US workspace (an EU one gives the same numbers in €) with three jobs whose run times the
-customer gave (no runs yet). Multipliers are illustrative — read
-the docs.
+customer gave (no runs yet); the customer said `warehouse_daily` reloads everything on each run. Multipliers are
+illustrative — read the docs.
 
 ```json
 {
@@ -168,12 +180,13 @@ the docs.
   "rate_per_hour": 10,
   "date": "2026-11-11",
   "jobs": [
-    {"name": "orders_sync", "schedule": {"every": 15, "unit": "minutes"},
+    {"name": "orders_sync", "schedule": {"every": 15, "unit": "minutes"}, "loading": "incremental",
      "size": "small", "multiplier": 1, "assumed": {"avg_minutes": 2, "slow_minutes": 3}},
-    {"name": "crm_hourly", "schedule": {"every": 1, "unit": "hours"},
+    {"name": "crm_hourly", "schedule": {"every": 1, "unit": "hours"}, "loading": "incremental",
      "size": "medium", "multiplier": 2, "assumed": {"avg_minutes": 5, "slow_minutes": 8}},
     {"name": "warehouse_daily", "schedule": {"cron": "0 2 * * *"},
-     "size": "small", "multiplier": 1, "assumed": {"avg_minutes": 20, "slow_minutes": 30}}
+     "size": "small", "multiplier": 1, "loading": "full",
+     "assumed": {"avg_minutes": 20, "slow_minutes": 30}}
   ],
   "levers": [
     {"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}},
@@ -189,6 +202,8 @@ the docs.
 **Assumptions**
 - $10 per runtime hour; 30.4 days per month (365 / 12).
 - Instance multipliers (from the dltHub docs): small 1×, medium 2×.
+- Loading: incremental — orders_sync, crm_hourly; full — warehouse_daily.
+- On another schedule, an incremental run is about 20% start-up time and 80% loading new data. Running twice as often halves the new data per run, so each run is about 40% shorter. Full-load and event-triggered jobs keep their run time.
 - orders_sync: run time is the customer's estimate.
 - crm_hourly: run time is the customer's estimate.
 - warehouse_daily: run time is the customer's estimate.
@@ -206,13 +221,13 @@ the docs.
 
 | Job | Now | Every 15 min | Hourly | Every 6 h | Daily |
 |---|---|---|---|---|---|
-| orders_sync | $973.33 (every 15 min) | $973.33 | $243.33 | $40.56 | $10.14 |
-| crm_hourly | $1,216.67 (hourly) | $4,866.67 | $1,216.67 | $202.78 | $50.69 |
+| orders_sync | $973.33 (every 15 min) | $973.33 | $827.33 | $786.78 | $780.69 |
+| crm_hourly | $1,216.67 (hourly) | $1,946.67 | $1,216.67 | $1,013.89 | $983.47 |
 | warehouse_daily | $101.39 (daily) | $9,733.33 | $2,433.33 | $405.56 | $101.39 |
 
 **Ways to cut cost**
-- orders_sync every 30 min instead of every 15 min: saves $486.67/month.
-- crm_hourly every 2 h instead of hourly: saves $608.33/month.
+- orders_sync every 30 min instead of every 15 min: saves $97.33/month.
+- crm_hourly every 2 h instead of hourly: saves $121.67/month.
 - crm_hourly on small instead of medium (if it fits): saves up to $608.33/month if the run time doesn't change; no saving if it runs 2× slower or more.
 - Incremental loading for warehouse_daily: saving depends on the new run time — measure after the change.
 

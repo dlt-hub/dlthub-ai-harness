@@ -18,10 +18,16 @@ Input (JSON):
       "jobs": [
         {"name": "orders_sync",
          "schedule": {"every": 15, "unit": "minutes"},       # or "hours" / "days"
+         "loading": "incremental",                           # the customer's answer; if
+                                                             # unknown, leave out = incremental
          "size": "small", "multiplier": 1,                   # multiplier from the docs
          "runs": [{"minutes": 2.1, "status": "ok"},          # recent runs, copied as listed
                   {"minutes": 0.4, "status": "failed"}]},
-        {"name": "weekday_report", "schedule": {"cron": "0 9 * * 1-5"},
+        {"name": "products_snapshot", "schedule": {"cron": "0 3 * * *"},
+         "loading": "full",                                  # reads everything on each run
+         "size": "small", "multiplier": 1,
+         "runs": [{"minutes": 12, "status": "ok"}]},
+        {"name": "weekday_report", "schedule": {"cron": "0 9 * * 1-5"}, "loading": "full",
          "size": "small", "multiplier": 1,
          "assumed": {"avg_minutes": 10, "slow_minutes": 15}}, # customer's estimate, no runs yet
         {"name": "dashboard", "schedule": {"always_on_hours_per_day": 8},
@@ -68,6 +74,10 @@ LADDER = [
     ("Daily", {"every": 1, "unit": "days"}),
 ]
 FEW_RUNS = 5
+# an incremental run: a fixed part (start-up, schema checks) plus a part that grows with the
+# data since the last run, i.e. with the time between runs. Twice as often: 0.2 + 0.8 / 2 = 60%
+FIXED_SHARE = 0.2
+LOADING = ("incremental", "full")  # whether a run reads only new data or everything
 CURRENCIES = {"USD": "$", "EUR": "€"}  # the workspace's region decides: US dollars, EU euros
 
 
@@ -235,6 +245,25 @@ def _hours(
     return expected, high
 
 
+def _has_time_trigger(schedule: dict | list) -> bool:
+    return not _is_always_on(schedule) and any(not _event(t) for t in _triggers(schedule))
+
+
+def _rescales(job: dict, schedule: dict | list) -> bool:
+    """Whether the job's run time follows a new cadence: incremental and time-triggered only."""
+    if job.get("loading", "incremental") != "incremental" or job["stats"] is None:
+        return False
+    return not any(_event(t) for s in (job["schedule"], schedule) for t in _triggers(s))
+
+
+def _at_cadence(stats: dict, old_runs: float, new_runs: float) -> dict:
+    """Run times when the job runs new_runs instead of old_runs times a month."""
+    if not old_runs or not new_runs or old_runs == new_runs:
+        return stats
+    factor = FIXED_SHARE + (1 - FIXED_SHARE) * old_runs / new_runs
+    return {**stats, "avg_min": stats["avg_min"] * factor, "slow_min": stats["slow_min"] * factor}
+
+
 class _Runs:
     """Runs per month for every job, following event triggers back to the scheduled jobs."""
 
@@ -308,10 +337,12 @@ def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> d
     schedules = {**counter.schedules, name: schedule}
     changed = _Runs(schedules, counter.stats)
     old_total = sum(j["hours_expected"] for j in jobs.values())
-    new_total = sum(
-        _hours(changed.of(n), schedules[n], j["stats"], mult if n == name else j["multiplier"])[0]
-        for n, j in jobs.items()
-    )
+    new_total = 0.0
+    for n, j in jobs.items():
+        runs, stats = changed.of(n), j["stats"]
+        if n == name and _rescales(j, schedule):
+            stats = _at_cadence(stats, j["runs_month"], runs)
+        new_total += _hours(runs, schedules[n], stats, mult if n == name else j["multiplier"])[0]
     return {
         "label": lever.get("label", label),
         "cost_per_month": round((old_total - new_total) * rate, 2),
@@ -336,6 +367,12 @@ def estimate(data: dict) -> dict:
         raw["name"]: None if _is_always_on(schedules[raw["name"]]) else run_stats(raw)
         for raw in data["jobs"]
     }
+    for raw in data["jobs"]:
+        if raw.get("loading", "incremental") not in LOADING:
+            raise ValueError(
+                f"job {raw['name']!r} has 'loading' {raw['loading']!r}; use 'incremental' or"
+                " 'full', or leave it out if the customer doesn't know"
+            )
     counter = _Runs(schedules, stats_by_name)
     jobs = []
     for raw in data["jobs"]:
@@ -366,19 +403,18 @@ def estimate(data: dict) -> dict:
     cost_scheduled = sum(j["cost_expected"] for j in jobs if j["runs_month"])
 
     by_name = {j["name"]: j for j in jobs}
-    ladder = [
-        {
-            "job": j["name"],
+    ladder = []
+    for j in jobs:
+        if j["stats"] is None:
+            continue
+        cells = []
+        for _, cadence in LADDER:
             # an event-triggered job follows its upstream jobs to the new cadence
-            "cost": [
-                _hours(counter.of(j["name"], s), j["schedule"], j["stats"], j["multiplier"])[0]
-                * rate
-                for _, s in LADDER
-            ],
-        }
-        for j in jobs
-        if j["stats"] is not None
-    ]
+            runs, stats = counter.of(j["name"], cadence), j["stats"]
+            if _rescales(j, cadence):
+                stats = _at_cadence(stats, j["runs_month"], runs)
+            cells.append(_hours(runs, j["schedule"], stats, j["multiplier"])[0] * rate)
+        ladder.append({"job": j["name"], "cost": cells})
     eng = data.get("engineering")
     engineering = None
     if eng:
@@ -417,6 +453,26 @@ def _assumptions(jobs: list[dict], currency: str, rate: float, notes: list[str])
         + ", ".join(f"{s} {_num(m)}×" for s, m in sizes.items())
         + ".",
     ]
+    scheduled = [j for j in jobs if _has_time_trigger(j["schedule"])]
+    loading = {
+        "incremental": [j["name"] for j in scheduled if j.get("loading") == "incremental"],
+        "full": [j["name"] for j in scheduled if j.get("loading") == "full"],
+        "incremental (assumed, not known)": [j["name"] for j in scheduled if "loading" not in j],
+    }
+    if any(loading.values()):
+        lines.append(
+            "Loading: "
+            + "; ".join(f"{kind} — {', '.join(names)}" for kind, names in loading.items() if names)
+            + "."
+        )
+    if any(_rescales(j, j["schedule"]) for j in jobs):
+        fixed = round(100 * FIXED_SHARE)
+        lines.append(
+            f"On another schedule, an incremental run is about {fixed}% start-up time and"
+            f" {100 - fixed}% loading new data. Running twice as often halves the new data per"
+            f" run, so each run is about {round(100 * (1 - FIXED_SHARE) / 2)}% shorter. Full-load"
+            " and event-triggered jobs keep their run time."
+        )
     for j in jobs:
         st = j["stats"]
         if st is None:
@@ -541,6 +597,8 @@ def summary(est: dict) -> str:
                     f"- {s['label']}: saves up to {money(s['cost_per_month'], True)}/month"
                     f" {_upper_bound_note(s['break_even_slowdown'])}."
                 )
+            elif s["cost_per_month"] < 0:  # e.g. more often: more fixed start-up time per month
+                out.append(f"- {s['label']}: costs {money(-s['cost_per_month'], True)} more/month.")
             else:
                 out.append(f"- {s['label']}: saves {money(s['cost_per_month'], True)}/month.")
     eng = est["engineering"]
@@ -608,6 +666,8 @@ def report(est: dict) -> str:
                     f"{_e(_upper_bound_note(s['break_even_slowdown']))}</span>"
                 )
                 bars.append(_bar(label, f"up to −{money(saving)} / month", 100 * saving / total))
+            elif saving < 0:
+                bars.append(_bar(_e(s["label"]), f"+{money(-saving)} / month", 0))
             else:
                 bars.append(_bar(_e(s["label"]), f"−{money(saving)} / month", 100 * saving / total))
         savings = (

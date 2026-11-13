@@ -25,6 +25,7 @@ def assumed(avg: float, slow: float) -> dict:
 
 def worked_example() -> dict:
     """The worked example from SKILL.md: 3 jobs, durations given as customer assumptions."""
+    # warehouse_daily reads everything on each run; the other two only new data
     return {
         "currency": "USD",
         "rate_per_hour": 10,
@@ -32,6 +33,7 @@ def worked_example() -> dict:
         "jobs": [
             {
                 "name": "orders_sync",
+                "loading": "incremental",
                 "schedule": every(15),
                 "size": "small",
                 "multiplier": 1,
@@ -39,6 +41,7 @@ def worked_example() -> dict:
             },
             {
                 "name": "crm_hourly",
+                "loading": "incremental",
                 "schedule": every(1, "hours"),
                 "size": "medium",
                 "multiplier": 2,
@@ -46,6 +49,7 @@ def worked_example() -> dict:
             },
             {
                 "name": "warehouse_daily",
+                "loading": "full",
                 "schedule": every(1, "days"),
                 "size": "small",
                 "multiplier": 1,
@@ -156,6 +160,7 @@ def job(name: str, schedule: dict | list, runs: list[dict] | None = None) -> dic
     return {
         "name": name,
         "schedule": schedule,
+        "loading": "incremental",
         "size": "small",
         "multiplier": 1,
         "runs": runs or [{"minutes": 1, "status": "ok"}],
@@ -257,6 +262,7 @@ def test_assumed_upstream_can_give_a_failure_share() -> None:
         "jobs": [
             {
                 "name": "load",
+                "loading": "incremental",
                 "schedule": every(1, "days"),
                 "size": "small",
                 "multiplier": 1,
@@ -351,6 +357,7 @@ def test_failed_runs_are_billed_once() -> None:
         "jobs": [
             {
                 "name": "flaky",
+                "loading": "incremental",
                 "schedule": every(1, "days"),
                 "size": "small",
                 "multiplier": 1,
@@ -401,29 +408,80 @@ def test_ladder() -> None:
     est = pe.estimate(worked_example())
     ladder = {row["job"]: row["cost"] for row in est["ladder"]}
 
-    assert [round(v, 2) for v in ladder["orders_sync"]] == [973.33, 243.33, 40.56, 10.14]
-    assert [round(v, 2) for v in ladder["crm_hourly"]] == [4866.67, 1216.67, 202.78, 50.69]
+    # an incremental run is 20% fixed plus 80% that grows with the time since the last run:
+    # orders_sync (2,920 runs of 2 min) at r runs a month costs (0.4 r + 4,672) / 6
+    assert [round(v, 2) for v in ladder["orders_sync"]] == [973.33, 827.33, 786.78, 780.69]
+    assert [round(v, 2) for v in ladder["crm_hourly"]] == [1946.67, 1216.67, 1013.89, 983.47]
+    # a full load reads everything on each run: its run time doesn't change
     assert [round(v, 2) for v in ladder["warehouse_daily"]] == [9733.33, 2433.33, 405.56, 101.39]
+
+
+def test_ladder_rescales_an_incremental_daily_job() -> None:
+    data = worked_example()
+    data["jobs"][2]["loading"] = "incremental"
+    ladder = {row["job"]: row["cost"] for row in pe.estimate(data)["ladder"]}
+
+    assert [round(v, 2) for v in ladder["warehouse_daily"]] == [2027.78, 567.78, 162.22, 101.39]
+
+
+def test_unknown_loading_is_treated_as_incremental() -> None:
+    data = worked_example()
+    del data["jobs"][0]["loading"]
+    est = pe.estimate(data)
+    ladder = {row["job"]: row["cost"] for row in est["ladder"]}
+
+    assert [round(v, 2) for v in ladder["orders_sync"]] == [973.33, 827.33, 786.78, 780.69]
+    assert (
+        "Loading: incremental — crm_hourly; full — warehouse_daily;"
+        " incremental (assumed, not known) — orders_sync." in est["assumptions"]
+    )
+
+
+@pytest.mark.parametrize("loading", ["replace", "merge"])
+def test_loading_is_incremental_or_full(loading: str) -> None:
+    data = worked_example()
+    data["jobs"][0]["loading"] = loading
+    with pytest.raises(ValueError, match="'incremental' or 'full'"):
+        pe.estimate(data)
+
+
+def test_twice_as_often_makes_each_run_40_percent_shorter() -> None:
+    # hourly at 20 min; every 30 min: twice the runs at 12 min each
+    data = {
+        "currency": "USD",
+        "rate_per_hour": 10,
+        "jobs": [job("sync", every(1, "hours"), [{"minutes": 20, "status": "ok"}] * 5)],
+        "levers": [{"job": "sync", "schedule": every(30)}],
+    }
+    est = pe.estimate(data)
+
+    assert est["cost_expected"] == pytest.approx(730 * 20 / 60 * 10)
+    assert est["savings"][0]["cost_per_month"] == round(-(1460 * 12 - 730 * 20) / 60 * 10, 2)
+    md = pe.summary(est)
+    assert "Running twice as often halves the new data per run, so each run is about 40%" in md
+    assert "Loading: incremental — sync." in md
+    assert "sync every 30 min instead of hourly: costs $486.67 more/month." in md
+    assert "+$487 / month" in pe.report(est)
 
 
 def test_levers_are_priced_by_the_script() -> None:
     est = pe.estimate(worked_example())
     savings = [(s["label"], s["cost_per_month"]) for s in est["savings"]]
 
-    assert savings[0] == ("orders_sync every 30 min instead of every 15 min", 486.67)
-    assert savings[1] == ("crm_hourly every 2 h instead of hourly", 608.33)
+    assert savings[0] == ("orders_sync every 30 min instead of every 15 min", 97.33)
+    assert savings[1] == ("crm_hourly every 2 h instead of hourly", 121.67)
     assert savings[2] == ("crm_hourly on small instead of medium (if it fits)", 608.33)
     assert savings[3] == ("Incremental loading for warehouse_daily", None)
 
 
 def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
     # a daily load that fails 40% of the time, an inspector on failure, a dq check on success
-    def pipeline(load_schedule: dict) -> dict:
+    def pipeline(load_schedule: dict, ok_min: float = 10) -> dict:
         return {
             "currency": "USD",
             "rate_per_hour": 10,
             "jobs": [
-                job("load", load_schedule, runs_with(failed=4, ok=6, failed_min=5, ok_min=10)),
+                job("load", load_schedule, runs_with(failed=4, ok=6, failed_min=5, ok_min=ok_min)),
                 job("inspector", {"on_failure_of": ["load"]}, [{"minutes": 3, "status": "ok"}]),
                 job("dq", {"on_success_of": ["load"]}, [{"minutes": 4, "status": "ok"}]),
             ],
@@ -431,7 +489,8 @@ def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
         }
 
     est = pe.estimate(pipeline(every(1, "days")))
-    after = pe.estimate(pipeline(every(2, "days")))["cost_expected"]
+    # every 2 days, an incremental load takes 0.2 + 0.8 x 2 = 1.8 times as long
+    after = pe.estimate(pipeline(every(2, "days"), ok_min=18))["cost_expected"]
 
     # the saving is what the whole estimate drops by, not only the load's own share
     assert est["savings"][0]["cost_per_month"] == round(est["cost_expected"] - after, 2)
@@ -476,12 +535,15 @@ def test_assumptions_are_generated() -> None:
     data["jobs"][0] = {
         "name": "orders_sync",
         "schedule": every(15),
+        "loading": "incremental",
         "size": "small",
         "multiplier": 1,
         "runs": runs,
     }
     est = pe.estimate(data)
     text = " ".join(est["assumptions"])
+
+    assert "Loading: incremental — orders_sync, crm_hourly; full — warehouse_daily." in text
 
     assert "30.4 days per month (365 / 12)" in text
     assert "orders_sync: 3 recent runs" in text and "fewer than 5" in text
@@ -500,10 +562,10 @@ def test_summary_markdown() -> None:
     assert "up to about $3,558.75" in md
     # the what-if table names today's cost in its own column instead of bold formatting
     assert "| Job | Now | Every 15 min | Hourly | Every 6 h | Daily |" in md
-    assert "| orders_sync | $973.33 (every 15 min) | $973.33 | $243.33 |" in md
+    assert "| orders_sync | $973.33 (every 15 min) | $973.33 | $827.33 |" in md
     assert "| warehouse_daily | $101.39 (daily) |" in md
     assert "in bold" not in md and "**$973.33**" not in md
-    assert "saves $486.67/month" in md
+    assert "saves $97.33/month" in md
     assert (
         "crm_hourly on small instead of medium (if it fits): saves up to $608.33/month if the"
         " run time doesn't change; no saving if it runs 2× slower or more." in md
@@ -523,7 +585,7 @@ def test_eur_workspace_is_priced_in_euros() -> None:
     assert "€10 per runtime hour" in md
     assert "| Hours/month | €/month |" in md
     assert "Expected about €2,291.39 per month" in md
-    assert "saves €486.67/month" in md
+    assert "saves €97.33/month" in md
     assert "40 h × €100 = €4,000.00/month" in md
     assert "$" not in md
     assert "About €2,291 per month" in page and "Included in the €10/hour" in page
