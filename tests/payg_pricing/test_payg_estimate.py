@@ -408,6 +408,26 @@ def test_levers_are_priced_by_the_script() -> None:
     assert savings[3] == ("Incremental loading for warehouse_daily", None)
 
 
+def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
+    # a daily load that fails 40% of the time, an inspector on failure, a dq check on success
+    def pipeline(load_schedule: dict) -> dict:
+        return {
+            "rate_usd_per_hour": 10,
+            "jobs": [
+                job("load", load_schedule, runs_with(failed=4, ok=6, failed_min=5, ok_min=10)),
+                job("inspector", {"on_failure_of": ["load"]}, [{"minutes": 3, "status": "ok"}]),
+                job("dq", {"on_success_of": ["load"]}, [{"minutes": 4, "status": "ok"}]),
+            ],
+            "levers": [{"job": "load", "schedule": every(2, "days")}],
+        }
+
+    est = pe.estimate(pipeline(every(1, "days")))
+    after = pe.estimate(pipeline(every(2, "days")))["usd_expected"]
+
+    # the saving is what the whole estimate drops by, not only the load's own share
+    assert est["savings"][0]["usd_per_month"] == round(est["usd_expected"] - after, 2)
+
+
 def test_size_lever_is_an_upper_bound_with_break_even() -> None:
     est = pe.estimate(worked_example())
     slowdown = [s["break_even_slowdown"] for s in est["savings"]]

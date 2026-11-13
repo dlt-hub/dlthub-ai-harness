@@ -302,14 +302,17 @@ def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> d
         )
     else:
         raise ValueError(f"lever for {name!r} changes nothing the script can price")
-    if schedule is job["schedule"]:
-        runs = job["runs_month"]
-    else:
-        runs = _Runs({**counter.schedules, name: schedule}, counter.stats).of(name)
-    new_expected, _ = _hours(runs, schedule, job["stats"], mult)
+    # re-price every job: event-triggered jobs downstream follow a new cadence
+    schedules = {**counter.schedules, name: schedule}
+    changed = _Runs(schedules, counter.stats)
+    old_total = sum(j["hours_expected"] for j in jobs.values())
+    new_total = sum(
+        _hours(changed.of(n), schedules[n], j["stats"], mult if n == name else j["multiplier"])[0]
+        for n, j in jobs.items()
+    )
     return {
         "label": lever.get("label", label),
-        "usd_per_month": round((job["hours_expected"] - new_expected) * rate, 2),
+        "usd_per_month": round((old_total - new_total) * rate, 2),
         "break_even_slowdown": break_even,
     }
 
