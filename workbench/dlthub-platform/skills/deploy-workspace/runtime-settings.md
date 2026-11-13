@@ -51,7 +51,7 @@ run-time budget like a size bump does — **ask the user before changing it**
 
 ## Instance size
 
-Runner resources are set with `require={"instance": {"size": ...}}` (public preview):
+Runner resources are set with `require={"instance": {"size": ...}}`:
 
 ```python
 @run.pipeline(my_pipeline, require={"instance": {"size": "medium"}})
@@ -71,8 +71,7 @@ Decorator-only — there is no toml/env form. Two facts that stop wasted bumps:
 left on device`; and **break-even** on `small` → `medium` (2×) needs wall-clock
 to drop by **≥50%**, or the bigger box is a net budget loss.
 
-Verify the table against the reference before quoting it to a user — instance
-sizing is in public preview and the multipliers may change.
+Verify the table against the reference before quoting it to a user.
 
 **STOP — never set or change this without explicit human permission.** The
 multiplier is charged against the organization's run-time budget on every run,
