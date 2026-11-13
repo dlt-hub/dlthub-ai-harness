@@ -202,18 +202,23 @@ def _need(obj: dict, key: str, what: str) -> float:
 
 def _lever(lever: dict, jobs: dict[str, dict], rate: float) -> dict:
     if lever.get("unquantified"):
-        return {"label": lever["label"], "usd_per_month": None}
+        return {"label": lever["label"], "usd_per_month": None, "break_even_slowdown": None}
     name = lever.get("job")
     if name not in jobs:
         raise ValueError(f"lever names job {name!r}, which is not in jobs")
     job = jobs[name]
     schedule, mult = job["schedule"], job["multiplier"]
+    # a smaller instance may run slower; the saving assumes the same run time, so it is an
+    # upper bound, and it is gone once the run is old/new multiplier times slower
+    break_even = None
     if "schedule" in lever:
         schedule = lever["schedule"]
         label = f"{name} {schedule_label(schedule)} instead of {schedule_label(job['schedule'])}"
     elif "multiplier" in lever:
         mult = _need(lever, "multiplier", f"lever for {name!r}")
         label = f"{name} on {lever.get('size', '?')} instead of {job.get('size', '?')} (if it fits)"
+        if 0 < mult < job["multiplier"]:
+            break_even = job["multiplier"] / mult
     elif "always_on_hours_per_day" in lever:
         schedule = {"always_on_hours_per_day": lever["always_on_hours_per_day"]}
         label = (
@@ -226,6 +231,7 @@ def _lever(lever: dict, jobs: dict[str, dict], rate: float) -> dict:
     return {
         "label": lever.get("label", label),
         "usd_per_month": round((job["hours_expected"] - new_expected) * rate, 2),
+        "break_even_slowdown": break_even,
     }
 
 
@@ -391,6 +397,11 @@ def summary(est: dict) -> str:
                     f"- {s['label']}: saving depends on the new run time — measure after"
                     " the change."
                 )
+            elif s["break_even_slowdown"]:
+                out.append(
+                    f"- {s['label']}: saves up to {_usd(s['usd_per_month'], True)}/month"
+                    f" {_upper_bound_note(s['break_even_slowdown'])}."
+                )
             else:
                 out.append(f"- {s['label']}: saves {_usd(s['usd_per_month'], True)}/month.")
     eng = est["engineering"]
@@ -403,6 +414,10 @@ def summary(est: dict) -> str:
             f"{_usd(est['usd_expected'], True)} on dltHub (servers not included).",
         ]
     return "\n".join(out) + "\n"
+
+
+def _upper_bound_note(slowdown: float) -> str:
+    return f"if the run time doesn't change; no saving if it runs {_num(slowdown)}× slower or more"
 
 
 def _bar(label: str, value: str, pct: float, css: str = "") -> str:
@@ -444,6 +459,12 @@ def report(est: dict) -> str:
             usd = s["usd_per_month"]
             if usd is None:
                 bars.append(_bar(_e(s["label"]), "measure after the change", 0))
+            elif s["break_even_slowdown"]:
+                label = (
+                    f'{_e(s["label"])}<br><span class="tag">'
+                    f'{_e(_upper_bound_note(s["break_even_slowdown"]))}</span>'
+                )
+                bars.append(_bar(label, f"up to −{_usd(usd)} / month", 100 * usd / total))
             else:
                 bars.append(_bar(_e(s["label"]), f"−{_usd(usd)} / month", 100 * usd / total))
         savings = (

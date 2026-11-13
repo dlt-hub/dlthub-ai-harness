@@ -213,6 +213,22 @@ def test_levers_are_priced_by_the_script() -> None:
     assert savings[3] == ("Incremental loading for warehouse_daily", None)
 
 
+def test_size_lever_is_an_upper_bound_with_break_even() -> None:
+    est = pe.estimate(worked_example())
+    slowdown = [s["break_even_slowdown"] for s in est["savings"]]
+
+    # a smaller instance may run slower; medium 2x -> small 1x saves nothing at 2x slower
+    assert slowdown == [None, None, 2, None]
+
+
+def test_size_lever_to_a_bigger_instance_has_no_break_even() -> None:
+    data = worked_example()
+    data["levers"] = [{"job": "orders_sync", "size": "medium", "multiplier": 2}]
+    est = pe.estimate(data)
+
+    assert est["savings"][0]["break_even_slowdown"] is None
+
+
 def test_lever_for_unknown_job_fails() -> None:
     data = worked_example()
     data["levers"] = [{"job": "nope", "schedule": every(30)}]
@@ -264,6 +280,10 @@ def test_summary_markdown() -> None:
     assert "| warehouse_daily | $100.00 (daily) |" in md
     assert "in bold" not in md and "**$960.00**" not in md
     assert "saves $480.00/month" in md
+    assert (
+        "crm_hourly on small instead of medium (if it fits): saves up to $600.00/month if the"
+        " run time doesn't change; no saving if it runs 2× slower or more." in md
+    )
     assert "measure after the change" in md
 
 
@@ -286,6 +306,13 @@ def test_report_without_engineering_leaves_the_section_out() -> None:
     page = pe.report(pe.estimate(worked_example()))
 
     assert "Engineering time" not in page
+
+
+def test_report_marks_size_saving_as_upper_bound() -> None:
+    page = pe.report(pe.estimate(worked_example()))
+
+    assert "up to −$600 / month" in page
+    assert "if the run time doesn&#x27;t change; no saving if it runs 2× slower or more" in page
 
 
 def test_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

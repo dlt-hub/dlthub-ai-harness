@@ -180,7 +180,7 @@ the docs.
 **Ways to cut cost**
 - orders_sync every 30 min instead of every 15 min: saves $480.00/month.
 - crm_hourly every 2 h instead of hourly: saves $600.00/month.
-- crm_hourly on small instead of medium (if it fits): saves $600.00/month.
+- crm_hourly on small instead of medium (if it fits): saves up to $600.00/month if the run time doesn't change; no saving if it runs 2× slower or more.
 - Incremental loading for warehouse_daily: saving depends on the new run time — measure after the change.
 
 ## Principles
