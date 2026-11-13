@@ -11,8 +11,9 @@ plus an optional one-page HTML report to share.
 
 ## Price (single source of truth)
 
-- **$10 per runtime hour** on pay-as-you-go. No base fee, no included hours, no volume tiers, no
-  bundles, no discounts.
+- **$10 per runtime hour** for workspaces in the **US**, **€10 per runtime hour** for workspaces
+  in the **EU**, on pay-as-you-go. Same number, no exchange rate. No base fee, no included hours,
+  no volume tiers, no bundles, no discounts.
 - Charged hours = **wall-clock hours × instance-size multiplier**. Read the multipliers from
   https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size — never quote
   them from memory. A job with no `instance` set runs on the smallest tier.
@@ -23,7 +24,13 @@ plus an optional one-page HTML report to share.
 per month, run-time statistics, hours, costs, the what-if table and every saving. Your job is to
 copy facts into a JSON file, choose which changes to propose, and paste the script's output.
 
-## Step 1: Read the workspace
+## Step 1: Ask where the workspace runs
+
+Before anything else, ask: *"Does your dltHub workspace run in the US or the EU?"* The answer
+sets the currency of every figure: US → `"currency": "USD"` (dollars), EU → `"currency": "EUR"`
+(euros). Never assume it; the script refuses to run without it.
+
+## Step 2: Read the workspace
 
 Run from the project root. **Jobs are the scheduled unit, not pipelines** — a pipeline split into
 several jobs gives several rows.
@@ -69,9 +76,10 @@ job, **copy, don't compute**:
   monthly estimate and mention it.
 - **Freshness checks** (`freshness=[...]`) skip runs while an upstream is loading or failed. The
   script ignores them, so the estimate is an upper bound for those jobs; say so.
-- Add the rate from **Price** above as `rate_usd_per_hour`, and today's `date`.
+- Add the currency from Step 1 as `currency`, the rate from **Price** above for that currency
+  as `rate_per_hour`, and today's `date`.
 
-## Step 2: Ask only for the gaps
+## Step 3: Ask only for the gaps
 
 Ask the customer when a job has **no successful runs**, is **manual-only**, or **nothing is
 deployed yet**: how long a run takes (typical and slow) and how often it should run in
@@ -81,7 +89,7 @@ production. Pass the answer as `"assumed": {"avg_minutes": ..., "slow_minutes": 
 **Never guess a duration.** The only exception: the customer explicitly waves it off ("assume
 something light") — then pick a value, pass it as `assumed`, and say so in `notes`.
 
-## Step 3: Choose the changes to propose
+## Step 4: Choose the changes to propose
 
 Add `levers` — the changes, not their savings. The script prices each one:
 
@@ -94,7 +102,7 @@ Add `levers` — the changes, not their savings. The script prices each one:
 Put any other context (where durations came from, caveats specific to this workspace) in
 `notes` as plain sentences, without numbers you worked out yourself.
 
-## Step 4: Run the script and present
+## Step 5: Run the script and present
 
 ```sh
 uv run python <this skill's folder>/payg_estimate.py summary reports/payg-estimate.json
@@ -130,16 +138,16 @@ Then add, in a sentence or two:
 - Average run: mean of successful runs. Slow run: 90th percentile, or the longest run when there
   are fewer than 5. Failed runs are billed once, for the time they ran.
 - Hours = runs × run time × instance multiplier; always-on jobs: hours per day × 30.4 × multiplier.
-- Cost = hours × the rate. Heavy month = every run as slow as the slow run.
+- Cost = hours × the rate, in the workspace's currency. Heavy month = every run as slow as the slow run.
 
-## Step 5: Shareable report (offer, don't push)
+## Step 6: Shareable report (offer, don't push)
 
 After the estimate, ask once: *"Want a one-page report you can share with your team or
 manager?"* Only on a yes:
 
 1. Ask, optionally: *"Roughly how many engineer hours a month would running these pipelines
    yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate?"* Add the
-   answer as `engineering`; if they skip it, leave it out — **never invent hours or rates**.
+   answer as `engineering` (`hours_per_month`, `hourly_rate` in the estimate's currency); if they skip it, leave it out — **never invent hours or rates**.
 2. Run:
    `uv run python <this skill's folder>/payg_estimate.py report reports/payg-estimate.json --out reports/payg-cost-estimate.html`
 3. Tell the user: open the file in a browser, or use Print → Save as PDF to send it on.
@@ -150,12 +158,14 @@ per customer.
 
 ## Worked example
 
-Three jobs whose run times the customer gave (no runs yet). Multipliers are illustrative — read
+A US workspace (an EU one gives the same numbers in €) with three jobs whose run times the
+customer gave (no runs yet). Multipliers are illustrative — read
 the docs.
 
 ```json
 {
-  "rate_usd_per_hour": 10,
+  "currency": "USD",
+  "rate_per_hour": 10,
   "date": "2026-11-11",
   "jobs": [
     {"name": "orders_sync", "schedule": {"every": 15, "unit": "minutes"},

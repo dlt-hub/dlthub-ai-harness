@@ -4,8 +4,8 @@
 **ALWAYS** start with **Pricing estimation** (`pricing-estimation`) — when the user asks what their jobs or workspace will cost, their monthly bill, or runtime hours on pay-as-you-go
 
 ## Core workflow
-1. **Pricing estimation** (`pricing-estimation`) — read the deployed jobs, their runs and instance sizes; give a monthly cost range, a what-if cadence ladder and ways to cut cost
-2. **Shareable report** (`pricing-estimation`, Step 5) — on request, a one-page HTML report for a manager or technical decision maker: the monthly cost, why it is predictable, what is included, ways to lower it and an optional engineering-time comparison
+1. **Pricing estimation** (`pricing-estimation`) — ask whether the workspace runs in the US or EU (dollars or euros), read the deployed jobs, their runs and instance sizes; give a monthly cost range, a what-if cadence ladder and ways to cut cost
+2. **Shareable report** (`pricing-estimation`, Step 6) — on request, a one-page HTML report for a manager or technical decision maker: the monthly cost, why it is predictable, what is included, ways to lower it and an optional engineering-time comparison
 
 ## Handover to other toolkits
 

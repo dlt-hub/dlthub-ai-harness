@@ -11,7 +11,8 @@ changes to propose; it never does arithmetic.
 Input (JSON):
 
     {
-      "rate_usd_per_hour": 10,                     # from the Price section of SKILL.md
+      "currency": "EUR",                           # "USD" (US) or "EUR" (EU): ask the user
+      "rate_per_hour": 10,                         # from the Price section of SKILL.md
       "date": "2026-11-11",
       "title": "Acme analytics",                   # optional, shown in the report header
       "jobs": [
@@ -37,7 +38,7 @@ Input (JSON):
         {"job": "dashboard", "always_on_hours_per_day": 4},
         {"label": "Incremental loading for orders_sync", "unquantified": true}
       ],
-      "engineering": {"hours_per_month": 40, "hourly_rate_usd": 100},   # optional
+      "engineering": {"hours_per_month": 40, "hourly_rate": 100},   # optional
       "notes": ["Durations from the last 20 runs per job."]             # optional, no numbers
     }
 
@@ -67,6 +68,7 @@ LADDER = [
     ("Daily", {"every": 1, "unit": "days"}),
 ]
 FEW_RUNS = 5
+CURRENCIES = {"USD": "$", "EUR": "€"}  # the workspace's region decides: US dollars, EU euros
 
 
 # --- schedules -------------------------------------------------------------------------------
@@ -277,7 +279,7 @@ def _need(obj: dict, key: str, what: str) -> float:
 
 def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> dict:
     if lever.get("unquantified"):
-        return {"label": lever["label"], "usd_per_month": None, "break_even_slowdown": None}
+        return {"label": lever["label"], "cost_per_month": None, "break_even_slowdown": None}
     name = lever.get("job")
     if name not in jobs:
         raise ValueError(f"lever names job {name!r}, which is not in jobs")
@@ -312,14 +314,20 @@ def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> d
     )
     return {
         "label": lever.get("label", label),
-        "usd_per_month": round((old_total - new_total) * rate, 2),
+        "cost_per_month": round((old_total - new_total) * rate, 2),
         "break_even_slowdown": break_even,
     }
 
 
 def estimate(data: dict) -> dict:
     """All figures for the chat summary and the report."""
-    rate = float(data["rate_usd_per_hour"])
+    currency = data.get("currency")
+    if currency not in CURRENCIES:
+        raise ValueError(
+            f"currency {currency!r} must be one of {list(CURRENCIES)}; ask whether the workspace"
+            " runs in the US (USD) or the EU (EUR)"
+        )
+    rate = _need(data, "rate_per_hour", "the estimate")
     names = [raw.get("name") for raw in data["jobs"]]
     if len(set(names)) != len(names):
         raise ValueError("job names must be unique")
@@ -346,23 +354,23 @@ def estimate(data: dict) -> dict:
             "label": schedule_label(schedule),
             "hours_expected": expected,
             "hours_high": high,
-            "usd_expected": expected * rate,
-            "usd_high": high * rate,
+            "cost_expected": expected * rate,
+            "cost_high": high * rate,
         })
 
     hours_expected = sum(j["hours_expected"] for j in jobs)
     hours_high = sum(j["hours_high"] for j in jobs)
     runs_total = sum(j["runs_month"] for j in jobs)
-    usd_expected = hours_expected * rate
+    cost_expected = hours_expected * rate
     # always-on jobs have no runs, so their cost would inflate the cost per run
-    usd_scheduled = sum(j["usd_expected"] for j in jobs if j["runs_month"])
+    cost_scheduled = sum(j["cost_expected"] for j in jobs if j["runs_month"])
 
     by_name = {j["name"]: j for j in jobs}
     ladder = [
         {
             "job": j["name"],
             # an event-triggered job follows its upstream jobs to the new cadence
-            "usd": [
+            "cost": [
                 _hours(counter.of(j["name"], s), j["schedule"], j["stats"], j["multiplier"])[0]
                 * rate
                 for _, s in LADDER
@@ -374,35 +382,37 @@ def estimate(data: dict) -> dict:
     eng = data.get("engineering")
     engineering = None
     if eng:
-        diy = float(eng["hours_per_month"]) * float(eng["hourly_rate_usd"])
-        engineering = {**eng, "usd_per_month": diy, "difference_usd": diy - usd_expected}
+        diy = float(eng["hours_per_month"]) * float(eng["hourly_rate"])
+        engineering = {**eng, "cost_per_month": diy, "difference": diy - cost_expected}
 
     return {
+        "currency": currency,
         "rate": rate,
         "date": data.get("date", ""),
         "title": data.get("title", ""),
         "jobs": jobs,
         "hours_expected": hours_expected,
         "hours_high": hours_high,
-        "usd_expected": usd_expected,
-        "usd_high": hours_high * rate,
+        "cost_expected": cost_expected,
+        "cost_high": hours_high * rate,
         "runs_per_month": runs_total,
-        "usd_per_job": usd_expected / len(jobs) if jobs else 0.0,
-        "usd_per_run": usd_scheduled / runs_total if runs_total else None,
-        "usd_per_day": usd_expected / DAYS_PER_MONTH,
+        "cost_per_job": cost_expected / len(jobs) if jobs else 0.0,
+        "cost_per_run": cost_scheduled / runs_total if runs_total else None,
+        "cost_per_day": cost_expected / DAYS_PER_MONTH,
         "ladder": ladder,
         "savings": [_lever(lv, by_name, counter, rate) for lv in data.get("levers") or []],
         "engineering": engineering,
-        "assumptions": _assumptions(jobs, rate, data.get("notes") or []),
+        "assumptions": _assumptions(jobs, currency, rate, data.get("notes") or []),
     }
 
 
-def _assumptions(jobs: list[dict], rate: float, notes: list[str]) -> list[str]:
+def _assumptions(jobs: list[dict], currency: str, rate: float, notes: list[str]) -> list[str]:
+    money = _money(currency)
     sizes = {}
     for j in jobs:
         sizes.setdefault(j.get("size", "?"), j["multiplier"])
     lines = [
-        f"{_usd(rate)} per runtime hour; {_num(DAYS_PER_MONTH)} days per month (365 / 12).",
+        f"{money(rate)} per runtime hour; {_num(DAYS_PER_MONTH)} days per month (365 / 12).",
         "Instance multipliers (from the dltHub docs): "
         + ", ".join(f"{s} {_num(m)}×" for s, m in sizes.items())
         + ".",
@@ -451,8 +461,14 @@ def _assumptions(jobs: list[dict], rate: float, notes: list[str]) -> list[str]:
 # --- formatting ------------------------------------------------------------------------------
 
 
-def _usd(value: float, cents: bool = False) -> str:
-    return f"${value:,.2f}" if cents else f"${value:,.0f}"
+def _money(currency: str):
+    """A formatter for amounts in the estimate's currency: $1,234 or €1,234."""
+    symbol = CURRENCIES[currency]
+
+    def money(value: float, cents: bool = False) -> str:
+        return f"{symbol}{value:,.2f}" if cents else f"{symbol}{value:,.0f}"
+
+    return money
 
 
 def _num(value: float) -> str:
@@ -474,9 +490,11 @@ def _run_time(j: dict) -> str:
 
 def summary(est: dict) -> str:
     """Markdown for the chat answer. The agent pastes it as is."""
+    money = _money(est["currency"])
     out = ["**Assumptions**", *[f"- {a}" for a in est["assumptions"]], ""]
     out += [
-        "| Job | Schedule | Runs/month | Average / slow run | Size | Hours/month | $/month |",
+        "| Job | Schedule | Runs/month | Average / slow run | Size | Hours/month | "
+        f"{CURRENCIES[est['currency']]}/month |",
         "|---|---|---|---|---|---|---|",
     ]
     for j in est["jobs"]:
@@ -484,16 +502,16 @@ def summary(est: dict) -> str:
         out.append(
             f"| {j['name']} | {j['label']} | {runs} | {_run_time(j)} | "
             f"{j.get('size', '?')} ({_num(j['multiplier'])}×) | "
-            f"{j['hours_expected']:,.1f} | {_usd(j['usd_expected'], True)} |"
+            f"{j['hours_expected']:,.1f} | {money(j['cost_expected'], True)} |"
         )
     out.append(
         f"| **Total** | | {_num(est['runs_per_month'])} | | | "
-        f"**{est['hours_expected']:,.1f}** | **{_usd(est['usd_expected'], True)}** |"
+        f"**{est['hours_expected']:,.1f}** | **{money(est['cost_expected'], True)}** |"
     )
     out += [
         "",
-        f"**Expected about {_usd(est['usd_expected'], True)} per month; in a heavy month "
-        f"up to about {_usd(est['usd_high'], True)}** (if runs take as long as the "
+        f"**Expected about {money(est['cost_expected'], True)} per month; in a heavy month "
+        f"up to about {money(est['cost_high'], True)}** (if runs take as long as the "
         "slowest 10%).",
     ]
     if est["ladder"]:
@@ -507,32 +525,32 @@ def summary(est: dict) -> str:
         by_name = {j["name"]: j for j in est["jobs"]}
         for row in est["ladder"]:
             job = by_name[row["job"]]
-            now = f"{_usd(job['usd_expected'], True)} ({job['label']})"
-            cells = [_usd(u, True) for u in row["usd"]]
+            now = f"{money(job['cost_expected'], True)} ({job['label']})"
+            cells = [money(u, True) for u in row["cost"]]
             out.append(f"| {row['job']} | {now} | " + " | ".join(cells) + " |")
     if est["savings"]:
         out += ["", "**Ways to cut cost**"]
         for s in est["savings"]:
-            if s["usd_per_month"] is None:
+            if s["cost_per_month"] is None:
                 out.append(
                     f"- {s['label']}: saving depends on the new run time — measure after"
                     " the change."
                 )
             elif s["break_even_slowdown"]:
                 out.append(
-                    f"- {s['label']}: saves up to {_usd(s['usd_per_month'], True)}/month"
+                    f"- {s['label']}: saves up to {money(s['cost_per_month'], True)}/month"
                     f" {_upper_bound_note(s['break_even_slowdown'])}."
                 )
             else:
-                out.append(f"- {s['label']}: saves {_usd(s['usd_per_month'], True)}/month.")
+                out.append(f"- {s['label']}: saves {money(s['cost_per_month'], True)}/month.")
     eng = est["engineering"]
     if eng:
         out += [
             "",
             f"**Engineering time:** doing it yourself "
-            f"{_num(eng['hours_per_month'])} h × {_usd(float(eng['hourly_rate_usd']))} = "
-            f"{_usd(eng['usd_per_month'], True)}/month, compared with "
-            f"{_usd(est['usd_expected'], True)} on dltHub (servers not included).",
+            f"{_num(eng['hours_per_month'])} h × {money(float(eng['hourly_rate']))} = "
+            f"{money(eng['cost_per_month'], True)}/month, compared with "
+            f"{money(est['cost_expected'], True)} on dltHub (servers not included).",
         ]
     return "\n".join(out) + "\n"
 
@@ -551,12 +569,13 @@ def _bar(label: str, value: str, pct: float, css: str = "") -> str:
 
 def report(est: dict) -> str:
     """The one-page HTML report. Every customer-supplied string is escaped."""
-    total = est["usd_expected"] or 1.0
-    per_run = _usd(est["usd_per_run"], True) if est["usd_per_run"] is not None else "n/a"
+    money = _money(est["currency"])
+    total = est["cost_expected"] or 1.0
+    per_run = money(est["cost_per_run"], True) if est["cost_per_run"] is not None else "n/a"
     chips = [
-        (_usd(est["usd_per_job"]), "per job / month"),
+        (money(est["cost_per_job"]), "per job / month"),
         (per_run, "per scheduled run"),
-        (_usd(est["usd_per_day"]), "per day of fresh data"),
+        (money(est["cost_per_day"]), "per day of fresh data"),
         (_num(round(est["hours_expected"], 1)), "runtime hours / month"),
     ]
     rows = []
@@ -565,7 +584,7 @@ def report(est: dict) -> str:
             avg = _run_time(j)
         else:
             avg = f"{_num(j['stats']['avg_min'])} min"
-        share = 100 * j["usd_expected"] / total
+        share = 100 * j["cost_expected"] / total
         rows.append(
             f"<tr><td>{_e(j['name'])}</td><td>{_e(j['label'])}</td>"
             f'<td class="num">{"—" if j["stats"] is None else _num(j["runs_month"])}</td>'
@@ -573,24 +592,24 @@ def report(est: dict) -> str:
             f'<td>{_e(j.get("size", ""))} <span class="tag">{_num(j["multiplier"])}×</span></td>'
             f'<td class="num">{_num(round(j["hours_expected"], 1))}</td>'
             f'<td class="num"><span class="share" style="width:{share * 0.6:.0f}px"></span>'
-            f"{_usd(j['usd_expected'])}</td></tr>"
+            f"{money(j['cost_expected'])}</td></tr>"
         )
 
     savings = ""
     if est["savings"]:
         bars = []
         for s in est["savings"]:
-            usd = s["usd_per_month"]
-            if usd is None:
+            saving = s["cost_per_month"]
+            if saving is None:
                 bars.append(_bar(_e(s["label"]), "measure after the change", 0))
             elif s["break_even_slowdown"]:
                 label = (
                     f'{_e(s["label"])}<br><span class="tag">'
                     f"{_e(_upper_bound_note(s['break_even_slowdown']))}</span>"
                 )
-                bars.append(_bar(label, f"up to −{_usd(usd)} / month", 100 * usd / total))
+                bars.append(_bar(label, f"up to −{money(saving)} / month", 100 * saving / total))
             else:
-                bars.append(_bar(_e(s["label"]), f"−{_usd(usd)} / month", 100 * usd / total))
+                bars.append(_bar(_e(s["label"]), f"−{money(saving)} / month", 100 * saving / total))
         savings = (
             '<section><h2>Ways to lower it</h2><div class="bars">'
             + "".join(bars)
@@ -601,11 +620,11 @@ def report(est: dict) -> str:
     engineering = ""
     eng = est["engineering"]
     if eng:
-        diy = eng["usd_per_month"]
-        top = max(diy, est["usd_expected"]) or 1.0
+        diy = eng["cost_per_month"]
+        top = max(diy, est["cost_expected"]) or 1.0
         verdict = (
-            f"dltHub costs {_usd(eng['difference_usd'])} less per month than doing it yourself."
-            if eng["difference_usd"] > 0
+            f"dltHub costs {money(eng['difference'])} less per month than doing it yourself."
+            if eng["difference"] > 0
             else "In this scenario, running it yourself is estimated to cost less in"
             " engineering time alone."
         )
@@ -613,14 +632,14 @@ def report(est: dict) -> str:
             '<section><h2>Engineering time</h2><div class="bars">'
             + _bar(
                 "dltHub",
-                f"{_usd(est['usd_expected'])} / month",
-                100 * est["usd_expected"] / top,
+                f"{money(est['cost_expected'])} / month",
+                100 * est["cost_expected"] / top,
                 "dlt",
             )
             + _bar(
                 f"Doing it yourself: {_num(eng['hours_per_month'])} h × "
-                f"{_usd(float(eng['hourly_rate_usd']))}",
-                f"{_usd(diy)} / month",
+                f"{money(float(eng['hourly_rate']))}",
+                f"{money(diy)} / month",
                 100 * diy / top,
                 "diy",
             )
@@ -632,12 +651,12 @@ def report(est: dict) -> str:
     title = f" · {_e(est['title'])}" if est["title"] else ""
     values = {
         "title_line": f"Prepared {_e(est['date'])}{title}",
-        "usd_expected": _usd(est["usd_expected"]),
-        "usd_high": _usd(est["usd_high"]),
+        "cost_expected": money(est["cost_expected"]),
+        "cost_high": money(est["cost_high"]),
         "chips": "".join(f'<div class="chip"><b>{v}</b><span>{k}</span></div>' for v, k in chips),
-        "rate_line": f"You pay {_usd(est['rate'])} per runtime hour, times the instance size"
+        "rate_line": f"You pay {money(est['rate'])} per runtime hour, times the instance size"
         " multiplier.",
-        "rate_short": _usd(est["rate"]),
+        "rate_short": money(est["rate"]),
         "job_rows": "".join(rows),
         "runs_total": _num(est["runs_per_month"]),
         "hours_expected": _num(round(est["hours_expected"], 1)),
@@ -660,6 +679,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     est = estimate(json.loads(Path(args.estimate).read_text(encoding="utf-8")))
+    money = _money(est["currency"])
     if args.command == "summary":
         sys.stdout.write(summary(est))
         return
@@ -667,8 +687,8 @@ def main(argv: list[str] | None = None) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(report(est), encoding="utf-8")
     sys.stdout.write(
-        f"Wrote {out}: about {_usd(est['usd_expected'], True)}/month, up to "
-        f"{_usd(est['usd_high'], True)} in a heavy month\n"
+        f"Wrote {out}: about {money(est['cost_expected'], True)}/month, up to "
+        f"{money(est['cost_high'], True)} in a heavy month\n"
     )
 
 

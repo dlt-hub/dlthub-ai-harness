@@ -26,7 +26,8 @@ def assumed(avg: float, slow: float) -> dict:
 def worked_example() -> dict:
     """The worked example from SKILL.md: 3 jobs, durations given as customer assumptions."""
     return {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "date": "2026-11-11",
         "jobs": [
             {
@@ -170,7 +171,8 @@ def runs_with(failed: int, ok: int, failed_min: float = 0.5, ok_min: float = 1) 
 def sap_example() -> dict:
     """The PR example: an inspector agent that runs each time either of two loads fails."""
     return {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             job("business_partner", every(1, "days"), runs_with(failed=3, ok=7)),
             job("bp_address", every(1, "days"), runs_with(failed=4, ok=0, failed_min=0.2)),
@@ -200,7 +202,8 @@ def test_on_failure_of_runs_once_per_upstream_failure() -> None:
 )
 def test_each_event_trigger_follows_its_share(event: str, share: float) -> None:
     data = {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             job("load", every(1, "hours"), runs_with(failed=3, ok=7)),
             job("after", {event: "load"}),
@@ -212,7 +215,8 @@ def test_each_event_trigger_follows_its_share(event: str, share: float) -> None:
 
 def test_event_triggers_chain() -> None:
     data = {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             job("ingest", every(1, "days"), runs_with(failed=1, ok=9)),
             job("transform", {"on_success_of": "ingest"}, runs_with(failed=1, ok=1)),
@@ -227,7 +231,8 @@ def test_event_triggers_chain() -> None:
 
 def test_a_list_of_triggers_adds_up() -> None:
     data = {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             job("backfill", every(1, "days")),
             job("daily_load", [{"cron": "0 8 * * *"}, {"on_success_of": "backfill"}]),
@@ -247,7 +252,8 @@ def test_event_labels() -> None:
 
 def test_assumed_upstream_can_give_a_failure_share() -> None:
     data = {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             {
                 "name": "load",
@@ -284,7 +290,7 @@ def test_assumed_upstream_can_give_a_failure_share() -> None:
 )
 def test_bad_event_triggers_fail_loudly(jobs: list[dict], error: str) -> None:
     with pytest.raises(ValueError, match=error):
-        pe.estimate({"rate_usd_per_hour": 10, "jobs": jobs})
+        pe.estimate({"currency": "USD", "rate_per_hour": 10, "jobs": jobs})
 
 
 def test_runs_per_month_refuses_event_triggers() -> None:
@@ -318,7 +324,7 @@ def test_report_shows_never_succeeded_and_event_label() -> None:
 
 def test_what_if_table_moves_event_jobs_with_their_upstream() -> None:
     est = pe.estimate(sap_example())
-    ladder = {row["job"]: row["usd"] for row in est["ladder"]}
+    ladder = {row["job"]: row["cost"] for row in est["ladder"]}
     hourly = [label for label, _ in pe.LADDER].index("Hourly")
 
     # both loads hourly: the inspector runs 730 x (30% + 100%) times, 0.7 min each, $10/h
@@ -332,15 +338,16 @@ def test_worked_example_totals() -> None:
     est = pe.estimate(worked_example())
 
     assert [round(j["hours_expected"], 1) for j in est["jobs"]] == [97.3, 121.7, 10.1]
-    assert round(est["usd_expected"], 2) == 2291.39
-    assert round(est["usd_high"], 2) == 3558.75
+    assert round(est["cost_expected"], 2) == 2291.39
+    assert round(est["cost_high"], 2) == 3558.75
     assert est["runs_per_month"] == pytest.approx(2920 + 730 + 365 / 12)
 
 
 def test_failed_runs_are_billed_once() -> None:
     runs = [{"minutes": 6, "status": "ok"}] * 9 + [{"minutes": 3, "status": "failed"}]
     data = {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             {
                 "name": "flaky",
@@ -359,7 +366,8 @@ def test_failed_runs_are_billed_once() -> None:
 
 def test_always_on_job() -> None:
     data = {
-        "rate_usd_per_hour": 10,
+        "currency": "USD",
+        "rate_per_hour": 10,
         "jobs": [
             {
                 "name": "dash",
@@ -372,7 +380,7 @@ def test_always_on_job() -> None:
     est = pe.estimate(data)
 
     assert est["hours_expected"] == est["hours_high"] == pytest.approx(8 * 2 * 365 / 12)
-    assert est["usd_per_run"] is None
+    assert est["cost_per_run"] is None
 
 
 def test_cost_per_run_leaves_always_on_jobs_out() -> None:
@@ -385,13 +393,13 @@ def test_cost_per_run_leaves_always_on_jobs_out() -> None:
     })
     est = pe.estimate(data)
 
-    assert round(est["usd_expected"], 2) == 5333.06
-    assert est["usd_per_run"] == pytest.approx(2291.39 / 3680.42, abs=1e-4)
+    assert round(est["cost_expected"], 2) == 5333.06
+    assert est["cost_per_run"] == pytest.approx(2291.39 / 3680.42, abs=1e-4)
 
 
 def test_ladder() -> None:
     est = pe.estimate(worked_example())
-    ladder = {row["job"]: row["usd"] for row in est["ladder"]}
+    ladder = {row["job"]: row["cost"] for row in est["ladder"]}
 
     assert [round(v, 2) for v in ladder["orders_sync"]] == [973.33, 243.33, 40.56, 10.14]
     assert [round(v, 2) for v in ladder["crm_hourly"]] == [4866.67, 1216.67, 202.78, 50.69]
@@ -400,7 +408,7 @@ def test_ladder() -> None:
 
 def test_levers_are_priced_by_the_script() -> None:
     est = pe.estimate(worked_example())
-    savings = [(s["label"], s["usd_per_month"]) for s in est["savings"]]
+    savings = [(s["label"], s["cost_per_month"]) for s in est["savings"]]
 
     assert savings[0] == ("orders_sync every 30 min instead of every 15 min", 486.67)
     assert savings[1] == ("crm_hourly every 2 h instead of hourly", 608.33)
@@ -412,7 +420,8 @@ def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
     # a daily load that fails 40% of the time, an inspector on failure, a dq check on success
     def pipeline(load_schedule: dict) -> dict:
         return {
-            "rate_usd_per_hour": 10,
+            "currency": "USD",
+            "rate_per_hour": 10,
             "jobs": [
                 job("load", load_schedule, runs_with(failed=4, ok=6, failed_min=5, ok_min=10)),
                 job("inspector", {"on_failure_of": ["load"]}, [{"minutes": 3, "status": "ok"}]),
@@ -422,10 +431,10 @@ def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
         }
 
     est = pe.estimate(pipeline(every(1, "days")))
-    after = pe.estimate(pipeline(every(2, "days")))["usd_expected"]
+    after = pe.estimate(pipeline(every(2, "days")))["cost_expected"]
 
     # the saving is what the whole estimate drops by, not only the load's own share
-    assert est["savings"][0]["usd_per_month"] == round(est["usd_expected"] - after, 2)
+    assert est["savings"][0]["cost_per_month"] == round(est["cost_expected"] - after, 2)
 
 
 def test_size_lever_is_an_upper_bound_with_break_even() -> None:
@@ -454,11 +463,11 @@ def test_lever_for_unknown_job_fails() -> None:
 
 def test_engineering_comparison() -> None:
     data = worked_example()
-    data["engineering"] = {"hours_per_month": 40, "hourly_rate_usd": 100}
+    data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
     est = pe.estimate(data)
 
-    assert est["engineering"]["usd_per_month"] == 4000
-    assert round(est["engineering"]["difference_usd"], 2) == 1708.61
+    assert est["engineering"]["cost_per_month"] == 4000
+    assert round(est["engineering"]["difference"], 2) == 1708.61
 
 
 def test_assumptions_are_generated() -> None:
@@ -502,11 +511,38 @@ def test_summary_markdown() -> None:
     assert "measure after the change" in md
 
 
+def test_eur_workspace_is_priced_in_euros() -> None:
+    data = worked_example()
+    data["currency"] = "EUR"
+    data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
+    est = pe.estimate(data)
+    md = pe.summary(est)
+    page = pe.report(est)
+
+    # same rate, same numbers: only the currency changes
+    assert "€10 per runtime hour" in md
+    assert "| Hours/month | €/month |" in md
+    assert "Expected about €2,291.39 per month" in md
+    assert "saves €486.67/month" in md
+    assert "40 h × €100 = €4,000.00/month" in md
+    assert "$" not in md
+    assert "About €2,291 per month" in page and "Included in the €10/hour" in page
+    assert "up to −€608 / month" in page
+
+
+@pytest.mark.parametrize("currency", [None, "GBP", "usd"])
+def test_currency_must_be_usd_or_eur(currency: str | None) -> None:
+    data = worked_example()
+    data["currency"] = currency
+    with pytest.raises(ValueError, match="US \\(USD\\) or the EU \\(EUR\\)"):
+        pe.estimate(data)
+
+
 def test_report_is_self_contained_and_escaped() -> None:
     data = worked_example()
     data["jobs"][0]["name"] = "<b>orders</b>"
     data["levers"][0]["job"] = "<b>orders</b>"
-    data["engineering"] = {"hours_per_month": 40, "hourly_rate_usd": 100}
+    data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
     page = pe.report(pe.estimate(data))
 
     assert page.startswith("<!doctype html>")
@@ -514,7 +550,7 @@ def test_report_is_self_contained_and_escaped() -> None:
     assert "http://" not in page and "https://" not in page
     assert "<b>orders</b>" not in page and "&lt;b&gt;orders&lt;/b&gt;" in page
     assert "$2,291" in page and "Engineering time" in page
-    assert "$usd" not in page and "$job_rows" not in page
+    assert "$cost" not in page and "$job_rows" not in page
 
 
 def test_report_without_engineering_leaves_the_section_out() -> None:
