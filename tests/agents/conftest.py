@@ -25,6 +25,14 @@ NULL_LOOP = "null-pydantic-ai"
 PLUGIN_NAME = "null_model_loop"
 
 
+class OfflineTestModel(TestModel):
+    """`TestModel` that serves no native tool, so `network` wires no web search."""
+
+    @classmethod
+    def supported_native_tools(cls) -> frozenset:
+        return frozenset()
+
+
 class NullModelLoop(PydanticAILoop):
     """dlt's pydantic-ai loop answered by `TestModel`, with no MCP server."""
 
@@ -33,7 +41,7 @@ class NullModelLoop(PydanticAILoop):
     """What the model answers; `None` lets `TestModel` generate it from the output schema."""
 
     def _build_model(self) -> Any:
-        return TestModel(call_tools=[], custom_output_args=NullModelLoop.output)
+        return OfflineTestModel(call_tools=[], custom_output_args=NullModelLoop.output)
 
     def _build_toolsets(self) -> List[Any]:
         return []
