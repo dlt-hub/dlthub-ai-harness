@@ -125,6 +125,15 @@
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
+    },
+    {
+      "name": "payg-pricing",
+      "source": "./workbench/payg-pricing",
+      "description": "Estimate the monthly pay-as-you-go cost of a dltHub workspace from its deployed jobs: cadence, run durations and instance size. For PAYG customers. Requires dlt[hub].",
+      "version": "0.1.0",
+      "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+      "category": "data",
+      "tags": ["dlthub", "pricing", "cost", "payg"]
     }
   ]
 }
