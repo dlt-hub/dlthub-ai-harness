@@ -43,13 +43,32 @@ job, **copy, don't compute**:
 | Field | What to copy |
 |---|---|
 | `schedule` | The trigger as written: `{"every": 15, "unit": "minutes"}` (or `"hours"` / `"days"`), or `{"cron": "0 9 * * 1-5"}`. Don't convert it to runs per day |
-| `runs` | Each recent run's duration in minutes and its status (`"ok"` / `"failed"`), as listed — up to the last 20. Don't average them |
+| `runs` | Each recent run's duration in minutes and its status (`"ok"` / `"failed"`), as listed — up to the last 20. Don't average them. A job whose runs all failed is fine: it is billed for the failed time |
 | `size`, `multiplier` | Size from the manifest (none set = smallest tier); multiplier from the instance-size docs |
 
 - **Interactive / served jobs** (`@run.interactive`, `dlthub serve` — MCP servers, dashboards,
   notebooks, APIs) have no runs. Ask how many hours per day they stay up and use
   `{"always_on_hours_per_day": <answer>}` as the schedule.
-- **Job triggered by another job:** use the upstream job's schedule.
+- **Event-triggered jobs** (follow-ups, [triggers docs](https://dlthub.com/docs/hub/pipeline-operations/triggers.md)):
+  copy the event, never the upstream's schedule. The script counts runs from the upstream's
+  runs and failure share, so a job that runs on failure isn't counted once per upstream run.
+
+  | Trigger | `schedule` |
+  |---|---|
+  | `upstream.success` | `{"on_success_of": "upstream"}` |
+  | `upstream.fail` | `{"on_failure_of": "upstream"}` |
+  | `upstream.completed` | `{"on_completion_of": "upstream"}` |
+  | Selector, e.g. `"job.fail:tag:ingest"` | `{"on_failure_of": [<every job the selector matches>]}` |
+
+  Every upstream must be in `jobs`. If an upstream has no runs yet and the job follows its
+  failures, ask the customer how often it fails and pass `"failed_share"` in its `assumed`.
+- **Several triggers** (`trigger=[...]`): pass them as a list, e.g.
+  `[{"cron": "0 8 * * *"}, {"on_success_of": "backfill"}]`. Each trigger starts its own run.
+- **Manual or tag runs** (no trigger; started with `dlthub job trigger`): ask how often they're
+  run and use that as the schedule. A `trigger.once` job runs one time; leave it out of the
+  monthly estimate and mention it.
+- **Freshness checks** (`freshness=[...]`) skip runs while an upstream is loading or failed. The
+  script ignores them, so the estimate is an upper bound for those jobs; say so.
 - Add the rate from **Price** above as `rate_usd_per_hour`, and today's `date`.
 
 ## Step 2: Ask only for the gaps
@@ -105,6 +124,9 @@ Then add, in a sentence or two:
 - A month is 365 / 12 ≈ 30.4 days. Runs per month: from the schedule; cron is counted over a full
   year and divided by 12 (with croniter), so weekday-only, weekly, monthly and yearly crons count
   right.
+- Event-triggered jobs: upstream runs × the upstream's success share (`on_success_of`), failure
+  share (`on_failure_of`) or 1 (`on_completion_of`), followed back through chains. In the what-if
+  table they move with their upstream jobs.
 - Average run: mean of successful runs. Slow run: 90th percentile, or the longest run when there
   are fewer than 5. Failed runs are billed once, for the time they ran.
 - Hours = runs × run time × instance multiplier; always-on jobs: hours per day × 30.4 × multiplier.

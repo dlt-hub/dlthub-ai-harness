@@ -24,8 +24,13 @@ Input (JSON):
          "size": "small", "multiplier": 1,
          "assumed": {"avg_minutes": 10, "slow_minutes": 15}}, # customer's estimate, no runs yet
         {"name": "dashboard", "schedule": {"always_on_hours_per_day": 8},
-         "size": "medium", "multiplier": 2}
-      ],
+         "size": "medium", "multiplier": 2},
+        {"name": "job_inspector",                           # event trigger: job.fail
+         "schedule": {"on_failure_of": ["orders_sync", "weekday_report"]},
+         "size": "small", "multiplier": 1,                   # also on_success_of,
+         "runs": [{"minutes": 0.7, "status": "ok"}]}         # on_completion_of
+      ],                                                    # "schedule" may be a list: any
+                                                            # trigger fires its own run
       "levers": [                                  # changes to price; the script computes savings
         {"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}},
         {"job": "orders_sync", "size": "small", "multiplier": 1},
@@ -95,8 +100,38 @@ def _cron_label(expr: str) -> str:
     return f"{_num(per_year / 12)}× a month"
 
 
+# event triggers, as the platform names them: job.success, job.fail, job.completed
+EVENTS = {"on_success_of": "succeeds", "on_failure_of": "fails", "on_completion_of": "finishes"}
+
+
+def _triggers(schedule: dict | list) -> list[dict]:
+    """A job's triggers; a list means any of them starts its own run."""
+    triggers = schedule if isinstance(schedule, list) else [schedule]
+    if not triggers or any(not isinstance(t, dict) for t in triggers):
+        raise ValueError(f"schedule {schedule!r} needs one trigger or a list of triggers")
+    return triggers
+
+
+def _event(trigger: dict) -> tuple[str, list[str]] | None:
+    """The event and the upstream job names of an event trigger, or None for a time trigger."""
+    for key in EVENTS:
+        if key in trigger:
+            names = trigger[key]
+            names = [names] if isinstance(names, str) else list(names)
+            if not names:
+                raise ValueError(f"trigger {trigger!r} names no upstream job")
+            return key, names
+    return None
+
+
+def _is_always_on(schedule: dict | list) -> bool:
+    return isinstance(schedule, dict) and "always_on_hours_per_day" in schedule
+
+
 def runs_per_month(schedule: dict) -> float:
-    """Runs in an average month for a schedule; always-on jobs have none."""
+    """Runs in an average month for a time trigger; always-on jobs have none."""
+    if _event(schedule):
+        raise ValueError("event triggers depend on other jobs; their runs come from estimate()")
     if "always_on_hours_per_day" in schedule:
         return 0
     if "cron" in schedule:
@@ -107,7 +142,12 @@ def runs_per_month(schedule: dict) -> float:
     return MINUTES_PER_MONTH / (float(schedule["every"]) * UNIT_MINUTES[unit])
 
 
-def schedule_label(schedule: dict) -> str:
+def schedule_label(schedule: dict | list) -> str:
+    if isinstance(schedule, list):
+        return " + ".join(schedule_label(t) for t in _triggers(schedule))
+    event = _event(schedule)
+    if event:
+        return f"when {' or '.join(event[1])} {EVENTS[event[0]]}"
     if "always_on_hours_per_day" in schedule:
         return "always on"
     if "cron" in schedule:
@@ -129,23 +169,38 @@ def run_stats(job: dict) -> dict:
         a = job["assumed"]
         avg = float(a["avg_minutes"])
         slow = float(a.get("slow_minutes", avg))
+        share = float(a.get("failed_share", 0))
         return {
             "avg_min": avg,
             "slow_min": slow,
-            "failed_share": 0.0,
-            "failed_min": 0.0,
+            "failed_share": share,
+            # a failed run is billed for the time it ran; without data, assume a full run
+            "failed_min": float(a.get("failed_minutes", avg)) if share else 0.0,
             "sample": 0,
             "few_runs": False,
             "assumed": True,
+            "never_succeeded": False,
         }
     runs = job.get("runs") or []
     ok = sorted(float(r["minutes"]) for r in runs if r.get("status", "ok") == "ok")
     failed = [float(r["minutes"]) for r in runs if r.get("status", "ok") != "ok"]
-    if not ok:
+    if not runs:
         raise ValueError(
-            f"job {job.get('name', '?')!r} has no successful runs; ask the customer for run time"
+            f"job {job.get('name', '?')!r} has no runs; ask the customer for run time"
             " and pass it as 'assumed'"
         )
+    if not ok:
+        # every run failed: it is billed for the failed time; its cost once it works is unknown
+        return {
+            "avg_min": 0.0,
+            "slow_min": 0.0,
+            "failed_share": 1.0,
+            "failed_min": sum(failed) / len(failed),
+            "sample": len(runs),
+            "few_runs": False,
+            "assumed": False,
+            "never_succeeded": True,
+        }
     few = len(ok) < FEW_RUNS
     slow = ok[-1] if few else ok[math.ceil(0.9 * len(ok)) - 1]  # 90th percentile, nearest rank
     return {
@@ -156,24 +211,62 @@ def run_stats(job: dict) -> dict:
         "sample": len(runs),
         "few_runs": few,
         "assumed": False,
+        "never_succeeded": False,
     }
 
 
 # --- the estimate ----------------------------------------------------------------------------
 
 
-def _hours(schedule: dict, stats: dict | None, multiplier: float) -> tuple[float, float]:
+def _hours(
+    runs: float, schedule: dict | list, stats: dict | None, multiplier: float
+) -> tuple[float, float]:
     """Charged hours per month, expected and heavy month."""
-    if "always_on_hours_per_day" in schedule:
+    if _is_always_on(schedule):
         h = float(schedule["always_on_hours_per_day"]) * DAYS_PER_MONTH * multiplier
         return h, h
     assert stats is not None
-    runs = runs_per_month(schedule)
     failed_h = runs * stats["failed_share"] * stats["failed_min"] / 60
     ok_runs = runs * (1 - stats["failed_share"])  # failed runs are counted once, above
     expected = (ok_runs * stats["avg_min"] / 60 + failed_h) * multiplier
     high = (ok_runs * stats["slow_min"] / 60 + failed_h) * multiplier
     return expected, high
+
+
+class _Runs:
+    """Runs per month for every job, following event triggers back to the scheduled jobs."""
+
+    def __init__(self, schedules: dict[str, dict | list], stats: dict[str, dict | None]):
+        self.schedules, self.stats = schedules, stats
+
+    def of(self, name: str, cadence: dict | None = None, path: tuple[str, ...] = ()) -> float:
+        """Runs of a job; with a cadence, every time trigger upstream runs at that cadence."""
+        if name in path:
+            raise ValueError(f"event triggers loop: {' -> '.join((*path, name))}")
+        schedule = self.schedules[name]
+        if _is_always_on(schedule):
+            return 0.0
+        total, timed = 0.0, []
+        for trigger in _triggers(schedule):
+            event = _event(trigger)
+            if event is None:
+                timed.append(trigger)
+                continue
+            key, upstream = event
+            for up in upstream:
+                if up not in self.schedules:
+                    raise ValueError(f"job {name!r} follows {up!r}, which is not in jobs")
+                up_stats = self.stats[up]
+                if up_stats is None:
+                    raise ValueError(
+                        f"job {name!r} follows always-on job {up!r}, which has no runs"
+                    )
+                share = up_stats["failed_share"]
+                factor = {"on_success_of": 1 - share, "on_failure_of": share}.get(key, 1.0)
+                total += self.of(up, cadence, (*path, name)) * factor
+        if timed:
+            total += runs_per_month(cadence) if cadence else sum(runs_per_month(t) for t in timed)
+        return total
 
 
 def _need(obj: dict, key: str, what: str) -> float:
@@ -182,7 +275,7 @@ def _need(obj: dict, key: str, what: str) -> float:
     return float(obj[key])
 
 
-def _lever(lever: dict, jobs: dict[str, dict], rate: float) -> dict:
+def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> dict:
     if lever.get("unquantified"):
         return {"label": lever["label"], "usd_per_month": None, "break_even_slowdown": None}
     name = lever.get("job")
@@ -209,7 +302,11 @@ def _lever(lever: dict, jobs: dict[str, dict], rate: float) -> dict:
         )
     else:
         raise ValueError(f"lever for {name!r} changes nothing the script can price")
-    new_expected, _ = _hours(schedule, job["stats"], mult)
+    if schedule is job["schedule"]:
+        runs = job["runs_month"]
+    else:
+        runs = _Runs({**counter.schedules, name: schedule}, counter.stats).of(name)
+    new_expected, _ = _hours(runs, schedule, job["stats"], mult)
     return {
         "label": lever.get("label", label),
         "usd_per_month": round((job["hours_expected"] - new_expected) * rate, 2),
@@ -220,19 +317,29 @@ def _lever(lever: dict, jobs: dict[str, dict], rate: float) -> dict:
 def estimate(data: dict) -> dict:
     """All figures for the chat summary and the report."""
     rate = float(data["rate_usd_per_hour"])
+    names = [raw.get("name") for raw in data["jobs"]]
+    if len(set(names)) != len(names):
+        raise ValueError("job names must be unique")
+    schedules = {raw["name"]: raw.get("schedule") or {} for raw in data["jobs"]}
+    stats_by_name = {
+        raw["name"]: None if _is_always_on(schedules[raw["name"]]) else run_stats(raw)
+        for raw in data["jobs"]
+    }
+    counter = _Runs(schedules, stats_by_name)
     jobs = []
     for raw in data["jobs"]:
         what = f"job {raw.get('name', '?')!r}"
-        schedule = raw.get("schedule") or {}
+        schedule = schedules[raw["name"]]
         mult = _need(raw, "multiplier", what)
-        stats = None if "always_on_hours_per_day" in schedule else run_stats(raw)
-        expected, high = _hours(schedule, stats, mult)
+        stats = stats_by_name[raw["name"]]
+        runs = counter.of(raw["name"])
+        expected, high = _hours(runs, schedule, stats, mult)
         jobs.append({
             **raw,
             "schedule": schedule,
             "multiplier": mult,
             "stats": stats,
-            "runs_month": runs_per_month(schedule),
+            "runs_month": runs,
             "label": schedule_label(schedule),
             "hours_expected": expected,
             "hours_high": high,
@@ -251,7 +358,12 @@ def estimate(data: dict) -> dict:
     ladder = [
         {
             "job": j["name"],
-            "usd": [_hours(s, j["stats"], j["multiplier"])[0] * rate for _, s in LADDER],
+            # an event-triggered job follows its upstream jobs to the new cadence
+            "usd": [
+                _hours(counter.of(j["name"], s), j["schedule"], j["stats"], j["multiplier"])[0]
+                * rate
+                for _, s in LADDER
+            ],
         }
         for j in jobs
         if j["stats"] is not None
@@ -276,7 +388,7 @@ def estimate(data: dict) -> dict:
         "usd_per_run": usd_scheduled / runs_total if runs_total else None,
         "usd_per_day": usd_expected / DAYS_PER_MONTH,
         "ladder": ladder,
-        "savings": [_lever(lv, by_name, rate) for lv in data.get("levers") or []],
+        "savings": [_lever(lv, by_name, counter, rate) for lv in data.get("levers") or []],
         "engineering": engineering,
         "assumptions": _assumptions(jobs, rate, data.get("notes") or []),
     }
@@ -299,8 +411,16 @@ def _assumptions(jobs: list[dict], rate: float, notes: list[str]) -> list[str]:
                 f"{j['name']}: uptime ({_num(j['schedule']['always_on_hours_per_day'])}"
                 " h/day) is the customer's estimate."
             )
+        elif st["never_succeeded"]:
+            lines.append(
+                f"{j['name']}: all {st['sample']} recent runs failed, billed for the time they ran;"
+                " its cost once it works is unknown."
+            )
         elif st["assumed"]:
-            lines.append(f"{j['name']}: run time is the customer's estimate.")
+            line = f"{j['name']}: run time is the customer's estimate"
+            if st["failed_share"]:
+                line += f", and so is its {st['failed_share']:.0%} failure share"
+            lines.append(line + ".")
         else:
             line = f"{j['name']}: {st['sample']} recent runs"
             if st["few_runs"]:
@@ -308,6 +428,20 @@ def _assumptions(jobs: list[dict], rate: float, notes: list[str]) -> list[str]:
             if st["failed_share"]:
                 line += f"; {st['failed_share']:.0%} failed, billed for the time they ran"
             lines.append(line + ".")
+    by_name = {j["name"]: j for j in jobs}
+    for j in jobs:
+        for trigger in [] if _is_always_on(j["schedule"]) else _triggers(j["schedule"]):
+            event = _event(trigger)
+            if event is None or event[0] == "on_completion_of":
+                continue
+            shares = ", ".join(
+                f"{up} {by_name[up]['stats']['failed_share']:.0%}" for up in event[1]
+            )
+            kind = "fails" if event[0] == "on_failure_of" else "succeeds"
+            lines.append(
+                f"{j['name']}: runs each time {' or '.join(event[1])} {kind}; failure share"
+                f" from their recent runs ({shares})."
+            )
     return lines + list(notes)
 
 
@@ -330,6 +464,8 @@ def _e(value: object) -> str:
 def _run_time(j: dict) -> str:
     if j["stats"] is None:
         return f"{_num(j['schedule']['always_on_hours_per_day'])} h/day"
+    if j["stats"]["never_succeeded"]:
+        return f"never succeeded ({_num(j['stats']['failed_min'])} min per failed run)"
     return f"{_num(j['stats']['avg_min'])} / {_num(j['stats']['slow_min'])} min"
 
 
@@ -422,7 +558,10 @@ def report(est: dict) -> str:
     ]
     rows = []
     for j in est["jobs"]:
-        avg = _run_time(j).split(" / ")[0] + ("" if j["stats"] is None else " min")
+        if j["stats"] is None or j["stats"]["never_succeeded"]:
+            avg = _run_time(j)
+        else:
+            avg = f"{_num(j['stats']['avg_min'])} min"
         share = 100 * j["usd_expected"] / total
         rows.append(
             f"<tr><td>{_e(j['name'])}</td><td>{_e(j['label'])}</td>"

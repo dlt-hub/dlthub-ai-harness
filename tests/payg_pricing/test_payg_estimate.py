@@ -134,8 +134,195 @@ def test_few_runs_use_the_longest_as_slow() -> None:
 
 
 def test_job_without_runs_or_assumption_fails() -> None:
-    with pytest.raises(ValueError, match="no successful runs"):
-        pe.run_stats({"name": "j", "runs": [{"minutes": 1, "status": "failed"}]})
+    with pytest.raises(ValueError, match="no runs"):
+        pe.run_stats({"name": "j", "runs": []})
+
+
+def test_job_that_never_succeeded_is_billed_for_its_failed_runs() -> None:
+    stats = pe.run_stats({"name": "j", "runs": [{"minutes": 0.2, "status": "failed"}] * 4})
+
+    assert stats["never_succeeded"] is True
+    assert stats["failed_share"] == 1
+    assert stats["failed_min"] == pytest.approx(0.2)
+
+
+# --- event triggers --------------------------------------------------------------------------
+
+DAILY_RUNS = 365 / 12
+
+
+def job(name: str, schedule: dict | list, runs: list[dict] | None = None) -> dict:
+    return {
+        "name": name,
+        "schedule": schedule,
+        "size": "small",
+        "multiplier": 1,
+        "runs": runs or [{"minutes": 1, "status": "ok"}],
+    }
+
+
+def runs_with(failed: int, ok: int, failed_min: float = 0.5, ok_min: float = 1) -> list[dict]:
+    return [{"minutes": failed_min, "status": "failed"}] * failed + [
+        {"minutes": ok_min, "status": "ok"}
+    ] * ok
+
+
+def sap_example() -> dict:
+    """The PR example: an inspector agent that runs each time either of two loads fails."""
+    return {
+        "rate_usd_per_hour": 10,
+        "jobs": [
+            job("business_partner", every(1, "days"), runs_with(failed=3, ok=7)),
+            job("bp_address", every(1, "days"), runs_with(failed=4, ok=0, failed_min=0.2)),
+            job(
+                "job_inspector",
+                {"on_failure_of": ["business_partner", "bp_address"]},
+                [{"minutes": 0.7, "status": "ok"}],
+            ),
+        ],
+    }
+
+
+def runs_of(est: dict) -> dict[str, float]:
+    return {j["name"]: j["runs_month"] for j in est["jobs"]}
+
+
+def test_on_failure_of_runs_once_per_upstream_failure() -> None:
+    runs = runs_of(pe.estimate(sap_example()))
+
+    # 30% of business_partner's runs fail and all of bp_address's: not 2 x the daily runs
+    assert runs["job_inspector"] == pytest.approx(DAILY_RUNS * (0.3 + 1.0))
+
+
+@pytest.mark.parametrize(
+    "event, share",
+    [("on_success_of", 0.7), ("on_failure_of", 0.3), ("on_completion_of", 1.0)],
+)
+def test_each_event_trigger_follows_its_share(event: str, share: float) -> None:
+    data = {
+        "rate_usd_per_hour": 10,
+        "jobs": [
+            job("load", every(1, "hours"), runs_with(failed=3, ok=7)),
+            job("after", {event: "load"}),
+        ],
+    }
+
+    assert runs_of(pe.estimate(data))["after"] == pytest.approx(730 * share)
+
+
+def test_event_triggers_chain() -> None:
+    data = {
+        "rate_usd_per_hour": 10,
+        "jobs": [
+            job("ingest", every(1, "days"), runs_with(failed=1, ok=9)),
+            job("transform", {"on_success_of": "ingest"}, runs_with(failed=1, ok=1)),
+            job("report", {"on_completion_of": "transform"}),
+        ],
+    }
+    runs = runs_of(pe.estimate(data))
+
+    assert runs["transform"] == pytest.approx(DAILY_RUNS * 0.9)
+    assert runs["report"] == pytest.approx(DAILY_RUNS * 0.9)
+
+
+def test_a_list_of_triggers_adds_up() -> None:
+    data = {
+        "rate_usd_per_hour": 10,
+        "jobs": [
+            job("backfill", every(1, "days")),
+            job("daily_load", [{"cron": "0 8 * * *"}, {"on_success_of": "backfill"}]),
+        ],
+    }
+    est = pe.estimate(data)
+
+    assert runs_of(est)["daily_load"] == pytest.approx(2 * DAILY_RUNS)
+    assert est["jobs"][1]["label"] == "daily + when backfill succeeds"
+
+
+def test_event_labels() -> None:
+    assert pe.schedule_label({"on_failure_of": ["a", "b"]}) == "when a or b fails"
+    assert pe.schedule_label({"on_success_of": "a"}) == "when a succeeds"
+    assert pe.schedule_label({"on_completion_of": "a"}) == "when a finishes"
+
+
+def test_assumed_upstream_can_give_a_failure_share() -> None:
+    data = {
+        "rate_usd_per_hour": 10,
+        "jobs": [
+            {
+                "name": "load",
+                "schedule": every(1, "days"),
+                "size": "small",
+                "multiplier": 1,
+                "assumed": {"avg_minutes": 5, "failed_share": 0.1},
+            },
+            job("inspector", {"on_failure_of": "load"}),
+        ],
+    }
+    est = pe.estimate(data)
+
+    assert runs_of(est)["inspector"] == pytest.approx(DAILY_RUNS * 0.1)
+    assert "and so is its 10% failure share" in " ".join(est["assumptions"])
+
+
+@pytest.mark.parametrize(
+    "jobs, error",
+    [
+        ([job("a", {"on_failure_of": "nope"})], "not in jobs"),
+        ([job("a", {"on_success_of": "b"}), job("b", {"on_success_of": "a"})], "loop"),
+        ([job("a", {"on_failure_of": "a"})], "loop"),
+        (
+            [
+                {**job("dash", {"always_on_hours_per_day": 8}), "runs": None},
+                job("a", {"on_failure_of": "dash"}),
+            ],
+            "always-on",
+        ),
+        ([job("a", {"on_failure_of": []})], "no upstream"),
+        ([job("a", every(1, "days")), job("a", every(1, "days"))], "unique"),
+    ],
+)
+def test_bad_event_triggers_fail_loudly(jobs: list[dict], error: str) -> None:
+    with pytest.raises(ValueError, match=error):
+        pe.estimate({"rate_usd_per_hour": 10, "jobs": jobs})
+
+
+def test_runs_per_month_refuses_event_triggers() -> None:
+    with pytest.raises(ValueError, match="other jobs"):
+        pe.runs_per_month({"on_failure_of": "a"})
+
+
+def test_job_that_never_succeeded_in_the_estimate() -> None:
+    est = pe.estimate(sap_example())
+    bp = {j["name"]: j for j in est["jobs"]}["bp_address"]
+
+    assert bp["hours_expected"] == pytest.approx(DAILY_RUNS * 0.2 / 60)
+    md = pe.summary(est)
+    assert "never succeeded (0.2 min per failed run)" in md
+    assert "bp_address: all 4 recent runs failed" in md
+    assert "its cost once it works is unknown" in md
+    assert (
+        "job_inspector: runs each time business_partner or bp_address fails; failure share"
+        " from their recent runs (business_partner 30%, bp_address 100%)." in md
+    )
+
+
+def test_report_shows_never_succeeded_and_event_label() -> None:
+    page = pe.report(pe.estimate(sap_example()))
+
+    assert "never succeeded (0.2 min per failed run)</td>" in page
+    assert "min per failed run) min" not in page
+    assert "when business_partner or bp_address fails" in page
+    assert '<td class="num">1 min</td>' in page
+
+
+def test_what_if_table_moves_event_jobs_with_their_upstream() -> None:
+    est = pe.estimate(sap_example())
+    ladder = {row["job"]: row["usd"] for row in est["ladder"]}
+    hourly = [label for label, _ in pe.LADDER].index("Hourly")
+
+    # both loads hourly: the inspector runs 730 x (30% + 100%) times, 0.7 min each, $10/h
+    assert ladder["job_inspector"][hourly] == pytest.approx(730 * 1.3 * 0.7 / 60 * 10)
 
 
 # --- the estimate ----------------------------------------------------------------------------
