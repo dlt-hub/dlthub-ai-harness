@@ -475,7 +475,7 @@ wheels = [
 
 [[package]]
 name = "dlt"
-version = "1.33.0a0"
+version = "1.33.0a1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -507,9 +507,9 @@ dependencies = [
     { name = "tzdata" },
     { name = "win-precise-time", marker = "python_full_version < '3.13' and os_name == 'nt'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/6d/0d10f21d0c958b83de630a920b1b40ce4f2592bdea98a45937bb7c5705ee/dlt-1.33.0a0.tar.gz", hash = "sha256:ffd0abd41de398250fc0e9b62d10e885c28b810073889e2db38b98a0bd8c6311", size = 1312827, upload-time = "2026-11-15T21:29:29.627Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/e4/e5f663f1dc2a56f07e30d655cfac18752ee844419fe1085b62952ae2533c/dlt-1.33.0a1.tar.gz", hash = "sha256:7ef87eba9f5580da8c82b2e946119b42d53cd18efad4ec491015a9d789fb060e", size = 1312937, upload-time = "2026-11-15T23:05:41.266Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/fc/93579b10e4586bfe531dcd93bf2e55beaf31240142bdfd5f9a4eeb2d495c/dlt-1.33.0a0-py3-none-any.whl", hash = "sha256:9100e9bd567260214e5ec291a0567a58ea51d897ce61e6b43708873602e29f86", size = 1607532, upload-time = "2026-11-15T21:29:25.404Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/95/08b99e69cc1c3b3d6368ea3fcfed48d7f04258db5868c240729b77f329d0/dlt-1.33.0a1-py3-none-any.whl", hash = "sha256:fc261eb3218d3eb49ae90e34a58b6efd9ef12363c31b8815e9196425802ce4f0", size = 1607616, upload-time = "2026-11-15T23:05:44.819Z" },
 ]
 
 [package.optional-dependencies]
@@ -560,7 +560,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "croniter", specifier = ">=6.0.0" },
-    { name = "dlt", extras = ["hub"], specifier = ">=1.33.0a0" },
+    { name = "dlt", extras = ["hub"], specifier = ">=1.33.0a1" },
     { name = "dlthub-client", specifier = ">=0.28.7" },
     { name = "duckdb", specifier = ">=0.9" },
     { name = "fastmcp", marker = "python_full_version >= '3.10'", specifier = ">=3.0.0" },

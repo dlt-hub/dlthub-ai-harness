@@ -64,6 +64,8 @@ def get_dlt_spec() -> str:
     url: str = info["url"]
     if url.startswith("file://") and info.get("dir_info", {}).get("editable"):
         return url.removeprefix("file://")
+    if vcs := info.get("vcs_info"):
+        return f"dlt @ {vcs['vcs']}+{url}@{vcs['commit_id']}"
     return f"dlt @ {url}"
 
 
