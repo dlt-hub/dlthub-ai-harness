@@ -1,7 +1,7 @@
 ---
 name: define-data-quality-checks
 argument-hint: "[pipeline-name] [table]"
-description: Use when the user asks to "define checks", "add validation rules", "what checks should I add", "translate requirements into checks", or wants to map schema hints or business rules to dlthub data quality check and metric calls for a specific pipeline or table. Do NOT use to run checks (use run-data-quality) or to set up the pipeline environment (use setup-data-quality).
+description: "Use when the user wants to define or change data quality checks and metrics: unique, not null, allowed values, or business rules turned into checks for a table or column. Maps them to dlthub data quality checks and metrics. Not for running checks (run-data-quality)."
 ---
 
 # Define data quality checks
@@ -205,7 +205,7 @@ checks = {
 }
 ```
 
-This dict is passed to `run-data-quality` as session context and written into `tools/dq_run.py` there. No file is written at this stage.
+This dict is passed to `run-data-quality` as session context and written into the data quality script there. No file is written at this stage.
 
 ### 6. Confirm with the user
 
@@ -264,7 +264,7 @@ If the pipeline file is not accessible (e.g., it lives in a package), show the u
 
 **Profile B — no file write:**
 
-Do not modify any file. The checks dict generated in step 5 is passed forward as session context to `run-data-quality`, which will write `tools/dq_run.py`.
+Do not modify any file. The checks dict generated in step 5 is passed forward as session context to `run-data-quality`, which asks for the path and writes the data quality script.
 
 ## Output and handover
 

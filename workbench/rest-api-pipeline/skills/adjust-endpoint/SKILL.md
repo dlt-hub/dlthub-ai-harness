@@ -1,6 +1,6 @@
 ---
 name: adjust-endpoint
-description: Adjust a working dlt pipeline for production — remove dev limits, verify pagination (including stuck or looping paginators), configure incremental loading, expand date ranges, and handle rate-limit/429 errors with retries, backoff, and request timeouts. Use when the user wants to remove .add_limit(), load more data, fix stuck or looping pagination, set up incremental loading, or make the pipeline retry/back off on 429s. For throughput/concurrency tuning (parallel resources, page size) when a working pipeline is slow, use optimize-rest-api-performance instead. For inspecting loaded data, fixing column types, or flattening nested structures after a load, use validate-data instead.
+description: "Use when a working REST API pipeline should load everything for production: remove .add_limit(), fix stuck or looping pagination, set up incremental loading, widen date ranges, retry and back off on 429 rate limits and timeouts. Changes the endpoint configuration of the source. Not for speed (optimize-rest-api-performance) or data types (validate-data)."
 argument-hint: "[pipeline-name] [adjustments]"
 ---
 
@@ -91,8 +91,6 @@ request_timeout = 120   # or higher — match the API's documented response time
 Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md
 
 ## Next steps
-
-*If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
 
 - Full load complete → hand over to **data-exploration** (`explore-data`) to chart and analyze the data
 - Pipeline works but slow (too many requests, slow endpoints) → use `optimize-rest-api-performance` (parallel resources, page size, concurrency)

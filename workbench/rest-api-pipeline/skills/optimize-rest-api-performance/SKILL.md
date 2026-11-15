@@ -1,6 +1,6 @@
 ---
 name: optimize-rest-api-performance
-description: Speed up a dlt REST API pipeline. Use when a REST/HTTP API pipeline is slow because of many sequential requests, nested child resources, or large responses, and the user wants higher throughput — parallelize resources, use async, tune page size and concurrency. For removing .add_limit(), fixing pagination, first-time incremental/merge setup, or retry/backoff on 429 / rate-limit errors use adjust-endpoint instead.
+description: "Use when a working REST API pipeline is too slow: many sequential requests, slow child resources, large responses, low throughput. Speeds it up with parallel and async resources, page size and concurrency. Not for pagination, limits or 429 handling (adjust-endpoint)."
 argument-hint: "[pipeline-name] [symptom]"
 ---
 
@@ -101,4 +101,4 @@ For rows the API can't filter server-side, drop them early with `processing_step
 
 - **Stage-level tuning (workers, buffers, normalize/load parallelism, memory)** → hand over to the **performance** toolkit → `optimize-performance` (install if not present: `uv run dlthub --non-interactive ai toolkit install performance`).
 - **Loops, stalls, or errors under concurrency** → use `debug-pipeline`.
-- **Tuned and stable** → hand over to **dlthub-platform** to deploy (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).
+- **Tuned and stable** → to deploy, follow the workflow entry of the installed platform toolkit; when none is installed, `dlthub-router` installs one.

@@ -1,6 +1,6 @@
 ---
 name: debug-pipeline
-description: Debug and inspect a dlt pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, data, and diagnose errors like missing credentials or failed load jobs. Also covers pipelines built on a verified source.
+description: "Use when a REST API pipeline run failed or loaded the wrong data: an exception in the run, failed load jobs, missing credentials, empty or partial tables, a verified source that crashes. Finds the cause from the trace and load packages of the run and fixes it."
 argument-hint: "[pipeline-name] [issue]"
 ---
 
@@ -186,8 +186,6 @@ Checklist:
 Do NOT remove settings the user had before you started debugging.
 
 ## Next steps
-
-*If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
 
 - **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (data-exploration toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → check TOML sections, revisit `create-rest-api-pipeline` step 6b for credential setup

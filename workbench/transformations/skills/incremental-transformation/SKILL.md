@@ -1,6 +1,6 @@
 ---
 name: incremental-transformation
-description: Switch a dlthub transformation from full-replace to incremental loading. Use when the user wants to process only new or changed rows, reduce transformation run time, or schedule frequent transformation runs without reprocessing all data.
+description: "Use when transformations should process only new or changed rows: data volume grows, runs take too long, or they run often. Switches dlthub transformations from replace to incremental."
 ---
 
 # Incremental transformation
@@ -19,7 +19,7 @@ Reference: https://dlthub.com/docs/hub/transformations.md#incremental-transforma
 |-----------|---------|
 | Output table has a date/timestamp/ID column you control (e.g. daily aggregates) | **Direct column** — cursor on the output table's own column |
 | Process only rows from new source ingestion loads; no meaningful output cursor | **Load-based** — cursor on `_dlt_loads.inserted_at`; dlthub auto-joins the loads table |
-| The dltHub Platform scheduler controls the time window | **dltHub Platform scheduler** — `allow_external_schedulers=True`; reads `DLT_INTERVAL_START` / `DLT_INTERVAL_END` env vars |
+| A scheduler sets the time window of each run (a job with an `interval`, or an external orchestrator) | **Scheduler window** — `allow_external_schedulers=True`; the window comes from the scheduler |
 
 Ask the user which situation applies if it is not obvious from the transformation.
 
@@ -27,11 +27,11 @@ Ask the user which situation applies if it is not obvious from the transformatio
 
 | Pattern | Cursor column | Typical type |
 |---------|--------------|-------------|
-| Direct | A column on the output table (e.g. `"date"`, `"created_at"`) | `pendulum.DateTime` or `int` |
-| Load-based | `"_dlt_loads.inserted_at"` (fixed — no user choice) | `pendulum.DateTime` |
-| External scheduler | A source column the dltHub Platform scheduler will filter on | `pendulum.DateTime` |
+| Direct | A column on the output table (e.g. `"date"`, `"created_at"`) | `datetime` or `int` |
+| Load-based | `"_dlt_loads.inserted_at"` (fixed — no user choice) | `datetime` |
+| Scheduler window | A source column the scheduler window filters on | `datetime` |
 
-The type annotation on the parameter (`dlt.sources.incremental[T]`) must match the column type in the destination.
+The type annotation on the parameter (`dlt.sources.incremental[T]`) must match the column type in the destination. Use timezone-aware values: `datetime(2020, 1, 1, tzinfo=timezone.utc)`.
 
 ### 3. Set write disposition and primary key
 
@@ -39,7 +39,7 @@ The type annotation on the parameter (`dlt.sources.incremental[T]`) must match t
 |---------|--------------------|-----------------------|
 | Direct column | `"merge"` | Required — the grain of the output row (e.g. `"date"`) |
 | Load-based | `"append"` (default) or `"merge"` if dedup is needed | Only if `"merge"` |
-| External scheduler | `"append"` or `"merge"` | Only if `"merge"` |
+| Scheduler window | `"append"` or `"merge"` | Only if `"merge"` |
 
 ### 4. Add incremental parameter and apply to the query
 
@@ -48,16 +48,17 @@ The type annotation on the parameter (`dlt.sources.incremental[T]`) must match t
 Use when aggregations or lookups produce a row per date/ID that should be upserted on each run.
 
 ```python
+from datetime import datetime, timezone
 from typing import Any
-import pendulum
+
 import dlt
 
 @dlt.hub.transformation(write_disposition="merge", primary_key="date")
 def crawl_counts_by_date(
     dataset: dlt.Dataset,
-    crawled_at: dlt.sources.incremental[pendulum.DateTime] = dlt.sources.incremental(
+    crawled_at: dlt.sources.incremental[datetime] = dlt.sources.incremental(
         "date",
-        initial_value=pendulum.datetime(2020, 1, 1, tz="UTC"),
+        initial_value=datetime(2020, 1, 1, tzinfo=timezone.utc),
         range_start="open",
     ),
 ) -> Any:
@@ -66,17 +67,18 @@ def crawl_counts_by_date(
 
 **Pattern 2 — Load-based (`_dlt_loads.inserted_at`)**
 
-Use when you want exactly the rows that arrived in new ingestion loads. dlthub joins `_dlt_loads` automatically — no manual JOIN needed in SQL or relation chains. `initial_value` is intentionally omitted here — the first run will process all existing loads; add `initial_value=pendulum.now("UTC")` to skip historical loads and start from now.
+Use when you want exactly the rows that arrived in new ingestion loads. dlthub joins `_dlt_loads` automatically — no manual JOIN needed in SQL or relation chains. `initial_value` is intentionally omitted here — the first run will process all existing loads; add `initial_value=datetime.now(timezone.utc)` to skip historical loads and start from now.
 
 ```python
+from datetime import datetime
 from typing import Any
-import pendulum
+
 import dlt
 
 @dlt.hub.transformation(write_disposition="append")
 def connectors_from_new_loads(
     dataset: dlt.Dataset,
-    loaded_at: dlt.sources.incremental[pendulum.DateTime] = dlt.sources.incremental(
+    loaded_at: dlt.sources.incremental[datetime] = dlt.sources.incremental(
         "_dlt_loads.inserted_at",
         range_start="open",
     ),
@@ -88,21 +90,25 @@ def connectors_from_new_loads(
     )
 ```
 
-**Pattern 3 — dltHub Platform scheduler**
+**Pattern 3 — Scheduler window**
 
-Use when the dltHub Platform scheduler sets the time window. `initial_value` sets the fallback start for the first run before the scheduler takes over.
+Use when a scheduler decides the time window of each run. `initial_value` sets the start for a run without a window (a run by hand).
+
+- **A job with an interval:** when the transformation runs as a job that declares an `interval`, the job passes the window of each run to incrementals that set `allow_external_schedulers=True` (or to every incremental of the job when it sets `incremental_mode="interval"`). Jobs, triggers and intervals: https://dlthub.com/docs/hub/pipeline-operations/triggers.md
+- **An external orchestrator:** it passes the window through the `DLT_INTERVAL_START` / `DLT_INTERVAL_END` environment variables.
 
 ```python
+from datetime import datetime, timezone
 from typing import Any
-import pendulum
+
 import dlt
 
 @dlt.hub.transformation(write_disposition="append")
 def orders_window(
     dataset: dlt.Dataset,
-    window: dlt.sources.incremental[pendulum.DateTime] = dlt.sources.incremental(
+    window: dlt.sources.incremental[datetime] = dlt.sources.incremental(
         "created_at",
-        initial_value=pendulum.datetime(2000, 1, 1, tz="UTC"),
+        initial_value=datetime(2000, 1, 1, tzinfo=timezone.utc),
         allow_external_schedulers=True,
         range_start="closed",
         range_end="open",
@@ -123,15 +129,17 @@ def orders_window(
 
 ### 6. Test incrementally
 
+Run from the project root, with the script that `create-transformation` wrote (for example `transformations/<cdm-name>_to_cdm.py`):
+
 ```bash
 # First run — loads all data from initial_value
-python transformations/<dataset_name>_to_cdm.py
+uv run python transformations/<cdm-name>_to_cdm.py
 
 # Inspect stored cursor state
-uv run dlthub local pipeline info <pipeline_name>
+uv run dlthub local pipeline info <cdm-name>
 
 # Second run — should process 0 new rows if no new data arrived
-python transformations/<dataset_name>_to_cdm.py
+uv run python transformations/<cdm-name>_to_cdm.py
 ```
 
-Verify row counts with `dlthub local pipeline show <pipeline_name>` or the `preview_table` MCP tool. If the second run still reprocesses everything, check that `primary_key` is set and that the cursor column name matches exactly (case-sensitive).
+Verify row counts with `dlthub local pipeline show <cdm-name>` or the `preview_table` MCP tool. If the second run still reprocesses everything, check that `primary_key` is set and that the cursor column name matches exactly (case-sensitive).

@@ -1,16 +1,16 @@
 ---
 name: generate-cdm
-description: Generate a Canonical Data Model (CDM) in DBML using Kimball dimensional modeling. Use after create-ontology to produce the implementation-ready CDM schema.
+description: "Use when the user wants a dimensional model of their data: facts and dimensions, grain, surrogate keys, slowly changing dimensions, Kimball. Writes the Canonical Data Model (CDM) in DBML from the ontology."
 ---
 
 # Generate CDM
 
 Translate the ontology into an implementation-ready Canonical Data Model using Kimball dimensional modeling.
 
-**Requires** `.schema/<cdm-name>/ontology.ison` from `create-ontology`.
+**Requires** `.dlthub/ontology/<cdm-name>/ontology.ison` from `create-ontology`.
 If missing, run `create-ontology` first.
 
-Read `_name` from `.schema/<cdm-name>/taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
+Read `_name` from `.dlthub/ontology/<cdm-name>/taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
 
 Reference: DBML format — https://dbml.dbdiagram.io/
 
@@ -18,7 +18,7 @@ Reference: DBML format — https://dbml.dbdiagram.io/
 
 ### 1. Classify entities as fact or dimension
 
-Read `.schema/<cdm-name>/ontology.ison`. For each entity, apply Kimball classification:
+Read `.dlthub/ontology/<cdm-name>/ontology.ison`. For each entity, apply Kimball classification:
 
 | Signals | Classification |
 |---|---|
@@ -85,7 +85,7 @@ If a new collapse is warranted, confirm with the user before merging the tables.
 
 ### 6. Write CDM
 
-Write `.schema/<cdm-name>/CDM.dbml` using DBML syntax. Encode metadata in `Table` notes:
+Write `.dlthub/ontology/<cdm-name>/CDM.dbml` using DBML syntax. Encode metadata in `Table` notes:
 
 ```dbml
 Table dim_person [note: 'table_type:dimension; surrogate_key:person_sk; scd_type:1; conformed:true'] {
@@ -113,12 +113,12 @@ Required `note` fields per table type:
 
 ## Output
 
-- `.schema/<cdm-name>/CDM.dbml` — implementation-ready CDM schema
+- `.dlthub/ontology/<cdm-name>/CDM.dbml` — implementation-ready CDM schema
 
-After writing the file, explicitly ask the user to open and review `.schema/<cdm-name>/CDM.dbml` before continuing:
+After writing the file, explicitly ask the user to open and review `.dlthub/ontology/<cdm-name>/CDM.dbml` before continuing:
 
 ```
-Please review `.schema/<cdm-name>/CDM.dbml` — it contains the full data model with all tables, columns, and relationships.
+Please review `.dlthub/ontology/<cdm-name>/CDM.dbml` — it contains the full data model with all tables, columns, and relationships.
 
 Let me know if anything looks wrong or needs changing before we move on.
 ```

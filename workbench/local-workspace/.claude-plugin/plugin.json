@@ -1,0 +1,12 @@
+{
+  "name": "local-workspace",
+  "description": "Prepare a workspace for deployment, declare, run, debug and test dlt jobs on this machine. Platform toolkits depend on it.",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs/hub/pipeline-operations/deployments",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": ["dlthub", "jobs", "local", "testing", "deployment"]
+}

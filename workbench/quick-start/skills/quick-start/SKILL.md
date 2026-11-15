@@ -1,39 +1,25 @@
 ---
 name: quick-start
-description: "The guided entry point for dltHub AI Harness use cases — ingestion from APIs, data exploration, transformations, deployment, data quality. Use when the user names a use case or wants to be oriented before starting: 'I want to ingest from Stripe', 'show me how to go from data to dashboard', 'take me through the full workflow', 'explore the harness', 'what can I do with dlthub', 'give me a quick start', 'show me a demo', 'walk me through ingestion to visualization', 'I want to try everything end-to-end', 'teach me dltHub'.
-  Do NOT use when the user is asking what's available or where to start in general — use the `dlthub-router` skill (in init) for capability-discovery questions ('what can you do', 'what toolkits are there', 'I'm new to dlthub').
-  Do NOT use when the user already has a specific task underway (debugging, adding an endpoint, deploying)."
+description: "Use when the user wants a guided tour or a demo of the harness end to end, from ingestion to a dashboard: 'show me a demo', 'take me through the full workflow', 'walk me through ingestion to visualization', 'give me a quick start', 'I want to try everything end-to-end'. Picks a path and a depth and starts it. Not for what is available or where to start (dlthub-router), or a task already underway."
 argument-hint: "[data-source] [path]"
 ---
 
 # Quick Start
 
-Guide the user from zero to a deployed, production-ready pipeline in a few prompts. Make sure you keep the sampling for the first deployment. 
+Guide the user from zero to a deployed, production-ready pipeline in a few prompts. Make sure you keep the sampling for the first deployment.
 
 Parse `$ARGUMENTS`:
 - `data-source` (optional): what the user wants to extract data from
 - `path` (optional): one of `production` (default), `discover`, `inspect`, `cdm`
 
-## Anti-patterns
-
-- ❌ **Triggering on 'Help me build and deploy a minimal pipeline'** — that phrase is the dedicated entry point for `deploy-minimal-ingestion-pipeline` in the `dlthub-init-skills` toolkit, not a quick-start tour.
-
 ## Step 1 — Check workspace status
 
-**Onboarding exception — check this first:** if the user explicitly asks to be onboarded or to be taught how to use dltHub (e.g. "onboard me", "I want to learn dltHub", "teach me dltHub"), ask them to run:
-
-```
-uvx dlthub-start@latest
-```
-
-This scaffolds a fresh **playground** workspace — an onboarding experience, **not** where production workflows should live. **NEVER run it yourself** — it is interactive and requires authentication; it only works in a real terminal, do NOT use `!` mode. **Stop and wait** for the user to confirm it has finished, then re-check `uv run dlthub ai status` before continuing to Step 2.
-
-Otherwise, run `uv run dlthub ai status`.
+Run `uv run dlthub ai status`.
 
 - If everything is set up: continue to Step 2.
 - If prerequisites are missing (no workspace, MCP not connected, missing dependencies): briefly tell the user what is missing in one line, then set it up **in place**.
   - **Preferred — run `uvx dlthub-init@latest` yourself.** It is non-interactive and AI-aware, so an agent can run it directly — **this is also how you set up a clean new dlthub project** (`uvx dlthub-init@latest <dir>` scaffolds into a new directory). It scaffolds a dlthub workspace with AI support, collision-safe, in one step.
-  - **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from "dlt[hub]" dlthub init` (equivalent to `uv init` + `uv add "dlt[hub]"` + `uv run dlthub init`), then `uv run dlthub ai init` to set up AI support.
+  - **Fallback (if `dlthub-init` is unavailable or errors)** — run `uvx --from dlt@latest dlthub init --agent`: it creates the workspace, adds its dependencies and sets up AI support for this agent.
 
   Wait for completion, then re-check status before continuing to Step 2.
 
@@ -44,7 +30,7 @@ If `$ARGUMENTS` already has both source and path, skip to Step 3.
 If the user has mentioned an existing pipeline (has data already loaded), route directly:
 - wants to explore or visualize → invoke `explore-data`
 - wants to model or transform → invoke `annotate-sources`
-- wants to deploy → invoke `setup-runtime`
+- wants to deploy → follow the workflow entry of the installed platform toolkit; when none is installed, `dlthub-router` installs one
 
 Otherwise, show the capability table and depth menu, then ask: **"What do you want to extract data from?"**
 
@@ -52,7 +38,7 @@ Otherwise, show the capability table and depth menu, then ask: **"What do you wa
 INGEST     → REST API pipelines (find-source → create → debug → harden → validate)
 EXPLORE    → Marimo dashboards (explore-data → build-notebook)
 TRANSFORM  → Canonical data model — Kimball (annotate-sources → generate-cdm → create-transformation)
-DEPLOY     → dltHub Runtime on a schedule (setup-runtime → prepare-deployment → deploy-workspace)
+DEPLOY     → run the jobs on a schedule, with the platform toolkit of your platform
 
 Pick a depth (default is Production):
   [1] Production  — ingest + harden + validate + deploy + visualize  ← default
@@ -71,10 +57,12 @@ Announce the step sequence for the chosen path, then invoke `find-source` with t
 
 | Path | Sequence |
 |---|---|
-| **Production** (default) | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → setup-runtime → prepare-deployment → deploy-workspace → explore-data → build-notebook |
-| Full CDM | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → annotate-sources → create-ontology → generate-cdm → create-transformation → setup-runtime → prepare-deployment → deploy-workspace → explore-data → build-notebook |
+| **Production** (default) | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → deploy (platform toolkit) → explore-data → build-notebook |
+| Full CDM | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → annotate-sources → create-ontology → generate-cdm → create-transformation → deploy (platform toolkit) → explore-data → build-notebook |
 | Inspect | find-source → create-rest-api-pipeline → debug-pipeline → **adjust-endpoint** → validate-data → explore-data → build-notebook |
 | Discover (demo only) | find-source → create-rest-api-pipeline → debug-pipeline → explore-data → build-notebook |
+
+**deploy (platform toolkit)** is the workflow of the installed platform toolkit, from its entry skill to the first job run. When none is installed, `dlthub-router` installs one: ask the user which platform when it is not clear.
 
 **Why every non-Discover path includes `adjust-endpoint`**: `create-rest-api-pipeline` intentionally leaves debug artifacts behind for fast iteration — `dev_mode=True`, `single_page` paginators, low `per_page`, no incremental. `adjust-endpoint` removes those before validation/deploy/exploration. Skipping it leads to deploying a sample loader, not a real pipeline.
 

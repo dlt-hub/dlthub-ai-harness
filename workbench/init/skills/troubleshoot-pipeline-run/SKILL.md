@@ -1,6 +1,6 @@
 ---
 name: troubleshoot-pipeline-run
-description: General pipeline troubleshooting, when no troubleshooting guide specific to the source or runtime context is present.
+description: "Use when a dlt pipeline run fails or loads the wrong data and no debug skill for its source is installed: an exception in extract, normalize or load, failed load jobs, a pending or partially loaded package, 0 rows loaded, a missing column, ModuleNotFoundError, 'database is locked'. Finds the failing step from the trace and load packages and fixes the run."
 argument-hint: "[pipeline-name] [issue]"
 ---
 
@@ -26,7 +26,7 @@ Parse `$ARGUMENTS`:
 ## 1. Before you change anything
 
 - **The project must be a dltHub workspace**: `.dlt/.workspace` exists in the project root. If it does not, stop: this skill does not troubleshoot plain dlt (OSS) projects. Tell the user and offer the in-place workspace setup (`uvx dlthub-init@latest`).
-- **Run from the project root.** dlt looks for `.dlt/.workspace` in the current working directory only, not in parent folders: `uv run python pipelines/my_pipeline.py`, not `cd pipelines && python my_pipeline.py`. Run from another folder, the workspace is not found: `dlt.pipeline()` runs without the profile, config, secrets and state of the workspace, and the `dlthub` CLI fails with `invalid choice: 'local'`.
+- **Run from the project root.** dlt looks for `.dlt/.workspace` in the current working directory only, not in parent folders. For example, with a script in `pipelines/my_pipeline.py`, run `uv run python pipelines/my_pipeline.py`, not `cd pipelines && python my_pipeline.py`. Run from another folder, the workspace is not found: `dlt.pipeline()` runs without the profile, config, secrets and state of the workspace, and the `dlthub` CLI fails with `invalid choice: 'local'`.
 - **Check the workspace**: `uv run dlthub ai status`. If the `dlt-workspace-mcp` tools fail, this tells you why.
 - **Check the profile**: `uv run dlthub profile info`. The profile decides which config, secrets and state the run uses (see **Wrong destination, credentials or state** in section 7).
 - **Is the source a verified source?** It has its own folder created by `dlthub pipeline init` and an entry in `.dlt/.sources`. Read its maintenance notes first (section 6).
@@ -74,9 +74,9 @@ Common exceptions:
 | `LoadClientJobRetry` | a job failed transiently more than `[load] raise_on_max_retries` times (default `5`). The package stays pending | check that the destination is reachable, then run again: the next run resumes the package |
 | a destination error when dlt adds a column: NOT NULL, NULL values, `Adding columns with constraints not yet supported` (DuckDB) | dlt adds a NOT NULL column to a table that already has data | see **A load fails adding a NOT NULL column** in section 7 |
 | `DataValidationError` | a schema contract rejected data. Its attributes name the table, the column and the contract mode | fix the data, or change the contract: https://dlthub.com/docs/general-usage/schema-contracts.md |
-| `ModuleNotFoundError` / `MissingDependencyException` | a source, destination or reader needs an extra. Destination packages are imported when `run()` connects to the destination, before extract | install what the message names, e.g. `uv add "dlt[hub,<extra>]"` or the driver package |
-| import error that reports a wrong `dlthub` plugin version | `dlthub` was installed on its own and does not match the dlt version | reinstall the extra pinned to your dlt version: `uv add "dlt[hub]==<dlt version>"` |
-| `CannotRestorePipelineException` from `dlt.attach` | the active profile has no state for this pipeline: another profile is active, the script ran from another folder, or the pipeline never ran | check the profile (**Wrong destination, credentials or state** in section 7) and run from the project root |
+| `ModuleNotFoundError` / `MissingDependencyException` | a source, destination or reader needs an extra. Destination packages are imported when `run()` connects to the destination, before extract | install what the message names, e.g. `uv add "dlt[<extra>]"` or the driver package |
+| import error that reports a wrong `dlthub` plugin version | `dlthub` does not match the dlt version | install the `dlthub` version that the error names, e.g. `uv add "dlthub>=<version>"`, or upgrade `dlt` |
+| `CannotRestorePipelineException` from `dlt.attach` | the active profile has no state for this pipeline: another profile is active, the script ran from another folder, or the pipeline never ran | to read the data, create the same pipeline instead (`dlt.pipeline("<name>", destination=..., dataset_name=...).dataset()`): it needs no local state. To resume the run, check the profile (**Wrong destination, credentials or state** in section 7) and run from the project root |
 | `DestinationTerminalException` containing `database is locked` (DuckDB) | another process holds the DuckDB file: the dashboard, another run, a notebook | close the other process, then run again |
 
 ## 4. Inspect the last run
@@ -269,15 +269,15 @@ Check the stored cursor with `uv run dlthub -v local pipeline info <pipeline_nam
 The workspace reads config and state per **profile**:
 - `config.toml` and `secrets.toml` apply to every profile. `.dlt/<profile>.config.toml` and `.dlt/<profile>.secrets.toml` override them for one profile.
 - Each profile has its own working directory, `.dlt/state/<profile>/`, and its own local data, `.dlt/data/<profile>/`. A pipeline that ran under `dev` is not listed under `prod`.
-- Local runs use `dev` unless a profile is pinned. A pin (`.dlt/profile-name`) also applies to plain `python` runs.
-- Built-in profiles are `dev`, `tests`, `prod` and `access`. Pinning a misspelled name does not fail: the run just finds no config for it.
+- Local runs use the active profile, `dev` by default (`.dlt/profile-name` records another one). It also applies to plain `python` runs.
 
 To check:
 ```
-uv run dlthub profile info                 # active profile and whether it is pinned
+uv run dlthub profile info                 # the active profile, its data access and settings files
 uv run dlthub -v local info                # every file location the active profile reads settings from
-uv run dlthub local profile use <profile>  # pin another profile
 ```
+
+To run on another profile, or to fix the settings files of one, use the (`setup-profiles`) skill.
 
 ### Slow, looks stuck, or runs out of memory
 - **A long run may just be a large dataset.** Watch the progress log: new items keep arriving on a big run, while a stuck one repeats the same work or goes quiet.

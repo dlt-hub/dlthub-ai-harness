@@ -1,6 +1,6 @@
 ---
 name: validate-sql-database-data
-description: Validate schema and data after a successful dlt SQL database pipeline load. Use when the user wants to check if loaded data looks correct, inspect table schemas, fix data types, or verify column mappings from the source database.
+description: "Use when the user wants to check data loaded from a SQL database: column types that differ from the source, wrong column mappings, missing tables or columns. Inspects the schema and the data and fixes the mappings."
 argument-hint: "[pipeline-name] [concerns]"
 ---
 
@@ -37,7 +37,8 @@ This opens a browser with table schemas, row counts, and sample data.
 ```python
 import dlt
 
-pipeline = dlt.attach("<pipeline_name>")
+# the same pipeline as the pipeline script: name, destination and dataset name
+pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
 dataset = pipeline.dataset()
 
 # Row counts for all tables

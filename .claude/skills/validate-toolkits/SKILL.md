@@ -1,17 +1,27 @@
 ---
 name: validate-toolkits
-description: Validate toolkit components and project docs — check external doc URLs, cross-references between skills/commands/rules, and verify README.md and CLAUDE.md are in sync with actual toolkit state. Use when the user asks to validate, review, or check toolkit quality.
-argument-hint: <toolkit-path>
+description: "Use when the user asks to validate, review or check toolkits, or a PR review needs the toolkits it touches checked: external doc URLs, cross-references, the authoring rules (rules, skill descriptions, artifact locations, platform toolkits, renames), and README.md and CLAUDE.md in sync with the toolkits. Checks one or more toolkits and fixes what can be fixed."
+argument-hint: "[toolkit-path ...]"
 metadata:
   internal: true
 ---
 
 # Validate toolkit components
 
-Deep-validate a toolkit's markdown files: external references, cross-references, and component accuracy.
+Deep-validate the markdown files of one or more toolkits: external references, cross-references, the authoring
+rules and component accuracy.
 
 Parse `$ARGUMENTS`:
-- `toolkit-path` (optional): path to toolkit directory (e.g. `workbench/rest-api-pipeline`). If omitted, validate all toolkits under `workbench/`.
+- `toolkit-path` (optional, repeatable): path to a toolkit directory (e.g. `workbench/rest-api-pipeline`). If omitted, validate all toolkits under `workbench/`.
+
+## 0. Run the mechanical checks
+
+```
+make validate-toolkits
+```
+
+It checks names, frontmatter, workflow refs, index coverage, artifact locations, platform toolkits and description
+length. Keep its errors and warnings for the toolkits under review: they go into the report.
 
 ## 1. Build component map
 
@@ -60,9 +70,17 @@ For each cross-reference found:
 4. If a match is found, **fix the reference** in the source file.
 5. If no match can be found, mark as ERROR.
 
-### c. Fix the file
+### c. Check the authoring rules
 
-Apply any fixes (broken URLs, renamed references) immediately before moving to the next file.
+Check the file against [authoring-rules.md](authoring-rules.md): the rules for `rules/*.md`, skill descriptions,
+artifact locations, code paths, platform toolkits and renames. Some rules span files (overlapping triggers in an
+install set, a platform skill repeating local-workspace): check those once per toolkit, after its files. A rule
+that a human must decide (where a line belongs, how to reword a description) is a WARNING with a proposal, not a
+fix.
+
+### d. Fix the file
+
+Apply any fixes (broken URLs, renamed references, stale skill names) immediately before moving to the next file.
 
 ## 3. Validate project docs against current state
 
@@ -100,6 +118,9 @@ FIXED:
 
 ERRORS:
   <file>: <description of unresolvable reference>
+
+RULES:
+  <file>: rule <n> (<name>): <the line or description that breaks it> → <proposed change>
 
 WARNINGS:
   <file>: <description of questionable content>

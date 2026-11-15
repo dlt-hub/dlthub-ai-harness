@@ -1,6 +1,6 @@
 ---
 name: view-data
-description: Query, explore, or view data loaded by a dlt pipeline. Use when the user asks to query data, explore loaded tables, check row counts, write Python that reads pipeline data, or asks questions like "show me the data", "what users are there", "how much did we spend". Covers dlt dataset API, ibis expressions, and ReadableRelation.
+description: "Use when the user wants to see or query data that an API pipeline loaded: 'show me the data', row counts, a question answered with numbers, or Python that reads the dataset with the dataset API, ibis or SQL. Queries the destination dataset. Not for charts and dashboards (explore-data)."
 argument-hint: "[pipeline-name] [query]"
 ---
 
@@ -29,10 +29,13 @@ This opens a browser with table schemas, row counts, and sample data.
 
 Use `pipeline.dataset()` to access loaded data. This is **destination agnostic** — works the same on duckdb, postgres, bigquery, etc. NEVER import destination libraries (like `duckdb`) directly.
 
-### Attach to pipeline and get dataset
+### Get the dataset from the pipeline
+Create the same pipeline as the pipeline script: the same name, destination and dataset name. Its dataset reads the
+schemas from the destination. Import the pipeline instead when a module creates it at the module level. More:
+`https://dlthub.com/docs/general-usage/dataset-access/dataset#access-a-dataset-from-another-script-job-or-notebook`
 ```python
 import dlt
-pipeline = dlt.attach("<pipeline_name>")
+pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
 dataset = pipeline.dataset()
 ```
 

@@ -1,0 +1,7 @@
+{
+  ".eval-workspaces": {
+    "with-dlthub-platform": {
+      "toolkits": ["dlthub-platform"]
+    }
+  }
+}

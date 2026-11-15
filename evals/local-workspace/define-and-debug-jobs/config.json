@@ -1,0 +1,7 @@
+{
+  ".eval-workspaces": {
+    "with-rest-api-and-local-workspace": {
+      "toolkits": ["rest-api-pipeline", "local-workspace"]
+    }
+  }
+}

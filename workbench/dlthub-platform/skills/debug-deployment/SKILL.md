@@ -1,6 +1,6 @@
 ---
 name: debug-deployment
-description: Debug a failed or misbehaving dltHub Platform deployment. Use when a runtime job fails, produces unexpected results, or the user wants to check job status and logs.
+description: "Use when a job deployed on dltHub failed, hangs or produced wrong results, or the user wants the status and logs of its job runs. Finds the cause from the job run status and logs."
 ---
 
 # Debug dltHub Platform deployment
@@ -72,21 +72,11 @@ dlthub run <name_or_file>                    # deploy the change and run the job
 dlthub run <name_or_file> --refresh          # deploy and run as a refresh run: reload the data
 ```
 
-Use a refresh run only when wrong data was already loaded and must be reloaded, and only after the user confirms: it drops or truncates production data. It reloads the pipelines only if the job sets `auto_refresh_pipeline_mode` (see the `deploy-workspace` skill, "Refresh runs"). Otherwise it changes nothing for them.
+Use a refresh run only when wrong data was already loaded and must be reloaded, and only after the user confirms: it drops or truncates production data. It reloads the pipelines only if the job sets `auto_refresh_pipeline_mode` (see `job-patterns.md` of the (`define-and-debug-jobs`) skill, "Refresh runs and the refresh cascade"). Otherwise it changes nothing for them.
 
 ## Access production data (read only)
 
 1. Find the right profile for data access: **access** if it is configured (list profiles), otherwise **prod** if it is configured. If neither is present, ask the user which profile to use.
 2. **ALWAYS** ask the human before accessing production data, and confirm the profile.
-3. Pin the profile.
-4. Use the MCP tools, the CLI or Python scripts.
-5. Pin the **dev** profile when the work is done.
-
-To run a single command under a given profile:
-
-```bash
-dlthub local run my_pipeline.py --profile prod          # run under prod profile
-WORKSPACE__PROFILE=prod uv run dlthub local pipeline info my_pipeline   # env var for dlthub commands
-```
-
-The MCP server sees the change only after the production profile is pinned.
+3. Run on that profile as the (`setup-profiles`) skill says ("Run on another profile"). For one command, override the active profile. For the MCP tools and the session, make it the active profile.
+4. When the work is done, make `dev` the active profile again.

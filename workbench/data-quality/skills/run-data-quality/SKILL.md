@@ -1,7 +1,7 @@
 ---
 name: run-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "run data quality checks", "execute checks", "run my data quality checks", "check the data now", "run validations", or wants to execute already-defined checks against a loaded pipeline. Do NOT use to define new checks (use define-data-quality-checks) or to review existing results (use review-data-quality).
+description: "Use when the user wants to run data quality checks that are already defined on a loaded pipeline: 'run my checks', 'check the data now'. Runs them against the destination without loading the source again. Not for defining checks (define-data-quality-checks) or reading results (review-data-quality)."
 ---
 # Run data quality checks
 
@@ -24,7 +24,7 @@ Before writing any script, determine which execution profile applies:
 | Profile | Signal | Action |
 |---|---|---|
 | **A — pipeline author** | Checks were applied via `@dq.with_checks` / `dq.with_checks(resource, ...)` decorators in the pipeline file | Run the existing pipeline script — checks fire automatically during load |
-| **B — postmortem analyst** | No decorator changes; user wants to check existing destination data without re-running the pipeline | Write and run `tools/dq_run.py` using `dlt.attach` + `dq.run_checks` |
+| **B — postmortem analyst** | No decorator changes; user wants to check existing destination data without re-running the pipeline | Write and run a data quality script (`<script_path>`, for example `dq_run.py`) that takes the pipeline and calls `dq.run_checks` |
 
 If the profile is ambiguous, ask: "Were the checks added to the pipeline code (decorators), or do you want to run them against data already in the destination without re-extracting?"
 
@@ -49,18 +49,19 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 1. **Confirm the script path.** Before writing anything, ask:
 
    ```
-   Where should I write the data quality run script? (default: tools/dq_run.py)
+   Where should I write the data quality run script? (for example dq_run.py, next to your pipeline)
    ```
 
-   Use the user's answer as `<script_path>` for all subsequent steps. If they say "default" or give no answer, use `tools/dq_run.py`.
+   Use the user's answer as `<script_path>` for all subsequent steps. If the workspace already keeps scripts in a folder, propose that folder. Do not pick a path without the user's answer.
 
-2. **Write `<script_path>`.** Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination).
+2. **Write `<script_path>`.** Take the pipeline without running it, and call `dq.run_checks` (reads only from the destination). Import the pipeline when a module creates it at the module level. Otherwise create the same pipeline: the same name, destination and dataset name (`uv run dlthub local pipeline info <pipeline-name>` shows them). Either way the script also runs as a job on a deployment, where the pipeline state comes from the destination.
 
    ```python
    import dlt
    from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-   pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+   # or: from <module> import pipeline
+   pipeline = dlt.pipeline("<pipeline-name>", destination="<destination>", dataset_name="<dataset_name>")
    load_info = dq.run_checks(pipeline, checks={
        "<table>": [
            dq.checks.is_unique("<col>"),
@@ -72,17 +73,9 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
    load_info.raise_on_failed_jobs()
    ```
 
-   **Never glob for pipeline files or run the user's original pipeline script.** That re-extracts from the source. `run_checks` is self-contained against the destination.
+   **Never glob for pipeline files or run the user's original pipeline script.** That re-extracts from the source. `run_checks` is self-contained against the destination. Importing a module that only creates the pipeline runs nothing.
 
-   **Pipeline state not found:** `dlt.attach` reads the pipeline state of the active profile, in `.dlt/state/<profile>/pipelines` (`dev` unless another profile is pinned). If it raises `CannotRestorePipelineException`, the active profile has no state for this pipeline. Either another profile is active, the script ran from a folder other than the project root, or the pipeline never ran in this workspace. Check with `uv run dlthub profile info` and `uv run dlthub local pipeline list`, then tell the user:
-
-   ```
-   The pipeline state isn't in the active profile (<profile>) of this workspace.
-
-   Fix: run your pipeline once from the project root with this profile, or switch
-   to the profile it ran under (uv run dlthub local profile use <profile>). After
-   that, the data quality script will work without modification.
-   ```
+   **Tables not found:** the name, destination or dataset name differs from the pipeline that loaded the data, or the pipeline never loaded with the active profile. Compare with `uv run dlthub local pipeline info <pipeline-name>` and `uv run dlthub profile info`, and tell the user which one differs.
 
    **Note on `case()` and NULLs:** `dq.checks.case("col >= 0")` treats NULL as a failing row. If the column is nullable and NULLs are expected, either exclude them in the expression (`case("col IS NULL OR col >= 0")`) or use `is_not_null` as a separate check.
 
@@ -125,7 +118,7 @@ Read check results using the library:
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+pipeline = dlt.pipeline("<pipeline-name>", destination="<destination>", dataset_name="<dataset_name>")
 results = dq.read_check(pipeline.dataset())
 rows = results.fetchall()
 cols = results.columns
@@ -184,12 +177,12 @@ Pass to `review-data-quality`:
 ```
 <script_path> ran your checks once against the current data. What would you like to do with it?
 
-  [1] Deploy it — run these checks on a schedule on the dltHub platform
+  [1] Deploy it — run these checks on a schedule
   [2] Keep it local — re-run manually whenever needed (python <script_path>)
   [3] Discard it — the results are in the destination, the script is no longer needed
 
 ```
 
-If the user chooses [1], hand over to **dlthub-platform** (start at `setup-runtime`), passing:
+If the user chooses [1], follow the workflow entry of the installed platform toolkit (when none is installed, `dlthub-router` installs one), passing:
 - The script path (`<script_path>`) as the deployment target
 - The confirmed pipeline name and destination

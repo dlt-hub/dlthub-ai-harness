@@ -1,6 +1,6 @@
 ---
 name: optimize-performance
-description: Make a dlt pipeline faster or lighter on memory. Use when the user says a pipeline is slow, takes too long, runs out of memory, uses too much RAM, or wants to optimize, speed up, parallelize, or increase throughput. Covers source-agnostic levers (parallelism, workers, buffers, file rotation); for source-specific tuning use the pipeline toolkit's own optimize skill. Also decides whether a dltHub platform job genuinely needs a larger instance (more memory/CPU) — the last resort after tuning.
+description: "Use when a dlt pipeline is slow, takes too long, runs out of memory or uses too much RAM, and the user wants it faster or lighter: parallelism, workers, buffers, file rotation. Finds the slow stage (extract, normalize, load), tunes it, and decides whether a deployed job needs a bigger runner. For tuning specific to the source, use the optimize skill of the pipeline toolkit."
 argument-hint: "[pipeline-name] [symptom]"
 ---
 
@@ -13,6 +13,8 @@ dlt runs in three stages — **extract → normalize → load** — each with it
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline. If omitted, infer from session context; if ambiguous, ask and stop.
 - `symptom` (optional): what's wrong — "slow extract", "OOM during normalize", "load takes hours", etc.
+
+**Handed over from another toolkit or skill?** The pipeline, the symptom and the tuning already applied are in the session: confirm them in one line and start Step 1 with them.
 
 > Source-specific knobs (DB backends/`chunk_size`, REST async/concurrency, file format/readers) live in a separate pipeline toolkit — see [Source-specific tuning](#source-specific-tuning-separate-toolkits) for the toolkit to install. Apply those **in addition** to the stage levers here.
 >
@@ -100,11 +102,11 @@ A pipeline that runs out of resources on a constrained machine is short of **RAM
 
 | Signal | RAM exhaustion | Disk exhaustion |
 |---|---|---|
-| How it dies | usually **no Python traceback** (two exceptions below). Exit **137 / SIGKILL** or pod `OOMKilled` on k8s/Docker. On the **dltHub platform, three signatures — all RAM**: `Runner killed (SIGKILL), exit code: 137` with an out-of-memory note (fast climb), `Runner failed with exit code: 247` after a silent stall, or **no kill at all** (see below) | Python exception with traceback: `OSError: [Errno 28] No space left on device` |
+| How it dies | usually **no Python traceback** (two exceptions below). Exit **137 / SIGKILL** or pod `OOMKilled` on k8s/Docker. On a platform runner, the platform toolkit lists how its runner reports it; one form is **no kill at all** (see below) | Python exception with traceback: `OSError: [Errno 28] No space left on device` |
 | Killed by | the OS / k8s OOM-killer (RSS hit the cgroup/container limit) | dlt/Python writing intermediate, load-package, or staging files |
 | Confirm mid-run | the `progress="log"` memory line (needs `psutil` — see Step 1); for the whole picture see [Tracking memory](#tracking-memory-dev-vs-production) below | `df -h` on the working volume and `$DLT_DATA_DIR`; `du -sh ~/.dlt` and the staging path |
 
-**A job can run out of RAM without dying — and that looks like a hang, not a crash.** It sits with memory parked at the tier's limit, unchanging on every sample, emitting **no progress lines at all**, never killed, until the platform job's `execute.timeout` (its wall-clock limit) expires. Progress output stopped **and** memory at the ceiling is RAM exhaustion: cancel it and tune — don't wait for an exit code and don't raise the timeout. The same config can fail either way on different runs, so never key the diagnosis on the exit code alone.
+**A job can run out of RAM without dying — and that looks like a hang, not a crash.** It sits with memory parked at the runner's limit, unchanging on every sample, emitting **no progress lines at all**, never killed, until the job's wall-clock limit expires. Progress output stopped **and** memory at the ceiling is RAM exhaustion: cancel it and tune — don't wait for an exit code and don't raise the timeout. The same config can fail either way on different runs, so never key the diagnosis on the exit code alone.
 
 With `progress="log"` on, tie a RAM spike to its stage: extract spiking = pulling the source into memory; normalize spiking = buffering items.
 
@@ -117,13 +119,13 @@ The `progress="log"` line reports **main-process RSS**, which is complete for th
 
 > **The percentage is not your process's share** — dlt prints `rss` for the current process but takes the percentage from `psutil.virtual_memory().percent`, i.e. **system-wide** memory in use, so on a busy laptop an alarming percentage can sit next to a few-hundred-MB process. Never read it as "how close am I to the limit".
 >
-> **On the dltHub runner it does tell you the tier**, because `/proc/meminfo` there is namespaced to the instance — so "system" *is* your instance, `psutil.virtual_memory().total` is the tier's memory, and `MB ÷ pct` off this line recovers it. Use either to confirm which tier a run actually got: `dlthub deploy --show-manifest` only shows the size you **declared**, and prints no `require` block at all on the default tier.
+> **On a runner whose `/proc/meminfo` is namespaced to the instance it does tell you the instance's memory**: "system" *is* your instance, `psutil.virtual_memory().total` is its memory, and `MB ÷ pct` off this line recovers it.
 
 How to see the whole picture depends on where you can reach:
 - **Dev / staging, with a shell** — `docker stats` / `kubectl top pod` / `top` (sorted by RSS) / cgroup `memory.current` vs `memory.max`. These measure the **whole container**, so they already include the normalize pool.
 - **Production, no interactive shell** (the agent isn't attached) — don't rely on ad-hoc commands. Read memory from things emitted by the run itself:
-  - **dltHub platform logs** — if the pipeline runs on the dltHub platform, read its logs directly: `dlthub job logs <name>` (latest run), `dlthub job runs logs <name> [run#]` (a specific run), or `-f` to stream. The `progress="log"` memory lines show up here. Ref: https://dlthub.com/docs/hub/pipeline-operations/monitoring
-  - **From inside the run** — the `progress="log"` memory line lands in your logs; to capture the whole-tree peak with no external tooling, log the container's cgroup peak at the end of the run (cgroup v2: read `/sys/fs/cgroup/memory.peak`; v1: `memory.max_usage_in_bytes`) — it accounts for all processes in the container. **On the dltHub runner neither peak file exists** — it mounts cgroup **v1** with only `memory.limit_in_bytes` and `memory.usage_in_bytes`, so there is no kernel high-water mark: sample `memory.usage_in_bytes` **and** RSS from a ~1 s thread and keep both maxima. They agree while dlt does its own Python work, then diverge once a memory-mapping destination (duckdb) loads, where RSS runs well above what the cgroup charges. **RSS is the alarm; the cgroup figure is what gets you killed** — a run peaking "over" the tier in RSS can still finish.
+  - **The platform's job logs** — if the pipeline runs as a deployed job, read its logs with the `job logs` command of the installed platform toolkit. The `progress="log"` memory lines show up there.
+  - **From inside the run** — the `progress="log"` memory line lands in your logs; to capture the whole-tree peak with no external tooling, log the container's cgroup peak at the end of the run (cgroup v2: read `/sys/fs/cgroup/memory.peak`; v1: `memory.max_usage_in_bytes`) — it accounts for all processes in the container. **When neither peak file exists** (a cgroup **v1** mount with only `memory.limit_in_bytes` and `memory.usage_in_bytes`), there is no kernel high-water mark: sample `memory.usage_in_bytes` **and** RSS from a ~1 s thread and keep both maxima. They agree while dlt does its own Python work, then diverge once a memory-mapping destination (duckdb) loads, where RSS runs well above what the cgroup charges. **RSS is the alarm; the cgroup figure is what gets you killed** — a run peaking "over" the tier in RSS can still finish.
   - **The OOM-kill itself is a signal** — exit 137 / `OOMKilled` in the pod status or orchestrator events confirms RAM was the cause even with no live metrics.
 
 #### **RAM — bound peak memory:**
@@ -143,7 +145,7 @@ Gotcha: `buffer_max_items = 1` forces single-item writes and **disables multithr
 
 Check the destination's own config for these knobs (they live in the destination, not in dlt). Capping destination memory and threads typically drops peak RSS several-fold versus running the destination at its RAM-sized defaults — often the single change that keeps a streamed load inside its limit.
 
-Only once **all** the levers in this section are in place — buffers lowered, files rotated, destination capped, and the fresh-pipeline-per-object pattern below where it applies — is a genuinely undersized runner a possibility: see [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform) (dltHub platform only).
+Only once **all** the levers in this section are in place — buffers lowered, files rotated, destination capped, and the fresh-pipeline-per-object pattern below where it applies — is a genuinely undersized runner a possibility: see [Step 4](#step-4-last-resort--a-bigger-runner) (deployed jobs only).
 
 **Many-object loops — use a fresh pipeline per object.** Reusing one `pipeline` object across many `run()` calls grows its in-memory state (schema deltas, load packages, cursor values) run-over-run, which can OOM a long job. Create a **fresh pipeline per object** and drop it when done:
 
@@ -201,20 +203,18 @@ Two exceptions — **use a full `run()`**: memory/OOM work (peak RSS is cross-st
 
 **Stop or repeat — check in, don't loop autonomously.** Report the before/after to the user, then:
 - **Stop** when it meets the user's goal (fast enough / fits memory), the last lever gave **no meaningful improvement** (diminishing returns), or you've hit an external ceiling (source throughput, destination limits, disk/network bandwidth) that tuning can't move.
-- **Scale up** ([Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform)) only if the run is on the dltHub platform and you hit that external ceiling **in the runner's own RAM or vCPU** — never before Steps 1–3 are done, and never without the user's explicit approval ([Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform)).
+- **Scale up** ([Step 4](#step-4-last-resort--a-bigger-runner)) only if the run is a deployed job and you hit that external ceiling **in the runner's own RAM or vCPU** — never before Steps 1–3 are done, and never without the user's explicit approval ([Step 4](#step-4-last-resort--a-bigger-runner)).
 - **Repeat** from Step 1 — the bottleneck often *moves* to another stage after a fix. Apply the next lever one at a time. "Fast enough" is the user's call — a minor improvement may already be enough, so confirm before another round rather than chasing micro-gains.
 
-## Step 4: Last resort — raise the instance size (dltHub platform)
+## Step 4: Last resort — a bigger runner
 
-Applies **only** to pipelines on the dltHub platform, and **only** once Steps 1–3 are done and re-measured. A bigger runner is not a tuning lever — it is a **recurring cost** charged against your organization's run-time budget by a multiplier, every run, forever.
+Applies **only** to deployed jobs, and **only** once Steps 1–3 are done and re-measured. A bigger runner is not a tuning lever — it is a **recurring cost** on every job run, forever.
 
-**Never change it without the user's explicit permission.** This is a spending decision, not a tuning decision: diagnose and **propose**, never edit `require`, deploy a size change, or raise `execute={"timeout": ...}` on your own initiative — not when the job is OOM-killed, not when it is timing out, not when the user asked you to "just make it work".
+**Never change it without the user's explicit permission.** This is a spending decision, not a tuning decision: diagnose and **propose**, never change the runner size or the job's time limit on your own initiative — not when the job is OOM-killed, not when it is timing out, not when the user asked you to "just make it work".
 
-Two facts that save a wasted trip: **disk is the same on every tier**, so scaling up never fixes `Errno 28`; and each step **doubles** the charge, so it must roughly **halve** wall-clock to break even.
+A bigger runner rarely fixes a full disk (`Errno 28`), and it must save roughly as much wall-clock as it adds to the cost to break even.
 
-**When Steps 1–3 are genuinely exhausted and the runner itself is the measured ceiling, read [instance-sizing.md](instance-sizing.md)** — gates, anti-signals, the budget-math question to ask, and how to apply the change. Do not read it earlier; "raise the instance size" is not an option until the gates there pass.
-
-**Reference:** https://dlthub.com/docs/hub/pipeline-operations/job-configuration#instance-size
+**When Steps 1–3 are genuinely exhausted and the runner itself is the measured ceiling**, hand over to the installed platform toolkit with the numbers from Step 1–3: it says how to give a job more memory or CPU, what that costs, and what to check before asking for it.
 
 ## Reference
 
@@ -253,5 +253,5 @@ Every knob can be set in `.dlt/config.toml` under a section, or as an env var by
 ## Next steps
 
 - **Source-level tuning still needed** → [Source-specific tuning](#source-specific-tuning-separate-toolkits) — install the matching pipeline toolkit, then run its optimize skill.
-- **Every lever applied and the runner itself is the measured ceiling** (dltHub platform only) → [Step 4](#step-4-last-resort--raise-the-instance-size-dlthub-platform), then [instance-sizing.md](instance-sizing.md) — pass the gates there, **get the user's explicit approval with the budget math**, then hand the manifest change to **dlthub-platform** (`deploy-workspace`).
-- **Tuned and stable** → hand over to **dlthub-platform** to deploy and schedule the pipeline on dltHub (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).
+- **Every lever applied and the runner itself is the measured ceiling** (deployed jobs only) → [Step 4](#step-4-last-resort--a-bigger-runner): hand over to the installed platform toolkit, and **get the user's explicit approval with the cost** before anything changes.
+- **Tuned and stable** → to deploy or schedule the pipeline, follow the workflow entry of the installed platform toolkit. When none is installed, `dlthub-router` installs one.

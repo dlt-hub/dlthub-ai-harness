@@ -1,12 +1,12 @@
 ---
 name: explore-data
 argument-hint: "[pipeline-name] [question]"
-description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "analyze my data", "profile data quality", "what questions can I ask about my data", "map my data to business concepts", or wants to explore, profile, analyze, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use dlthub-platform toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
+description: "Use when the user wants to explore or analyze the data of a dlt pipeline, find trends, ask business questions of its tables, or plan charts and a dashboard: 'what's the revenue trend', 'what can I learn from this data', 'visualize my pipeline'. Profiles the tables and plans the charts in analysis_plan.md. Not for building the notebook from the plan (build-notebook)."
 ---
 
 # Explore data and plan charts
 
-Connect to a dlt pipeline, understand the data, and plan one chart at a time. Outputs a `<date>_<pipeline_name>_analysis_plan.md` artifact that `build-notebook` consumes. Use today's date in `YYYY-MM-DD` format (e.g., `2026-03-10`).
+Connect to a dlt pipeline, understand the data, and plan one chart at a time. Outputs the analysis plan `.dlthub/explorations/<pipeline_name>/analysis_plan.md` that `build-notebook` consumes. Commit it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
@@ -16,17 +16,19 @@ Parse `$ARGUMENTS`:
 
 Before discovery, check what's already available:
 
-1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (e.g., arriving from `rest-api-pipeline` after `validate-data` or `view-data`, or from `sql-database-pipeline` after `validate-sql-database-data` or `view-sql-database-data`), skip `list_pipelines` and go straight to `list_tables`.
-2. **Existing analysis_plan.md** — if `*_analysis_plan.md` exists, skip to the iteration path (see "Iteration: existing analysis_plan.md" below).
-3. **Standalone .duckdb file** — if the user points to a `.duckdb` file instead of a named pipeline, connect with an explicit destination: `dlt.pipeline(pipeline_name="adhoc", destination=dlt.destinations.duckdb("<path>"))`. Then proceed normally — `pipeline.dataset()` works the same way.
+1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS`, or another toolkit or skill handed over (the pipeline, its dataset and tables are in the session already), skip `list_pipelines` and go straight to `list_tables`. When the session names specific tables (for example failing tables from a data quality review), skip broad profiling and target those tables.
+2. **Existing analysis_plan.md** — if `.dlthub/explorations/<pipeline_name>/analysis_plan.md` exists, skip to the iteration path (see "Iteration: existing analysis_plan.md" below).
+3. **Standalone .duckdb file** — if the user points to a `.duckdb` file instead of a named pipeline, no pipeline is known: read it with `dlt.dataset(dlt.destinations.duckdb("<absolute path>"), "<dataset_name>")`. It loads only the schema stored last, so pass `schema="<schema name>"` when the file holds several. Then proceed normally.
 
 ## Detect intent
 
 See `workflow.md` for high-intent vs low-intent definitions. **One chart per invocation** — if the user asks multiple questions, pick the first one and save the rest as `[ ]` pending questions.
 
+**Bulk requests** — if the user asks for all questions at once ("all of them", "do everything"): plan all charts in the one plan (mark all `[x]`), hand off to `build-notebook` once with the full plan, and skip the one-at-a-time iteration loop.
+
 ## Iteration: existing analysis_plan.md
 
-If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix; pick most recent): read it, skip Steps 1–2 entirely, and ask for the next question (or present remaining `[ ]` questions). Plan one chart, append as `## Chart N`, hand off to `build-notebook`. See the full iteration loop in `workflow.md`.
+If `.dlthub/explorations/<pipeline_name>/analysis_plan.md` already exists: read it, skip Steps 1–2 entirely, and ask for the next question (or present remaining `[ ]` questions). Plan one chart, append as `## Chart N`, hand off to `build-notebook`. See the full iteration loop in `workflow.md`.
 
 ## Step 1: Connect to pipeline
 
@@ -36,10 +38,10 @@ Use the dlthub MCP tools as the primary discovery path:
 2. **`list_tables`** — enumerate tables in the selected pipeline.
 3. **`get_table_schema`** — fetch column names and types for relevant tables.
 
-If MCP tools are unavailable, fall back to Python:
+If MCP tools are unavailable, list the pipelines with `uv run dlthub --non-interactive local pipeline list`, read the dataset and destination of one with `uv run dlthub --non-interactive local pipeline info <pipeline_name>`, and create the same pipeline in Python:
 ```python
 import dlt
-pipeline = dlt.attach("<pipeline_name>")
+pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
 dataset = pipeline.dataset()
 dataset.row_counts().df()
 ```
@@ -114,7 +116,7 @@ If "Adjust", ask one targeted follow-up — don't re-run the full interview.
 After the spec is confirmed, generate the SQL query and altair chart code.
 
 ### Query rules (SQL-first)
-- Default to SQL: `dataset("SELECT ... FROM table_name ...").df()`
+- Default to SQL: `dataset("SELECT ... FROM table_name ...").df()`. Connect through the dlt dataset, never with raw `duckdb` imports
 - Chart queries produce aggregated data — always GROUP BY and aggregate rather than selecting raw rows
 - Use ibis (`dataset["table"].to_ibis()`) only for complex joins or computed columns
 - Use exact column names from the schema — verify against `get_table_schema`
@@ -133,10 +135,10 @@ After the spec is confirmed, generate the SQL query and altair chart code.
 
 ## Step 6: Output analysis_plan.md
 
-Write or append to `<date>_<pipeline_name>_analysis_plan.md` (use today's date in `YYYY-MM-DD` format). See `references/analysis-plan-format.md` for the full template.
+Write or append to `.dlthub/explorations/<pipeline_name>/analysis_plan.md`, and put today's date (`YYYY-MM-DD`) in the `added:` line of the new chart. See `references/analysis-plan-format.md` for the full template.
 
 The file has these sections:
-- **Connection** — pipeline name, dataset, destination type
+- **Connection** — pipeline name, module, destination and dataset name: what the notebook needs to take the dataset from the pipeline. The module is the one that creates the pipeline at the module level, if the workspace has one
 - **Profile Summary** — table/column/row overview with anomaly and PII notes
 - **Questions** — `[x]` charted, `[ ]` pending
 - **Data Gaps** — columns needed but missing from schema
@@ -157,4 +159,4 @@ Tell the user the plan was updated, then ask: "Ready to build the notebook — s
 ## Troubleshooting
 
 - **Pipeline not found** — check spelling (case-sensitive), run `list_pipelines`, or use explicit `.duckdb` path via `dlt.pipeline(..., destination=dlt.destinations.duckdb("<path>"))`.
-- **MCP tools unavailable** — run `uv run dlthub ai status` to diagnose. If the MCP server is not running or misconfigured, attempt to fix it (e.g., `dlthub ai init`). Only fall back to Python path (`dlt.attach` / `dlt.pipeline`) if MCP cannot be restored.
+- **MCP tools unavailable** — run `uv run dlthub ai status` to diagnose. If the MCP server is not running or misconfigured, attempt to fix it (e.g., `dlthub ai init`). Only fall back to the Python path of Step 1 (the same pipeline, created again) if MCP cannot be restored.

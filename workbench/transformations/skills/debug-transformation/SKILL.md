@@ -1,6 +1,6 @@
 ---
 name: debug-transformation
-description: Debug dlthub transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, pipeline recovery is needed after a failed run, or columns are silently dropped from output.
+description: "Use when a dlthub transformation fails or produces wrong output: SQL dialect errors on another destination (DuckDB to Snowflake, BigQuery or Postgres), columns silently dropped, a pipeline that cannot recover after a failed run. Finds the cause and fixes the transformation."
 ---
 
 # Debug transformation
@@ -20,23 +20,23 @@ Diagnose and fix dlthub transformation failures. Two main failure classes: **SQL
 
 ### 1a. Static SQL compatibility checks
 
-The toolkit includes a bundled dialect checker that reads your transformation file directly — no pipeline connection needed, and no script to write. It parses each `@dlt.hub.transformation` function's SQL in the dev dialect and transpiles it to the target dialect, catching portability issues before deployment.
+This skill ships a dialect checker, `check_dialect.py` in this skill's folder, that reads your transformation file directly — no pipeline connection needed, and no script to write. It parses the SQL of every `dataset()` call in each `@dlt.hub.transformation` function, in the dev dialect or in the `query_dialect` the call declares, and transpiles it to the target dialect, catching portability issues before deployment.
 
 Tell the user: *"I'm going to run a static SQL compatibility check on your transformation file to catch any SQL dialect issues before you move to prod."*
 
 You must pass the dev and prod destination types explicitly via `--read` and `--write`. If you already have this from context (e.g. from `create-transformation`), use it directly. If not, call `get_local_pipeline_state` via MCP to retrieve the destination type for the pipeline, then ask the user for the prod destination if unknown.
 
-Run the checker yourself and read the output:
+Run the checker yourself from the project root, with the path of this skill's folder, and read the output:
 
 ```bash
-uv run python ${CLAUDE_PLUGIN_ROOT}/tools/check_dialect.py transformations/<dataset>_to_cdm.py --read <dev_dialect> --write <prod_dialect>
+uv run python <this skill's folder>/check_dialect.py <transformation script>.py --read <dev_dialect> --write <prod_dialect>
 ```
 
 Expected output looks like:
 
 ```
 Dialects: duckdb -> bigquery
-Checking 5 transformation(s) from transformations/hubspot_to_cdm.py
+Checking 5 queries from transformations/person_interactions_to_cdm.py
 
 [dim_company] OK
 [dim_person] WARN: double-quoted identifier "email"; verify destination quoting in bigquery
@@ -195,11 +195,11 @@ Apply `columns=` hints for:
 
 ### Known DuckDB failure: "Parser Error: Adding columns with constraints not yet supported"
 
-This error surfaces when re-running a transformation with new or modified `columns=` hints against DuckDB — DuckDB's `ALTER TABLE` cannot add constrained columns. The workaround is to drop the dataset and re-run from scratch:
+This error surfaces when re-running a transformation with new or modified `columns=` hints against DuckDB — DuckDB's `ALTER TABLE` cannot add constrained columns. The workaround is to drop the dataset and re-run from scratch. The database file is in the data folder of the active profile, `.dlt/data/<profile>/<destination or pipeline name>.duckdb` (the run output prints the location). Confirm the file and the dataset with the user, then:
 
 ```bash
 # DuckDB only — this drops all tables in the dataset
-duckdb <path_to_db_file> "DROP SCHEMA <dataset_name> CASCADE;"
+uv run python -c "import duckdb; duckdb.connect('<path_to_db_file>').execute('DROP SCHEMA <dataset_name> CASCADE')"
 ```
 
 Then re-run the transformation script. This is DuckDB-specific behavior and will not occur on cloud destinations (BigQuery, Snowflake, Postgres). Do not use `dlthub local pipeline drop` for this error — it does not clear the DuckDB schema and will not resolve the constraint conflict.

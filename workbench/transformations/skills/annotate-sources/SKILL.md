@@ -1,6 +1,6 @@
 ---
 name: annotate-sources
-description: Annotate dlt pipeline sources for transformation. Use when the user wants to transform data, do data modelling, design a data model, describes their data sources and use cases, or wants to build a CDM from existing pipelines.
+description: "Use when the user wants to transform or model loaded data, build a data model or a CDM from existing pipelines, or describes the business questions their sources should answer. Maps the source tables to business concepts and natural keys, where data modeling starts."
 argument-hint: "[sources] [use-cases]"
 ---
 
@@ -19,7 +19,9 @@ If not provided in arguments, ask the user for:
 
 **IMPORTANT: Confirm the exact pipeline name (or dataset name + destination) for every source before doing anything else.** Do not proceed to any extraction step until all names are known. Wrong pipeline names will cause all subsequent MCP calls to fail silently or with confusing errors.
 
-All `.schema/` files are written under `<project_root>/.schema/<cdm-name>/`. The CDM folder name is derived from the user's use cases and confirmed in step 2 below.
+All `.dlthub/ontology/` files are written under `<project_root>/.dlthub/ontology/<cdm-name>/`, the business knowledge folder of this topic. Commit them. The CDM folder name is reused from an existing topic folder or derived from the user's use cases, and confirmed in step 2 below.
+
+**Handed over from another toolkit or skill?** The pipelines, datasets, destinations and tables that workflow worked on are in the session already: confirm them in one line, skip `list_pipelines` discovery for them in step 1, and go on to schema extraction. Business context from that session carries over too.
 
 ## Steps
 
@@ -48,12 +50,12 @@ Only continue when **all stated sources are confirmed as Case A or Case B**.
 
 ### 2. Confirm CDM folder name
 
-Derive a folder name from the user's stated use cases using the same grain-based naming convention as `dataset_name` in `create-transformation` — what the data mart *is about* (e.g. `person_interactions`, `order_fulfillment`, `event_attendance`). Never use source system names or generic names.
+The folder of a topic may exist already: list `.dlthub/ontology/*/`. When a folder holds a `context.md` for this topic (the business context that a platform toolkit collected before the pipeline was built), or the files of an earlier model of it, reuse its name and say so. Otherwise derive a folder name from the user's stated use cases using the same grain-based naming convention as `dataset_name` in `create-transformation` — what the data mart *is about* (e.g. `person_interactions`, `order_fulfillment`, `event_attendance`). Never use source system names or generic names.
 
 Propose the name and confirm with the user:
 
 ```
-I'll store all schema files under .schema/person_interactions/
+I'll store all schema files under .dlthub/ontology/person_interactions/
 
 Does this name work, or would you like to change it?
 ```
@@ -62,47 +64,15 @@ Wait for confirmation. This name will also be used as the `dataset_name` when th
 
 ### 3. Extract source schemas
 
-**For Case A (local pipeline):** call `export_schema` MCP tool with `output_format: "dbml"` and `save_to_file: "<project_root>/.schema/<cdm-name>/<pipeline_name>.dbml"`.
+**For Case A (local pipeline):** call `export_schema` MCP tool with `output_format: "dbml"` and `save_to_file: "<project_root>/.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml"`.
 
-**For Case B (remote dataset, no local pipeline):** write and run a Python script using dlt ibis to extract the schema and write it as DBML.
+**For Case B (remote dataset, no local pipeline):** dlt stores the schema of every dataset it loaded in the destination. Read it with `dlt.dataset()`, which needs no pipeline and leaves no state behind. The destination credentials must already be configured (`setup-secrets`). Run from the project root:
 
-Write the script to `tools/get_<source>_schema.py`:
-
-```python
-"""Get <source> schema from <destination> via dlt ibis and write as DBML."""
-import dlt
-
-pipeline = dlt.pipeline(
-    pipeline_name="<pipeline_name>",   # use the dataset name as pipeline name
-    destination="<destination>",        # e.g. "bigquery"
-    dataset_name="<dataset_name>",      # e.g. "luma_events_data"
-)
-
-dataset = pipeline.dataset()
-ibis_conn = dataset.ibis()
-tables = ibis_conn.list_tables()
-
-lines = []
-for table_name in tables:
-    if table_name.startswith("_dlt"):
-        continue
-    t = ibis_conn.table(table_name)
-    lines.append(f'Table "{table_name}" {{')
-    for name, dtype in zip(t.schema().names, t.schema().types):
-        nullable = "" if str(dtype).endswith("!") else ""
-        lines.append(f'    "{name}" {dtype}')
-    lines.append("}")
-    lines.append("")
-
-dbml = "\n".join(lines)
-output_path = "<project_root>/.schema/<cdm-name>/<pipeline_name>.dbml"
-with open(output_path, "w") as f:
-    f.write(dbml)
-print(f"Schema written to {output_path}")
-print("Tables found:", tables)
+```bash
+uv run python -c "import dlt, pathlib; ds = dlt.dataset('<destination>', '<dataset_name>'); print(ds.schema.name, list(ds.schema.data_table_names())); pathlib.Path('.dlthub/ontology/<cdm-name>/<dataset_name>.dbml').write_text(ds.schema.to_dbml())"
 ```
 
-Run with `uv run python tools/get_<source>_schema.py`. Confirm the file was written before proceeding.
+`<destination>` is the destination as the workspace names it, for example `warehouse` or `bigquery`. The file is named after the dataset; in the steps below, `<pipeline_name>.dbml` means this file. If the printed table list is empty, dlt did not load this dataset: write a script in the system temp dir (never in the workspace) that lists the tables and columns through `ds.ibis()` and writes the same DBML file, then run it from the project root. Confirm the file was written before proceeding.
 
 This produces one DBML file per pipeline. These files are the working artifacts for all subsequent steps — they will be annotated in place as mappings and natural keys are confirmed.
 
@@ -133,7 +103,7 @@ Does this look right? You can rename, merge, or add anything.
 
    - Wait for explicit confirmation before proceeding
 
-3. Write `.schema/<cdm-name>/taxonomy.json` with the confirmed concepts.
+3. Write `.dlthub/ontology/<cdm-name>/taxonomy.json` with the confirmed concepts.
 
 **Format:** top-level keys are canonical concept names (PascalCase). Each concept holds its references (source-system synonyms) and all related metadata. Excluded tables, version, and CDM name are stored under reserved `_excluded`, `_version`, and `_name` keys.
 
@@ -163,7 +133,7 @@ Does this look right? You can rename, merge, or add anything.
 
 ### 5. Filter source tables by relevance
 
-Read each `.schema/<cdm-name>/<pipeline_name>.dbml`. For each table, automatically judge relevance against the confirmed canonical concepts.
+Read each `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml`. For each table, automatically judge relevance against the confirmed canonical concepts.
 
 **Excluded** = tables with no plausible connection to any concept (e.g. internal audit logs, pipeline metadata, dlt system tables like `_dlt_loads`, `_dlt_pipeline_state`).
 
@@ -235,7 +205,7 @@ Set the confirmed natural key on the concept:
 
 ### 7b. Annotate DBML files
 
-After steps 6 and 7 are confirmed, edit each `.schema/<cdm-name>/<pipeline_name>.dbml` to embed semantic annotations as DBML `Note` blocks and inline comments.
+After steps 6 and 7 are confirmed, edit each `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml` to embed semantic annotations as DBML `Note` blocks and inline comments.
 
 **Table-level note** — on every mapped table, add a `Note` with the canonical concept, role, and (if applicable) natural key:
 
@@ -263,7 +233,7 @@ This makes the DBML files self-documenting — `create-ontology` can read concep
 
 ### 8. Confirm with user
 
-Read `.schema/<cdm-name>/taxonomy.json` and present a summary of all recorded decisions:
+Read `.dlthub/ontology/<cdm-name>/taxonomy.json` and present a summary of all recorded decisions:
 - Concepts and their synonym collapses
 - Excluded tables and reasons
 
@@ -282,7 +252,7 @@ Apply any corrections to `taxonomy.json`.
 
 ## Output
 
-- `.schema/<cdm-name>/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
-- `.schema/<cdm-name>/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions; `_name` holds the confirmed CDM folder name
+- `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml` — one annotated file per pipeline (table/field notes carry concept, role, natural_key, exclusion)
+- `.dlthub/ontology/<cdm-name>/taxonomy.json` — concept-keyed: references, table mappings, natural keys, assumptions, exclusions; `_name` holds the confirmed CDM folder name
 
 Hand over to `create-ontology` skill.

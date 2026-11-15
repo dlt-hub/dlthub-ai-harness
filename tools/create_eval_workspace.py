@@ -18,6 +18,7 @@ config.json format:
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -30,7 +31,10 @@ EVALS_DIR = ROOT / "evals" / ".evals"
 def run(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
     """Run a command, printing it first."""
     print(f"  $ {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    # under `uv run` VIRTUAL_ENV names the workbench venv: drop it, so that
+    # uv pip install targets the venv of the workspace
+    env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, env=env)
     if result.returncode != 0 and check:
         print(f"  STDOUT: {result.stdout.strip()}")
         print(f"  STDERR: {result.stderr.strip()}")
@@ -38,17 +42,31 @@ def run(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedPr
     return result
 
 
-def get_dlt_version() -> str:
-    """Get dlt version from current environment."""
-    result = subprocess.run(
-        ["uv", "run", "python", "-c", "import dlt; print(dlt.__version__)"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
+def get_dlt_spec() -> str:
+    """The dlt requirement of the current environment.
+
+    An unreleased dlt comes from a URL or a local path (`[tool.uv.sources]`), so the eval workspace
+    installs it from there. A released one installs by version.
+    """
+    script = (
+        "import importlib.metadata as m; d = m.distribution('dlt');"
+        " print(d.version); print(d.read_text('direct_url.json') or '')"
     )
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip()
-    raise RuntimeError("The dlt version in the current environment is not available.")
+    result = subprocess.run(
+        ["uv", "run", "python", "-c", script], capture_output=True, text=True, cwd=ROOT
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError("The dlt version in the current environment is not available.")
+    version, _, direct_url = result.stdout.partition("\n")
+    if not direct_url.strip():
+        return f"dlt=={version.strip()}"
+    info = json.loads(direct_url)
+    url: str = info["url"]
+    if url.startswith("file://") and info.get("dir_info", {}).get("editable"):
+        return url.removeprefix("file://")
+    if vcs := info.get("vcs_info"):
+        return f"dlt @ {vcs['vcs']}+{url}@{vcs['commit_id']}"
+    return f"dlt @ {url}"
 
 
 def ws_name_for(eval_dir: Path, workspace_id: str, agent: str = "claude") -> str:
@@ -149,8 +167,7 @@ def create_workspaces(eval_dir: Path, agent: str = "claude") -> list[Path]:
         ws_config = config.get(".eval-workspace", {})
         workspaces_config = {"default": ws_config}
 
-    dlt_version = get_dlt_version()
-    dlt_pkg = f"dlt[hub]=={dlt_version}"
+    dlt_pkg = get_dlt_spec()
     EVALS_DIR.mkdir(parents=True, exist_ok=True)
 
     created = []

@@ -1,6 +1,6 @@
 # Marimo Notebook Patterns
 
-Complete cell templates for generating `<pipeline_name>_dashboard.py`.
+Complete cell templates for generating the dashboard file, at the path recorded in the plan (for example `<pipeline_name>_dashboard.py`).
 
 The templates below are dlt-dashboard-specific. For general marimo patterns, see the `marimo-notebook` skill (checked in SKILL.md).
 
@@ -24,13 +24,32 @@ def _():
 
 ## Connection cell
 
+Take the dataset from the pipeline in `## Connection` of the plan. A deployed notebook runs the same cell, with the
+credentials of its profile.
+
+When the plan names a module, import its pipeline:
+
+```python
+@app.cell
+def _():
+    from <module> import pipeline
+
+    dataset = pipeline.dataset()
+    return (dataset,)
+```
+
+Otherwise create the same pipeline: the same name, destination and dataset name.
+
 ```python
 @app.cell
 def _(dlt):
-    pipeline = dlt.attach("<pipeline_name>")
+    pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
     dataset = pipeline.dataset()
-    return dataset, pipeline
+    return (dataset,)
 ```
+
+For a standalone `.duckdb` file (no pipeline in the plan), use
+`dataset = dlt.dataset(dlt.destinations.duckdb("<path>"), "<dataset_name>")`.
 
 ## Per-chart cells (two cells per Chart N in spec)
 

@@ -1,6 +1,6 @@
 ---
 name: debug-sql-database-pipeline
-description: Debug and inspect a dlt SQL database pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, and diagnose errors like connection failures, missing credentials, driver issues, or failed load jobs.
+description: "Use when a SQL database pipeline run failed or loaded the wrong data: failed load jobs, connection refused, a driver or SQLAlchemy dialect error, wrong database credentials, a table that arrived empty. Diagnoses the run and the database connection from the trace, and fixes them."
 argument-hint: "[pipeline-name] [issue]"
 ---
 
@@ -46,7 +46,7 @@ uv run python <source>_pipeline.py
 |---|---|
 | `ConfigFieldMissingException` | A credentials field is missing or misnamed in `secrets.toml` — check the section name and field names exactly |
 | `OperationalError` / `Can't connect` | Wrong host, port, or credentials; DB not reachable from this network |
-| `ModuleNotFoundError: No module named 'sqlalchemy'` | Run `uv add "dlt[hub,sql_database]"` |
+| `ModuleNotFoundError: No module named 'sqlalchemy'` | Run `uv add "dlt[sql_database]"` |
 | `ModuleNotFoundError: No module named 'pymysql'` | Install the dialect driver, e.g. `uv add pymysql` |
 | `MissingDependencyException: numpy required` | The pyarrow backend also needs numpy: `uv add numpy` |
 | `NoSuchTableError` | Table name or schema is wrong — check spelling and schema parameter |

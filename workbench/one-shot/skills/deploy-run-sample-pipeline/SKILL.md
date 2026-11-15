@@ -1,6 +1,6 @@
 ---
 name: deploy-run-sample-pipeline
-description: "Deploy and run the pre-shipped Jaffle Shop sample pipeline on dltHub Platform — the final onboarding step after uvx dlthub-start. Use when the user says 'deploy the pipeline', 'deploy the pre-built pipeline', 'deploy the onboarding pipeline', 'do the onboarding task', 'finish the onboarding task', or is ready to complete onboarding. Assumes scaffolding, login, and playground workspace connection are already done."
+description: "Use when the user finished uvx dlthub-start and wants to deploy the onboarding pipeline: 'deploy the pipeline', 'deploy the pre-built pipeline', 'do the onboarding task', 'finish onboarding'. Deploys and runs the pre-shipped Jaffle Shop sample on dltHub and opens the dataset browser."
 argument-hint: ""
 ---
 

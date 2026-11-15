@@ -1,0 +1,12 @@
+{
+  "name": "snowflake-platform",
+  "description": "Platform toolkit (Snowflake): deploy, run and maintain dlt jobs on Snowflake with the SPCS Context Runner, set up Snowflake as a destination, collect business and semantic context before building pipelines and models, and create semantic views. Made for Cortex Code.",
+  "version": "0.2.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": ["dlthub", "snowflake", "spcs", "deployment", "cortex", "cortex-code", "semantic-view", "ontology"]
+}

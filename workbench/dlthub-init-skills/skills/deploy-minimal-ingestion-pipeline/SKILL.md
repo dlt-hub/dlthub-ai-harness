@@ -1,6 +1,6 @@
 ---
 name: deploy-minimal-ingestion-pipeline
-description: Build and deploy a minimal custom REST API pipeline to dltHub Platform. Use when the user says "Help me build and deploy a minimal pipeline", "I've finished onboarding, now what?", or "I just ran dlthub-start and want to build my own pipeline".
+description: "Use when the user finished onboarding and wants to build and deploy a first pipeline of their own on dltHub: 'I've finished onboarding, now what?', 'help me build and deploy a minimal pipeline'. Builds a minimal REST API pipeline and deploys it end to end."
 argument-hint: "[source-name]"
 ---
 
@@ -16,6 +16,7 @@ Build a minimal single-endpoint REST API pipeline and get it running on dltHub P
 - https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/basic
 - https://dlthub.com/docs/hub/pipeline-operations/deployments
 - https://dlthub.com/docs/hub/pipeline-operations/profiles
+- for profiles, the named destination and the settings files of each profile beyond this flow, use the (`setup-profiles`) skill (init toolkit)
 
 ## DO NOT USE WHEN
 - The data source is a SQL database or files — use the **sql-database-pipeline** or **filesystem-pipeline** toolkit instead
@@ -90,7 +91,7 @@ Run 1–2 targeted web searches for the API's documentation. Extract only what i
 
 ## Step 3 — Write the pipeline file
 
-Create `<source>_pipeline.py` in the project root. Use `@run.pipeline` so the function is recognized as a job on dltHub Platform. Use `destination="warehouse"` — a named destination that maps to duckdb in dev and the cloud destination in prod.
+Create the pipeline file, for example `<source>_pipeline.py` in the project root (follow the layout of the workspace if it has one). Use `@run.pipeline` so the function is recognized as a job on dltHub Platform. Use `destination="warehouse"` — a named destination that maps to duckdb in dev and the cloud destination in prod.
 
 ```python
 import dlt

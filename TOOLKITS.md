@@ -74,9 +74,11 @@ dlthub-specific metadata goes in `.claude-plugin/toolkit.json` alongside `plugin
 
 ```json
 {
-  "dependencies": ["init"],
-  "workflow_entry_skill": "find-source",
-  "listed": false
+  "dependencies": ["init", "local-workspace"],
+  "workflow_entry_skill": "setup-runtime",
+  "agents": {"exclude": ["cortex"]},
+  "components": {"skills/setup-runtime": {"agents": {"include": ["claude"]}}},
+  "mcp_features": {"dlt-workspace-mcp": ["dlthub.jobs", "dlthub.logs"]}
 }
 ```
 
@@ -85,14 +87,56 @@ dlthub-specific metadata goes in `.claude-plugin/toolkit.json` alongside `plugin
 | `listed` | `true` | When `false`, toolkit is hidden from `toolkit list` and `list_toolkits` MCP tool but can still be installed by name |
 | `dependencies` | `[]` | Toolkits that are auto-installed before this one |
 | `workflow_entry_skill` | — | Name of the skill where the workflow starts. Shown after install and in `dlthub ai status` |
+| `agents` | all | The agents that see the toolkit: `{"include": [...]}` or `{"exclude": [...]}`, with names from `claude`, `cursor`, `codex`, `cortex`. Another agent does not see it in `toolkit list` and cannot install it without `--see-all` |
+| `components` | — | The same visibility for one skill, command, rule, agent definition or MCP server, keyed `skills/<name>`, `commands/<name>`, `rules/<name>`, `dlthub/agents/<name>` or `mcp/<server>` |
+| `mcp_features` | — | Feature groups the toolkit adds to the `--features` argument of an MCP server of another toolkit, keyed by server name. dlt keeps features the user already set, and warns when the server is not installed |
+
+`agents`, `components` and `mcp_features` need dlt 1.33 or later.
+
+## Platform toolkits
+
+A **platform toolkit** deploys and runs a workspace on one platform: `dlthub-platform` for the dltHub platform, `snowflake-platform` for Snowflake. Platform toolkits are pluggable, so every other toolkit is agnostic to them:
+
+- **The label.** A platform toolkit starts its description with `Platform toolkit (<platform>):`, in both `plugin.json` and `marketplace.json`. `dlthub ai toolkit list` shows it, so an agent can tell which toolkits deploy and where. The label is reserved for platform toolkits.
+- **Toolkits that require a platform.** A toolkit that works only with one platform but is not its platform toolkit (`one-shot` and `dlthub-init-skills`, guided first deploys to the dltHub platform) ends its description with `Requires <platform> Platform.`, for example `Requires dltHub Platform.`. It may name its platform, like a platform toolkit, and the router and the generic toolkits do not name it.
+- **Visibility.** A platform toolkit, and a toolkit that requires a platform, names the agents it is made for in `agents` (`snowflake-platform` is for Cortex Code, the dltHub ones are for every other agent). Its MCP tools come through `mcp_features` on `dlt-workspace-mcp`, never a second server.
+- **Dependencies point one way.** A platform toolkit depends on `init` and `local-workspace` (jobs, deployments, local debug runs, the `prod` profile), and may name the generic toolkits in its handovers. No other toolkit depends on a platform toolkit.
+- **One entry for every platform.** Each platform toolkit starts at `prepare-deployment` (local-workspace): it checks that the workspace is ready for a deployment and sends missing jobs, triggers and local runs to `define-and-debug-jobs`. A platform toolkit adds only what is its own (login, connection, its data connection, deploy, operations) and never repeats a local-workspace check.
+- **Generic toolkits name no platform.** They never name a platform toolkit, a toolkit that requires a platform, or their skills, never say "dltHub platform" or "runtime", never run platform commands (`dlthub deploy`, `dlthub job`) and never install `dlt[hub]` or `dlthub-client`. An installed platform toolkit's own rule takes deploy intents, and `dlthub-router` installs one when none is, so their workflows list no platform handover; their skills say "follow the workflow entry of the installed platform toolkit" and write commands that every platform has without a prefix: `deploy`, `job run`, `job logs`.
+- **Routing.** The `dlthub-router` index has one row for all of them: "deploy, schedule or run jobs on a platform → a platform toolkit". The agent picks one from `dlthub ai toolkit list` by the platform the user names. Once installed, a platform toolkit's rule says that it is the platform toolkit of the workspace, takes deploy intents, and maps the commands that other toolkits write without a prefix (`deploy`, `job run`, `job logs`) to its own CLI.
+
+`make validate-toolkits` checks the label, `Requires <platform> Platform`, the router row and that the generic toolkits stay agnostic.
+
+## Artifact locations
+
+Toolkits write their artifacts into a user's workspace only at these locations, all under `.dlthub/` and all committed. Rules compose: the `init` rule names the shared ones (`.dlthub/schemas/`, `.dlthub/ontology/<name>/`), the rule of the toolkit that owns a location names it (`.dlthub/explorations/` in data-exploration, `.dlthub/<platform>/` in each platform toolkit), and skills name every path they write. The [AI harness docs](https://dlthub.com/docs/hub/ai-harness/artifact-locations) list them all for the user.
+
+| Location | What goes there | Who writes it | Git |
+|---|---|---|---|
+| `.dlthub/schemas/` | dlt schemas; the default `import_schema_path` | dlt, any toolkit | committed |
+| `.dlthub/schemas/export/` | exported dlt schemas (`export_schema_path`), only when the user wants them committed | dlt | committed |
+| `.dlthub/ontology/<name>/` | business knowledge and semantic information of one topic: `context.md`, annotated source DBML, `taxonomy.json`, `ontology.ison`, `ontology.md`, `CDM.dbml`, semantic views of any platform | transformations, platform toolkits | committed |
+| `.dlthub/explorations/<name>/` | data exploration plans | data-exploration | committed |
+| `.dlthub/<platform>/` | what one platform toolkit keeps, for example deploy records in `deploy/<environment>/` (`.dlthub/snowflake/`, `.dlthub/platform/`) | that platform toolkit only | committed |
+
+Rules for skill authors:
+
+- **Name the path.** A skill that writes or reads an artifact names its location explicitly.
+- **A new kind of artifact gets a location here first.** Do not invent a folder in a skill.
+- **`<name>` in `.dlthub/ontology/<name>/` is chosen once** (`annotate-sources`, or the business context that a platform toolkit collects), and every other skill reads it from the folder.
+- **Code layout is the user's.** Never prescribe where sources, pipelines or transformations live. A concrete code path is an example ("for example `pipelines/orders.py`"), or the skill asks the user. When a CLI writes a file somewhere (`dlthub pipeline init` writes to the project root), say so, and that the user may move it. transformations keeps `transformations/` as its default folder.
+- **Throwaway scripts go to the system temp dir**, never into the workspace.
+- **No `build/` folder.** The workspace `.gitignore` ignores every folder named `build/`.
+
+`make validate-toolkits` checks that toolkit files name only these artifact locations, that a platform folder appears only in its own toolkit, and that no retired path remains (`.schema/`, `schemas/import`, `schemas/export`, `.dlthub/ontology/snowflake`, `tools/get_`).
 
 ## CLI commands
 
 ```
 dlthub ai status
-dlthub ai toolkit list                            [--location] [--branch]
-dlthub ai toolkit info <name>                     [--location] [--branch]
-dlthub ai toolkit install <name> [--agent] [--overwrite] [--strict] [--location] [--branch]
+dlthub ai toolkit list                            [--see-all] [--location] [--branch]
+dlthub ai toolkit info <name>                     [--see-all] [--location] [--branch]
+dlthub ai toolkit install <name> [--agent] [--see-all] [--overwrite] [--strict] [--location] [--branch]
 dlthub ai init              [--agent] [--overwrite] [--location] [--branch]
 ```
 
@@ -104,7 +148,7 @@ dlthub ai init              [--agent] [--overwrite] [--location] [--branch]
 | `install <name>` | Install toolkit components into the current project |
 | `init` | Install the `init` toolkit: rules, the secrets skill and the MCP server config |
 
-`list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name.
+`list` only shows toolkits with `"listed": true` (or absent, which defaults to true). Unlisted toolkits can still be installed by name. `list`, `info` and `install` show only what the agent sees (`agents`, `components`); `--see-all` shows and installs everything.
 
 `--branch` does not work as of dlt 1.31.0. The sparse clone is a `--depth=1` of the default branch, so the named ref is never fetched and the checkout fails with `pathspec '<branch>' did not match any file(s)`. The failure handler then deletes `~/.dlt/repos/<repo>`, so the next install re-clones from scratch. To install a toolkit from a branch, clone it yourself and pass `--location`:
 
@@ -138,25 +182,25 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 
 ## Platform support
 
-| Component | Claude Code | Cursor | Codex |
-|-----------|------------|--------|-------|
-| skill | native | native | native |
-| command | native | native | converted to skill |
-| rule | native | native | converted to skill |
-| agent | read by dlt | read by dlt | read by dlt |
-| mcp | native (JSON) | native (JSON) | native (TOML) |
-| ignore | native | native | native |
+| Component | Claude Code | Cursor | Codex | Cortex Code |
+|-----------|------------|--------|-------|-------------|
+| skill | native | native | native | native |
+| command | native | native | converted to skill | native |
+| rule | native | native | converted to skill | written into `CORTEX.md` |
+| agent | read by dlt | read by dlt | read by dlt | read by dlt |
+| mcp | native (JSON) | native (JSON) | native (TOML) | native (JSON), project and user config |
+| ignore | native | native | native | none |
 
 ## Install paths
 
-| Component | Claude Code | Cursor | Codex |
-|-----------|------------|--------|-------|
-| skill | `.claude/skills/<name>/` | `.cursor/skills/<name>/` | `.agents/skills/<name>/` |
-| command | `.claude/commands/<name>.md` | `.cursor/commands/<name>.md` | `.agents/skills/<name>/SKILL.md` |
-| rule | `.claude/rules/<toolkit>-<name>.md` | `.cursor/rules/<toolkit>-<name>.mdc` | `.agents/skills/<toolkit>-<name>/SKILL.md` |
-| agent | `.claude/dlthub/agents/<toolkit>/<name>/` | `.cursor/dlthub/agents/<toolkit>/<name>/` | `.agents/dlthub/agents/<toolkit>/<name>/` |
-| mcp | `.mcp.json` → `mcpServers` | `.cursor/mcp.json` → `mcpServers` | `.codex/config.toml` → `mcp_servers` |
-| ignore | `.claudeignore` | `.cursorignore` | `.codexignore` |
+| Component | Claude Code | Cursor | Codex | Cortex Code |
+|-----------|------------|--------|-------|-------------|
+| skill | `.claude/skills/<name>/` | `.cursor/skills/<name>/` | `.agents/skills/<name>/` | `.cortex/skills/<name>/` |
+| command | `.claude/commands/<name>.md` | `.cursor/commands/<name>.md` | `.agents/skills/<name>/SKILL.md` | `.cortex/commands/<name>.md` |
+| rule | `.claude/rules/<toolkit>-<name>.md` | `.cursor/rules/<toolkit>-<name>.mdc` | `.agents/skills/<toolkit>-<name>/SKILL.md` | `.cortex/rules/<toolkit>-<name>.md`, all rules in the `# dltHub rules` section of `CORTEX.md` |
+| agent | `.claude/dlthub/agents/<toolkit>/<name>/` | `.cursor/dlthub/agents/<toolkit>/<name>/` | `.agents/dlthub/agents/<toolkit>/<name>/` | `.cortex/dlthub/agents/<toolkit>/<name>/` |
+| mcp | `.mcp.json` → `mcpServers` | `.cursor/mcp.json` → `mcpServers` | `.codex/config.toml` → `mcp_servers` | `.cortex/mcp.json` (Desktop) and `$SNOWFLAKE_HOME/cortex/mcp.json` (CLI) → `mcpServers` |
+| ignore | `.claudeignore` | `.cursorignore` | `.codexignore` | — |
 
 ## Transforms applied during install
 
@@ -165,7 +209,7 @@ When the `toolkit` feature is enabled, the dlthub MCP server exposes:
 | skill | passthrough | passthrough | passthrough |
 | command | passthrough | passthrough | wrapped with `name`/`description` frontmatter |
 | rule | non-Claude frontmatter stripped (keeps `name`, `description`) | `alwaysApply: true` added, `description` derived from first heading if missing | wrapped with `name`/`description` frontmatter |
-| agent | passthrough (dlt reads it, not the host; see [create-background-agent](workbench/init/skills/create-background-agent/SKILL.md)) | passthrough | passthrough |
+| agent | passthrough (dlt reads it, not the host; see [create-background-agent](workbench/dlthub-platform/skills/create-background-agent/SKILL.md)) | passthrough | passthrough |
 | mcp | passthrough (`type` field kept) | `type` field stripped | `type` field stripped, converted to TOML |
 | ignore | passthrough (file renamed) | passthrough (file renamed) | passthrough (file renamed) |
 
@@ -232,12 +276,13 @@ The CLI uses this file to compare versions on the next install, to show entry sk
 
 When `--agent` is omitted, the platform is detected in this order:
 
-1. **Runtime env vars** (set by the IDE when it spawns the CLI): Claude Code > Codex > Cursor
+1. **Runtime env vars** (set by the IDE when it spawns the CLI): Claude Code > Codex > Cursor; Cortex Code by `CORTEX_CODE_CLIENT_SURFACE`
 2. **Project-local file probes** (checked in priority order):
    - Claude Code: `.claude/`, `CLAUDE.md`
    - Codex: `.agents/`, `AGENTS.md`
    - Cursor: `.cursor/`, `.cursorignore`, `.cursorrules`
-3. **Global (home dir) probes**: `~/.claude/`, `~/.codex/`, `~/.cursor/`
+   - Cortex Code: `.cortex/`, `CORTEX.md`, `.snowflake/cortex/`
+3. **Global (home dir) probes**: `~/.claude/`, `~/.codex/`, `~/.cursor/`, `$SNOWFLAKE_HOME/cortex/`
 
 ## MCP server sources
 

@@ -1,7 +1,7 @@
 ---
 name: review-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "review data quality results", "what failed", "show me data quality results", "analyze check results", "investigate data quality failures", or wants to understand check and metric outcomes from a pipeline run. Do NOT use to run new checks (use run-data-quality).
+description: "Use when the user wants data quality results: which checks failed, metric values over time, why a check fails: 'what failed', 'show me the data quality results'. Reads check and metric results one table at a time and suggests fixes. Not for running checks (run-data-quality)."
 ---
 
 # Review data quality results
@@ -21,13 +21,13 @@ Expected from prior steps:
 
 ## Quick summary mode
 
-If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlthub library:
+If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlthub library, from the dataset of the same pipeline as the one that loaded the data: the same name, destination and dataset name (`uv run dlthub local pipeline info <name>` shows them):
 
 ```python
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<name>")
+pipeline = dlt.pipeline("<name>", destination="<destination>", dataset_name="<dataset_name>")
 results = dq.read_check(pipeline.dataset())
 rows = results.fetchall()
 cols = results.columns
@@ -73,7 +73,7 @@ Read check results using internal dlthub functionality:
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<name>")
+pipeline = dlt.pipeline("<name>", destination="<destination>", dataset_name="<dataset_name>")
 results = dq.read_check(pipeline.dataset(), table="<table>")
 rows = results.fetchall()
 cols = results.columns
@@ -107,7 +107,7 @@ For each table, read metric results using the dlthub library:
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+pipeline = dlt.pipeline("<pipeline-name>", destination="<destination>", dataset_name="<dataset_name>")
 
 # dataset-level metric (e.g. load_row_count, latest_loaded_at)
 results = dq.read_metric(pipeline.dataset(), metric="<metric-name>")
@@ -208,8 +208,8 @@ Then recommend one of these next steps based on what was found:
 - **Checks need adjustment** (check was too strict, enum values changed) → loop back to `define-data-quality-checks` with the specific checks pre-targeted
 - **Source data has real problems** → hand over to **rest-api-pipeline** toolkit (`adjust-endpoint` or `new-endpoint`) to fix the data at the source
 - **Anomalies need deeper investigation** → hand over to **data-exploration** toolkit (`explore-data`) with the table name and failing column already in context
-- **Everything looks good** → hand over to **dlthub-platform** toolkit (`setup-runtime`). Use the execution context carried over from `run-data-quality`:
+- **Everything looks good** → to deploy, follow the workflow entry of the installed platform toolkit (when none is installed, `dlthub-router` installs one). Use the execution context carried over from `run-data-quality`:
   - If checks are embedded in the pipeline via decorators: deploy the pipeline script — checks run automatically on every load
-  - If checks run via a standalone script: deploy that script as a separate scheduled job, passing the script path and pipeline name to `setup-runtime`
+  - If checks run via a standalone script: deploy that script as a separate scheduled job, passing the script path and pipeline name to the platform toolkit
 
   If the execution context was not carried over, ask: "Are your checks part of the pipeline code, or do you run them separately via a script?"

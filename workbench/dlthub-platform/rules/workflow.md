@@ -1,37 +1,32 @@
 # Deploy to dltHub Platform
 
+This is the platform toolkit of the workspace: when the user wants to deploy, schedule or run jobs in production, start at its workflow entry. Other toolkits write platform commands without a prefix (`deploy`, `job run`, `job logs`): here they are `dlthub` commands, for example `dlthub deploy` and `dlthub job logs`.
+
+It owns `.dlthub/platform/` in the workspace. It keeps nothing there yet; deploy records, when there are any, go to `.dlthub/platform/deploy/<environment>/`.
+
 ## Workflow Entry
-**ALWAYS** start with **Setup runtime** (`setup-runtime`) — ensure workspace, dependencies, and runtime login are ready
+**ALWAYS** start with **Prepare deployment** (`prepare-deployment`) of the local-workspace toolkit — check that the workspace is ready for a deployment; it sends you to (`define-and-debug-jobs`) for jobs, triggers and local debug runs that are missing
 
 ## Core workflow
-1. **Prepare workspace** (`prepare-deployment`) — split dev/prod credentials, set up production destination
-2. **Deploy pipeline** (`deploy-workspace`) — prepare scripts for production, simulate job runs locally (`dlthub local run`/`serve`), deploy, launch, schedule
+1. **Prepare deployment** (`prepare-deployment`) of local-workspace — the readiness check, the production destination and the `prod` profile
+2. **Set up the runtime** (`setup-runtime`) — `dlt[hub]`, the dltHub login and the remote workspace
+3. **Deploy and run in production** (`deploy-workspace`) — deploy, launch; the triggers start running the jobs
 
 ## Extend and harden
-3. **Debug deployment** (`debug-deployment`) — check job status, view logs, diagnose failures
-4. **Inspect failures unattended** (`job-inspector`) — background agent: runs after a job fails, reads the run record and the logs, follows the traceback into the workspace code, classifies the failure and proposes a fix naming the target and the change. Declare it with `run.agent("dlthub-platform:job-inspector", trigger=..., require={"profile": "access"})`, and set `AGENT__MODEL` in the workspace, at least as capable as Claude Sonnet 5. "Background agents" in (`deploy-workspace`) `advanced-patterns.md` says why each of those matters
+4. **Debug deployment** (`debug-deployment`) — a deployed job run failed: check job status, view logs, diagnose
+5. **Inspect failures unattended** (`job-inspector`) — background agent that diagnoses every future failure of a deployed job; how to declare it: "Background agents" in `advanced-patterns.md` of (`deploy-workspace`)
+6. **Write a background agent** (`create-background-agent`) — a new `AGENT.md` for work that should run on its own after an event
 
 ## Handover to other toolkits
 
-### Outgoing (from dlthub-platform)
-
-- **rest-api-pipeline** → `debug-pipeline` / `adjust-endpoint` (modify existing) — when the user needs to build or modify a pipeline before deploying
-- **data-exploration** → `build-notebook` — when the user wants to create marimo notebooks to deploy as interactive jobs
-- **performance** → `optimize-performance` — when a deployed job is slow, OOM-killed, or hitting its timeout, *before* proposing a bigger instance size or a longer `execute.timeout`; those spend run-time budget on every run, so tune first (install if absent: `uv run dlthub --non-interactive ai toolkit install performance`)
-
 ### Incoming (to dlthub-platform)
 
-- From **rest-api-pipeline** (after `debug-pipeline` or hardening steps) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` and `deploy-workspace` without re-discovery
-- From **sql-database-pipeline** (after `create-sql-database-pipeline`, `debug-sql-database-pipeline`, `adjust-table`, or `add-table`) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` and `deploy-workspace` without re-discovery
-- From **filesystem-pipeline** (after `create-filesystem-pipeline` or `add-incremental-loading`) — pipeline name, destination, and dataset are already known; carry them into `setup-runtime` without re-discovery
-- From **transformations** (after `create-transformation` or `debug-transformation`) — transformation scripts and pipeline destination are already known; carry them into `setup-runtime`
-- From **data-exploration** (after `build-notebook`) — notebook file already exists; `deploy-workspace` should use `dlthub serve` for the notebook job
-- From **data-quality** Profile A (after `run-data-quality`) — pipeline script with embedded `@dq.with_checks` decorators is the deployment target; carry the pipeline script path, pipeline name, and destination into `setup-runtime`
-- From **data-quality** Profile B (after `run-data-quality`) — `tools/dq_run.py` already exists with confirmed checks; carry the script path, pipeline name, and destination into `setup-runtime` as the deployment target
-- From **performance** (after `optimize-performance` Step 4, with the user's explicit approval and budget math) — the bottleneck is diagnosed and the tier bump is agreed; apply `require={"instance": {"size": ...}}` in the manifest and `dlthub deploy`. Without that approval, route back to `optimize-performance`.
-- From **quick-start** (shortcut path when a working pipeline exists) — pipeline name and destination may be inferred from `dlthub ai status`; `setup-runtime` runs full discovery if not.
+- From **data-exploration** — the notebook file exists: deploy it as an interactive job with `dlthub serve`.
+- From **data-quality** — the deployment target is known: the pipeline script with embedded `@dq.with_checks` (Profile A), or the data quality script that `run-data-quality` wrote (Profile B).
+- From **performance** — the bottleneck is diagnosed and the runner is the ceiling: follow `instance-sizing.md` in (`deploy-workspace`), with the user's explicit yes.
 
 References:
 * **Additional documentation** https://dlthub.com/docs/hub/llms.txt
 * **Workspace deployment reference**: https://dlthub.com/docs/hub/pipeline-operations/deployments.md
 * **Runtime overview**: https://dlthub.com/docs/hub/pipeline-operations/overview.md
+* **Background agents**: https://dlthub.com/docs/hub/agents/agent-definitions.md

@@ -7,9 +7,7 @@ description: Sets up dlthub workspace. Ensures `uv`, Python env and dlthub are p
 
 Makes sure that `uv`, Python `venv` and `dlthub` is installed, then sets up AI support.
 
-> **Fallback — prefer `uvx dlthub-init@latest`.** For setting up a clean new dlthub project, or adding AI support to an existing one, prefer `uvx dlthub-init@latest` — it is non-interactive and AI-aware, so the agent can run it directly (`uvx dlthub-init@latest <dir>` scaffolds into a new directory; bare sets up in place). Use the flow below only when `dlthub-init` is unavailable or errors.
->
-> In case the user asks to be onboarded to dltHub (or similar, like "I want to learn how to use dltHub"), recommend them to run `uvx dlthub-start@latest` in their terminal, which scaffolds a separate **playground** workspace (not for production workflows). `uvx dlthub-start` must be run by a human because it requires interaction for authentication and only works in a real terminal (it does NOT work in `!` mode), so **never run it yourself** — ask the user to run it in their own terminal.
+> **Fallback — prefer `uvx dlthub-init@latest`.** For setting up a clean new dlthub project, or adding AI support to an existing one, prefer `uvx dlthub-init@latest`, the same as `dlthub init --agent` — it is non-interactive and AI-aware, so the agent can run it directly (`uvx dlthub-init@latest <dir>` scaffolds into a new directory; bare sets up in place). Use the flow below only when `dlthub-init` is unavailable or errors.
 
 ## Step 1: Gather evidence
 
@@ -59,29 +57,29 @@ uv venv
 
 * if no `pyproject.toml` in current folder:
 ```
-uv pip install "dlt[hub]"
+uv pip install dlt dlthub
 ```
 
 * if `pyproject.toml` already exists:
 
 ```
-uv add "dlt[hub]"
+uv add dlt dlthub
 ```
 
-This installs (or upgrades) dlt with the hub extras.
+This installs (or upgrades) dlt and dlthub. Do not add `dlt[hub]` or `dlthub-client`: a platform toolkit adds what its platform needs.
 **Note**: - if adding `dlt` to `pyproject.toml` you must pin the exact installed version (`==`) — `uv add` may downgrade pre-release versions
 
-**Initialize workspace**
+**Initialize workspace and AI support**
 
 ```
-uv run dlthub init
+uv run dlthub --non-interactive init --agent
 ```
 and follow the instructions: most importantly **uv sync** to pull required dependencies!
 
 
 ## Step 4: AI init and report
 
-1. Setup essential skills and rules from dlthub init toolkit:
+1. `dlthub init --agent` installed the essential skills and rules of the dlthub init toolkit for this agent. In a workspace that already existed, install them with:
 ```
 uv run dlthub --non-interactive ai init
 ```

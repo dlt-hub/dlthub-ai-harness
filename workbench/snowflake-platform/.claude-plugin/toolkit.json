@@ -1,0 +1,10 @@
+{
+  "dependencies": ["init", "local-workspace"],
+  "workflow_entry_skill": "prepare-deployment",
+  "agents": {"include": ["cortex"]},
+  "mcp_features": {
+    "dlt-workspace-mcp": [
+      "snowflake"
+    ]
+  }
+}

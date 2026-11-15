@@ -1,6 +1,6 @@
 ---
 name: add-table
-description: Add a new table or view to an existing dlt SQL database pipeline. Use when the user wants to load additional tables from the same database that already has a working pipeline.
+description: "Use when the user wants more tables or views from a database that already has a working pipeline. Adds them to the existing sql_database source."
 argument-hint: "[table-name]"
 ---
 

@@ -1,12 +1,12 @@
 {
   "name": "init",
-  "description": "Shared rules, secrets handling, background agent authoring and the workspace MCP server used by the other dlthub toolkits. Requires dlt[hub].",
-  "version": "0.1.4",
+  "description": "Shared rules, the workspace with its profiles and environments, secrets handling, troubleshooting and the workspace MCP server used by the other dlthub toolkits.",
+  "version": "0.2.0",
   "author": {
     "name": "ScaleVector GmbH"
   },
   "homepage": "https://dlthub.com/docs",
   "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
   "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
-  "keywords": ["dlthub", "init", "rules", "secrets", "mcp", "agents"]
+  "keywords": ["dlthub", "init", "rules", "secrets", "profiles", "mcp"]
 }

@@ -1,0 +1,58 @@
+[
+  {
+    "query": "I just ran jsonplaceholder_pipeline.py and it crashed with a 404 on /postz, can you fix it?",
+    "should_trigger": true
+  },
+  {
+    "query": "the github pipeline ran without errors but the issues table is empty, and the API definitely has issues",
+    "should_trigger": true
+  },
+  {
+    "query": "run my stripe pipeline and tell me why the load step failed",
+    "should_trigger": true
+  },
+  {
+    "query": "the run ended with failed load jobs in the package, what happened?",
+    "should_trigger": true
+  },
+  {
+    "query": "I added the comments endpoint and now the pipeline throws PipelineStepFailed in extract",
+    "should_trigger": true
+  },
+  {
+    "query": "only 30 rows loaded from the hubspot contacts endpoint, I expected thousands",
+    "should_trigger": true
+  },
+  {
+    "query": "python zendesk_pipeline.py fails with ConnectionError: Max retries exceeded, what's wrong with my pipeline?",
+    "should_trigger": true
+  },
+  {
+    "query": "make my github pipeline a job and run it with dlthub local run",
+    "should_trigger": false
+  },
+  {
+    "query": "my job failed when I ran dlthub local run load_github, it says the job was not found",
+    "should_trigger": false
+  },
+  {
+    "query": "the amount column of the loaded charges is a double but it should be a decimal",
+    "should_trigger": false
+  },
+  {
+    "query": "remove .add_limit(1) and load all issues before we go to production",
+    "should_trigger": false
+  },
+  {
+    "query": "add the pulls endpoint to my github pipeline",
+    "should_trigger": false
+  },
+  {
+    "query": "my pipeline takes 20 minutes to load 50k tickets, it makes one request at a time",
+    "should_trigger": false
+  },
+  {
+    "query": "write a pytest that runs the pipeline and checks the issues table has rows",
+    "should_trigger": false
+  }
+]

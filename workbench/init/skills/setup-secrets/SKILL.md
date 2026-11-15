@@ -1,6 +1,6 @@
 ---
 name: setup-secrets
-description: Safely manage dlthub secrets in *.secrets.toml. Use when the user directly asks to set up, configure, or inspect credentials (API keys, database passwords, tokens). Also use when writing Python code that needs to read secrets via dlt.secrets without exposing values. Do NOT use for pipeline creation, source discovery, or debugging pipeline execution — those skills call setup-secrets when they need credentials configured.
+description: "Use when the user wants to set up, add, check or fix credentials: API keys, tokens, database passwords, service account keys or connection strings in secrets.toml, a ConfigFieldMissingException that asks for a value, a 401 with a credential that looks set, which secrets file dlt reads, or Python that reads secrets with dlt.secrets. Configures and inspects secrets without showing their values. Not for building or debugging a pipeline: those skills call this one when they need credentials."
 argument-hint: "[source-name]"
 ---
 
@@ -33,7 +33,7 @@ If called standalone (e.g. user says "set up secrets" or hit `ConfigFieldMissing
 
 ## 2. Find the right secrets file and inspect its shape
 
-Use `secrets_list` to list workspace-scoped secrets files. Profile-scoped files (e.g. `.dlt/dev.secrets.toml`) appear first — **use those when present**, fall back to `.dlt/secrets.toml` otherwise.
+Use `secrets_list` to list workspace-scoped secrets files. Profile-scoped files (e.g. `.dlt/dev.secrets.toml`) appear first — **use those when present**, fall back to `.dlt/secrets.toml` otherwise. **Do not** create profile-scoped files on your own. If a profile or its files are missing, use the `setup-profiles` skill. That skill creates them with `dlthub profile add`.
 
 **Pick the target file** from the list — you will pass it as `path` to `secrets_update_fragment` in step 4.
 

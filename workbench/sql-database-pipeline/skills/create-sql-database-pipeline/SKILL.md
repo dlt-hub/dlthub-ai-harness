@@ -1,6 +1,6 @@
 ---
 name: create-sql-database-pipeline
-description: Create a dlt pipeline from a SQL database source (postgres, mysql, mssql, oracle, sqlite, or any SQLAlchemy-supported database). Use when the user wants to load tables from a relational database to a destination like DuckDB, BigQuery, or Snowflake. Not for REST APIs or file sources.
+description: "Use when the tables to load from a SQL database are known and the user wants the dlt sql_database pipeline written: credentials, a backend (sqlalchemy, pyarrow, pandas, connectorx), a test load into DuckDB, BigQuery or Snowflake. Scaffolds and runs the pipeline. Not for REST APIs or files."
 argument-hint: "[database-url-or-description] [destination]"
 ---
 
@@ -38,9 +38,9 @@ uv run dlthub --non-interactive pipeline init sql_database <destination>
 
 Note: `--non-interactive` is a global flag on `dlthub` and may appear at any position in the command. Always pass it to prevent prompts that block execution.
 
-If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uv run dlthub init` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
+If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uvx dlthub-init@latest` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
 
-This creates:
+This creates, in the project root (the user may move the pipeline script anywhere in the workspace later):
 - `sql_database_pipeline.py` — working example
 - `.dlt/secrets.toml` — credentials template
 - `.dlt/config.toml` — pipeline config
@@ -71,7 +71,7 @@ Different databases need different SQLAlchemy dialect + driver packages:
 
 Install the driver + sql_database extras if missing:
 ```
-uv add "dlt[hub,sql_database]" <driver-package>
+uv add "dlt[sql_database]" <driver-package>
 ```
 
 ### 5. Read generated files
@@ -251,7 +251,7 @@ Expected output shows extract/normalize/load steps with row counts and timing fr
 Common first-run errors:
 - `ConfigFieldMissingException` — a credentials field is missing or misnamed in secrets.toml
 - `OperationalError` / `Can't connect` — wrong host/port/credentials or DB unreachable
-- `ModuleNotFoundError: No module named 'sqlalchemy'` — run `uv add "dlt[hub,sql_database]"`
+- `ModuleNotFoundError: No module named 'sqlalchemy'` — run `uv add "dlt[sql_database]"`
 - `MissingDependencyException: numpy required` — the pyarrow backend also needs numpy: `uv add numpy`
 
 ### 11. Suggest backend after a successful test run
@@ -287,4 +287,4 @@ Re-run the test to confirm the backend works before moving on.
 - **Pipeline errors or 0 rows** → use `debug-sql-database-pipeline` to inspect traces and load packages
 - **Want more tables** → use `add-table` to add resources to the pipeline
 - **Ready to explore data** → hand over to **data-exploration** toolkit
-- **Ready to deploy** → hand over to **dlthub-platform** toolkit
+- **Ready to deploy** → follow the workflow entry of the installed platform toolkit; when none is installed, `dlthub-router` installs one

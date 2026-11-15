@@ -1,20 +1,20 @@
 ---
 name: build-notebook
 argument-hint: "[spec-path]"
-description: This skill should be used when the user asks to "build the notebook", "launch the dashboard", "generate the marimo notebook", or when an analysis_plan.md artifact exists and the user wants to assemble or regenerate the dashboard. Reads chart specs with ibis queries and altair code from analysis_plan.md, assembles a marimo Python file, validates, and launches. Do NOT use for exploring data or planning charts (use explore-data), building pipelines (use rest-api-pipeline toolkit), or deploying (use dlthub-platform toolkit).
+description: "Use when the user wants to build, launch or regenerate the marimo notebook or dashboard from an analysis_plan.md, or open the charts they planned. Renders the planned charts into a marimo app and starts it. Not for planning charts (explore-data)."
 ---
 
 # Build notebook from spec
 
-Read a `<date>_<pipeline_name>_analysis_plan.md` artifact and assemble a marimo notebook with all charts.
+Read the analysis plan `.dlthub/explorations/<pipeline_name>/analysis_plan.md` and assemble a marimo notebook with all charts.
 
 Parse `$ARGUMENTS`:
-- `spec-path` (optional): path to the analysis_plan.md file. If omitted, look for `*_analysis_plan.md` in the working directory. If multiple found, ask the user and stop.
+- `spec-path` (optional): path to the analysis plan. If omitted, use the plan of the pipeline in session context, or list `.dlthub/explorations/*/analysis_plan.md`. If several plans exist and the pipeline is not known, ask the user and stop.
 
 ## Step 1: Read analysis_plan.md
 
 Parse the analysis plan file for:
-- **Connection** section: pipeline name, dataset name, destination type
+- **Connection** section: pipeline name, module, destination and dataset name
 - **Chart N** sections: each chart's question, type, SQL code, and altair code
 - Count the total number of charts to assemble
 
@@ -22,7 +22,9 @@ If the analysis plan file is missing or has no charts, tell the user to run `exp
 
 ## Step 2: Assemble notebook
 
-Generate `<pipeline_name>_dashboard.py`. Read `references/notebook-patterns.md` for the complete notebook structure, cell templates, and naming conventions before generating. Every chart cell must end with `_chart` on a bare line, then `return` — without the bare expression line, nothing renders.
+The dashboard is the user's code. Take its path from the `## Dashboard` section of the plan. If the section is empty, propose a path, for example `<pipeline_name>_dashboard.py` in the project root, ask the user, and write the chosen path into the plan. Below, `<dashboard>` is that path.
+
+Generate `<dashboard>`. Read `references/notebook-patterns.md` for the complete notebook structure, cell templates, and naming conventions before generating. Every chart cell must end with `_chart` on a bare line, then `return` — without the bare expression line, nothing renders.
 
 ## Marimo patterns
 
@@ -33,7 +35,7 @@ For general marimo cell structure, reactivity, and best practices, fetch https:/
 Run marimo's linter to catch common mistakes:
 
 ```bash
-uvx marimo check <pipeline_name>_dashboard.py
+uvx marimo check <dashboard>
 ```
 
 If validation fails:
@@ -43,7 +45,7 @@ If validation fails:
 
 ## Step 4: Ensure dependencies
 
-The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt[hub]`. In a dlthub workspace (`dlthub init`) they are already declared in `pyproject.toml` — running `uv sync` installs them.
+The notebook requires `pandas`, `numpy`, and `altair` which are **not** installed by `dlt` or `dlthub`. A workspace created by `uvx dlthub-init@latest` may already declare them in `pyproject.toml` — then `uv sync` installs them.
 
 Before launching, check if they are available. If any are missing, **ask the user** how they want to install them:
 
@@ -60,7 +62,7 @@ After validation passes, offer to launch in browser or skip.
 
 If yes:
 ```bash
-uv run marimo edit <pipeline_name>_dashboard.py --no-token
+uv run marimo edit <dashboard> --no-token
 ```
 
 Tell the user the notebook is running (default: localhost:2718).
@@ -83,12 +85,14 @@ The SQL query returns no rows. Common causes:
 2. Column names don't match schema — verify against `get_table_schema`.
 3. Table is empty — check `get_row_counts` (MCP).
 
-### dlt.attach fails in notebook
-Pipeline name is wrong or pipeline hasn't been run. Run `dlthub local pipeline info <name>` to verify.
+### The connection cell fails
+- The import fails: the module in `## Connection` moved, or no longer creates the pipeline at the module level.
+- A table is missing: the name, destination or dataset name differs from the pipeline that loaded the data, or the
+  pipeline has not run with the active profile. Compare with `dlthub local pipeline info <name>`.
 
 ## Example
 
-**Input:** `2026-03-10_orders_pipeline_analysis_plan.md` with 2 charts (Monthly Revenue Trend + Revenue by Category)
+**Input:** `.dlthub/explorations/orders_pipeline/analysis_plan.md` with 2 charts (Monthly Revenue Trend + Revenue by Category); the user chose `orders_pipeline_dashboard.py` as the dashboard path.
 
 **Output:** `orders_pipeline_dashboard.py` with 2 data cells + 2 chart cells, structured per `references/notebook-patterns.md`.
 

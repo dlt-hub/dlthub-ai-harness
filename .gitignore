@@ -208,6 +208,9 @@ __marimo__/
 # Eval workspaces (generated test outputs)
 *-workspace/
 !workbench/*/skills/*-workspace/
+# a toolkit and the eval sets of its skills, not eval workspaces
+!workbench/local-workspace/
+!evals/local-workspace/
 
 # macOS
 .DS_Store
