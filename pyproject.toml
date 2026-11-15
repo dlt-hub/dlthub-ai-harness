@@ -31,13 +31,6 @@ test = [
     "pytest-asyncio>=1.0.0",
 ]
 
-[tool.uv.sources]
-# dlt with agent visibility, mcp feature groups and cortex code, not released yet: the head of
-# https://github.com/dlt-hub/dlt/pull/4653
-dlt = { url = "https://github.com/dlt-hub/dlt/archive/bb915ca64d644fe3a02dc5904f8bf5d9e73b60a4.zip" }
-# dlt = { path = "../dlt/.worktrees/feat-background-agent-launcher", editable = true }
-# dlt = { url="https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=8"}
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
