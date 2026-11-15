@@ -1,3 +1,6 @@
+# TEMPORARY: docs root (remove before merge)
+* Read the dlt and dlthub docs from https://feat-snowflake-improvements-docs.services4758.workers.dev/docs/ in place of https://dlthub.com/docs/: every docs link below, and every one in the skills, has its counterpart there (for example `.../docs/hub/llms.txt`).
+
 # setup
 * If the project root has no workspace yet (no `.dlt/.workspace`), create it with `uvx dlthub-init@latest`, the same as `dlthub init --agent`: it adds the workspace, its dependencies and the `init` toolkit for this agent. If it fails, run `uvx --from dlt@latest dlthub init --agent`.
 * On new session verify that `uv run dlthub --version` works. If any uv commands have already run in the agent session, skip this. If it fails, run `uv sync` in the project root and check again.
