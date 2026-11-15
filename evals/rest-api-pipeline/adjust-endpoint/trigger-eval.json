@@ -1,0 +1,54 @@
+[
+  {
+    "query": "the pipeline works with add_limit(1), now remove it and load all posts",
+    "should_trigger": true
+  },
+  {
+    "query": "pagination stops after the first page of issues, it should go through all the pages",
+    "should_trigger": true
+  },
+  {
+    "query": "set up incremental loading on updated_at so each run only fetches new and changed issues",
+    "should_trigger": true
+  },
+  {
+    "query": "halfway through the load the API returns 429 too many requests, make the pipeline back off and retry",
+    "should_trigger": true
+  },
+  {
+    "query": "load the tickets from the last two years instead of the last week",
+    "should_trigger": true
+  },
+  {
+    "query": "the stripe pipeline is ready for production, take off the dev limits",
+    "should_trigger": true
+  },
+  {
+    "query": "the cursor paginator keeps requesting the same page forever",
+    "should_trigger": true
+  },
+  {
+    "query": "wrap the pipeline in a job and give it an hourly trigger",
+    "should_trigger": false
+  },
+  {
+    "query": "the pipeline is too slow, it makes thousands of sequential requests for the child resources",
+    "should_trigger": false
+  },
+  {
+    "query": "add the comments endpoint as a child resource of posts",
+    "should_trigger": false
+  },
+  {
+    "query": "the last run failed with failed load jobs, what happened?",
+    "should_trigger": false
+  },
+  {
+    "query": "the created_at column came in as text, it should be a timestamp",
+    "should_trigger": false
+  },
+  {
+    "query": "run my pipeline locally as a job with dlthub local run and check the job result",
+    "should_trigger": false
+  }
+]

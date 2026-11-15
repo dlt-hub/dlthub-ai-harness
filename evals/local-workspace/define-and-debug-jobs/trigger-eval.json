@@ -1,0 +1,80 @@
+[
+  {
+    "query": "turn my github pipeline into a job and run it with dlthub local run",
+    "should_trigger": true
+  },
+  {
+    "query": "list the pipeline in __deployment__.py so it can be deployed later",
+    "should_trigger": true
+  },
+  {
+    "query": "dlthub local run load_github fails with job not found",
+    "should_trigger": true
+  },
+  {
+    "query": "add a trigger so the transformation job runs after the ingestion job",
+    "should_trigger": true
+  },
+  {
+    "query": "serve my marimo notebook locally as an interactive job",
+    "should_trigger": true
+  },
+  {
+    "query": "give my ingest job a cron trigger for midnight in the decorator",
+    "should_trigger": true
+  },
+  {
+    "query": "set auto refresh on my job so that a refresh run reloads the pipeline from scratch",
+    "should_trigger": true
+  },
+  {
+    "query": "my github pipeline works locally, now I want it to run every night in production",
+    "should_trigger": false
+  },
+  {
+    "query": "schedule my stripe pipeline to run every hour in the cloud",
+    "should_trigger": false
+  },
+  {
+    "query": "deploy my pipeline so it runs without my laptop",
+    "should_trigger": false
+  },
+  {
+    "query": "create a pipeline that loads posts and comments from jsonplaceholder.typicode.com into duckdb",
+    "should_trigger": false
+  },
+  {
+    "query": "run my pipeline and check that it loads",
+    "should_trigger": false,
+    "disabled": true,
+    "reason": "undertrigger: a plain run is handled without a skill"
+  },
+  {
+    "query": "I just ran github_pipeline.py and it crashed with a 404, fix it",
+    "should_trigger": false
+  },
+  {
+    "query": "remove add_limit from my stripe pipeline and load everything",
+    "should_trigger": false
+  },
+  {
+    "query": "run the pipeline again after the fix and show me the row counts",
+    "should_trigger": false
+  },
+  {
+    "query": "check that the data we loaded from the API looks right",
+    "should_trigger": false
+  },
+  {
+    "query": "load the github issues again, this time all of them",
+    "should_trigger": false
+  },
+  {
+    "query": "the pipeline works on a sample of 10 issues, now load the full history",
+    "should_trigger": false
+  },
+  {
+    "query": "write pytest tests for my pipeline on the tests profile",
+    "should_trigger": false
+  }
+]

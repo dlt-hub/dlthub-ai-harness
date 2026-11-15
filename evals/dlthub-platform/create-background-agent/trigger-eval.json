@@ -55,7 +55,7 @@
     "by_workspace": {
       "with-dlthub-platform": {
         "should_trigger": false,
-        "expect": "deploy-workspace"
+        "expect": "prepare-deployment"
       }
     }
   },
@@ -69,7 +69,7 @@
     "by_workspace": {
       "with-dlthub-platform": {
         "should_trigger": false,
-        "expect": "deploy-workspace"
+        "expect": "prepare-deployment"
       }
     }
   },

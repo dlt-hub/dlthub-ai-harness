@@ -1,0 +1,50 @@
+[
+  {
+    "query": "the pipeline ran, check that the posts table looks right",
+    "should_trigger": true
+  },
+  {
+    "query": "created_at came in as text, it should be a timestamp",
+    "should_trigger": true
+  },
+  {
+    "query": "flatten the nested author object of the issues into columns",
+    "should_trigger": true
+  },
+  {
+    "query": "why is there a table called issues__labels, I expected labels to be a column",
+    "should_trigger": true
+  },
+  {
+    "query": "check the schema of what we just loaded from the API and fix the column types",
+    "should_trigger": true
+  },
+  {
+    "query": "the users table has twenty columns I don't need, keep only id, name and email",
+    "should_trigger": true
+  },
+  {
+    "query": "show me the top 10 posts by number of comments",
+    "should_trigger": false
+  },
+  {
+    "query": "the run failed with failed load jobs, why?",
+    "should_trigger": false
+  },
+  {
+    "query": "write a pytest that checks the posts table has rows after a job run",
+    "should_trigger": false
+  },
+  {
+    "query": "remove add_limit and load all the issues",
+    "should_trigger": false
+  },
+  {
+    "query": "turn the pipeline into a job and run it with dlthub local run to check the result",
+    "should_trigger": false
+  },
+  {
+    "query": "add the comments endpoint to my pipeline",
+    "should_trigger": false
+  }
+]

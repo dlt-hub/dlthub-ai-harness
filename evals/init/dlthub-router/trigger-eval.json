@@ -18,7 +18,9 @@
     "query": "how do I deploy my pipeline to production? what are my options?",
     "should_trigger": true,
     "by_workspace": {
-      "with-dlthub-platform": { "should_trigger": false, "expect": "setup-runtime" }
+      "with-rest-api": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-dlthub-platform": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-sql-database": { "should_trigger": false, "expect": "prepare-deployment" }
     }
   },
   {
@@ -125,6 +127,42 @@
     "should_trigger": true,
     "by_workspace": {
       "with-sql-database": { "should_trigger": false, "expect": "find-sql-database-source" }
+    }
+  },
+  {
+    "query": "my github pipeline works locally, now I want it to run every night in production",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-dlthub-platform": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-sql-database": { "should_trigger": false, "expect": "prepare-deployment" }
+    }
+  },
+  {
+    "query": "schedule my stripe pipeline to run every hour",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-dlthub-platform": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-sql-database": { "should_trigger": false, "expect": "prepare-deployment" }
+    }
+  },
+  {
+    "query": "I don't want to run this pipeline from my laptop anymore, can it run in the cloud?",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-dlthub-platform": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-sql-database": { "should_trigger": false, "expect": "prepare-deployment" }
+    }
+  },
+  {
+    "query": "deploy my marimo notebook so my team can open the dashboard",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-rest-api": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-dlthub-platform": { "should_trigger": false, "expect": "prepare-deployment" },
+      "with-sql-database": { "should_trigger": false, "expect": "prepare-deployment" }
     }
   }
 ]
