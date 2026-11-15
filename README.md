@@ -70,7 +70,8 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
-| `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform                                        | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
+| `dlthub-platform` | Run | `setup-runtime` | Platform toolkit: deploy pipelines to the dltHub Platform, debug deployed jobs, run background agents | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
+| `snowflake-platform` | Run | `setup-snowflake-workspace` | Platform toolkit for Cortex Code: deploy and run jobs on Snowflake with the SPCS Context Runner, business and semantic context | *"Deploy my GitHub pipeline to Snowflake"* | Cortex Code only |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `performance` | Build | `optimize-performance` | Tune a slow or memory-heavy pipeline — diagnose the bottleneck stage and apply parallelism, workers, buffers, and batching | *"Use optimize-performance to speed up my Postgres pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -99,18 +100,19 @@ uvx dlthub-init@latest          # set up AI support in the current directory
 > **Note:** All `dlthub ai` commands below use `uv run dlthub ...` syntax. If you have `dlthub` installed globally or in an active virtual environment, you can omit `uv run` and call `dlthub` directly. We recommend using uv.
 
 ```bash
-uv init
-uv add "dlt[hub]"
+# create the workspace, add its dependencies and set up AI support for your coding assistant
+uvx --from dlt@latest dlthub init --agent
 
 # then run `uv sync` as the output says
-uv run dlthub init
 
-# Set up AI support (auto-detects your coding assistant)
+# In an existing workspace, set up AI support (auto-detects your coding assistant)
 uv run dlthub ai init
 
 # If multiple coding assistants are detected, specify one explicitly:
-uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex
+uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex | cortex
 ```
+
+Every toolkit works locally. Deploying is the job of a **platform toolkit**, one per platform: `dlthub-platform` for the dltHub Platform, `snowflake-platform` for Snowflake. The router installs the one that fits, and `dlthub ai toolkit list` marks them `Platform toolkit`.
 
 
 `dlthub ai init` detects your coding assistant from environment variables and config files, then installs skills, rules, and the MCP server in the correct locations for that tool.

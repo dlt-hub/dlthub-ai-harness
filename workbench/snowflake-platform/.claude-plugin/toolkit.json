@@ -1,5 +1,10 @@
 {
-  "dependencies": ["init", "dlthub-platform"],
-  "workflow_entry_skill": "setup-snowflake-destination",
-  "listed": false
+  "dependencies": ["init", "local-workspace"],
+  "workflow_entry_skill": "setup-snowflake-workspace",
+  "agents": {"include": ["cortex"]},
+  "mcp_features": {
+    "dlt-workspace-mcp": [
+      "snowflake"
+    ]
+  }
 }

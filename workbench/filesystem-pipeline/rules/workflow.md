@@ -17,7 +17,7 @@
 
 - **data-exploration** — after the pipeline runs and data is loaded, when the user wants to explore, chart, or build dashboards from the loaded files
 - **data-quality** — after the pipeline runs, when the user wants column-level validation or load metrics on every run
-- **dlthub-platform** — when the pipeline is working and the user wants to deploy or schedule it on dltHub
+- a platform toolkit — when the pipeline is working and the user wants to deploy, schedule or run the jobs in production: follow the workflow entry of the installed platform toolkit, carrying the pipeline name, destination and dataset. When none is installed, `dlthub-router` installs one
 - **performance** — after `optimize-filesystem-performance`, when the pipeline works but is slow or memory-heavy and needs source-agnostic stage tuning (extract/normalize/load workers, buffers, file rotation); start at `optimize-performance`
 
 ### Incoming (to filesystem-pipeline)

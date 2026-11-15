@@ -7,7 +7,7 @@ description: Build a business entity graph (ontology) from annotated sources and
 
 Build a formal entity graph from the confirmed source annotations and taxonomy, ready for Kimball CDM design.
 
-**Requires** `.schema/<cdm-name>/<pipeline_name>.dbml` (one per pipeline, annotated) and `.schema/<cdm-name>/taxonomy.json` from `annotate-sources`.
+**Requires** `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml` (one per pipeline, annotated) and `.dlthub/ontology/<cdm-name>/taxonomy.json` from `annotate-sources`.
 If either is missing, run `annotate-sources` first.
 
 Read `_name` from `taxonomy.json` to determine `<cdm-name>` — all files in this skill are under that folder.
@@ -24,7 +24,7 @@ When a concept has a natural key, rows from different source tables that share t
 
 ### 1. Build entity list
 
-Read `.schema/<cdm-name>/taxonomy.json`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
+Read `.dlthub/ontology/<cdm-name>/taxonomy.json`. For each top-level key that is not prefixed with `_` (i.e. not `_version`, `_excluded`):
 - Create one ontology entity per canonical concept
 - Name = concept key (PascalCase)
 - Mark as `inferred: false` (grounded in confirmed source mappings)
@@ -89,7 +89,7 @@ Two sources of relationships:
 - Each natural key defines a union relationship between tables of the same concept
 - Record as a `STITCHED_BY` edge with the key column
 
-**From structural FKs** in source schemas (`.schema/<cdm-name>/<pipeline_name>.dbml`):
+**From structural FKs** in source schemas (`.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml`):
 - Identify foreign key columns (e.g. `company_id` on contacts → Company entity)
 - Map to inter-entity relationships
 - Use UPPER_SNAKE_CASE edge labels (e.g. `BELONGS_TO`, `ATTENDED`, `PLACED_BY`)
@@ -107,7 +107,7 @@ Present gaps to the user before writing output.
 
 ### 6. Write ontology
 
-Write `.schema/<cdm-name>/ontology.ison` in Graph ISON format (https://graph.ison.dev/) — tabular DSV sections, NOT JSON:
+Write `.dlthub/ontology/<cdm-name>/ontology.ison` in Graph ISON format (https://graph.ison.dev/) — tabular DSV sections, NOT JSON:
 
 ```ison
 nodes.Entity
@@ -145,13 +145,13 @@ Contract  track subscription billing     no source table found
 
 ## Output
 
-- `.schema/<cdm-name>/ontology.ison` — entity graph with attributes, relationships, and gaps
-- `.schema/<cdm-name>/ontology.md` — human-readable summary (required). One section per entity with: a short description, attribute table (name | type | source | notes), relationships table, and a final assumptions & exclusions list.
+- `.dlthub/ontology/<cdm-name>/ontology.ison` — entity graph with attributes, relationships, and gaps
+- `.dlthub/ontology/<cdm-name>/ontology.md` — human-readable summary (required). One section per entity with: a short description, attribute table (name | type | source | notes), relationships table, and a final assumptions & exclusions list.
 
-After writing both files, explicitly ask the user to open and review `.schema/<cdm-name>/ontology.md` before continuing:
+After writing both files, explicitly ask the user to open and review `.dlthub/ontology/<cdm-name>/ontology.md` before continuing:
 
 ```
-Please review `.schema/<cdm-name>/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
+Please review `.dlthub/ontology/<cdm-name>/ontology.md` — it summarises every entity, its attributes, and the relationships between them.
 
 Let me know if anything looks wrong or needs changing before we move on.
 ```

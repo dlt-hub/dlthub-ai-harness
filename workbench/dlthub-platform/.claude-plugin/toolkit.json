@@ -1,4 +1,14 @@
 {
-  "dependencies": ["init"],
-  "workflow_entry_skill": "setup-runtime"
+  "dependencies": ["init", "local-workspace"],
+  "workflow_entry_skill": "setup-runtime",
+  "agents": {"exclude": ["cortex"]},
+  "mcp_features": {
+    "dlt-workspace-mcp": [
+      "dlthub.jobs",
+      "dlthub.logs",
+      "dlthub.config",
+      "dlthub.telemetry",
+      "dlthub.restore_pipeline"
+    ]
+  }
 }

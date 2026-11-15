@@ -29,28 +29,59 @@ from dlt._workspace.deployment.exceptions import InvalidJobSchema
 from dlt._workspace.deployment.reflection import ENTITY_TYPE_KEY, entity_properties
 from dlt._workspace.deployment.typing import THubEntityType
 from dlt._workspace.cli.dlthub.ai.agents import COMPONENT_MARKERS, DLTHUB_AGENTS_DIR
-from dlt._workspace.cli.formatters import parse_frontmatter
+from dlt._workspace.cli.markdown import MarkdownDocument
 from dlt.common.typing import get_args
 
 AI_DIR = "workbench"
 
-# the intent index lives in the rule (Claude, Cursor) and in AGENTS.md (Codex, where rules
-# are opt-in)
-_INDEX_FILES = (
-    "workbench/init/rules/dlthub-workspace.md",
-    "workbench/init/AGENTS.md",
-)
+# the toolkit index lives in the router skill, which `init` installs for every agent
+_ROUTER_SKILL = "workbench/init/skills/dlthub-router/SKILL.md"
 # `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
 _NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
-# only the Cortex Code agent installs this one, so no other agent is routed to it
-_UNINDEXED_TOOLKITS = {"snowflake-platform"}
-# an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
+# an index row: "<intent text> → <toolkit> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
+_INDEX_HEADER = "toolkit"
+# the one row that sends deploy intents to the platform toolkit that fits, so init names none
+_PLATFORM_ROW = re.compile(r"→\s*a platform toolkit\s*\|")
 
-# the router indexes the background agents, which the intent index omits
-_ROUTER_SKILL = "workbench/init/skills/dlthub-router/SKILL.md"
-# a router agent row: "<capability> → <toolkit>:<agent> | <install> | <declare>".
-_ROUTER_AGENT_ENTRY = re.compile(r"→\s*([a-z][\w-]*:[a-z][\w-]*)\s*\|")
+# a platform toolkit starts its description with this, which `dlthub ai toolkit list` shows
+PLATFORM_LABEL = "Platform toolkit"
+# a toolkit for one platform only says so in its description: "Requires dltHub Platform."
+REQUIRES_PLATFORM = re.compile(r"\bRequires \w+ Platform\b")
+# platform text that a toolkit for any platform must not contain
+_PLATFORM_TEXT = (
+    (re.compile(r"dltHub (platform|runtime)\b", re.IGNORECASE), "names the dltHub platform"),
+    (
+        re.compile(
+            r"\bdlthub\s+(?:--non-interactive\s+)?"
+            r"(deploy|job|run|login|logout|serve|show|workspace\s+(?:list|connect|info))\b"
+        ),
+        "runs a platform command; write it without the prefix (`deploy`, `job run`)",
+    ),
+    (
+        re.compile(r"\b(?:uv add|uv pip install|pip install)\b[^\n`]*(dlt\[hub|dlthub-client)"),
+        "installs `dlt[hub]` or `dlthub-client`, which only a platform toolkit adds",
+    ),
+)
+_SCANNED_SUFFIXES = (".md", ".json", ".py")
+
+# the artifact locations of a workspace (TOOLKITS.md, "Artifact locations")
+_DLTHUB_DIRS = {"schemas", "ontology", "explorations", "<platform>"}
+# a platform folder belongs to one platform toolkit
+_PLATFORM_DIRS = {"snowflake": "snowflake-platform", "platform": "dlthub-platform"}
+_DLTHUB_PATH = re.compile(r"\.dlthub/([^/\s`'\")\]]+)")
+_RETIRED_PATHS = (
+    (re.compile(r"(?<![\w-])\.schema/"), "`.schema/` (use `.dlthub/ontology/<name>/`)"),
+    (
+        re.compile(r"(?<!\.dlthub/)\bschemas/(import|export)\b"),
+        "`schemas/import|export` (use `.dlthub/schemas/`)",
+    ),
+    (
+        re.compile(r"\.dlthub/ontology/snowflake\b"),
+        "`.dlthub/ontology/snowflake` (use the topic folder)",
+    ),
+    (re.compile(r"\btools/get_"), "a throwaway script in `tools/` (use the system temp dir)"),
+)
 
 # Codex drops a skill with a longer description
 MAX_DESCRIPTION_CHARS = 1024
@@ -104,7 +135,7 @@ def frontmatter_of(path: Path, label: str, pname: str, errors: list[str]) -> dic
 def split_frontmatter(path: Path) -> tuple[dict, str]:
     """Split a markdown file into (frontmatter, body), `({}, text)` when it has no frontmatter."""
     # the same parser `load_agent_spec` uses; raises yaml.YAMLError on invalid frontmatter
-    return parse_frontmatter(path.read_text(encoding="utf-8"))
+    return MarkdownDocument(path.read_text(encoding="utf-8")).split_frontmatter()
 
 
 def build_component_inventory(root: Path) -> dict[str, dict]:
@@ -125,19 +156,36 @@ def build_component_inventory(root: Path) -> dict[str, dict]:
                 p.name for p in skills_dir.iterdir() if p.is_dir() and (p / "SKILL.md").is_file()
             }
 
-        dependencies: list[str] = []
         tkjson = tk_dir / ".claude-plugin" / "toolkit.json"
-        if tkjson.is_file():
-            dependencies = list(json.loads(tkjson.read_text()).get("dependencies", []))
+        meta = json.loads(tkjson.read_text()) if tkjson.is_file() else {}
+        pjson = tk_dir / ".claude-plugin" / "plugin.json"
+        plugin = json.loads(pjson.read_text()) if pjson.is_file() else {}
+        description = plugin.get("description", "")
 
         inventory[tk_dir.name] = {
             "skills": skills,
             "rules": _stems(tk_dir / "rules"),
             "agents": _agent_names(tk_dir / _AGENTS_PATH),
             "commands": _stems(tk_dir / "commands"),
-            "dependencies": dependencies,
+            "dependencies": list(meta.get("dependencies", [])),
+            "listed": meta.get("listed", True) is not False,
+            "platform": description.startswith(PLATFORM_LABEL),
+            "requires_platform": bool(REQUIRES_PLATFORM.search(description)),
         }
     return inventory
+
+
+def _dependency_closure(name: str, inventory: dict[str, dict]) -> set[str]:
+    """Every toolkit that installing `name` installs too."""
+    seen: set[str] = set()
+    pending = list(inventory.get(name, {}).get("dependencies", []))
+    while pending:
+        dep = pending.pop()
+        if dep in seen or dep not in inventory:
+            continue
+        seen.add(dep)
+        pending += inventory[dep]["dependencies"]
+    return seen
 
 
 def _agent_names(directory: Path) -> set[str]:
@@ -729,8 +777,19 @@ def validate_toolkit_content(
     _validate_commands(pname, plugin_dir, errors, warnings)
     _validate_rules(pname, plugin_dir, errors)
     agent_names = validate_agents(pname, plugin_dir, inventory, errors, warnings)
+    # a workflow may name the skills of its dependencies, which are installed with it
+    dependency_names = {
+        name
+        for dep in _dependency_closure(pname, inventory)
+        for name in inventory[dep]["skills"] | inventory[dep]["agents"]
+    }
     validate_workflow(
-        pname, plugin_dir, skill_names | agent_names, marketplace_names, errors, warnings
+        pname,
+        plugin_dir,
+        skill_names | agent_names | dependency_names,
+        marketplace_names,
+        errors,
+        warnings,
     )
     return skill_names
 
@@ -845,31 +904,124 @@ def _validate_rules(pname: str, plugin_dir: Path, errors: list[str]) -> None:
 def validate_index_drift(
     root: Path,
     marketplace_names: set[str],
+    inventory: dict[str, dict],
     errors: list[str],
 ) -> None:
-    """Check that each intent index lists exactly the workflow toolkits of the marketplace."""
-    expected = marketplace_names - _NON_WORKFLOW_TOOLKITS - _UNINDEXED_TOOLKITS
+    """Check that the router indexes each listed workflow toolkit for any platform, and has the
+    platform toolkit row."""
+    router = root / _ROUTER_SKILL
+    if not router.exists():
+        errors.append(f"router skill not found: {_ROUTER_SKILL}")
+        return
 
-    for rel in _INDEX_FILES:
-        path = root / rel
-        if not path.exists():
-            errors.append(f"index file not found: {rel}")
+    platform = {name for name, tk in inventory.items() if tk["platform"]}
+    on_platform = _on_a_platform(inventory)
+    expected = {
+        name
+        for name in marketplace_names
+        if name in inventory
+        and name not in _NON_WORKFLOW_TOOLKITS
+        and name not in on_platform
+        and inventory[name]["listed"]
+    }
+    lines = router.read_text().splitlines()
+    indexed = {
+        m.group(1)
+        for line in lines
+        if (m := _INDEX_ENTRY.search(line)) and m.group(1) != _INDEX_HEADER
+    }
+    for name in sorted(expected - indexed):
+        errors.append(f"[init] dlthub-router index is missing workflow toolkit '{name}'")
+    for name in sorted((indexed - expected) & on_platform):
+        errors.append(
+            f"[init] dlthub-router index lists '{name}', which belongs to a platform; init names"
+            " no platform, the platform toolkit row covers it"
+        )
+    for name in sorted(indexed - expected - on_platform):
+        errors.append(
+            f"[init] dlthub-router index lists '{name}' "
+            "which is not a listed workflow toolkit in marketplace.json"
+        )
+    if platform and not any(_PLATFORM_ROW.search(line) for line in lines):
+        errors.append(
+            "[init] dlthub-router index has no '→ a platform toolkit |' row, so no deploy intent"
+            " reaches a platform toolkit"
+        )
+
+
+def _on_a_platform(inventory: dict[str, dict]) -> set[str]:
+    """Platform toolkits and the toolkits that require a platform."""
+    return {name for name, tk in inventory.items() if tk["platform"] or tk["requires_platform"]}
+
+
+def validate_platform_agnostic(root: Path, inventory: dict[str, dict], errors: list[str]) -> None:
+    """Check that a toolkit for any platform neither depends on nor names a platform toolkit, a
+    toolkit for one platform, or their components."""
+    platform = _on_a_platform(inventory)
+    generic_components = {
+        component
+        for name, tk in inventory.items()
+        if name not in platform
+        for component in tk["skills"] | tk["agents"]
+    }
+    platform_components = {
+        component
+        for name in platform
+        for component in inventory[name]["skills"] | inventory[name]["agents"]
+    }
+    # a platform toolkit may ship a skill under a name a generic toolkit also uses
+    platform_names = platform | (platform_components - generic_components)
+    alternatives = "|".join(map(re.escape, sorted(platform_names)))
+    name_pattern = re.compile(rf"(?<![\w-])({alternatives})(?![\w-])") if platform_names else None
+
+    for name, tk in sorted(inventory.items()):
+        if name in platform:
             continue
+        for dep in sorted(set(tk["dependencies"]) & platform):
+            errors.append(f"[{name}] depends on '{dep}', which belongs to a platform")
+        for path in sorted((root / AI_DIR / name).rglob("*")):
+            # the dependencies in toolkit.json are checked above
+            if path.suffix not in _SCANNED_SUFFIXES or not path.is_file():
+                continue
+            if path.name == "toolkit.json":
+                continue
+            rel = path.relative_to(root / AI_DIR / name)
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if name_pattern and (m := name_pattern.search(line)):
+                    errors.append(
+                        f"[{name}] {rel}:{lineno} names '{m.group(1)}', which belongs to a"
+                        " platform; hand over to the installed platform toolkit instead"
+                    )
+                for pattern, reason in _PLATFORM_TEXT:
+                    if pattern.search(line):
+                        errors.append(f"[{name}] {rel}:{lineno} {reason}")
 
-        indexed = {
-            m.group(1)
-            for line in path.read_text().splitlines()
-            # data rows carry an install command; this skips the column header
-            if "ai toolkit" in line and (m := _INDEX_ENTRY.search(line))
-        }
-        fname = Path(rel).name
-        for name in sorted(expected - indexed):
-            errors.append(f"[init] {fname} intent index is missing workflow toolkit '{name}'")
-        for name in sorted(indexed - expected):
-            errors.append(
-                f"[init] {fname} intent index lists '{name}' "
-                f"which is not a workflow toolkit in marketplace.json"
-            )
+
+def validate_artifact_locations(root: Path, inventory: dict[str, dict], errors: list[str]) -> None:
+    """Check that toolkit files name only the artifact locations, a platform folder only in its own
+    toolkit, and no retired location."""
+    for name in sorted(inventory):
+        for path in sorted((root / AI_DIR / name).rglob("*")):
+            if path.suffix not in _SCANNED_SUFFIXES or not path.is_file():
+                continue
+            rel = path.relative_to(root / AI_DIR / name)
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                for m in _DLTHUB_PATH.finditer(line):
+                    folder = m.group(1)
+                    owner = _PLATFORM_DIRS.get(folder)
+                    if owner is not None and owner != name:
+                        errors.append(
+                            f"[{name}] {rel}:{lineno} names `.dlthub/{folder}/`, which belongs to"
+                            f" {owner}"
+                        )
+                    elif owner is None and folder not in _DLTHUB_DIRS:
+                        errors.append(
+                            f"[{name}] {rel}:{lineno} names `.dlthub/{folder}/`, which is not an"
+                            " artifact location (TOOLKITS.md, Artifact locations)"
+                        )
+                for pattern, retired in _RETIRED_PATHS:
+                    if pattern.search(line):
+                        errors.append(f"[{name}] {rel}:{lineno} names retired location {retired}")
 
 
 def validate_capability_coverage(
@@ -877,28 +1029,7 @@ def validate_capability_coverage(
     inventory: dict[str, dict],
     errors: list[str],
 ) -> None:
-    """Check that the router indexes every agent and each workflow.md every skill and agent."""
-    router = root / _ROUTER_SKILL
-    if not router.exists():
-        errors.append(f"router skill not found: {_ROUTER_SKILL}")
-        return
-
-    routed = {
-        m.group(1)
-        for line in router.read_text().splitlines()
-        # data rows carry an install command; this skips the column header
-        if "ai toolkit" in line and (m := _ROUTER_AGENT_ENTRY.search(line))
-    }
-    shipped = {
-        f"{name}:{agent}"
-        for name, components in inventory.items()
-        for agent in components["agents"]
-    }
-    for ref in sorted(shipped - routed):
-        errors.append(f"[init] dlthub-router agent index is missing '{ref}'")
-    for ref in sorted(routed - shipped):
-        errors.append(f"[init] dlthub-router agent index lists '{ref}' which no toolkit ships")
-
+    """Check that each workflow.md references every skill and agent of its toolkit."""
     for name, components in sorted(inventory.items()):
         if name in _NON_WORKFLOW_TOOLKITS:
             continue
@@ -980,6 +1111,14 @@ def validate(
                     f"!= expected '{_EXPECTED_LICENSE}'"
                 )
 
+            # `toolkit list` shows plugin.json, the Claude marketplace shows marketplace.json
+            plugin_platform = pjson.get("description", "").startswith(PLATFORM_LABEL)
+            if plugin_platform != entry.get("description", "").startswith(PLATFORM_LABEL):
+                errors.append(
+                    f"[{pname}] '{PLATFORM_LABEL}' must start the description in both"
+                    " plugin.json and marketplace.json, or in neither"
+                )
+
         all_skills[pname] = validate_toolkit_content(
             pname, plugin_dir, marketplace_names, inventory, errors, warnings
         )
@@ -999,8 +1138,10 @@ def validate(
                         f"but is not listed in marketplace.json"
                     )
 
-        validate_index_drift(root, marketplace_names, errors)
+        validate_index_drift(root, marketplace_names, inventory, errors)
         validate_capability_coverage(root, inventory, errors)
+        validate_platform_agnostic(root, inventory, errors)
+        validate_artifact_locations(root, inventory, errors)
 
     return errors, warnings, all_skills
 

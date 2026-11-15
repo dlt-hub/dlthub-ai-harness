@@ -1,7 +1,11 @@
 # Analysis Plan Format Reference
 
-The analysis_plan.md file is the structured artifact that `explore-data` writes and `build-notebook` reads.
-Section headers are parsed mechanically — keep them exact.
+The analysis plan is the structured artifact that `explore-data` writes and `build-notebook` reads. It lives in
+the workspace at `.dlthub/explorations/<pipeline_name>/analysis_plan.md`, one plan per pipeline, and is
+committed. Section headers are parsed mechanically — keep them exact.
+
+The plan does not depend on the dashboard tool: each chart is a question, a SQL query and a chart spec.
+`build-notebook` renders it as a marimo notebook; another renderer can read the same plan.
 
 ## Full template
 
@@ -12,6 +16,9 @@ Section headers are parsed mechanically — keep them exact.
 pipeline: <pipeline_name>
 dataset: <dataset_name>
 destination: <destination_type>
+
+## Dashboard
+path: <path of the dashboard file, for example orders_pipeline_dashboard.py>
 
 ## Profile Summary
 | table | rows | key columns | notes |
@@ -27,6 +34,7 @@ destination: <destination_type>
 (none — or: "customer_segment column needed, not in any table")
 
 ## Chart 1: Monthly Revenue Trend
+added: 2026-03-10
 question: How has revenue changed over time?
 type: line
 x: created_at (monthly)
@@ -54,6 +62,7 @@ alt.Chart(df).mark_line().encode(
 ## Notes
 
 - **Profile Summary** may be minimal (table/column names only) on the high-intent path; full stats on low-intent path.
+- **Dashboard** is empty until `build-notebook` writes the dashboard; it then records the path the user chose.
 - Mark charted questions with `[x]`, remaining with `[ ]`.
-- Append new `## Chart N` sections for each subsequent chart — do not remove previous ones.
+- Append new `## Chart N` sections for each subsequent chart, with the date they were added — do not remove previous ones.
 - `build-notebook` parses `## Chart N` sections to generate cells; keep the sql/altair code blocks labeled correctly.

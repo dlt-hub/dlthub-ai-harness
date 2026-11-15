@@ -92,8 +92,6 @@ Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/rest_api/advanced.md
 
 ## Next steps
 
-*If a quick-start path is active, follow that path's sequence instead — this list is for standalone use.*
-
 - Full load complete → hand over to **data-exploration** (`explore-data`) to chart and analyze the data
 - Pipeline works but slow (too many requests, slow endpoints) → use `optimize-rest-api-performance` (parallel resources, page size, concurrency)
 - Pipeline is memory-heavy or you need stage-level tuning (extract/normalize/load workers, buffers, file rotation) → hand over to the **performance** toolkit → `optimize-performance` (install if not present: `uv run dlthub --non-interactive ai toolkit install performance`)

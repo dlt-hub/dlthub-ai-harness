@@ -1,29 +1,7 @@
 # Advanced Deployment Patterns
 
-## Followup jobs
-
-Chain a transform to run after ingest succeeds:
-
-```python
-@run.pipeline("ingest_pipeline", trigger=trigger.schedule("0 * * * *"))
-def ingest():
-    ...
-
-@run.pipeline("transform_pipeline", trigger=ingest.success)
-def transform():
-    ...
-```
-
-Use `TJobRunContext` to inspect which trigger fired when a job has multiple:
-
-```python
-from dlt.hub.run import TJobRunContext
-
-@run.pipeline("transform_pipeline", trigger=[ingest.success, other_job.success])
-def transform(run_context: TJobRunContext):
-    if run_context["trigger"] == ingest.success:
-        ...
-```
+Follow-up jobs, intervals, freshness gates, refresh runs and the refresh cascade, `@run.job` and
+`@run.interactive` are in `job-patterns.md` of the (`run-local-jobs`) skill (local-workspace toolkit).
 
 ## Background agents
 
@@ -36,7 +14,6 @@ inspector = run.agent(
     "dlthub-platform:job-inspector",
     # `ingest` is a tag this workspace puts on its own jobs
     trigger="job.fail:tag:ingest",
-    require={"profile": "access"},
 )
 ```
 
@@ -53,10 +30,12 @@ with the run number. The reference fails when
 `.claude/dlthub/agents/dlthub-platform/job-inspector/` is missing, which means the toolkit is
 not installed in the workspace.
 
-**An agent job never runs on `prod`.** Pin `require={"profile": "access"}` on every one of
-them. Without it the job runs as a batch job on `prod` and the production credentials land
-in its environment. The agent's `access` block decides which tools the model is offered; the
-profile decides which credentials the job process holds, so declare both. Work that needs
+**An agent job never gets `prod`.** Declare no profile on it, and keep `write` out of
+`access.data` in its agent definition. The deployment then gives it the profile with `none`
+data access of its environment. Declare one in every environment that the job deploys to:
+`dlthub profile add <env>-none --access none --env <env>`. In `prod` without one, the job gets
+`access`, or `prod` while `access` has no settings files, and `dlthub deploy` warns. The agent's `access` block decides which tools the model is
+offered; the profile decides which credentials the job process holds. Work that needs
 production write credentials belongs in a pipeline or a plain job that a person wrote.
 
 ### Model and credentials
@@ -98,143 +77,6 @@ code is beaten by `AGENT__MODEL` wherever the variable is set. Keep the decision
 variable.
 
 Reference: https://dlthub.com/docs/hub/agents/agent-definitions.md
-
-## Scheduler-driven intervals
-
-For incremental pipelines, declare the overall time range with `interval=`:
-
-```python
-@run.pipeline(
-    my_pipeline,
-    interval={"start": "2026-01-01T00:00:00Z"},
-    trigger=trigger.schedule("*/3 * * * *"),
-)
-def daily_ingest(run_context: TJobRunContext):
-    start = run_context["interval_start"]
-    end = run_context["interval_end"]
-    pipeline.run(my_source(start, end))
-```
-
-- `interval.start` is where the data begins; `interval.end` defaults to now
-- Each run gets the cron tick that just elapsed as `[interval_start, interval_end]`
-- Missed ticks are backfilled automatically (window extends back)
-- On refresh, Runtime resets the interval pointer to `interval.start`
-
-## Freshness gates
-
-Prevent a job from running until upstream has completed its interval:
-
-```python
-@run.pipeline(
-    transform_pipeline,
-    trigger=trigger.every("5m"),
-    freshness=[daily_ingest.is_fresh],
-)
-def transform(run_context: TJobRunContext):
-    ...
-```
-
-Freshness is **not** a trigger. The job still runs on its own schedule, but
-skips if upstream isn't done yet. Use for transforms that shouldn't observe
-mid-load data.
-
-## Refresh runs and the refresh cascade
-
-A **refresh run** carries the refresh signal: a request to reload the job's data. Start one with `--refresh` (CLI reference: https://dlthub.com/docs/hub/command-line-interface.md):
-
-```bash
-dlthub run <job_or_file> --refresh          # deploy and run on Runtime
-dlthub job trigger <selector> --refresh     # trigger deployed jobs
-dlthub local run <job> --refresh            # simulate locally
-```
-
-A refresh run drops or truncates data in the destination. Confirm with the user before you start one, and never start one on a production profile without their explicit OK.
-
-### Reload every pipeline in the job (recommended)
-
-`auto_refresh_pipeline_mode` applies a refresh mode to every `dlt.pipeline()` that the job creates, in refresh runs only:
-
-```python
-@run.pipeline("my_pipeline", auto_refresh_pipeline_mode="drop_sources")
-def ingest():
-    pipeline = dlt.pipeline(pipeline_name="my_pipeline", destination="warehouse")
-    pipeline.run(my_source())
-```
-
-`@run.job` takes it too. Or set it in config, for one job or for all jobs:
-
-```toml
-[jobs.<section>.<job_name>]   # the job reference, see prepare-deployment "Job references"
-auto_refresh_pipeline_mode = "drop_sources"
-
-[jobs]                        # every job
-auto_refresh_pipeline_mode = "drop_data"
-```
-
-| Mode | What a refresh run does to each pipeline |
-|------|------------------------------------------|
-| `drop_sources` | drops the tables and state of every source in the run and resets their schemas |
-| `drop_resources` | drops the tables and state of the resources in the run, keeps source-level state |
-| `drop_data` | truncates the tables of the resources in the run and resets their state, keeps the schema |
-
-An explicit `refresh=` on `dlt.pipeline()` still wins. The runner needs dlt 1.30.1a0 or later. Without the setting, a refresh run does not reload any pipeline, unless the job code reads the signal itself (below).
-
-### The same by hand (illustration)
-
-This is what `auto_refresh_pipeline_mode` does for you. Write it out only when pipelines in one job need different handling:
-
-```python
-@run.pipeline("my_pipeline")
-def ingest(run_context: TJobRunContext):
-    pipeline = dlt.pipeline(pipeline_name="my_pipeline", destination="warehouse")
-    if run_context["refresh"]:
-        pipeline.refresh = "drop_sources"
-    pipeline.run(my_source())
-```
-
-### Cascade to downstream jobs
-
-`refresh_propagation` decides whether the signal reaches the jobs that follow this one (`trigger=<job>.success`):
-
-| Policy | Behavior |
-|--------|----------|
-| `refresh_propagation="auto"` | passes the signal on if this run received it (default) |
-| `refresh_propagation="always"` | every successful run sends the signal to its direct downstream jobs (originator) |
-| `refresh_propagation="block"` | stops propagation. `--refresh` on this job is ignored with a warning |
-
-`refresh=` is the deprecated name of `refresh_propagation=`. `dlthub deploy` warns about a job that sets `auto_refresh_pipeline_mode` together with `refresh_propagation="block"`, because block prevents its refresh runs.
-
-A backfill job with `refresh_propagation="always"` triggers a full reprocess cascade. Downstream jobs with `auto_refresh_pipeline_mode` reload their pipelines:
-
-```python
-@run.job(
-    expose={"tags": ["backfill"], "display_name": "Full backfill"},
-    refresh_propagation="always",
-)
-def backfill():
-    print("cascading refresh to all downstream jobs")
-```
-
-## `@run.job` and `@run.interactive`
-
-- `@run.job` -- general batch work (not bound to a named pipeline):
-  ```python
-  @run.job(trigger=trigger.schedule("0 * * * *"))
-  def run_dq_checks():
-      ...
-  ```
-
-- `@run.interactive` -- long-running HTTP services (MCP, hosted notebooks or dashboards, REST API):
-  ```python
-  @run.interactive(interface="mcp", idle_timeout="30m")
-  def my_mcp_server():
-      from fastmcp import FastMCP
-      mcp = FastMCP("tools")
-      @mcp.tool
-      def hello() -> str:
-          return "world"
-      return mcp
-  ```
 
 Runtime settings for a job, dependency groups, timeouts, instance size and timezone, are in
 [runtime-settings.md](runtime-settings.md).

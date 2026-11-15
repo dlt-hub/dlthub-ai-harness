@@ -24,7 +24,7 @@ Before writing any script, determine which execution profile applies:
 | Profile | Signal | Action |
 |---|---|---|
 | **A — pipeline author** | Checks were applied via `@dq.with_checks` / `dq.with_checks(resource, ...)` decorators in the pipeline file | Run the existing pipeline script — checks fire automatically during load |
-| **B — postmortem analyst** | No decorator changes; user wants to check existing destination data without re-running the pipeline | Write and run `tools/dq_run.py` using `dlt.attach` + `dq.run_checks` |
+| **B — postmortem analyst** | No decorator changes; user wants to check existing destination data without re-running the pipeline | Write and run a data quality script (`<script_path>`, for example `dq_run.py`) using `dlt.attach` + `dq.run_checks` |
 
 If the profile is ambiguous, ask: "Were the checks added to the pipeline code (decorators), or do you want to run them against data already in the destination without re-extracting?"
 
@@ -49,10 +49,10 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 1. **Confirm the script path.** Before writing anything, ask:
 
    ```
-   Where should I write the data quality run script? (default: tools/dq_run.py)
+   Where should I write the data quality run script? (for example dq_run.py, next to your pipeline)
    ```
 
-   Use the user's answer as `<script_path>` for all subsequent steps. If they say "default" or give no answer, use `tools/dq_run.py`.
+   Use the user's answer as `<script_path>` for all subsequent steps. If the workspace already keeps scripts in a folder, propose that folder. Do not pick a path without the user's answer.
 
 2. **Write `<script_path>`.** Use `dlt.attach` (connects to the existing pipeline, no extraction) and `dq.run_checks` (reads only from the destination).
 
@@ -184,12 +184,12 @@ Pass to `review-data-quality`:
 ```
 <script_path> ran your checks once against the current data. What would you like to do with it?
 
-  [1] Deploy it — run these checks on a schedule on the dltHub platform
+  [1] Deploy it — run these checks on a schedule
   [2] Keep it local — re-run manually whenever needed (python <script_path>)
   [3] Discard it — the results are in the destination, the script is no longer needed
 
 ```
 
-If the user chooses [1], hand over to **dlthub-platform** (start at `setup-runtime`), passing:
+If the user chooses [1], follow the workflow entry of the installed platform toolkit (when none is installed, `dlthub-router` installs one), passing:
 - The script path (`<script_path>`) as the deployment target
 - The confirmed pipeline name and destination

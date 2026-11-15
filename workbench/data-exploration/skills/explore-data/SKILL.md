@@ -1,12 +1,12 @@
 ---
 name: explore-data
 argument-hint: "[pipeline-name] [question]"
-description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "analyze my data", "profile data quality", "what questions can I ask about my data", "map my data to business concepts", or wants to explore, profile, analyze, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use dlthub-platform toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
+description: This skill should be used when the user asks to "explore my data", "what can I learn from this pipeline", "what's the revenue trend", "show me charts", "visualize my pipeline", "analyze my data", "profile data quality", "what questions can I ask about my data", "map my data to business concepts", or wants to explore, profile, analyze, or chart data from a dlt pipeline. Connects to a pipeline, profiles tables or scans schema, plans charts with ibis + altair code, and writes an analysis_plan.md artifact. Do NOT use for building or fixing pipelines (use rest-api-pipeline toolkit), deploying pipelines (use the platform toolkit), or assembling the marimo notebook from an analysis plan (use build-notebook).
 ---
 
 # Explore data and plan charts
 
-Connect to a dlt pipeline, understand the data, and plan one chart at a time. Outputs a `<date>_<pipeline_name>_analysis_plan.md` artifact that `build-notebook` consumes. Use today's date in `YYYY-MM-DD` format (e.g., `2026-03-10`).
+Connect to a dlt pipeline, understand the data, and plan one chart at a time. Outputs the analysis plan `.dlthub/explorations/<pipeline_name>/analysis_plan.md` that `build-notebook` consumes. Commit it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer from session context. If ambiguous, ask the user and stop.
@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 Before discovery, check what's already available:
 
 1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (e.g., arriving from `rest-api-pipeline` after `validate-data` or `view-data`, or from `sql-database-pipeline` after `validate-sql-database-data` or `view-sql-database-data`), skip `list_pipelines` and go straight to `list_tables`.
-2. **Existing analysis_plan.md** — if `*_analysis_plan.md` exists, skip to the iteration path (see "Iteration: existing analysis_plan.md" below).
+2. **Existing analysis_plan.md** — if `.dlthub/explorations/<pipeline_name>/analysis_plan.md` exists, skip to the iteration path (see "Iteration: existing analysis_plan.md" below).
 3. **Standalone .duckdb file** — if the user points to a `.duckdb` file instead of a named pipeline, connect with an explicit destination: `dlt.pipeline(pipeline_name="adhoc", destination=dlt.destinations.duckdb("<path>"))`. Then proceed normally — `pipeline.dataset()` works the same way.
 
 ## Detect intent
@@ -26,7 +26,7 @@ See `workflow.md` for high-intent vs low-intent definitions. **One chart per inv
 
 ## Iteration: existing analysis_plan.md
 
-If `*_<pipeline_name>_analysis_plan.md` already exists (glob for any date prefix; pick most recent): read it, skip Steps 1–2 entirely, and ask for the next question (or present remaining `[ ]` questions). Plan one chart, append as `## Chart N`, hand off to `build-notebook`. See the full iteration loop in `workflow.md`.
+If `.dlthub/explorations/<pipeline_name>/analysis_plan.md` already exists: read it, skip Steps 1–2 entirely, and ask for the next question (or present remaining `[ ]` questions). Plan one chart, append as `## Chart N`, hand off to `build-notebook`. See the full iteration loop in `workflow.md`.
 
 ## Step 1: Connect to pipeline
 
@@ -133,7 +133,7 @@ After the spec is confirmed, generate the SQL query and altair chart code.
 
 ## Step 6: Output analysis_plan.md
 
-Write or append to `<date>_<pipeline_name>_analysis_plan.md` (use today's date in `YYYY-MM-DD` format). See `references/analysis-plan-format.md` for the full template.
+Write or append to `.dlthub/explorations/<pipeline_name>/analysis_plan.md`, and put today's date (`YYYY-MM-DD`) in the `added:` line of the new chart. See `references/analysis-plan-format.md` for the full template.
 
 The file has these sections:
 - **Connection** — pipeline name, dataset, destination type

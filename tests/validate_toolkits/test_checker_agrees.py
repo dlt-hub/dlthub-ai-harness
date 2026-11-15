@@ -10,7 +10,9 @@ from tests.utils import REPO_ROOT
 
 from tools import validate_toolkits as V
 
-_PATH = REPO_ROOT / V.AI_DIR / "init" / "skills" / "create-background-agent" / "check_agent.py"
+_PATH = (
+    REPO_ROOT / V.AI_DIR / "dlthub-platform" / "skills" / "create-background-agent" / "check_agent.py"
+)
 _spec = importlib.util.spec_from_file_location("check_agent", _PATH)
 check_agent = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(check_agent)

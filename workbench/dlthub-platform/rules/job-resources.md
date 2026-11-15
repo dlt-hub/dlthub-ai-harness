@@ -18,9 +18,9 @@ config change is free; these are not.
 4. **Never bundle it in.** Do not slip a size or timeout change into a `dlthub deploy` alongside other
    edits. If you have unapproved resource changes staged, stop and ask before deploying.
 5. **Tune before you spend.** A resource bump is the last resort, after the pipeline itself is tuned — hand
-   over to the **performance** toolkit (`optimize-performance`, Step 4) for the real bottleneck, the gate
-   that says whether hardware is genuinely the ceiling, and the break-even math. Install if absent:
-   `uv run dlthub --non-interactive ai toolkit install performance`.
+   over to the **performance** toolkit (`optimize-performance`) for the real bottleneck. Install if absent:
+   `uv run dlthub --non-interactive ai toolkit install performance`. Then `instance-sizing.md` in
+   `deploy-workspace` has the checks that say whether hardware is genuinely the ceiling, and the break-even math.
 6. **Report what it cost.** After an approved change is deployed, read `dlthub job logs <name>` and tell the
    user whether the run actually got faster / fitted in memory, and recommend dropping back a tier if the
    multiplier is not earning itself.

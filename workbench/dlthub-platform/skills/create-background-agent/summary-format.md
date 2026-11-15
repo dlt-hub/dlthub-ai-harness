@@ -56,7 +56,8 @@ change here is a change in every body that states them.
 
 - **Every claim cites the artifact behind it, in the bullet that makes the claim.** The artifact
   goes in parentheses at the end, written as the command or path the reader runs to open it:
-  (`dlthub job runs logs <run id>` line 52), (`pipelines/github.py` line 16). Quote the words that
+  for example (`dlthub job runs logs <run id>` line 52), or a workspace file such as
+  (`pipelines/github.py` line 16). Quote the words that
   settle the point rather than paraphrasing them, so the reader validates the finding from the
   summary alone. A claim resting on nothing the reader can open says so, in the section that
   carries the doubt: `Confidence` for `job-inspector`.

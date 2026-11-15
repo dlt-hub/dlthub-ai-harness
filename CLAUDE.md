@@ -9,13 +9,15 @@ A collection of **toolkits** (compatible with Claude Code plugins) for data engi
 workbench/                                # All toolkits live here
   <toolkit-name>/                  # One directory per toolkit
     .claude-plugin/plugin.json     # Plugin manifest (strict Claude schema, name must match directory)
-    .claude-plugin/toolkit.json    # dlthub-specific metadata: dependencies, listed (optional)
+    .claude-plugin/toolkit.json    # dlthub-specific metadata: dependencies, listed, agents, mcp_features (optional)
     skills/                        # Skills (SKILL.md with frontmatter)
     commands/                      # Slash commands (plain .md files)
     rules/                         # Catch-all rules loaded every session
     dlthub/agents/<name>/AGENT.md  # Agent definitions (optional)
     .mcp.json                      # MCP servers (optional)
-  init/                            # Shared rules, secrets handling, and workspace MCP
+  init/                            # Shared rules, workspace and profiles, secrets handling, and workspace MCP
+  local-workspace/                 # Jobs, local job runs and tests (unlisted); platform toolkits depend on it
+  *-platform/                      # Platform toolkits: deploy and run on one platform (see TOOLKITS.md)
 tools/                             # Dev tooling
   validate_toolkits.py             # Marketplace & plugin consistency checker
   extract_refs.py                  # Extract component map & external URLs from a toolkit
@@ -40,7 +42,7 @@ A toolkit is a Claude Code plugin. It can contain:
 - **Agents** (`dlthub/agents/<name>/AGENT.md`) — agent definitions. Frontmatter plus a body that is the system prompt. Name must match the folder. Each declares `access`, `inputs`, `output` (with `status` and `summary`) and `defaults`.
   - `agents/` is the host's own subagents folder; dlt does not install an agent definition from there.
   - The folder holds `AGENT.md`, an optional `agent.py` (`validate_input`, `validate_output`) and the modules it imports. An agent folder imports only its own files.
-  - No README in the folder: a document beside a definition drifts from it. What an author or an operator needs is in `create-background-agent`, a skill under `workbench/init/skills/` that reaches every workspace through `init`.
+  - No README in the folder: a document beside a definition drifts from it. What an author or an operator needs is in `create-background-agent`, a skill under `workbench/dlthub-platform/skills/` (background agents run on the dltHub platform).
   - Install path: `.claude/dlthub/agents/<toolkit>/<name>/` on dlt 1.31.0, under `dlthub/` so it never mixes with the host's native agents. dlt 1.30.1a1 wrote it flat, without the `<toolkit>` segment.
 
 ### Toolkit Workflow (`rules/workflow.md`)
@@ -76,7 +78,7 @@ After install, `dlthub ai status` and `dlthub ai toolkit install <name>` display
 
 Two mechanisms route the user between toolkits — they are complementary, not redundant:
 
-- **Router/index** (`dlthub-router` skill + the always-loaded intent index in `init`) handles the case where **no matching toolkit is installed**: match intent, install the toolkit, enter at its entry skill.
+- **Router/index** (the `dlthub-router` skill in `init`, which holds the toolkit index) handles the case where **no matching toolkit is installed**: match intent, install the toolkit, enter at its entry skill. Platform toolkits share one index row, "→ a platform toolkit".
 - **Handovers** (a toolkit's `workflow.md`) move the user to another toolkit **during a workflow**. They pass on context, for example the pipeline name, dataset and destination ("skip discovery"). They name one skill and one condition (for example, Early vs Later deploy), which the index cannot do.
 
 When a handover names a toolkit that is **not installed**, use the index/router to install it, then follow the handover's entry point + context. When the toolkit is installed, the router does not trigger during a workflow. Its `description` excludes that case.
@@ -85,7 +87,11 @@ When a handover names a toolkit that is **not installed**, use the index/router 
 
 - **Internal skills/commands** — reference with backtick-parens: `(`skill-name`)`. The validator checks these resolve to real skill directories.
 - **Planned skills** (not yet implemented) — plain text, no `()` link. Add them to the workflow to show intent.
-- **Handover to external toolkits** — use `**toolkit-name**` (bold) and describe the trigger. Only reference toolkits that are NOT dependencies (dependencies like `init` are always loaded — their skills are local, not handovers).
+- **Handover to external toolkits** — use `**toolkit-name**` (bold) and describe the trigger. Only reference toolkits that are NOT dependencies (dependencies like `init` are always loaded — their skills are local, not handovers). The validator accepts `(`skill-name`)` refs to skills of dependencies.
+- **Handover to a platform toolkit** — a toolkit that is not a platform toolkit never names one. It hands over to "the installed platform toolkit" with the standard line: *a platform toolkit — when the user wants to deploy, schedule or run the jobs in production: follow the workflow entry of the installed platform toolkit, carrying the pipeline name, destination and dataset. When none is installed, `dlthub-router` installs one.* See "Platform toolkits" in TOOLKITS.md.
+
+### Artifact locations and code paths
+Skills write artifacts only to the artifact locations (`.dlthub/schemas/`, `.dlthub/ontology/<name>/`, `.dlthub/explorations/<name>/`, `.dlthub/<platform>/`) and name the path. Code layout is the user's: a concrete path for sources, pipelines or transformations is an example. Throwaway scripts go to the system temp dir. See "Artifact locations" in TOOLKITS.md.
 
 ### Refer to authoritative docs everywhere
 Put links to the authoritative docs (for example, the dlt docs) in each skill, command and rule. The agent reads them at run time. We also use them to **refresh a skill when its source doc changes**.
@@ -108,12 +114,13 @@ Checks:
 - agent files (access, inputs, agent output, refs, no `defaults.model`)
 - `workflow.md` references
 - root documents (a toolkit file names one only through its URL)
-- index coverage (each skill and agent definition is in its `workflow.md`, each agent definition is in the `dlthub-router` index)
+- index coverage (each skill and agent definition is in its `workflow.md`; the `dlthub-router` index lists every listed workflow toolkit that is not a platform toolkit, plus the platform toolkit row)
+- artifact locations (only the standard `.dlthub/` folders, a platform folder only in its own toolkit, no retired paths)
+- platform toolkits (the `Platform toolkit` label in both descriptions, `Requires <platform> Platform` for a toolkit that works only with one platform; no other toolkit depends on one, names one or its skills, names the dltHub platform, runs platform commands or installs `dlt[hub]`)
 
 ### Maintenance skills
 - `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, rule, or agent and update all cross-references within the toolkit.
 - `/validate-toolkits <toolkit-path>` — deep-validate a toolkit: check external doc URLs are live, cross-references resolve, and fix what can be fixed.
-- `improve-skills` (in `init`) — capture session learnings back into skills. Run at the end of a session.
 
 ### Helper scripts
 - `uv run python tools/extract_refs.py workbench/<toolkit>` — extract component map and external URLs for a toolkit.

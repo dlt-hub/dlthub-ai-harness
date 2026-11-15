@@ -20,7 +20,7 @@ Collect all unknown inputs in **one round** — never split into separate back-a
 
 **Structured choices** (ask in one round with multiple-choice options, up to three parallel questions):
 - **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
-- **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[hub,s3]`, `dlt[hub,gs]`, `dlt[hub,az]`, `dlt[hub,sftp]`; local needs only `dlt[hub]`) and the credential layout.
+- **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs none) and the credential layout.
 - **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
 
 **Free-text input** (`bucket_url` — ask as plain text, not structured choices):
@@ -66,11 +66,11 @@ ls -la                                        # confirm what was created
 
 Note: `--non-interactive` is a global flag on `dlthub` and may appear at any position in the command. Always pass it to prevent prompts that block execution.
 
-If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uv run dlthub init` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
+If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uvx dlthub-init@latest` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
 
 `dlthub pipeline init` is safe to re-run in a project that already has files — it adds new ones without overwriting `filesystem_pipeline.py`, and updates shared files (`.dlt/secrets.toml`, `.dlt/config.toml`, `.gitignore`).
 
-The scaffold creates:
+The scaffold creates, in the project root (the user may move the pipeline script anywhere in the workspace later):
 - `filesystem_pipeline.py` — kitchen-sink demo with 7 functions; you will replace it
 - `.dlt/config.toml` — `[sources.filesystem]` with placeholder `bucket_url`
 - `.dlt/secrets.toml` — placeholder credentials (AWS by default; replace with your backend's shape)
@@ -318,7 +318,7 @@ When the user confirms, run `uv run python filesystem_pipeline.py`. Common first
 
 | Error | Fix |
 |-------|-----|
-| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv add "dlt[hub,s3]"`, GCS → `uv add "dlt[hub,gs]"`, Azure → `uv add "dlt[hub,az]"`, SFTP → `uv add "dlt[hub,sftp]"`. |
+| `You must install additional dependencies to run filesystem` | Install the backend extra: S3 → `uv add "dlt[s3]"`, GCS → `uv add "dlt[gs]"`, Azure → `uv add "dlt[az]"`, SFTP → `uv add "dlt[sftp]"`. |
 | `No module named 'pandas'` (or `pyarrow`) | Run `uv add pandas` / `uv add pyarrow`. |
 | `ConfigFieldMissingException` for credential fields | The user hasn't filled `secrets.toml` — point them at the file and the placeholders from 6b. |
 | `bucket_url` resolved to `<configure me>` | `config.toml` was not updated — go back to 6a. |
@@ -339,4 +339,4 @@ Once the pipeline is verified, suggest next steps in this order:
 2. **Optimize performance** (`optimize-filesystem-performance`) — if reading files is slow or memory-heavy (faster reader, chunked streaming, parallel reads, glob narrowing)
 3. **Explore the data** — hand off to **data-exploration** toolkit to profile and visualise the loaded tables
 4. **Add data quality checks** — hand off to **data-quality** toolkit
-5. **Deploy** — hand off to **dlthub-platform** toolkit to schedule the pipeline on dltHub
+5. **Deploy** — follow the workflow entry of the installed platform toolkit to deploy and schedule the pipeline; when none is installed, `dlthub-router` installs one

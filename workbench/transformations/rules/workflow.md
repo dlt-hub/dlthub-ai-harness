@@ -19,9 +19,7 @@
 - From **rest-api-pipeline** (after `validate-data` or `view-data`) — pipeline name, destination, and dataset are already known. `annotate-sources` should skip `list_pipelines` discovery and go straight to schema extraction on the known pipeline. Business context may already be available from the ingestion session.
 - From **sql-database-pipeline** (after `validate-sql-database-data` or `view-sql-database-data`) — pipeline name, destination, and dataset are already known. `annotate-sources` should skip `list_pipelines` discovery and go straight to schema extraction on the known pipeline.
 - From **data-exploration** (after exploring raw pipeline data) — pipeline name, dataset, and table structure are already understood. The user has decided the raw tables need proper modeling before further analysis. `annotate-sources` can skip discovery and lean on the already-profiled table structure; natural key candidates and data quality observations from the exploration session should carry over — but always re-confirmed.
-- From **dlthub-platform** (during `prepare-deployment` or `deploy-workspace`) — when the prod destination differs from dev and SQL dialect errors surface. Go to `debug-transformation` section 1 (static dialect check) with the dev and prod destination types already known.
 - From **data-quality** (after `review-data-quality`) — DQ failures revealed upstream modeling issues; the failing tables and check results are known. `annotate-sources` should focus on those specific tables.
-- From **quick-start** (shortcut path when a pipeline already exists) — pipeline name may be inferred from `dlthub ai status`. `annotate-sources` should still confirm pipelines and use cases; no shortcuts to schema extraction unless `dlthub ai status` shows a single loaded pipeline.
 
 ## Handover to other toolkits
 
@@ -34,5 +32,5 @@ When the user's needs go beyond this toolkit, hand over to:
   - At `annotate-sources` step 1, when a stated SQL database source has no local dlt pipeline yet — start at `find-sql-database-source`
   - At `create-transformation` step 8 (Run), when the run fails with a pipeline state or infrastructure error and the source is a SQL database — use the `debug-sql-database-pipeline` skill
 - **data-exploration** — after `create-transformation`, when the user wants to explore, visualise, or validate the CDM output interactively
-- **dlthub-platform** — when the transformation is working and the user wants to deploy or schedule it on the dltHub platform, or, once it runs there, wants every future failure diagnosed unattended by the `job-inspector` background agent
 - **data-quality** — after `create-transformation`, when the user wants to add quality checks on the transformed tables
+- a platform toolkit — after `create-transformation` or `debug-transformation`, when the user wants to deploy, schedule or run the transformations in production: follow the workflow entry of the installed platform toolkit, carrying the transformation scripts and the destination. When none is installed, `dlthub-router` installs one

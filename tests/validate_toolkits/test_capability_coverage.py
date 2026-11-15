@@ -1,12 +1,13 @@
-"""Every shipped skill and agent definition must be reachable from the router skill.
+"""Every shipped skill and agent definition must be reachable from its toolkit's workflow.md.
 
-The chain is router → toolkit → workflow.md → skill or agent definition.
+The chain is router → toolkit → workflow.md → skill or agent definition. A platform toolkit is
+reached from the router's platform row, then the same way.
 """
 
 from pathlib import Path
 
 from tests.utils import REPO_ROOT
-from tests.validate_toolkits.utils import fake_root, toolkit, write
+from tests.validate_toolkits.utils import fake_root, toolkit
 
 from tools import validate_toolkits as V
 
@@ -19,26 +20,6 @@ def coverage_errors(root: Path) -> list[str]:
 
 def test_shipped_toolkits_are_fully_covered() -> None:
     assert coverage_errors(REPO_ROOT) == []
-
-
-def test_agent_missing_from_router(tmp_path: Path) -> None:
-    root = fake_root(tmp_path, [])
-    toolkit(root, "dlthub-platform", skills=("setup-runtime",), agents=("job-inspector",))
-
-    errors = coverage_errors(root)
-
-    assert len(errors) == 1
-    assert "router" in errors[0] and "dlthub-platform:job-inspector" in errors[0]
-
-
-def test_router_lists_an_agent_that_no_toolkit_ships(tmp_path: Path) -> None:
-    root = fake_root(tmp_path, ["dlthub-platform:job-inspector", "dlthub-platform:gone"])
-    toolkit(root, "dlthub-platform", agents=("job-inspector",))
-
-    errors = coverage_errors(root)
-
-    assert len(errors) == 1
-    assert "dlthub-platform:gone" in errors[0]
 
 
 def test_skill_not_referenced_in_workflow(tmp_path: Path) -> None:
@@ -57,7 +38,7 @@ def test_skill_not_referenced_in_workflow(tmp_path: Path) -> None:
 
 
 def test_agent_not_referenced_in_workflow(tmp_path: Path) -> None:
-    root = fake_root(tmp_path, ["dlthub-platform:job-inspector"])
+    root = fake_root(tmp_path, [])
     toolkit(
         root,
         "dlthub-platform",
@@ -89,22 +70,3 @@ def test_non_workflow_toolkits_are_exempt(tmp_path: Path) -> None:
     toolkit(root, "bootstrap", workflow=False)
 
     assert coverage_errors(root) == []
-
-
-def test_missing_router_skill(tmp_path: Path) -> None:
-    toolkit(tmp_path, "dlthub-platform", agents=("job-inspector",))
-
-    assert any(V._ROUTER_SKILL in e for e in coverage_errors(tmp_path))
-
-
-def test_router_prose_mention_is_not_an_index_row(tmp_path: Path) -> None:
-    """Only index rows count; a name dropped in prose leaves the agent unroutable."""
-    root = fake_root(tmp_path, [])
-    router = "---\nname: dlthub-router\n---\n\ndlthub-platform:job-inspector\n"
-    write(root / V._ROUTER_SKILL, router)
-    toolkit(root, "dlthub-platform", agents=("job-inspector",))
-
-    errors = coverage_errors(root)
-
-    assert len(errors) == 1
-    assert "dlthub-platform:job-inspector" in errors[0]

@@ -1,33 +1,72 @@
-# Snowflake and Cortex Code workflow
+# Deploy to Snowflake with the SPCS Context Runner
 
-This toolkit is for the Cortex Code agent (CoCo) that works on a dlt project with Snowflake as the destination.
+The SPCS Context Runner runs dltHub jobs in the user's Snowflake account: each batch job is a Snowflake task, each
+job run is a job service on a compute pool, and the dltHub app registers the job runs. The pipelines exist and run
+locally; this workflow takes them to production.
+
+This toolkit owns `.dlthub/snowflake/` in the workspace: deploy writes its records to
+`.dlthub/snowflake/deploy/<environment>/`. Semantic views go to the topic folder, `.dlthub/ontology/<name>/`.
 
 ## Workflow Entry
-**ALWAYS** start with **Set up the Snowflake destination** (`setup-snowflake-destination`) SKILL — configure credentials, naming convention and type pins, then verify that the pipeline loads into Snowflake
+**ALWAYS** start with **Set up the Snowflake workspace** (`setup-snowflake-workspace`): the deploy connection, the
+workspace name and `uv run dlthub snowflake info`. If the account has no runner yet, an admin runs
+(`install-snowflake-runner`) first.
 
 ## Core workflow
-1. **Set up the Snowflake destination** (`setup-snowflake-destination`) — key-pair or PAT credentials, account identifier, naming convention, type pins, staging and replace behaviour, and the Snowflake-specific load errors
-2. **Annotate with Cortex** (`annotate-with-cortex`) — add a follow-up job that calls the Cortex Agents REST API: the agent profiles the loaded tables, the job writes table and column comments, creates a semantic view and loads the agent's report
+1. **Set up the Snowflake workspace** (`setup-snowflake-workspace`) — the deploy connection and role, the workspace
+   name, the MCP server with Snowflake tools
+2. **Declare the jobs** (`prepare-deployment`, local-workspace toolkit) — **only its step 3**: the code becomes jobs
+   in `__deployment__.py`. On Snowflake its steps 1–2 (destination and `prod` profile) are the next step
+3. **Set up the data connection** (`setup-snowflake-data-connection`) — where the jobs load and with which role: the
+   `prod` profile, and the `access` profile for jobs that only read
+4. **Test the jobs locally** (`run-local-jobs`, `test-local-jobs`, local-workspace toolkit) — every job runs once on
+   this machine before it deploys
+5. **Deploy and run** (`deploy-snowflake-workspace`) — dry run, deploy, the first job run on Snowflake, schedules
+   and triggers
+6. **Daily maintenance** (`maintain-snowflake-jobs`) — job runs, logs, failures, pause, resume, cancel, secrets
 
 ## Extend and harden
-3. **Take over existing tables** (`setup-snowflake-destination`) — when another tool wrote the tables: match identifiers and types, clone with `COPY GRANTS`, backfill the `_dlt_*` columns (`references/existing-tables.md` in the skill)
-4. Query the semantic view from Cortex Analyst — planned
+7. **Environments** (`manage-snowflake-environments`) — deploy the same workspace again as `ci` or `staging`, with
+   its own workspace schema, and with another data connection when needed
+8. **dltHub control plane** (`connect-dlthub-control-plane`) — the organization, the remote workspaces and what the
+   dltHub app shares
+9. **Install the runner** (`install-snowflake-runner`) — for the account admin: the app, the pool, the warehouse,
+   the grants
+10. **Business and semantic context** — what the account already knows before a pipeline or model is built
+    (`collect-snowflake-context`), and a semantic view on the CDM (`create-snowflake-semantic-view`); the
+    `Business and semantic context on Snowflake` rule says when
+11. **Snowflake as a destination** (`setup-snowflake-destination`) — credentials, naming convention, type pins,
+    staging and replace behaviour, the Snowflake load errors, and tables that another tool wrote
+12. **Annotate with Cortex** (`annotate-with-cortex`) — a follow-up job that calls the Cortex Agents REST API: table
+    and column comments grounded in the rows, and a semantic view
+
+## Dependencies
+The workspace runs on `dlt`, `dlthub` and `dlthub-snowflake`. If `dlthub-client` is installed
+(`uv pip show dlthub-client`), remove it: drop the `hub` extra from the `dlt` dependency and depend on `dlthub`
+directly in `pyproject.toml` (`uv remove dlthub-client` if it is a direct dependency), then run `uv sync`. Its
+commands and MCP tools collide with the Snowflake ones.
+
+## Ask first
+Schedules, timeouts, the compute pool and the jobs warehouse spend credits on every job run. Never add, change or
+remove them without the user's explicit yes. Show what changes and how often it runs.
 
 ## Handover to other toolkits
 
-### Outgoing (from snowflake-platform)
-
-- **dlthub-platform** → `setup-runtime` — from (`annotate-with-cortex`), when the annotation job must be deployed. It is a dependency of this toolkit, so it is installed already. The pipeline name, dataset and the job module are known, so skip discovery. Then `prepare-deployment` and `deploy-workspace`
-- **transformations** → `create-ontology` — from (`annotate-with-cortex`), when the user has no business context yet and wants an ontology that the Cortex agent keeps word for word
-- **rest-api-pipeline** → `find-source` — when there is no pipeline that loads into Snowflake yet and the source is a REST API
-
 ### Incoming (to snowflake-platform)
+- From **rest-api-pipeline** (after `debug-pipeline`, `validate-data` or the hardening skills) — the pipeline name,
+  destination and dataset are known; carry them into `setup-snowflake-workspace` and the job declaration
+- From **transformations** (after `create-transformation` or `debug-transformation`) — the transformation scripts and
+  the destination are known; carry them into `setup-snowflake-workspace`
 
-- From a pipeline toolkit (**rest-api-pipeline**, **sql-database-pipeline**, **filesystem-pipeline**) — the pipeline works on a local destination and must move to Snowflake; carry the pipeline name and dataset into `setup-snowflake-destination`
-- From **transformations** (after `create-ontology`) — the ontology tables are in the warehouse; carry the dataset into `annotate-with-cortex`
+### Outgoing (from snowflake-platform)
+- **rest-api-pipeline** → `debug-pipeline` — a job fails in the pipeline code (source, schema, load errors)
+- **transformations** → `debug-transformation` — SQL dialect errors when the jobs load into Snowflake and the local
+  runs used another destination
 
 References:
 * **dlt Snowflake destination**: https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake.md
-* **Cortex Code**: https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code
 * **Cortex Agents REST API**: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-rest-api
-* **Semantic views**: https://docs.snowflake.com/en/user-guide/views-semantic/overview
+* **SPCS Context Runner**: `README.md` (Getting started, Environments, Daily commands), `docs/ARCHITECTURE.md`
+* **Commands**: `uv run dlthub snowflake --help` and `uv run dlthub snowflake <command> --help`
+* **Profiles and deployments**: https://dlthub.com/docs/hub/pipeline-operations/profiles.md,
+  https://dlthub.com/docs/hub/pipeline-operations/deployments.md

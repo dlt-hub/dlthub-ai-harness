@@ -1,7 +1,7 @@
 {
   "name": "one-shot",
-  "description": "Build a minimal GitHub issues pipeline and deploy it to the dltHub platform in one go. Requires dlt[hub].",
-  "version": "0.1.0",
+  "description": "Try dltHub end to end: deploy a sample pipeline to the dltHub platform in one go after uvx dlthub-start. Requires dltHub Platform.",
+  "version": "0.2.0",
   "author": {
     "name": "ScaleVector GmbH"
   },

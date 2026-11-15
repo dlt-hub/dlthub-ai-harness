@@ -19,8 +19,7 @@
 ### Outgoing (from data-quality)
 
 - **transformations** — from (`review-data-quality`), when data quality failures reveal upstream modeling issues that need fixing; start at `annotate-sources`
-- **dlthub-platform** (Profile A) — from (`review-data-quality`), when the user wants to deploy the pipeline script (with embedded `@dq.with_checks` decorators) as a scheduled job; start at `setup-runtime`
-- **dlthub-platform** (Profile B) — from (`review-data-quality`), when the user wants to schedule `tools/dq_run.py` as a standalone recurring job; start at `setup-runtime`
+- a platform toolkit — from (`review-data-quality`), when the user wants to deploy and schedule the checks: follow the workflow entry of the installed platform toolkit, carrying the pipeline name, destination and the deployment target. When none is installed, `dlthub-router` installs one. Profile A deploys the pipeline script (with embedded `@dq.with_checks` decorators) as a scheduled job; Profile B schedules the data quality script that `run-data-quality` wrote as a standalone recurring job
 - **data-exploration** — from (`review-data-quality`), when metric anomalies need deeper interactive investigation; start at `explore-data`
 
 ### Incoming (to data-quality)

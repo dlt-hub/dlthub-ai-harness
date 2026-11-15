@@ -25,9 +25,9 @@ Run `ls -la` to see the current state before scaffolding.
 
 Run the provided `dlthub pipeline init` command with the global `--non-interactive` flag in the active venv (e.g. `uv run dlthub --non-interactive pipeline init rest_api duckdb`).
 
-If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uv run dlthub init` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
+If the command fails with `invalid choice: 'pipeline'`, the dlthub workspace is not initialized. Run `uvx dlthub-init@latest` and follow its instructions — most importantly run `uv sync` to pull required dependencies — then retry.
 
-Depending on the source type, this creates:
+Depending on the source type, this creates the files below in the project root. The user may move the pipeline script anywhere in the workspace later:
 
 **Core source** (`dlthub pipeline init rest_api duckdb`):
 - `rest_api_pipeline.py` (or similar) — full working example with RESTAPIConfig, pagination, incremental loading

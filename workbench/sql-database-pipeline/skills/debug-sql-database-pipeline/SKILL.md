@@ -46,7 +46,7 @@ uv run python <source>_pipeline.py
 |---|---|
 | `ConfigFieldMissingException` | A credentials field is missing or misnamed in `secrets.toml` — check the section name and field names exactly |
 | `OperationalError` / `Can't connect` | Wrong host, port, or credentials; DB not reachable from this network |
-| `ModuleNotFoundError: No module named 'sqlalchemy'` | Run `uv add "dlt[hub,sql_database]"` |
+| `ModuleNotFoundError: No module named 'sqlalchemy'` | Run `uv add "dlt[sql_database]"` |
 | `ModuleNotFoundError: No module named 'pymysql'` | Install the dialect driver, e.g. `uv add pymysql` |
 | `MissingDependencyException: numpy required` | The pyarrow backend also needs numpy: `uv add numpy` |
 | `NoSuchTableError` | Table name or schema is wrong — check spelling and schema parameter |

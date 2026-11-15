@@ -98,8 +98,8 @@ output:
             type: string
             description: >
               Where the excerpt comes from, with the line it sits on whenever the source has
-              lines: `dlthub job runs logs <run id>` line 38, `pipelines/my_pipeline.py`
-              line 16. The line number is what lets a reader find the excerpt again.
+              lines, for example `dlthub job runs logs <run id>` line 38, or a workspace file
+              such as `pipelines/my_pipeline.py` line 16. The line number is what lets a reader find the excerpt again.
           excerpt:
             type: string
             description: The text as it stands in the source. Never paraphrase it.
@@ -245,8 +245,9 @@ stop at the first that carries it:
 2. the log of the failed run or of the producer: a printed record, a schema or column
    listing, a `SELECT` list;
 3. other workspace code on the same endpoint or table: another resource's `cursor_path`,
-   `primary_key` or `columns`, a transformation's `select`, a schema file under `schemas/` or
-   `.dlt/`, the trace of a run that loaded the table;
+   `primary_key` or `columns`, a transformation's `select`, a dlt schema file under
+   `.dlthub/schemas/` (an exported one under `.dlthub/schemas/export/`), the trace of a run that
+   loaded the table;
 4. a comment, a docstring or a README. This is a claim: cite it under `repository_comment`,
    name it in the Recommendation as the comment's value, and give what confirms it its own
    bullet.
@@ -410,8 +411,8 @@ the summary alone.
 |---|---|
 | run log, inspected or producer's | (`dlthub job runs logs <run id>` line 52) |
 | run record, inspected or producer's | (`dlthub job runs info <run id>`, field `trigger`) |
-| workspace file | (`pipelines/orders.py` line 31) |
-| job definition | (deployed definition for `jobs.pipelines.orders`, field `destination`) |
+| workspace file | (`<path of the file>` line 31), for example (`pipelines/orders.py` line 31) |
+| job definition | (deployed definition for `<job ref>`, field `destination`) |
 | dlt trace | (trace of pipeline `orders`, run `<pipeline run id>`, extract step) |
 | redacted secrets or variables | (`secrets_view_redacted`), (`dlthub_list_variables`, scope `prod`) |
 

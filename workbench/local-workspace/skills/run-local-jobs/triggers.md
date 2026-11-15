@@ -1,8 +1,8 @@
-# Scheduling and Triggers
+# Triggers
 
-Triggers tell Runtime **when** to run a job. Declare them in the decorator --
-there is no CLI command for adding or removing schedules. Change the code,
-redeploy.
+Triggers tell a deployment **when** to run a job. Declare them in the decorator. No
+CLI command adds or removes them. Change the code, then deploy again.
+`dlthub local run` does not wait for the triggers: it runs the job at once.
 
 ## Adding a schedule to an existing job
 
@@ -44,7 +44,7 @@ Use [crontab.guru](https://crontab.guru) to build and test expressions.
 | `job.fail` | `upstream_job.fail` | Fires when upstream fails |
 | `tag` | `trigger.tag("backfill")` | Broadcast -- fires every job with this tag |
 
-## Followup triggers
+## Follow-up triggers
 
 Chain jobs by referencing the upstream decorated function:
 
@@ -75,10 +75,4 @@ def daily_load():
 
 ## After adding triggers
 
-Deploy and verify:
-
-```bash
-dlthub deploy                    # sync manifest to Runtime
-dlthub deploy --dry-run          # preview without applying
-dlthub job list                  # confirm triggers are set
-```
+`dlthub local info` lists the jobs with their triggers. A platform toolkit deploys them.

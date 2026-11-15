@@ -54,12 +54,13 @@ and the output stands on its own.
 ## 2. Scaffold the folder
 
 ```
-agents/<name>/AGENT.md                              # in a workspace
+agents/<name>/AGENT.md                              # in a workspace, for example
 workbench/<toolkit>/dlthub/agents/<name>/AGENT.md   # in a toolkit
 ```
 
-A folder, like a skill, so a definition can grow supporting files. In a workspace put it at the
-workspace root and point the deployment at the folder path. In a toolkit it goes under
+A folder, like a skill, so a definition can grow supporting files. In a workspace the folder can
+live anywhere: follow what the workspace already does, or ask (`agents/` is only an example), and
+point the deployment at the folder path. In a toolkit it goes under
 `workbench/<toolkit>/dlthub/agents/<name>/`, and **dlt 1.31.0** copies it on
 `dlthub ai toolkit install <toolkit>` to `.claude/dlthub/agents/<toolkit>/<name>/`
 (`.cursor/dlthub/agents/`, `.agents/dlthub/agents/` on the other hosts). The toolkit segment is
@@ -78,7 +79,7 @@ Shipping an agent in a toolkit means working in a clone of the harness repo
 (`https://github.com/dlt-hub/dlthub-ai-harness`), since the folder lives beside the toolkit's
 skills and `make validate-toolkits` checks it there. The definition then travels to everyone who
 installs the toolkit, and upgrading it costs a change in the repo and a reinstall in every
-workspace. Put an agent only one workspace runs in that workspace's `agents/` folder.
+workspace. Put an agent only one workspace runs in that workspace, for example in an `agents/` folder.
 
 The file is YAML frontmatter and a markdown body. The frontmatter declares what the agent has,
 and the body is its system prompt. Only the body is required: a file with no frontmatter is a

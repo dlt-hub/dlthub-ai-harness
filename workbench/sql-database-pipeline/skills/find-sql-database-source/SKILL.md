@@ -16,7 +16,7 @@ Parse `$ARGUMENTS`:
 
 **Before running any steps**, check whether the pipeline already exists in this session:
 
-- **Arriving from `dlthub-platform`** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
+- **Arriving from a platform toolkit** (e.g. the user was deploying and needs to fix the pipeline first) — pipeline name, destination, and loaded tables are already known. **Skip this skill entirely** and go directly to the relevant fix skill:
   - Pipeline errors or connection issues → `debug-sql-database-pipeline`
   - Column type / schema fixes → `validate-sql-database-data`; removing limits or adding incremental loading → `adjust-table`
   - Adding more tables → `add-table`
@@ -53,7 +53,7 @@ Before assuming `sql_database` is the right tool, check what the user actually n
 | MS SQL Server / Change Tracking, managed or hosted, need advanced features | `ms_sql` (hub) | https://dlthub.com/docs/hub/ingestion/ms-sql.md |
 | _add more as discovered: check dlthub and verified sources_                | | |
 
-> **Note:** Sources from the dlthub require the `hub` extra: `uv add "dlt[hub]"`.
+> **Note:** Sources from the dlthub require the `dlthub` package: `uv add dlthub`.
 
 Tell the user which source fits and the install/init command. Do not continue with `sql_database` for these cases — the wrong source will produce incorrect or incomplete results.
 
@@ -77,7 +77,7 @@ Use the **`setup-secrets`** skill to configure credentials. It will write the co
 
 ### 4. Explore available tables
 
-Once credentials are configured, connect and list tables using a quick Python snippet:
+Once credentials are configured, connect and list tables using a quick Python snippet. Write it to a file in the system temp dir, not in the workspace, and run it from the project root (`uv run python <temp dir>/explore_db.py`):
 
 ```python
 from sqlalchemy import create_engine, inspect

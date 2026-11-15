@@ -80,7 +80,7 @@ Use `debug-sql-database-pipeline` to inspect the first full run — large tables
 
 ## Next steps
 
-- **Full load complete** → hand over to **data-exploration** toolkit or **dlthub-platform** to deploy
+- **Full load complete** → hand over to **data-exploration** toolkit, or to deploy, follow the workflow entry of the installed platform toolkit (when none is installed, `dlthub-router` installs one)
 - **Slow or memory-heavy load** → use `optimize-sql-performance` (backend, chunk size, parallel tables, push-down)
 - **Errors on full load** → use `debug-sql-database-pipeline`
 - **Need more tables** → use `add-table`

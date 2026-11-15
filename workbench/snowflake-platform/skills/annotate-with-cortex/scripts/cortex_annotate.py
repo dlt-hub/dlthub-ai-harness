@@ -11,10 +11,10 @@ import base64
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 
 import dlt
 import requests
-from dlt.common import pendulum
 
 VIEW_SUFFIX = "_sv"
 REVIEW_TABLE = "cortex_review"
@@ -238,7 +238,7 @@ def annotate(pipeline, business_context: str, tables: list[str] | None = None) -
         create_view(client, answer["semantic_view_ddl"], view)
     for line in answer.get("report", []):
         print(f"  [{line.get('kind', 'note')}] {line.get('text', '')}")
-    now = pendulum.now()
+    now = datetime.now(timezone.utc)
     rows = [
         {"kind": line.get("kind", "note"), "text": line.get("text", ""), "verified_at": now}
         for line in answer.get("report", [])

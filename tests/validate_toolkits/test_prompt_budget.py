@@ -94,7 +94,8 @@ def test_the_shipped_inspector_resolves_every_component() -> None:
 
 
 def test_the_inspector_no_longer_inlines_the_interactive_setup_rule() -> None:
-    """`init:dlthub-workspace` is 9.5k of setup, toolkit index and user narration per turn."""
+    """`init:dlthub-workspace` is setup and user narration that an unattended agent never needs,
+    resent on every turn."""
     frontmatter, _ = check_agent.split_frontmatter(inspector().read_text())
 
     assert "init:dlthub-workspace" not in (frontmatter.get("rules") or [])

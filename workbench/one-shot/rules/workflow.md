@@ -8,6 +8,9 @@
 
 This workflow has exactly one step.
 
+## Onboarding
+When the user asks to be onboarded to dltHub or taught how to use it ("onboard me", "I want to learn dltHub"), ask them to run `uvx dlthub-start@latest` in their own terminal. It scaffolds a separate **playground** workspace, not for production workflows and not for an existing project. **NEVER run it yourself**: it is interactive, requires authentication and works only in a real terminal (not in `!` mode). Wait until the user confirms it finished; this workflow starts in that playground.
+
 ## Handover To Other Toolkits
 
 ### Outgoing (from one-shot)

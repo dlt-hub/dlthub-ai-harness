@@ -14,4 +14,5 @@
 
 ### Outgoing (from dlthub-init-skills)
 
-- **rest-api-pipeline** — after `deploy-minimal-ingestion-pipeline` completes and the user says "Help me extend my pipeline". Enter at `new-endpoint` (to add more endpoints), `adjust-endpoint` (to add incremental loading or pagination), or `find-source` (for a fresh start with the full toolkit). The pipeline file and credentials are already in place — skip source setup.
+- **rest-api-pipeline** — after `deploy-minimal-ingestion-pipeline` completes and the user says "Help me extend my pipeline". Enter at `new-endpoint` (to add more endpoints), `adjust-endpoint` (to add incremental loading or pagination), or `find-source` (for a fresh start with the full toolkit). The pipeline file and credentials are already in place — skip source setup. The pipeline uses an inline `rest_api_source`: do NOT restructure it, do NOT introduce `@dlt.source`, and do NOT rewrite it to match the conventions of rest-api-pipeline. Do only the task requested.
+- **dlthub-platform** → `debug-deployment` — when a deployed job of this pipeline fails later, or the user wants to schedule it; install the toolkit if absent.

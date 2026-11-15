@@ -1,8 +1,5 @@
 {
   ".eval-workspaces": {
-    "init-only": {
-      "toolkits": []
-    },
     "with-dlthub-platform": {
       "toolkits": ["dlthub-platform"]
     }

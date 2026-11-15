@@ -26,7 +26,7 @@ Review each script being deployed and fix patterns that are safe locally but har
 
 ## Step 2: Deploy, launch, debug
 
-Reference: [scheduling-triggers.md](scheduling-triggers.md) | [advanced-patterns.md](advanced-patterns.md) | [runtime-settings.md](runtime-settings.md)
+Reference: [advanced-patterns.md](advanced-patterns.md) | [runtime-settings.md](runtime-settings.md). The (`run-local-jobs`) skill (local-workspace toolkit) covers jobs, triggers and local job runs.
 
 ### Step 2a. Deploy a workspace
 **SKIP** for simple workspaces without deployment manifest
@@ -40,18 +40,7 @@ Summarize the output (which jobs created/updated/archived)
 
 ### Step 2b. Simulate job runs locally
 
-**Before running on the cloud**, simulate each job locally. `dlthub local run` resolves the job exactly like the runtime does (deployment manifest, triggers, profile config) but executes on your machine — failures surface immediately without a deploy cycle:
-
-```bash
-dlthub local run <job_name>            # simulate a batch job locally (uses deployment manifest, no sync)
-dlthub local run <job_name> --profile prod             # simulate with production credentials
-dlthub local run <job_name> --start 2024-01-01 --end 2024-02-01  # interval override (ISO 8601)
-dlthub local run <job_name> --config KEY=VALUE         # ad-hoc config override (short: -c)
-dlthub local run <job_name> --dry-run                  # resolve entry point without launching
-dlthub local serve my_notebook.py     # serve an interactive job locally (notebook, dashboard, app)
-```
-
-A `--profile prod` simulation is the fastest way to catch missing prod credentials or destination misconfiguration before anything reaches the platform.
+**Before you run on the cloud**, run each job locally with the (`run-local-jobs`) skill: failures show at once, without a deployment. A job run with `--profile prod` catches missing prod credentials or destination misconfiguration before anything reaches the platform. Ask the user before this job run: it uses the prod credentials.
 
 ### Step 2c. Run pipelines and notebooks on the cloud
 
@@ -77,7 +66,7 @@ After launching:
 
 ## Step 3: Schedule a pipeline (cron)
 
-Scheduling requires a `__deployment__.py` manifest. Go back to (`prepare-deployment`) and execute Step 5 if not yet done.
+Scheduling requires a `__deployment__.py` manifest. Go back to (`prepare-deployment`) and execute Step 3 if not yet done.
 
 Add a trigger to the `@run.pipeline` decorator:
 
@@ -105,32 +94,23 @@ dlthub deploy --dry-run          # preview without applying
 dlthub job list                  # confirm triggers are set
 ```
 
-**Other trigger types** (from `dlt.hub.run.trigger`):
-- `trigger.every("6h")` -- every 6 hours
-- `trigger.once("2026-12-31T23:59:59Z")` -- one-shot at a timestamp
-- `upstream_job.success` -- chain after another job succeeds (followup trigger)
-
 **Notes:**
 - Triggers declared in code are the **source of truth** -- there is no CLI command for adding/removing schedules.
 - `dlthub deploy` reconciles all jobs -- new ones are added, removed ones are archived, unchanged ones are left alone.
 
-See [scheduling-triggers.md](scheduling-triggers.md) for the full trigger types table and more examples.
+The trigger types and more examples are in `triggers.md` of the (`run-local-jobs`) skill.
 
 ## Step 4: Advanced trigger and scheduling options
 
-See [advanced-patterns.md](advanced-patterns.md) for full examples of each pattern, and
-[runtime-settings.md](runtime-settings.md) for dependency groups, timeouts, instance size and timezone:
+Follow-up jobs, scheduler-driven intervals, freshness gates, refresh cascades and non-pipeline jobs (`@run.job`,
+`@run.interactive`) are in `job-patterns.md` of the (`run-local-jobs`) skill. Background agents are in
+[advanced-patterns.md](advanced-patterns.md). [runtime-settings.md](runtime-settings.md) has dependency groups,
+timeouts, instance size and timezone:
 
-- **Followup jobs** -- chain pipelines with `trigger=ingest_job.success`. The transform runs automatically after ingest succeeds. Use when you have non-incremental pipelines that should run in sequence.
-- **Scheduler-driven intervals** -- for incremental pipelines, declare `interval={"start": "2026-01-01T00:00:00Z"}` and read `run_context["interval_start"]` / `interval_end` from the scheduler. Runtime handles continuity and refresh resets.
-- **Freshness gates** -- `freshness=[upstream.is_fresh]` prevents a job from running until upstream's interval is complete. Use for transforms that shouldn't observe half-loaded data.
-- **Refresh runs** -- `--refresh` on `dlthub run`, `dlthub job trigger` or `dlthub local run` starts a run with the refresh signal. A refresh run drops or truncates production data, so confirm with the user first.
-  - **Recommended:** set `auto_refresh_pipeline_mode="drop_sources"` (or `drop_resources` / `drop_data`) on `@run.pipeline` / `@run.job`, or under `[jobs]` in config. Every pipeline in the job then reloads in a refresh run. Without it, pipelines do not reload, unless the code reads `run_context["refresh"]`. Interval jobs still restart from `interval.start`.
-  - **Refresh cascade:** `refresh_propagation="always"` on a backfill job sends the signal to all downstream jobs. `"auto"` (the default) passes on a signal the job received, and `"block"` stops it. `refresh=` is the deprecated name.
-- **Non-pipeline jobs** -- `@run.job` for general batch work (DQ checks, reports), `@run.interactive` for MCP servers, dashboards, REST APIs.
+- **Refresh runs** -- `--refresh` on `dlthub run` or `dlthub job trigger` starts a refresh run. It drops or truncates production data, so confirm with the user first. What a job reloads (`auto_refresh_pipeline_mode`) and the refresh cascade are in `job-patterns.md` of the (`run-local-jobs`) skill.
 - **Dependency groups** -- `require={"dependency_groups": ["ibis"]}` installs extra packages only for jobs that need them. Declare groups in `[dependency-groups]` in `pyproject.toml`.
 - **Timeouts** -- `execute={"timeout": "6h"}` overrides the default 120-minute limit. Use for backfill or long-running jobs.
-- **Instance size** -- `require={"instance": {"size": "medium"}}` gives the runner more vCPU/RAM (default `small`: 2 vCPU / 4 GiB). Charged by a budget multiplier on **every** run — **never set or change it without asking the user first** (see the always-loaded `job-resources` rule), and tune the pipeline via the **performance** toolkit (`optimize-performance`) before proposing a bump.
+- **Instance size** -- `require={"instance": {"size": "medium"}}` gives the runner more vCPU/RAM (default `small`: 2 vCPU / 4 GiB). Charged by a budget multiplier on **every** run — **never set or change it without asking the user first** (see the always-loaded `job-resources` rule), and tune the pipeline via the **performance** toolkit (`optimize-performance`) before proposing a bump. When the runner is the measured ceiling, [instance-sizing.md](instance-sizing.md) has the checks, the budget-math question and how to apply the change.
 
 
 ## Step 5: Public links for interactive jobs

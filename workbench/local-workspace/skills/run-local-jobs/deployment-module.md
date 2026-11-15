@@ -1,7 +1,7 @@
 # Creating `__deployment__.py`
 
-The deployment module declares what exists in the workspace. Runtime discovers
-jobs by inspecting its contents when you run `dlthub deploy`.
+The deployment module lists the jobs of the workspace. A deployment and `dlthub local run`
+read the jobs from it.
 
 ## Minimal example
 
@@ -32,7 +32,7 @@ __all__ = ["ingest_data", "run_transforms", "my_notebook"]
 | Element | Purpose |
 |---------|---------|
 | `__all__` | Explicit list of names to deploy. Strongly recommended -- without it the manifest generator scans the full `__dict__` and warns. |
-| `__doc__` (module docstring) | First non-empty line becomes the workspace description in the Runtime dashboard. |
+| `__doc__` (module docstring) | The first non-empty line becomes the description of the deployment. |
 
 ## Job references (`job_ref`)
 
@@ -43,14 +43,17 @@ Every job gets a reference in `jobs.<section>.<name>` form:
 | `from my_pipeline import ingest_data` | `jobs.my_pipeline.ingest_data` | Function: section=module, name=function |
 | `import my_notebook` | `jobs.my_notebook` | Module: section=module name |
 
-**Job names**: bare names work when unambiguous. `dlthub run ingest_data` resolves to `jobs.my_pipeline.ingest_data` if there's only one `ingest_data` in the workspace.
+**Job names**: a bare name works when it is unambiguous. If the workspace has only one `ingest_data`, `dlthub local run ingest_data` resolves to `jobs.my_pipeline.ingest_data`.
 
 ## Verify and debug
 
 ```bash
-dlthub deploy --dry-run              # preview what would change
-dlthub deploy --show-manifest        # dump full manifest as YAML
+dlthub local info                    # the end of the output lists the jobs and their triggers
+dlthub local run <job> --dry-run     # resolve the job without running it
 ```
+
+If `__deployment__.py` fails to import, `dlthub local run` stops with the import error.
+Fix the import error first. Until then, no job runs.
 
 ## Defining jobs inline
 

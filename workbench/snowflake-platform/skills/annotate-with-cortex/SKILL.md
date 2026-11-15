@@ -87,7 +87,7 @@ See `references/agent-api.md` for the request and response shapes, auth variants
 you are designing around, and `references/semantic-view.md` for the DDL skeleton and the query
 that proves the view answers correctly.
 
-### 4. Wire it in as a follow-up job, with the dlthub-platform toolkit
+### 4. Wire it in as a follow-up job
 
 Give the step its own entry point next to the load, for example `annotate_<source>.py` with a
 `run()` that builds the same pipeline (same name, destination and dataset, so
@@ -107,12 +107,10 @@ def annotate_job():
 always do. Never put the call inside the load function: if the user's pipeline script already does
 `pipeline.run(...)` and then annotates in the same process, split it.
 
-Deployment itself is the dlthub-platform toolkit's job, so hand over to it instead of improvising:
-`setup-runtime` checks the workspace and the login, `prepare-deployment` creates or extends
-`__deployment__.py` and the profile config, `deploy-workspace` runs `dlthub deploy --dry-run`,
-deploys and shows the logs. The dlthub-platform toolkit is a dependency of this toolkit, so those
-skills are installed with it; start with `setup-runtime`. The deployment bundles everything `.gitignore` does not exclude; keep large
-files out or the upload fails with HTTP 413.
+Deployment itself has its own skills, so hand over to them instead of improvising: step 3 of
+(`prepare-deployment`) declares the job in `__deployment__.py`, and (`deploy-snowflake-workspace`)
+runs the dry run, deploys and shows the logs. Start with (`setup-snowflake-workspace`) when the
+workspace is not set up for Snowflake yet.
 
 Do not add schedules, instance sizes or timeouts to jobs on your own, and do not deploy unless the
 user asked for it; those spend the user's runtime budget and are their call. Tell them what the

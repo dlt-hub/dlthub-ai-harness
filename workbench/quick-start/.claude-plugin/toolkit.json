@@ -1,5 +1,5 @@
 {
-  "dependencies": ["dlthub-platform", "rest-api-pipeline", "data-exploration", "transformations"],
+  "dependencies": ["init", "rest-api-pipeline", "data-exploration", "transformations"],
   "workflow_entry_skill": "quick-start",
   "listed": true
 }

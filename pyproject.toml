@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     # first stable pair: the 0.31.0 platform answers an older client with a 426, and dlt's own
     # `hub` extra floors the client at 0.28.3
-    "dlt[hub]>=1.32.0",
+    "dlt[hub]>=1.33.0a0",
     "dlthub-client>=0.28.7",
     "duckdb>=0.9",
     "ibis-framework>=12.0.0 ; python_version >= '3.10'",
@@ -32,6 +32,9 @@ test = [
 ]
 
 [tool.uv.sources]
+# dlt with agent visibility, mcp feature groups and cortex code, not released yet: the head of
+# https://github.com/dlt-hub/dlt/pull/4653
+dlt = { url = "https://github.com/dlt-hub/dlt/archive/bb915ca64d644fe3a02dc5904f8bf5d9e73b60a4.zip" }
 # dlt = { path = "../dlt/.worktrees/feat-background-agent-launcher", editable = true }
 # dlt = { url="https://github.com/dlt-hub/dlt/archive/refs/heads/feat/background-agent-launcher.zip?v=8"}
 

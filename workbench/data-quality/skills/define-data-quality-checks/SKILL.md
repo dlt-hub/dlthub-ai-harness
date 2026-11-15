@@ -205,7 +205,7 @@ checks = {
 }
 ```
 
-This dict is passed to `run-data-quality` as session context and written into `tools/dq_run.py` there. No file is written at this stage.
+This dict is passed to `run-data-quality` as session context and written into the data quality script there. No file is written at this stage.
 
 ### 6. Confirm with the user
 
@@ -264,7 +264,7 @@ If the pipeline file is not accessible (e.g., it lives in a package), show the u
 
 **Profile B — no file write:**
 
-Do not modify any file. The checks dict generated in step 5 is passed forward as session context to `run-data-quality`, which will write `tools/dq_run.py`.
+Do not modify any file. The checks dict generated in step 5 is passed forward as session context to `run-data-quality`, which asks for the path and writes the data quality script.
 
 ## Output and handover
 

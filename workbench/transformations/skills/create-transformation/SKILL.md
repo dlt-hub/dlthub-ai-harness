@@ -9,13 +9,13 @@ argument-hint: "[pipeline-name]"
 Write `@dlt.hub.transformation` functions that map annotated source tables to CDM entities, using SQL-first with optional ibis.
 
 **Requires:**
-- `.schema/<cdm-name>/taxonomy.json` — confirmed table→concept mappings and natural keys; read `_name` from this file to determine `<cdm-name>`
-- `.schema/<cdm-name>/<pipeline_name>.dbml` — annotated source schemas
-- `.schema/<cdm-name>/CDM.dbml` — target CDM schema
+- `.dlthub/ontology/<cdm-name>/taxonomy.json` — confirmed table→concept mappings and natural keys; read `_name` from this file to determine `<cdm-name>`
+- `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml` — annotated source schemas
+- `.dlthub/ontology/<cdm-name>/CDM.dbml` — target CDM schema
 
 If any are missing, run the preceding skills first.
 
-The `_name` value from `taxonomy.json` is also the `dataset_name` for the transformation pipeline — do not re-derive it.
+The `_name` value from `taxonomy.json` is also the name and the `dataset_name` of the transformation pipeline — do not re-derive it.
 
 Parse `$ARGUMENTS`:
 - `pipeline-name`: the dlt pipeline to transform from (e.g. `hubspot_crm_pipeline`)
@@ -27,7 +27,7 @@ Parse `$ARGUMENTS`:
 
 **Determine destination** — if the destination is not already known from prior context (prior conversation), ask the user which destination they are using before proceeding.
 
-Install the matching ibis backend:
+SQL transformations (the default, step 5) need only `dlthub`. Install an ibis backend only when a transformation uses ibis:
 
 | Destination    | Command                              |
 |----------------|--------------------------------------|
@@ -37,18 +37,20 @@ Install the matching ibis backend:
 | BigQuery       | `uv add "ibis-framework[bigquery]"`  |
 | *Some backend* | `uv add ibis-framework[<backend>]`     |
 
-Then install dlt[hub]:
+`dlthub` is already a dependency of this workspace. If it is missing, add it:
 
 ```
-uv add "dlt[hub]"
+uv add dlthub
 ```
+
+**NEVER** add `dlt[hub]`: it installs `dlthub-client`.
 
 ### 2. Read inputs
 
 Read in parallel:
-- `.schema/<cdm-name>/<pipeline_name>.dbml` — annotated source columns and their concept mappings (one file per pipeline)
-- `.schema/<cdm-name>/taxonomy.json` — table mappings and natural keys
-- `.schema/<cdm-name>/CDM.dbml` — CDM entity definitions and column specs
+- `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml` — annotated source columns and their concept mappings (one file per pipeline)
+- `.dlthub/ontology/<cdm-name>/taxonomy.json` — table mappings and natural keys
+- `.dlthub/ontology/<cdm-name>/CDM.dbml` — CDM entity definitions and column specs
 
 ### 3. Get actual source schema
 
@@ -58,13 +60,13 @@ The MCP tool may include untyped/null-only columns that were never materialized 
 ```python
 import dlt
 
-pipeline = dlt.attach(pipeline_name="<pipeline_name>")
+pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
 dataset = pipeline.dataset()
 relation = dataset.<table_name>
 schema = relation.schema()  # authoritative column list
 ```
 
-Cross-check the annotated columns in `.schema/<cdm-name>/<pipeline_name>.dbml` against the schema from `relation.schema()`. Note any discrepancies.
+Cross-check the annotated columns in `.dlthub/ontology/<cdm-name>/<pipeline_name>.dbml` against the schema from `relation.schema()`. Note any discrepancies.
 
 ### 4. Plan transformation order
 
@@ -214,14 +216,17 @@ Omitting `columns=` causes **silent data loss** — dlthub strips the column fro
 
 ### 6. Write the script
 
-Output file: `transformations/<dataset_name>_to_cdm.py`
+Output file: `transformations/<cdm-name>_to_cdm.py` by default. If the workspace keeps its code elsewhere, follow that layout or ask the user.
+
+`<cdm-name>` is `_name` from `taxonomy.json`, a snake_case name (`<cdm_name>` in the code below). It names the CDM pipeline, its dataset and the script. Do not derive another name.
 
 Structure:
 ```python
 import dlt
 
+
 @dlt.source
-def <dataset_name>_to_cdm(dataset: dlt.Dataset):
+def <cdm_name>_to_cdm(dataset: dlt.Dataset):
     # dimensions first
     yield dim_person(dataset)
     yield dim_company(dataset)
@@ -229,26 +234,32 @@ def <dataset_name>_to_cdm(dataset: dlt.Dataset):
     # facts after
     yield fact_event_attendance(dataset)
 
+
 @dlt.hub.transformation(write_disposition="replace")
 def dim_person(dataset: dlt.Dataset):
     ...
 
 # ... remaining functions
 
-if __name__ == "__main__":
-    source_pipeline = dlt.attach(pipeline_name="<source_pipeline_name>")
-    source_dataset = source_pipeline.dataset()
 
-    load_info = source_pipeline.run(<dataset_name>_to_cdm(source_dataset))
-    print(load_info)
+def run_<cdm_name>() -> None:
+    # the source pipeline as it was created; no local state needed, so this also runs on a deployment
+    source_pipeline = dlt.pipeline(
+        "<source_pipeline_name>", destination="<destination>", dataset_name="<source_dataset_name>"
+    )
+    # the CDM goes into a dataset of its own on the same destination
+    cdm_pipeline = dlt.pipeline("<cdm_name>", destination="<destination>", dataset_name="<cdm_name>")
+    print(cdm_pipeline.run(<cdm_name>_to_cdm(source_pipeline.dataset())))
+
+
+if __name__ == "__main__":
+    run_<cdm_name>()
 ```
 
-**Naming convention:** `pipeline_name` and `dataset_name` should reflect the **business domain and central fact**, not the source systems. Derive the name from:
-1. The central fact table in `.schema/<cdm-name>/CDM.dbml` (e.g. `fact_interaction` → `interactions`)
-2. The primary dimension in `.schema/<cdm-name>/ontology.ison` (e.g. `Person`)
-3. The use cases in `.schema/<cdm-name>/taxonomy.json`
-
-Name the dataset after the grain of the star schema — what the data mart *is about*: `person_interactions`, `order_fulfillment`, `event_attendance`. Never use source system names (`hubspot_stripe_cdm`) or generic names (`combined_cdm`, `my_pipeline`). A good name tells an analyst what business process lives in the dataset without reading the code.
+- **Both pipelines are created inside a function**, never at module level. A pipeline takes the profile that is active when it is created, and a deployment can declare the function as a job without changes.
+- **`<destination>` is the destination the source pipeline loads to**, written the same way (for example the named destination `warehouse` that `setup-profiles` sets up). On DuckDB this matters: a named destination keeps one database file (`<destination name>.duckdb`) for every pipeline, while the plain `duckdb` destination gives each pipeline its own file named after the pipeline. A CDM pipeline whose name equals its dataset then fails with `Ambiguous reference to catalog or schema`.
+- **Never `dlt.attach()`**: it needs the local state of the source pipeline in the active profile, which a deployment and another machine do not have.
+- With several sources, create one source pipeline per source and pass each `.dataset()` to the transformations that need it.
 
 ### 7. Get feedback before running
 
@@ -262,14 +273,13 @@ Ask user to confirm before running the transformation.
 
 ### 8. Run
 
-Run the script from the project root so `.dlt` state resolves correctly. If needed, enforce root CWD in entrypoint:
+Run the script from the project root, so dlt finds the workspace (`.dlt/`), for example:
 
-```python
-from pathlib import Path
-import os
-
-os.chdir(Path(__file__).resolve().parents[1])  # run from project root
+```bash
+uv run python transformations/<cdm-name>_to_cdm.py
 ```
+
+Never change the working directory inside the script.
 
 If the run fails, read the error before deciding where to go — do not proceed to step 9:
 
@@ -299,10 +309,10 @@ If all checks pass, ask the user what they'd like to do next:
 
 ```
 Transformation validated successfully. What would you like to do next?
-  1. Deploy and schedule this transformation → dlthub-platform toolkit
-  2. Explore and visualise the CDM output → data-exploration toolkit
+  1. Explore and visualise the CDM output → data-exploration toolkit
+  2. Deploy and schedule this transformation → the installed platform toolkit
 ```
 
 ## Output
 
-- `transformations/<dataset_name>_to_cdm.py` — dlthub transformation script
+- `transformations/<cdm-name>_to_cdm.py` (by default) — dlthub transformation script; the CDM tables load into dataset `<cdm-name>`

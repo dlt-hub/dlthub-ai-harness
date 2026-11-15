@@ -33,7 +33,7 @@ If called standalone (e.g. user says "set up secrets" or hit `ConfigFieldMissing
 
 ## 2. Find the right secrets file and inspect its shape
 
-Use `secrets_list` to list workspace-scoped secrets files. Profile-scoped files (e.g. `.dlt/dev.secrets.toml`) appear first — **use those when present**, fall back to `.dlt/secrets.toml` otherwise.
+Use `secrets_list` to list workspace-scoped secrets files. Profile-scoped files (e.g. `.dlt/dev.secrets.toml`) appear first — **use those when present**, fall back to `.dlt/secrets.toml` otherwise. **Do not** create profile-scoped files on your own. If a profile or its files are missing, use the `setup-profiles` skill. That skill creates them with `dlthub profile add`.
 
 **Pick the target file** from the list — you will pass it as `path` to `secrets_update_fragment` in step 4.
 

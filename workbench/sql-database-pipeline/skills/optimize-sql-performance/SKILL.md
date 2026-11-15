@@ -105,4 +105,4 @@ For **orchestrated / decomposed** parallel runs (e.g. Airflow `parallel-isolated
 ## Next steps
 
 - **Stage-level tuning (workers, buffers, normalize/load parallelism, memory)** → hand over to the **performance** toolkit → `optimize-performance` (install if not present: `uv run dlthub --non-interactive ai toolkit install performance`).
-- **Tuned and stable** → hand over to **dlthub-platform** to deploy (install if not present: `uv run dlthub --non-interactive ai toolkit install dlthub-platform`).
+- **Tuned and stable** → to deploy, follow the workflow entry of the installed platform toolkit; when none is installed, `dlthub-router` installs one.

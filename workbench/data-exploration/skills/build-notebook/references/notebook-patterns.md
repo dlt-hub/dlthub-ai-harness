@@ -1,6 +1,6 @@
 # Marimo Notebook Patterns
 
-Complete cell templates for generating `<pipeline_name>_dashboard.py`.
+Complete cell templates for generating the dashboard file, at the path recorded in the plan (for example `<pipeline_name>_dashboard.py`).
 
 The templates below are dlt-dashboard-specific. For general marimo patterns, see the `marimo-notebook` skill (checked in SKILL.md).
 

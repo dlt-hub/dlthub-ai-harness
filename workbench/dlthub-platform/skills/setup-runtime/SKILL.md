@@ -74,17 +74,8 @@ dlthub workspace connect <name_or_id> --org-id <id>  # specify org
 - To **switch workspaces** (no re-login needed): `dlthub workspace connect <name_or_id>`
 - To **log out**: `dlthub logout`
 
-## 5. Verify profile files exist
+## 5. Check profiles
 
-```bash
-ls .dlt/*.toml
-```
-
-List existing config and secrets files. At minimum these should exist:
-- `.dlt/config.toml`
-- `.dlt/secrets.toml`
-- `.dlt/.workspace`
-
-Profile-scoped files (`dev.*`, `prod.*`, `access.*`) may or may not exist yet — that's fine, (`prepare-deployment`) handles their creation.
+Use `get_workspace_info` (or `dlthub profile list`) to see the declared profiles and which of them have settings files. For profiles, see the (`setup-profiles`) skill. If the settings files of `prod` are missing, (`prepare-deployment`) creates them.
 
 Tell the user what's present and what the next step is: use (`prepare-deployment`) to set up production credentials and destinations.

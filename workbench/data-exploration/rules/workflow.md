@@ -9,11 +9,11 @@ This toolkit is for quick dashboards to inspect pipeline data — not for deep d
 
 Infer intent from the user's message — never ask "do you have a specific question?"
 
-1. **Explore data** (`explore-data`) — connect to pipeline, plan one chart, output `<date>_<pipeline>_analysis_plan.md`
+1. **Explore data** (`explore-data`) — connect to pipeline, plan one chart, write the plan `.dlthub/explorations/<pipeline>/analysis_plan.md` (committed, independent of the dashboard tool)
    - **High-intent** (user has a specific question) — schema scan only, plan chart directly
    - **Low-intent** (user wants to explore) — broad profiling, generate candidate questions, user picks one, then plan chart
    - **Returning** (analysis_plan.md exists) — skip connection and profiling, pick next question or ask for a new one, append chart to plan
-2. **Build notebook** (`build-notebook`) — assemble marimo notebook from analysis_plan.md, validate, install dependencies, launch
+2. **Build notebook** (`build-notebook`) — assemble the marimo notebook from the plan at the path the user chose (recorded in the plan), validate, install dependencies, launch
 3. **Iterate** — offer to add another chart or stop. If yes, re-invoke `explore-data` (enters **Returning** path). Max ~10 charts.
 
 ## Handover to other toolkits
@@ -22,7 +22,7 @@ Infer intent from the user's message — never ask "do you have a specific quest
 
 - **rest-api-pipeline** → `find-source` (new data source) or `new-endpoint` (missing column/concept) or `adjust-endpoint` (data exists but looks truncated/stale) — when `explore-data` finds a data gap and the user wants to extend or fix the pipeline
 - **transformations** — when the user decides the raw tables need proper modeling before further analysis; pipeline name, dataset, and profiled table structure carry over to `annotate-sources`
-- **dlthub-platform** → `setup-runtime` — when the pipeline and notebook are working and the user wants to deploy or schedule
+- a platform toolkit — when the pipeline and notebook are working and the user wants to deploy, schedule or run them in production: follow the workflow entry of the installed platform toolkit, carrying the pipeline name, dataset and notebook file. When none is installed, `dlthub-router` installs one
 
 ### Incoming (to data-exploration)
 
@@ -30,10 +30,9 @@ Infer intent from the user's message — never ask "do you have a specific quest
 - From **sql-database-pipeline** (after `validate-sql-database-data` or `view-sql-database-data`) — pipeline name, destination, and loaded table names are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **filesystem-pipeline** (after `create-filesystem-pipeline`) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 - From **transformations** (after `create-transformation`) — pipeline name and transformed tables are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
-- From **dlthub-platform** (marimo scheduled jobs) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
+- From a platform toolkit (a deployed notebook) — a notebook already exists. `explore-data` picks up from the existing `analysis_plan.md` iteration path.
 - From **data-quality** (after `review-data-quality`) — failing table name and metric anomaly are already known; `explore-data` should skip broad profiling and target those specific tables directly.
 - From **quick-start** (shortcut path when a pipeline already exists) — pipeline name may be inferred from `dlthub ai status`; if unknown, `explore-data` runs `list_pipelines` as usual. No analysis_plan.md exists yet — use the fresh path (low-intent or high-intent), not Returning.
-- From **one-shot** (after `deploy-run-sample-pipeline` completes) — pipeline name and dataset are already known. `explore-data` should skip `list_pipelines` discovery and go straight to `list_tables`.
 
 ## Bulk requests
 
