@@ -1,6 +1,6 @@
 ---
 name: debug-deployment
-description: Debug a failed or misbehaving dltHub Platform deployment. Use when a runtime job fails, produces unexpected results, or the user wants to check job status and logs.
+description: "Use when a job deployed on dltHub failed, hangs or produced wrong results, or the user wants the status and logs of its job runs. Finds the cause from the job run status and logs."
 ---
 
 # Debug dltHub Platform deployment
@@ -72,7 +72,7 @@ dlthub run <name_or_file>                    # deploy the change and run the job
 dlthub run <name_or_file> --refresh          # deploy and run as a refresh run: reload the data
 ```
 
-Use a refresh run only when wrong data was already loaded and must be reloaded, and only after the user confirms: it drops or truncates production data. It reloads the pipelines only if the job sets `auto_refresh_pipeline_mode` (see `job-patterns.md` of the (`run-local-jobs`) skill, "Refresh runs and the refresh cascade"). Otherwise it changes nothing for them.
+Use a refresh run only when wrong data was already loaded and must be reloaded, and only after the user confirms: it drops or truncates production data. It reloads the pipelines only if the job sets `auto_refresh_pipeline_mode` (see `job-patterns.md` of the (`define-and-debug-jobs`) skill, "Refresh runs and the refresh cascade"). Otherwise it changes nothing for them.
 
 ## Access production data (read only)
 

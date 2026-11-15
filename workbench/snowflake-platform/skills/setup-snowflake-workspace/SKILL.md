@@ -1,6 +1,6 @@
 ---
 name: setup-snowflake-workspace
-description: Set up a dlthub workspace to deploy and run its jobs on Snowflake with the SPCS Context Runner. Checks the tools, the Snowflake connection and role that deploy uses, names the workspace, and verifies the setup with `dlthub snowflake info` and the MCP server. Use when the user wants to deploy, run or schedule pipelines on Snowflake for the first time, or when a `dlthub snowflake` command fails on setup. Do NOT use to install the runner in an account (that is the admin skill `install-snowflake-runner`) or to choose where jobs load data (`setup-snowflake-data-connection`).
+description: "Use when the Snowflake side of a workspace needs its setup before a deployment, or a dlthub snowflake command fails on setup: the deploy connection and role, the workspace name, docker, the MCP server with Snowflake tools. Sets up the workspace for the SPCS Context Runner. Not for installing the runner in the account (install-snowflake-runner) or where jobs load data (setup-snowflake-data-connection)."
 argument-hint: "[connection-name]"
 ---
 
@@ -130,5 +130,5 @@ The admin can run (`install-snowflake-runner`) in their own session.
 
 ## Next
 
-The workspace is set up. Continue with the workflow: declare the jobs (`prepare-deployment`, step 3 only), then
-(`setup-snowflake-data-connection`).
+The workspace is set up. Continue with the workflow: the data connection (`setup-snowflake-data-connection`), then
+deploy (`deploy-snowflake-workspace`).

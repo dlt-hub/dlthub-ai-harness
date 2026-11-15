@@ -1,6 +1,6 @@
 ---
 name: annotate-with-cortex
-description: Add a Snowflake Cortex agent step to a dlt pipeline that loads into Snowflake, so that the data gets column and table comments grounded in the actual rows and a semantic view with metrics, dimensions and synonyms, with no human in a chat window. Use this whenever someone with a dlt pipeline on Snowflake asks to annotate, describe, document or comment their loaded tables, to add semantic context or a semantic view or Cortex Analyst model on top of dlt data, to "let CoCo / Cortex / an agent write the descriptions", to run the hand-off from the dltHub AI harness ontology to Snowflake as a job, or to automate what they did by hand in CoCo in Snowsight. Also use it when a dlt job should call the Cortex Agents REST API (agent:run) for anything that reads the warehouse and proposes SQL, even if the words "semantic view" or "comments" never come up. Do NOT use for Snowflake credentials, naming or type problems of the load itself, use setup-snowflake-destination for those.
+description: "Use when a dlt pipeline on Snowflake should get table and column comments, semantic context or a semantic view written by a Cortex agent as a job, with no one in a chat window, or a dlt job should call the Cortex Agents REST API (agent:run). Adds a Cortex agent step to the pipeline. Not for load, credential or type problems (setup-snowflake-destination)."
 ---
 
 # dlt + Cortex agent: annotate the loaded data and build a semantic view
@@ -107,8 +107,8 @@ def annotate_job():
 always do. Never put the call inside the load function: if the user's pipeline script already does
 `pipeline.run(...)` and then annotates in the same process, split it.
 
-Deployment itself has its own skills, so hand over to them instead of improvising: step 3 of
-(`prepare-deployment`) declares the job in `__deployment__.py`, and (`deploy-snowflake-workspace`)
+Deployment itself has its own skills, so hand over to them instead of improvising:
+(`define-and-debug-jobs`) declares the job in `__deployment__.py`, and (`deploy-snowflake-workspace`)
 runs the dry run, deploys and shows the logs. Start with (`setup-snowflake-workspace`) when the
 workspace is not set up for Snowflake yet.
 

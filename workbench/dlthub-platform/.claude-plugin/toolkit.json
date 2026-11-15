@@ -1,6 +1,6 @@
 {
   "dependencies": ["init", "local-workspace"],
-  "workflow_entry_skill": "setup-runtime",
+  "workflow_entry_skill": "prepare-deployment",
   "agents": {"exclude": ["cortex"]},
   "mcp_features": {
     "dlt-workspace-mcp": [

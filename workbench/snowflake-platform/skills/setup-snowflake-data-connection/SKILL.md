@@ -1,6 +1,6 @@
 ---
 name: setup-snowflake-data-connection
-description: Decide and configure where the jobs of a workspace load and read data on Snowflake, step by step. Sets up the `prod` profile with a Snowflake destination, by default with the connection that Snowflake gives each job (the deploying role, the database of the workspace schema), or with another database, role or user, and the `access` profile for jobs that only read. Use before the first deploy to Snowflake, when the user wants the jobs to load into another database or as another role, or when a job fails on Snowflake credentials. Replaces steps 1–2 of `prepare-deployment` on Snowflake. Do NOT use for the deploy connection (`setup-snowflake-workspace`) or for local-only destinations.
+description: "Use when the user decides where jobs on Snowflake load and read data: the prod profile, another database, role or user, a read-only access profile, or a job fails on Snowflake credentials. Configures the data connection of the jobs. Not for the deploy connection (setup-snowflake-workspace)."
 argument-hint: "[destination-name] [database]"
 ---
 
@@ -108,5 +108,5 @@ After a yes, write the files. Make sure no placeholder is left in the secrets of
 
 ## Next
 
-Test the jobs locally (`run-local-jobs`, `test-local-jobs`), then deploy (`deploy-snowflake-workspace`). The data
+Debug the jobs locally (`define-and-debug-jobs`, `test-local-jobs`), then deploy (`deploy-snowflake-workspace`). The data
 connection of a job is checked for real at its first job run on Snowflake.

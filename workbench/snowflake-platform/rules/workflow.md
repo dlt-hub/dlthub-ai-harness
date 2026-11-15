@@ -11,36 +11,35 @@ It owns `.dlthub/snowflake/` in the workspace: deploy writes its records to
 `.dlthub/snowflake/deploy/<environment>/`.
 
 ## Workflow Entry
-**ALWAYS** start with **Set up the Snowflake workspace** (`setup-snowflake-workspace`): the deploy connection, the
-workspace name and `uv run dlthub snowflake info`. If the account has no runner yet, an admin runs
-(`install-snowflake-runner`) first.
+**ALWAYS** start with **Prepare deployment** (`prepare-deployment`) of the local-workspace toolkit — check that the
+workspace is ready for a deployment; it sends you to (`define-and-debug-jobs`) for jobs, triggers and local debug runs
+that are missing. On Snowflake its production destination and `prod` profile are (`setup-snowflake-data-connection`),
+after the workspace setup. If the account has no runner yet, an admin runs (`install-snowflake-runner`) first.
 
 ## Core workflow
-1. **Set up the Snowflake workspace** (`setup-snowflake-workspace`) — the deploy connection and role, the workspace
+1. **Prepare deployment** (`prepare-deployment`) of local-workspace — the readiness check: jobs, triggers,
+   `__deployment__.py`, a local debug run of each job, production-safe scripts
+2. **Set up the Snowflake workspace** (`setup-snowflake-workspace`) — the deploy connection and role, the workspace
    name, the MCP server with Snowflake tools
-2. **Declare the jobs** (`prepare-deployment`, local-workspace toolkit) — **only its step 3**: the code becomes jobs
-   in `__deployment__.py`. On Snowflake its steps 1–2 (destination and `prod` profile) are the next step
 3. **Set up the data connection** (`setup-snowflake-data-connection`) — where the jobs load and with which role: the
    `prod` profile, and the `access` profile for jobs that only read
-4. **Test the jobs locally** (`run-local-jobs`, `test-local-jobs`, local-workspace toolkit) — every job runs once on
-   this machine before it deploys
-5. **Deploy and run** (`deploy-snowflake-workspace`) — dry run, deploy, the first job run on Snowflake, schedules
+4. **Deploy and run** (`deploy-snowflake-workspace`) — dry run, deploy, the first job run on Snowflake, schedules
    and triggers
-6. **Daily maintenance** (`maintain-snowflake-jobs`) — job runs, logs, failures, pause, resume, cancel, secrets
+5. **Daily maintenance** (`maintain-snowflake-jobs`) — job runs, logs, failures, pause, resume, cancel, secrets
 
 ## Extend and harden
-7. **Environments** (`manage-snowflake-environments`) — deploy the same workspace again as `ci` or `staging`, with
+6. **Environments** (`manage-snowflake-environments`) — deploy the same workspace again as `ci` or `staging`, with
    its own workspace schema, and with another data connection when needed
-8. **dltHub control plane** (`connect-dlthub-control-plane`) — the organization, the remote workspaces and what the
+7. **dltHub control plane** (`connect-dlthub-control-plane`) — the organization, the remote workspaces and what the
    dltHub app shares
-9. **Install the runner** (`install-snowflake-runner`) — for the account admin: the app, the pool, the warehouse,
+8. **Install the runner** (`install-snowflake-runner`) — for the account admin: the app, the pool, the warehouse,
    the grants
-10. **Business and semantic context** — what the account already knows before a pipeline or model is built
-    (`collect-snowflake-context`), and a semantic view on the CDM (`create-snowflake-semantic-view`); the
-    `Business and semantic context on Snowflake` rule says when
-11. **Snowflake as a destination** (`setup-snowflake-destination`) — credentials, naming convention, type pins,
+9. **Business and semantic context** — what the account already knows before a pipeline or model is built
+   (`collect-snowflake-context`), and a semantic view on the CDM (`create-snowflake-semantic-view`); the
+   `Business and semantic context on Snowflake` rule says when
+10. **Snowflake as a destination** (`setup-snowflake-destination`) — credentials, naming convention, type pins,
     staging and replace behaviour, the Snowflake load errors, and tables that another tool wrote
-12. **Annotate with Cortex** (`annotate-with-cortex`) — a follow-up job that calls the Cortex Agents REST API: table
+11. **Annotate with Cortex** (`annotate-with-cortex`) — a follow-up job that calls the Cortex Agents REST API: table
     and column comments grounded in the rows, and a semantic view
 
 ## Ask first

@@ -1,7 +1,7 @@
 # Advanced Deployment Patterns
 
 Follow-up jobs, intervals, freshness gates, refresh runs and the refresh cascade, `@run.job` and
-`@run.interactive` are in `job-patterns.md` of the (`run-local-jobs`) skill (local-workspace toolkit).
+`@run.interactive` are in `job-patterns.md` of the (`define-and-debug-jobs`) skill (local-workspace toolkit).
 
 ## Background agents
 

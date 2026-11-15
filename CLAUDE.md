@@ -16,7 +16,7 @@ workbench/                                # All toolkits live here
     dlthub/agents/<name>/AGENT.md  # Agent definitions (optional)
     .mcp.json                      # MCP servers (optional)
   init/                            # Shared rules, workspace and profiles, secrets handling, and workspace MCP
-  local-workspace/                 # Jobs, local job runs and tests (unlisted); platform toolkits depend on it
+  local-workspace/                 # Jobs, deployments and local debug runs: adds to the init rules (unlisted, no workflow)
   *-platform/                      # Platform toolkits: deploy and run on one platform (see TOOLKITS.md)
 tools/                             # Dev tooling
   validate_toolkits.py             # Marketplace & plugin consistency checker

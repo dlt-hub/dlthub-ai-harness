@@ -1,6 +1,6 @@
 ---
 name: deploy-snowflake-workspace
-description: Deploy the jobs of a dlthub workspace to Snowflake with the SPCS Context Runner, run them there and schedule them. Prepares the scripts for production, checks the deployment with a dry run, deploys, starts and follows the first job run, then adds schedules and follow-up triggers. Use when the jobs are declared in `__deployment__.py`, the data connection is set up and the jobs ran locally, and the user wants them on Snowflake, or wants to redeploy after a code change. Do NOT use for the first workspace setup (`setup-snowflake-workspace`) or to debug failed job runs (`maintain-snowflake-jobs`).
+description: "Use when declared jobs that ran locally should run on Snowflake: deploy or redeploy after a code change, the first job run there, schedules and follow-up triggers. Deploys the workspace with the SPCS Context Runner. Not for the first setup (setup-snowflake-workspace) or failed job runs (maintain-snowflake-jobs)."
 argument-hint: "[job-name] [environment]"
 ---
 
@@ -12,24 +12,15 @@ job. Then each job run is a job service that runs the image.
 **Reference**: `README.md` § Daily commands · `docs/ARCHITECTURE.md` § Concept mapping and § Limitations ·
 `uv run dlthub snowflake deploy --help`
 
-Before you start, the workflow steps 1–4 are done: the workspace is set up, the jobs are declared, the data
-connection is set, and every job ran once locally. When one is missing, go back to it.
+Before you start, (`prepare-deployment`) found the workspace ready (the jobs, their triggers, a local debug run of each
+job, production-safe scripts), and the workspace setup and the data connection are done. When one is missing, go
+back to it.
 
-## 1. Prepare the scripts for production
+## 1. What Snowflake needs on top
 
-Review every job module and fix what is safe locally but harmful in production:
-
-1. **No `dev_mode=True`** in `dlt.pipeline()`: it drops and recreates the dataset on every run.
-2. **No dev limits** left in code: `.add_limit(N)`, `limit=N`, fixed test date ranges. Remove them, or move them
-   into the config of the `dev` profile (`[jobs.<module>]` in `.dlt/dev.config.toml`).
-3. **`write_disposition`** is what the user wants in production: `merge` or `append` for incremental loads,
-   `replace` only for full refreshes.
-4. **Pinned dependencies**: every package the jobs import is in `pyproject.toml` and `uv.lock`. The image installs
-   only what the lock file has: `uv add <package>`.
-5. **Only batch jobs deploy.** Deploy skips notebooks, apps and MCP servers with a warning. Tell the user which
-   jobs will not run on Snowflake.
-
-**STOP**: show the changes and get a yes before you edit the code.
+- **The image installs only what `uv.lock` has**: a package that a job imports must be in it (`uv add <package>`).
+- **Only batch jobs deploy.** Deploy skips notebooks, apps and MCP servers with a warning. Tell the user which jobs
+  will not run on Snowflake.
 
 ## 2. Check what will deploy
 
@@ -89,20 +80,8 @@ After the first good job run, check the data where the data connection says it l
 
 ## 5. Schedule the jobs
 
-Schedules and follow-ups are triggers in the code, not CLI commands. `triggers.md` of (`run-local-jobs`) has the
-trigger types.
-
-```python
-from dlt.hub.run import trigger
-
-@run.pipeline("github_actions", trigger=trigger.schedule("0 6 * * *"))   # daily at 06:00
-def load_github_actions():
-    ...
-
-@run.pipeline("github_report", trigger=load_github_actions.success)   # after each good load
-def build_report():
-    ...
-```
+Schedules and follow-ups are triggers in the decorators of the jobs, not CLI commands: (`define-and-debug-jobs`)
+defines them.
 
 - On Snowflake: `every`, `schedule` (five-field cron), `job.success`, `job.fail` and manual triggers work.
 - The timezone of the schedules is `timezone` in `[snowflake.deploy]` (`UTC`), or `require={"timezone": ...}` on a

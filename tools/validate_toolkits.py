@@ -36,8 +36,9 @@ AI_DIR = "workbench"
 
 # the toolkit index lives in the router skill, which `init` installs for every agent
 _ROUTER_SKILL = "workbench/init/skills/dlthub-router/SKILL.md"
-# `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
-_NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# `init` is the base itself, `local-workspace` adds to its rules and `bootstrap` only scaffolds the
+# environment, so none of them has a workflow rule
+_NON_WORKFLOW_TOOLKITS = {"init", "local-workspace", "bootstrap"}
 # an index row: "<intent text> → <toolkit> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 _INDEX_HEADER = "toolkit"

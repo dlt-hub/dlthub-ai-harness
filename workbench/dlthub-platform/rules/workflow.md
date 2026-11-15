@@ -5,16 +5,17 @@ This is the platform toolkit of the workspace: when the user wants to deploy, sc
 It owns `.dlthub/platform/` in the workspace. It keeps nothing there yet; deploy records, when there are any, go to `.dlthub/platform/deploy/<environment>/`.
 
 ## Workflow Entry
-**ALWAYS** start with **Setup runtime** (`setup-runtime`) — ensure workspace, dependencies, and runtime login are ready
+**ALWAYS** start with **Prepare deployment** (`prepare-deployment`) of the local-workspace toolkit — check that the workspace is ready for a deployment; it sends you to (`define-and-debug-jobs`) for jobs, triggers and local debug runs that are missing
 
 ## Core workflow
-1. **Prepare deployment** (`prepare-deployment`, local-workspace toolkit) — before the first deployment
-2. **Deploy pipeline** (`deploy-workspace`) — prepare scripts for production, run the jobs locally (`run-local-jobs`), deploy, launch, schedule
+1. **Prepare deployment** (`prepare-deployment`) of local-workspace — the readiness check, the production destination and the `prod` profile
+2. **Set up the runtime** (`setup-runtime`) — `dlt[hub]`, the dltHub login and the remote workspace
+3. **Deploy and run in production** (`deploy-workspace`) — deploy, launch; the triggers start running the jobs
 
 ## Extend and harden
-3. **Debug deployment** (`debug-deployment`) — a deployed job run failed: check job status, view logs, diagnose
-4. **Inspect failures unattended** (`job-inspector`) — background agent that diagnoses every future failure of a deployed job; how to declare it: "Background agents" in `advanced-patterns.md` of (`deploy-workspace`)
-5. **Write a background agent** (`create-background-agent`) — a new `AGENT.md` for work that should run on its own after an event
+4. **Debug deployment** (`debug-deployment`) — a deployed job run failed: check job status, view logs, diagnose
+5. **Inspect failures unattended** (`job-inspector`) — background agent that diagnoses every future failure of a deployed job; how to declare it: "Background agents" in `advanced-patterns.md` of (`deploy-workspace`)
+6. **Write a background agent** (`create-background-agent`) — a new `AGENT.md` for work that should run on its own after an event
 
 ## Handover to other toolkits
 

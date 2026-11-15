@@ -1,6 +1,8 @@
-# Jobs and local job runs
-* a **job** is a function declared with `@run.pipeline`, `@run.job`, `@run.interactive` or `run.agent` (`from dlt.hub import run`), or a module, that `__all__` in `__deployment__.py` lists. A deployment runs jobs. Each start of a job is a **job run**. A **job ref** is `jobs.<module>.<name>`.
-* run a job on this machine with `dlthub local run <job>`. It resolves the job as a deployment does. A pipeline script that is not a job can still run with `uv run python <file>.py`.
+# Jobs, deployments and local debug runs
+* a **job** is a function declared with `@run.pipeline`, `@run.job`, `@run.interactive` or `run.agent` (`from dlt.hub import run`), or a module, that `__all__` in `__deployment__.py` lists. A deployment runs jobs, and the **triggers** in the decorator tell it when. Each start of a job is a **job run**. A **job ref** is `jobs.<module>.<name>`.
+* define jobs with the `define-and-debug-jobs` skill, in this order: make the code a job, give it triggers and auto-refresh, list it in `__deployment__.py`, then debug it with a local run. Tests for jobs are in the `test-local-jobs` skill.
+* debug a job on this machine with `dlthub local run <job>`. It resolves the job as a deployment does and starts it at once. It neither deploys the job nor fires its triggers. A pipeline script that is not a job runs with `uv run python <file>.py`.
+* a production request (deploy, schedule, run in the cloud) starts with the `prepare-deployment` skill, whatever the platform: it installs a platform toolkit when none is installed, checks that the workspace is ready, and sends missing jobs, triggers and local runs to `define-and-debug-jobs`.
 * a job run activates its profile before it imports the job module, so a pipeline created at the module level runs with the profile of the job run. Create the pipeline at the module level when other jobs, notebooks or checks read its dataset: they import it.
 * settings of a job are in `[jobs.<module>]` of the config files of the profile. Give a value for one job run with `-c key=value`.
 * tests run on the `tests` profile, never on a remote profile.
