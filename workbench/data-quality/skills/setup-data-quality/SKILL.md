@@ -1,7 +1,7 @@
 ---
 name: setup-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "set up data quality", "enable data quality checks", "add data quality to my pipeline", "validate my pipeline data", "I want to check data quality", "check my tables for issues", or wants to start any data quality workflow on a dlt pipeline. Do NOT use for exploring or charting data (use data-exploration toolkit), running existing checks (use run-data-quality), or reviewing results (use review-data-quality).
+description: "Use when the user wants to set up, enable or add data quality to a dlt pipeline, or monitor tables for issues on every load: 'add data quality to my pipeline', 'I want to check data quality'. Connects to the pipeline and prepares its data quality checks. Not for running existing checks (run-data-quality) or reviewing results (review-data-quality)."
 ---
 
 # Setup data quality

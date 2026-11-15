@@ -1,6 +1,6 @@
 ---
 name: test-local-jobs
-description: Write pytest tests that run dlt jobs on the `tests` profile. Call a job in the test, run it end to end with `dlthub local run`, check that every job in `__deployment__.py` resolves, and test agent jobs. Use when the user wants tests or a CI check for pipelines and jobs.
+description: "Use when the user wants tests or a CI check for pipelines and jobs: pytest on the tests profile, a job run end to end, a dry run of every job in __deployment__.py, agent job tests. Writes the tests."
 ---
 
 # Test jobs

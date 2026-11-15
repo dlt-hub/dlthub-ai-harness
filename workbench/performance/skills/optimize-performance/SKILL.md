@@ -1,6 +1,6 @@
 ---
 name: optimize-performance
-description: Make a dlt pipeline faster or lighter on memory. Use when the user says a pipeline is slow, takes too long, runs out of memory, uses too much RAM, or wants to optimize, speed up, parallelize, or increase throughput. Covers source-agnostic levers (parallelism, workers, buffers, file rotation); for source-specific tuning use the pipeline toolkit's own optimize skill. Also decides whether a deployed job genuinely needs a bigger runner (more memory/CPU) — the last resort after tuning.
+description: "Use when a dlt pipeline is slow, takes too long, runs out of memory or uses too much RAM, and the user wants it faster or lighter: parallelism, workers, buffers, file rotation. Finds the slow stage (extract, normalize, load), tunes it, and decides whether a deployed job needs a bigger runner. For tuning specific to the source, use the optimize skill of the pipeline toolkit."
 argument-hint: "[pipeline-name] [symptom]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: debug-sql-database-pipeline
-description: Debug and inspect a dlt SQL database pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, and diagnose errors like connection failures, missing credentials, driver issues, or failed load jobs.
+description: "Use when a SQL database pipeline run failed or loaded the wrong data: failed load jobs, connection refused, a driver or SQLAlchemy dialect error, wrong database credentials, a table that arrived empty. Diagnoses the run and the database connection from the trace, and fixes them."
 argument-hint: "[pipeline-name] [issue]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: create-rest-api-pipeline
-description: Create a dlt REST API pipeline. Use for the rest_api core source, or any generic REST/HTTP API source. Not for sql_database or filesystem sources.
+description: "Use when the user wants the dlt pipeline code for a REST or HTTP API written with the rest_api source: base URL, endpoints, authentication, pagination, a first load. Scaffolds the pipeline script and its credentials. Not for SQL databases (sql_database) or files (filesystem)."
 argument-hint: "[dlthub-pipeline-init-command]"
 ---
 

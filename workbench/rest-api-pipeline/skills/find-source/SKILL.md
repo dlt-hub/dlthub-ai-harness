@@ -1,6 +1,6 @@
 ---
 name: find-source
-description: Find a dlt source for a given API or data provider. Use when the user asks about a source, wants to find a connector, or asks to implement a pipeline for a specific data source.
+description: "Use when the user wants to load data from an API, a SaaS app or another data provider (Stripe, GitHub, HubSpot, Salesforce), asks whether a dlt source or connector exists for it, or wants to start a new ingestion pipeline. Finds a verified source or plans a REST API source for the provider. Not for SQL databases or files."
 argument-hint: "[source-name] [context]"
 ---
 

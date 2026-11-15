@@ -1,6 +1,6 @@
 ---
 name: connect-dlthub-control-plane
-description: Explain and check how a Snowflake workspace is linked to the dltHub control plane through the dltHub app. Shows the dltHub organization, the remote workspaces of the environments, the status page of the app and the metadata sharing levels, and what the current mock app does not do yet. Use when the user asks about the dltHub organization, remote workspaces, workspace ids, what dltHub sees of their account, or the status page. Do NOT use to deploy (`deploy-snowflake-workspace`).
+description: "Use when the user asks about the dltHub organization, remote workspaces, workspace ids, what dltHub sees of their Snowflake account, or the status page of the dltHub app. Explains and checks how the workspace links to the dltHub control plane. Not for deploying (deploy-snowflake-workspace)."
 argument-hint: "[environment]"
 ---
 

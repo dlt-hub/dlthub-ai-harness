@@ -1,6 +1,6 @@
 ---
 name: setup-secrets
-description: Safely manage dlthub secrets in *.secrets.toml. Use when the user directly asks to set up, configure, or inspect credentials (API keys, database passwords, tokens). Also use when writing Python code that needs to read secrets via dlt.secrets without exposing values. Do NOT use for pipeline creation, source discovery, or debugging pipeline execution — those skills call setup-secrets when they need credentials configured.
+description: "Use when the user wants to set up, add, check or fix credentials: API keys, tokens, database passwords, service account keys or connection strings in secrets.toml, a ConfigFieldMissingException that asks for a value, a 401 with a credential that looks set, which secrets file dlt reads, or Python that reads secrets with dlt.secrets. Configures and inspects secrets without showing their values. Not for building or debugging a pipeline: those skills call this one when they need credentials."
 argument-hint: "[source-name]"
 ---
 

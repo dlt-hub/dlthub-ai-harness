@@ -1,6 +1,6 @@
 ---
 name: setup-snowflake-destination
-description: Configure and verify Snowflake as the destination of a dlt pipeline - key-pair or PAT credentials, the account identifier, the naming convention, type pins, staging and replace behaviour - and fix the load errors that are specific to Snowflake. Use this whenever a dlt pipeline should load into Snowflake, moves from duckdb to Snowflake, or fails there, for example "Account must be specified", quoted or lower-case column names, a `__V_DOUBLE` variant column, a leftover `_staging` dataset, lost grants after a replace, or "Non-nullable column '_DLT_LOAD_ID' cannot be added". Also use it when dlt takes over tables that another tool wrote (Airbyte, Fivetran, hand-made tables) and the columns and types must match. Do NOT use to write comments or a semantic view on loaded data, use annotate-with-cortex for that.
+description: "Use when a dlt pipeline should load into Snowflake, moves from DuckDB to Snowflake, or fails there: 'Account must be specified', key-pair or PAT credentials, quoted or lower-case column names, a __V_DOUBLE variant column, a leftover _staging dataset, lost grants after a replace, 'Non-nullable column _DLT_LOAD_ID cannot be added', tables another tool wrote. Configures and fixes Snowflake as a destination. Not for comments or semantic views (annotate-with-cortex)."
 ---
 
 # Set up Snowflake as a dlt destination

@@ -1,8 +1,6 @@
 ---
 name: quick-start
-description: "The guided entry point for dltHub AI Harness use cases — ingestion from APIs, data exploration, transformations, deployment, data quality. Use when the user names a use case or wants to be oriented before starting: 'I want to ingest from Stripe', 'show me how to go from data to dashboard', 'take me through the full workflow', 'explore the harness', 'what can I do with dlthub', 'give me a quick start', 'show me a demo', 'walk me through ingestion to visualization', 'I want to try everything end-to-end'.
-  Do NOT use when the user is asking what's available or where to start in general — use the `dlthub-router` skill (in init) for capability-discovery questions ('what can you do', 'what toolkits are there', 'I'm new to dlthub').
-  Do NOT use when the user already has a specific task underway (debugging, adding an endpoint, deploying)."
+description: "Use when the user wants a guided tour or a demo of the harness end to end, from ingestion to a dashboard: 'show me a demo', 'take me through the full workflow', 'walk me through ingestion to visualization', 'give me a quick start', 'I want to try everything end-to-end'. Picks a path and a depth and starts it. Not for what is available or where to start (dlthub-router), or a task already underway."
 argument-hint: "[data-source] [path]"
 ---
 

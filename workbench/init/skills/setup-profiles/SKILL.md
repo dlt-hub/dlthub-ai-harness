@@ -1,6 +1,6 @@
 ---
 name: setup-profiles
-description: Use dlt profiles and environments. Run the same code with different credentials and settings (DuckDB locally, a warehouse in production), run tests in isolation on the `tests` profile, limit the data access of jobs (read or none), deploy the same workspace to a staging environment, or run and inspect with another profile. Do NOT use to pick the first destination of a new pipeline.
+description: "Use when the user wants different credentials or settings for dev, tests and production: DuckDB locally and a warehouse in production, tests isolated on the tests profile, read-only or no data access for jobs, a staging environment, or running and inspecting with another profile. Declares and switches dlt profiles and environments. Not for picking the first destination of a new pipeline."
 ---
 
 # Profiles and environments

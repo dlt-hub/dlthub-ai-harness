@@ -1,6 +1,6 @@
 ---
 name: create-snowflake-semantic-view
-description: Create and maintain a Snowflake semantic view (CREATE SEMANTIC VIEW) on a CDM that dlt transformations loaded into Snowflake, from the taxonomy, the ontology, the CDM and the business context. Cortex Analyst, Snowflake Intelligence and agents then answer the user's questions in plain English. Use after `create-transformation` ran on Snowflake and the CDM tables have data, when the user wants Cortex Analyst or an agent on the model, or after the model changed. Do NOT use before the CDM exists (`annotate-sources`, `create-ontology`, `generate-cdm`, `create-transformation` first).
+description: "Use when the CDM tables are loaded into Snowflake and the user wants Cortex Analyst, Snowflake Intelligence or an agent to answer questions on the model, or the model changed. Creates or updates a Snowflake semantic view from the taxonomy, ontology and CDM. Not before the CDM exists."
 argument-hint: "[cdm-name]"
 ---
 

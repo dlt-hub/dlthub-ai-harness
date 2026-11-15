@@ -1,6 +1,6 @@
 ---
 name: create-sql-database-pipeline
-description: Create a dlt pipeline from a SQL database source (postgres, mysql, mssql, oracle, sqlite, or any SQLAlchemy-supported database). Use when the user wants to load tables from a relational database to a destination like DuckDB, BigQuery, or Snowflake. Not for REST APIs or file sources.
+description: "Use when the tables to load from a SQL database are known and the user wants the dlt sql_database pipeline written: credentials, a backend (sqlalchemy, pyarrow, pandas, connectorx), a test load into DuckDB, BigQuery or Snowflake. Scaffolds and runs the pipeline. Not for REST APIs or files."
 argument-hint: "[database-url-or-description] [destination]"
 ---
 

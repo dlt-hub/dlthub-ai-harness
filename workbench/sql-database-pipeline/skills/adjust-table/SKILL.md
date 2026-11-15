@@ -1,6 +1,6 @@
 ---
 name: adjust-table
-description: Adjust a working dlt SQL database pipeline for production — remove dev limits, add incremental loading, configure merge keys. Use when the user wants to remove .add_limit(), load the full table, or set up incremental loading on a cursor column. For speed/memory tuning (backend, chunk size, parallelism) use optimize-sql-performance instead. For inspecting loaded data or fixing column types/schema after a load, use validate-sql-database-data instead.
+description: "Use when a working SQL database pipeline should load everything for production: remove .add_limit(), load full tables, incremental loading on a cursor column, merge keys. Changes the table configuration of the source. Not for speed (optimize-sql-performance) or column types (validate-sql-database-data)."
 argument-hint: "[pipeline-name] [adjustments]"
 ---
 

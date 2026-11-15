@@ -1,6 +1,6 @@
 ---
 name: collect-snowflake-context
-description: Collect what the Snowflake account already knows about what the user wants to build, before any pipeline or model code. Captures the intention and the questions the result must answer, asks Cortex Sense and Business Ontology, finds existing copies of the data and how people query them (ACCOUNT_USAGE), finds the gaps, and writes the business context document `.dlthub/ontology/<slug>/context.md`. Use when `find-source` or `annotate-sources` builds context on a Snowflake account (the `Business and semantic context on Snowflake` rule), or when the user asks what Snowflake already knows about a topic. Read only.
+description: "Use when a pipeline or a data model is about to be built on Snowflake, or the user asks what the account already knows about a topic: existing tables and copies of the data, how people query them, Business Ontology terms, Cortex Sense contexts. Collects that context into a business context document before any code. Read only."
 argument-hint: "[intent] [slug]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: manage-snowflake-environments
-description: Deploy the same dlthub workspace to Snowflake more than once, as separate environments such as `ci` or `staging`. Adds the environment, names its remote workspace and workspace schema, gives it its own data connection when it needs other data or another role, deploys and works with it. Use when the user wants a ci, test or staging deployment next to `prod`, or a second schema for the same jobs. Do NOT use for local profiles only (`setup-profiles`).
+description: "Use when the user wants the same workspace deployed to Snowflake more than once: a ci, test or staging environment next to prod, or a second schema for the same jobs. Adds and deploys the environment. Not for local profiles (setup-profiles)."
 argument-hint: "[environment]"
 ---
 

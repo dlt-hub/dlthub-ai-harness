@@ -1,6 +1,6 @@
 ---
 name: view-sql-database-data
-description: Query, explore, or view data loaded by a dlt SQL database pipeline. Use when the user asks to query data, explore loaded tables, check row counts, write Python that reads pipeline data, or asks questions like "show me the data", "what users are there", "how much did we spend". Covers dlt dataset API, ibis expressions, and ReadableRelation. NOT for querying the source database — use the pipeline's destination.
+description: "Use when the user wants to look at the tables a SQL database pipeline copied into the destination: sample rows, row counts, a quick answer from the loaded tables, or Python that reads them with the dataset API, ibis or SQL. Queries the destination, not the source database. Not for charts and dashboards (explore-data)."
 argument-hint: "[pipeline-name] [query]"
 ---
 

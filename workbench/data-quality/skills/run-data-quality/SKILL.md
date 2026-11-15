@@ -1,7 +1,7 @@
 ---
 name: run-data-quality
 argument-hint: "[pipeline-name]"
-description: Use when the user asks to "run data quality checks", "execute checks", "run my data quality checks", "check the data now", "run validations", or wants to execute already-defined checks against a loaded pipeline. Do NOT use to define new checks (use define-data-quality-checks) or to review existing results (use review-data-quality).
+description: "Use when the user wants to run data quality checks that are already defined on a loaded pipeline: 'run my checks', 'check the data now'. Runs them against the destination without loading the source again. Not for defining checks (define-data-quality-checks) or reading results (review-data-quality)."
 ---
 # Run data quality checks
 

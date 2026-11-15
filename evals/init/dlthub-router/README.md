@@ -8,7 +8,7 @@ The `dlthub-router` skill must trigger and route correctly on **all three agents
 
 - **Automated trigger eval, all three agents:** `tools/run_trigger_eval.py --agent {claude,cursor,codex}` (or `--agent all`) runs each agent headless. Claude triggers come from the `Skill` tool. Codex and Cursor triggers come from a read of `SKILL.md`. See [EVALS.md](../../../EVALS.md).
 - **Install, all three agents:** `dlthub ai toolkit install … --strict` for each `--agent claude|cursor|codex`. Then read the generated rule, `.mdc` or `AGENTS.md` and check that the index is there.
-- **Codex:** the eval does not measure `dlthub-router`. Codex keeps the routing index in `AGENTS.md`, so no skill trigger occurs. The description (1167 chars) is also over the Codex cap of 1024, so Codex drops the skill. Measure it on Claude and Cursor. On Codex, check the routing in the final answer by hand.
+- **Codex:** the eval does not measure `dlthub-router`. Codex keeps the routing index in `AGENTS.md`, so no skill trigger occurs. Measure it on Claude and Cursor. On Codex, check the routing in the final answer by hand.
 
 ## How to run
 
@@ -34,6 +34,27 @@ uv run python tools/run_trigger_eval.py evals/init/dlthub-router --agent cursor 
 
 On **Cursor**, `dlthub-router` installs as a skill and triggers with a `readToolCall` on `.cursor/skills/dlthub-router/SKILL.md`.
 
+## Measured run, 2026-11-15
+
+`run_trigger_eval.py --agent claude --runs-per-query 3`, 29 queries per workspace (4 deploy and schedule queries
+added), before and after every skill description was rewritten to start with "Use when" (router at 1006 chars):
+
+| workspace | before | after | after precision | after recall |
+|---|---|---|---|---|
+| init-only | 26/29 | 27/29 | 0.944 | 0.944 |
+| with-rest-api | 27/29 | 27/29 | 0.933 | 0.933 |
+| with-dlthub-platform | 27/29 | 28/29 | 0.909 | 1.0 |
+| with-sql-database | 27/29 | 27/29 | 0.941 | 0.941 |
+
+- Both known misses below remain.
+- With `dlthub-platform` installed, the deploy and schedule queries go to `setup-runtime` at 0.67 to 1.0.
+- "schedule my stripe pipeline to run every hour" swings between 0.33 and 1.0 across runs, so a single run of 3
+  is noise there.
+- A flow check, in which a full `claude -p` session goes from the request to the platform entry skill, reached
+  `setup-runtime` in 8/9 sessions with no platform toolkit installed and in 9/9 with `rest-api-pipeline` installed.
+  The miss was "how do I deploy this pipeline?" in a workspace with no pipeline, where the router asks which
+  pipeline is meant.
+
 ## Measured run, 2026-09-24
 
 `run_trigger_eval.py --agent claude --runs-per-query 3`, 24 queries per workspace, router description at 1167 chars:
@@ -51,7 +72,7 @@ Known misses:
 
 ## Description length
 
-The description is 1167 chars, over the 1024 Codex cap that drops it as a skill there. `validate_toolkits.py` warns above that cap.
+The description is 1006 chars, under the 1024 Codex cap that drops a skill there. `validate_toolkits.py` warns above that cap.
 
 Trigger rate does not fall off monotonically with length, so treat the cap as a portability limit rather than a quality one. Measured points, all on this skill:
 

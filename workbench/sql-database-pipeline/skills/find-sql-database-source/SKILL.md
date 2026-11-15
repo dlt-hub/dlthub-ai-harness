@@ -1,6 +1,6 @@
 ---
 name: find-sql-database-source
-description: Find and explore a SQL database source for a dlt pipeline. Use when the user wants to load data from a relational database (postgres, mysql, mssql, oracle, sqlite, or any SQLAlchemy-supported database), mentions a database connection, wants to discover available tables, or asks to build a pipeline from a SQL source.
+description: "Use when the user wants to load data from a relational database (Postgres, MySQL, MSSQL, Oracle, SQLite or any SQLAlchemy database), mentions a database connection string, or wants to see which schemas and tables it holds before building a pipeline. Explores the database and picks the first tables and the destination."
 argument-hint: "[database-url-or-description] [destination]"
 ---
 

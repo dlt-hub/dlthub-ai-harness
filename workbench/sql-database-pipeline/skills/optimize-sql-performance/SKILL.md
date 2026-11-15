@@ -1,6 +1,6 @@
 ---
 name: optimize-sql-performance
-description: Speed up a dlt SQL database pipeline. Use when extraction from a relational database (postgres, mysql, mssql, oracle, snowflake, etc.) is slow or memory-heavy and the user wants to optimize it — pick a faster backend, tune chunk size, parallelize tables, or reduce reflection overhead. For first-time incremental/merge setup or removing .add_limit() use adjust-table instead.
+description: "Use when extraction from a SQL database is slow or runs out of memory: large tables, slow reflection, tables loaded one at a time. Speeds it up with a faster backend, chunk size, parallel tables and filters pushed to SQL. Not for incremental loading or limits (adjust-table)."
 argument-hint: "[pipeline-name] [symptom]"
 ---
 

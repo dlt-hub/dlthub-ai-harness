@@ -1,6 +1,6 @@
 ---
 name: create-ontology
-description: Build a business entity graph (ontology) from annotated sources and taxonomy. Use after annotate-sources to design the entity model before CDM generation.
+description: "Use when the user wants the business entities of their data model and how they relate: customers, orders, one entity per concept across sources. Builds the entity graph (ontology) from the annotated sources."
 ---
 
 # Create ontology

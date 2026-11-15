@@ -1,6 +1,6 @@
 ---
 name: incremental-transformation
-description: Switch a dlthub transformation from full-replace to incremental loading. Use when the user wants to process only new or changed rows, reduce transformation run time, or schedule frequent transformation runs without reprocessing all data.
+description: "Use when transformations should process only new or changed rows: data volume grows, runs take too long, or they run often. Switches dlthub transformations from replace to incremental."
 ---
 
 # Incremental transformation

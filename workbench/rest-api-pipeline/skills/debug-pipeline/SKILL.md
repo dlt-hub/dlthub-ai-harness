@@ -1,6 +1,6 @@
 ---
 name: debug-pipeline
-description: Debug and inspect a dlt pipeline after running it. Use after a pipeline run (success or failure) to inspect traces, load packages, schema, data, and diagnose errors like missing credentials or failed load jobs. Also covers pipelines built on a verified source.
+description: "Use when a REST API pipeline run failed or loaded the wrong data: an exception in the run, failed load jobs, missing credentials, empty or partial tables, a verified source that crashes. Finds the cause from the trace and load packages of the run and fixes it."
 argument-hint: "[pipeline-name] [issue]"
 ---
 

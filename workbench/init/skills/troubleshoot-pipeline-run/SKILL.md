@@ -1,6 +1,6 @@
 ---
 name: troubleshoot-pipeline-run
-description: General pipeline troubleshooting, when no troubleshooting guide specific to the source or runtime context is present.
+description: "Use when a dlt pipeline run fails or loads the wrong data and no debug skill for its source is installed: an exception in extract, normalize or load, failed load jobs, a pending or partially loaded package, 0 rows loaded, a missing column, ModuleNotFoundError, 'database is locked'. Finds the failing step from the trace and load packages and fixes the run."
 argument-hint: "[pipeline-name] [issue]"
 ---
 

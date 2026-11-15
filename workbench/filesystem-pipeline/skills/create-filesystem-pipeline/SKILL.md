@@ -1,6 +1,6 @@
 ---
 name: create-filesystem-pipeline
-description: Create a dlt filesystem pipeline that reads files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination. Use for the filesystem core source. Not for REST APIs (rest_api) or databases (sql_database).
+description: "Use when the user wants to load files (CSV, Parquet, JSONL or custom) from local disk, S3, GCS, Azure Blob or SFTP into a destination. Creates the dlt filesystem pipeline with the bucket, credentials, file glob and reader. Not for REST APIs or databases."
 argument-hint: "[destination]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: create-background-agent
-description: "Write a dltHub background agent: an AGENT.md that runs unattended on the platform, on a schedule, after a job fails, or when someone starts it from the web UI. Use when the user wants work to happen on its own after an event ('whenever a job fails, diagnose it for me', 'every Monday summarise what broke'), when they ask how to write, declare or deploy an AGENT.md, how to pick its access, tools, inputs or output, how to set run.agent, or how to ship an agent in a toolkit. Do NOT use for a host subagent in .claude/agents/, for scheduling a pipeline or a plain job (deploy-workspace), for diagnosing one failure right now (debug-deployment), or for setting AGENT__MODEL and the other AGENT__ variables, which belong to any agent job including the shipped job-inspector."
+description: "Use when the user wants work to happen on its own on dltHub after an event, on a schedule or on demand ('whenever a job fails, diagnose it for me', 'every Monday summarise what broke'), or asks how to write, declare or deploy an AGENT.md, pick its access, inputs or output, set run.agent, or ship an agent in a toolkit. Writes a dltHub background agent. Not for a host subagent in .claude/agents/, scheduling a pipeline or plain job (deploy-workspace), diagnosing one failure right now (debug-deployment), or setting AGENT__MODEL and the other AGENT__ variables."
 ---
 
 # Create a background agent

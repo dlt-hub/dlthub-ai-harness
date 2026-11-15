@@ -1,6 +1,6 @@
 ---
 name: create-transformation
-description: Write dlthub transformation functions that map source tables to CDM entities. Use after generate-cdm to produce the transformation Python script.
+description: "Use when the user wants the code that fills their data model: SQL or ibis transformations from the source tables into the CDM tables, run as a dlt pipeline. Writes the dlthub transformation script."
 argument-hint: "[pipeline-name]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: install-snowflake-runner
-description: Install or upgrade the SPCS Context Runner in a Snowflake account and give roles access, for the account admin. Installs the dltHub app, the compute pool and warehouse of the jobs, the image repository and the default external access integration, then grants roles that deploy workspaces. Use when an admin wants to set up or upgrade the runner, grant a role, or uninstall it, or when a user's `dlthub snowflake` command says the app or a grant is missing. Do NOT use to set up a user's workspace (`setup-snowflake-workspace`).
+description: "Use when an account admin wants to install, upgrade or uninstall the SPCS Context Runner or grant a role access to it, or a dlthub snowflake command reports that the app or a grant is missing. Installs the dltHub app, compute pool and warehouse in the Snowflake account. Not for a user's workspace (setup-snowflake-workspace)."
 argument-hint: "[admin-connection] [database] [role]"
 ---
 

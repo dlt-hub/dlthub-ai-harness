@@ -1,6 +1,6 @@
 ---
 name: maintain-snowflake-jobs
-description: Day-to-day work with dlt jobs deployed to Snowflake with the SPCS Context Runner. Lists jobs and job runs, reads logs, finds why a job run failed, and pauses, resumes, cancels or starts jobs; checks the secrets that deploy pushed. Use when a job failed or is slow on Snowflake, the user asks about job runs, logs, schedules or Snowflake tasks of their workspace, or wants to pause, resume or cancel a job. Do NOT use to change what a job does (fix the code with the pipeline toolkits, then `deploy-snowflake-workspace`).
+description: "Use when a job on Snowflake failed or is slow, the user asks about job runs, logs, schedules or Snowflake tasks of the workspace, or wants to pause, resume, cancel or start a job. Inspects and controls the deployed jobs. Not for changing what a job does: fix the code, then deploy-snowflake-workspace."
 argument-hint: "[job-or-run-id] [environment]"
 ---
 

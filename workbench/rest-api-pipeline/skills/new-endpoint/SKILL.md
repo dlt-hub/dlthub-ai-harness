@@ -1,6 +1,6 @@
 ---
 name: new-endpoint
-description: Add a new REST API endpoint/resource to an existing dlt pipeline. Use when the user wants to pull additional data from an API that already has a working pipeline.
+description: "Use when the user wants more data from an API that already has a working pipeline: another endpoint, resource or child resource. Adds it to the existing rest_api source. Not for changing an endpoint that already loads (adjust-endpoint)."
 argument-hint: "[endpoint-description]"
 ---
 

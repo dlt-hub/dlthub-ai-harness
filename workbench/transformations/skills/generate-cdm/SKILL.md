@@ -1,6 +1,6 @@
 ---
 name: generate-cdm
-description: Generate a Canonical Data Model (CDM) in DBML using Kimball dimensional modeling. Use after create-ontology to produce the implementation-ready CDM schema.
+description: "Use when the user wants a dimensional model of their data: facts and dimensions, grain, surrogate keys, slowly changing dimensions, Kimball. Writes the Canonical Data Model (CDM) in DBML from the ontology."
 ---
 
 # Generate CDM

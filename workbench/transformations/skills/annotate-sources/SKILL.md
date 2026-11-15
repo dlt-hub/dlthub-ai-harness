@@ -1,6 +1,6 @@
 ---
 name: annotate-sources
-description: Annotate dlt pipeline sources for transformation. Use when the user wants to transform data, do data modelling, design a data model, describes their data sources and use cases, or wants to build a CDM from existing pipelines.
+description: "Use when the user wants to transform or model loaded data, build a data model or a CDM from existing pipelines, or describes the business questions their sources should answer. Maps the source tables to business concepts and natural keys, where data modeling starts."
 argument-hint: "[sources] [use-cases]"
 ---
 

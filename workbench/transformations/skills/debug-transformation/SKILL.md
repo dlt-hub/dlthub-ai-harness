@@ -1,6 +1,6 @@
 ---
 name: debug-transformation
-description: Debug dlthub transformation failures. Use when a transformation fails on a different destination than it was developed on, SQL dialect errors occur after deployment, pipeline recovery is needed after a failed run, or columns are silently dropped from output.
+description: "Use when a dlthub transformation fails or produces wrong output: SQL dialect errors on another destination (DuckDB to Snowflake, BigQuery or Postgres), columns silently dropped, a pipeline that cannot recover after a failed run. Finds the cause and fixes the transformation."
 ---
 
 # Debug transformation

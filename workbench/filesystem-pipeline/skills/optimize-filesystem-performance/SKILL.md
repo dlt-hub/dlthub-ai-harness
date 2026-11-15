@@ -1,6 +1,6 @@
 ---
 name: optimize-filesystem-performance
-description: Speed up a dlt filesystem pipeline. Use when reading files (CSV, Parquet, JSONL) from local disk, S3, GCS, Azure, or SFTP is slow or memory-heavy and the user wants to optimize it — choose a faster reader, read files in parallel, narrow the glob, or stream in chunks. For first-time incremental/merge setup, or to skip files already loaded in previous runs, use add-incremental-loading instead.
+description: "Use when reading files is slow or runs out of memory: many files, large Parquet or CSV files, a broad glob. Speeds it up with a faster reader, chunked streaming, parallel reads and a narrower glob. Not for skipping files already loaded (add-incremental-loading)."
 argument-hint: "[pipeline-name] [symptom]"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: validate-data
-description: Validate schema and data after a successful dlt pipeline load. Use when the user wants to check if loaded data looks correct, inspect table schemas, fix data types, flatten nested structures, or refine the data shape.
+description: "Use when the user wants to check that data loaded from an API looks right: wrong data types, nested structures to flatten, missing or extra columns, table and column names. Inspects the schema and the data and refines them until the user is satisfied."
 argument-hint: "[pipeline-name] [concerns]"
 ---
 
