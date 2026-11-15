@@ -14,7 +14,7 @@ Parse `$ARGUMENTS`:
 ## Step 1: Read analysis_plan.md
 
 Parse the analysis plan file for:
-- **Connection** section: pipeline name, dataset name, destination type
+- **Connection** section: pipeline name, module, destination and dataset name
 - **Chart N** sections: each chart's question, type, SQL code, and altair code
 - Count the total number of charts to assemble
 
@@ -85,8 +85,10 @@ The SQL query returns no rows. Common causes:
 2. Column names don't match schema — verify against `get_table_schema`.
 3. Table is empty — check `get_row_counts` (MCP).
 
-### dlt.attach fails in notebook
-Pipeline name is wrong or pipeline hasn't been run. Run `dlthub local pipeline info <name>` to verify.
+### The connection cell fails
+- The import fails: the module in `## Connection` moved, or no longer creates the pipeline at the module level.
+- A table is missing: the name, destination or dataset name differs from the pipeline that loaded the data, or the
+  pipeline has not run with the active profile. Compare with `dlthub local pipeline info <name>`.
 
 ## Example
 

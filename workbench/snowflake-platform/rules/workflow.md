@@ -4,8 +4,11 @@ The SPCS Context Runner runs dltHub jobs in the user's Snowflake account: each b
 job run is a job service on a compute pool, and the dltHub app registers the job runs. The pipelines exist and run
 locally; this workflow takes them to production.
 
-This toolkit owns `.dlthub/snowflake/` in the workspace: deploy writes its records to
-`.dlthub/snowflake/deploy/<environment>/`. Semantic views go to the topic folder, `.dlthub/ontology/<name>/`.
+This is the platform toolkit of the workspace. Other toolkits write platform commands without a prefix (`deploy`,
+`job run`, `job logs`): here they are `dlthub snowflake` commands (`uv run dlthub snowflake --help`).
+
+It owns `.dlthub/snowflake/` in the workspace: deploy writes its records to
+`.dlthub/snowflake/deploy/<environment>/`.
 
 ## Workflow Entry
 **ALWAYS** start with **Set up the Snowflake workspace** (`setup-snowflake-workspace`): the deploy connection, the
@@ -40,33 +43,19 @@ workspace name and `uv run dlthub snowflake info`. If the account has no runner 
 12. **Annotate with Cortex** (`annotate-with-cortex`) — a follow-up job that calls the Cortex Agents REST API: table
     and column comments grounded in the rows, and a semantic view
 
-## Dependencies
-The workspace runs on `dlt`, `dlthub` and `dlthub-snowflake`. If `dlthub-client` is installed
-(`uv pip show dlthub-client`), remove it: drop the `hub` extra from the `dlt` dependency and depend on `dlthub`
-directly in `pyproject.toml` (`uv remove dlthub-client` if it is a direct dependency), then run `uv sync`. Its
-commands and MCP tools collide with the Snowflake ones.
-
 ## Ask first
 Schedules, timeouts, the compute pool and the jobs warehouse spend credits on every job run. Never add, change or
 remove them without the user's explicit yes. Show what changes and how often it runs.
 
 ## Handover to other toolkits
 
-### Incoming (to snowflake-platform)
-- From **rest-api-pipeline** (after `debug-pipeline`, `validate-data` or the hardening skills) — the pipeline name,
-  destination and dataset are known; carry them into `setup-snowflake-workspace` and the job declaration
-- From **transformations** (after `create-transformation` or `debug-transformation`) — the transformation scripts and
-  the destination are known; carry them into `setup-snowflake-workspace`
-
 ### Outgoing (from snowflake-platform)
-- **rest-api-pipeline** → `debug-pipeline` — a job fails in the pipeline code (source, schema, load errors)
-- **transformations** → `debug-transformation` — SQL dialect errors when the jobs load into Snowflake and the local
-  runs used another destination
+- **transformations** → `debug-transformation` — SQL dialect errors in jobs on Snowflake: the local runs used another
+  destination, so carry the dev and the Snowflake destination types into the dialect check
 
 References:
 * **dlt Snowflake destination**: https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake.md
 * **Cortex Agents REST API**: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-rest-api
-* **SPCS Context Runner**: `README.md` (Getting started, Environments, Daily commands), `docs/ARCHITECTURE.md`
 * **Commands**: `uv run dlthub snowflake --help` and `uv run dlthub snowflake <command> --help`
 * **Profiles and deployments**: https://dlthub.com/docs/hub/pipeline-operations/profiles.md,
   https://dlthub.com/docs/hub/pipeline-operations/deployments.md

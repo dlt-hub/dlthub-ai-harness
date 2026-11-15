@@ -21,6 +21,8 @@ If not provided in arguments, ask the user for:
 
 All `.dlthub/ontology/` files are written under `<project_root>/.dlthub/ontology/<cdm-name>/`, the business knowledge folder of this topic. Commit them. The CDM folder name is reused from an existing topic folder or derived from the user's use cases, and confirmed in step 2 below.
 
+**Handed over from another toolkit or skill?** The pipelines, datasets, destinations and tables that workflow worked on are in the session already: confirm them in one line, skip `list_pipelines` discovery for them in step 1, and go on to schema extraction. Business context from that session carries over too.
+
 ## Steps
 
 ### 1. Check dlt pipelines exist

@@ -14,6 +14,9 @@ connection, the role and the workspace schema without errors.
 The runner must be installed in the account, and the user's role must be granted (`README.md` § Getting started,
 steps 1–2). Both are admin work: when a step below fails because of them, go to step 6.
 
+**Handed over from another toolkit?** The pipelines or transformation scripts and their destination are in the
+session already: carry them into this setup and the job declaration without discovering them again.
+
 ## 1. Check the tools
 
 Deploy builds a docker image on this machine and pushes it to Snowflake, so three tools must work:
@@ -27,6 +30,11 @@ docker info --format '{{.ServerVersion}}'
 - `uv` or `dlthub` missing: follow the workspace setup in the `init-dlthub-workspace` rule.
 - `snow` missing: the user installs the Snowflake CLI (https://docs.snowflake.com/en/developer-guide/snowflake-cli/installation/installation).
 - `docker info` fails: the user starts docker. Deploy cannot build images without it.
+
+The workspace runs on `dlt`, `dlthub` and `dlthub-snowflake`. If `dlthub-client` is installed
+(`uv pip show dlthub-client`), remove it: its commands and MCP tools collide with the Snowflake ones. Drop the `hub`
+extra from the `dlt` dependency and depend on `dlthub` directly in `pyproject.toml` (`uv remove dlthub-client` if it
+is a direct dependency), then run `uv sync`.
 
 ## 2. Pick the Snowflake connection
 

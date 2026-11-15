@@ -76,7 +76,7 @@ Common exceptions:
 | `DataValidationError` | a schema contract rejected data. Its attributes name the table, the column and the contract mode | fix the data, or change the contract: https://dlthub.com/docs/general-usage/schema-contracts.md |
 | `ModuleNotFoundError` / `MissingDependencyException` | a source, destination or reader needs an extra. Destination packages are imported when `run()` connects to the destination, before extract | install what the message names, e.g. `uv add "dlt[<extra>]"` or the driver package |
 | import error that reports a wrong `dlthub` plugin version | `dlthub` does not match the dlt version | install the `dlthub` version that the error names, e.g. `uv add "dlthub>=<version>"`, or upgrade `dlt` |
-| `CannotRestorePipelineException` from `dlt.attach` | the active profile has no state for this pipeline: another profile is active, the script ran from another folder, or the pipeline never ran | check the profile (**Wrong destination, credentials or state** in section 7) and run from the project root |
+| `CannotRestorePipelineException` from `dlt.attach` | the active profile has no state for this pipeline: another profile is active, the script ran from another folder, or the pipeline never ran | to read the data, create the same pipeline instead (`dlt.pipeline("<name>", destination=..., dataset_name=...).dataset()`): it needs no local state. To resume the run, check the profile (**Wrong destination, credentials or state** in section 7) and run from the project root |
 | `DestinationTerminalException` containing `database is locked` (DuckDB) | another process holds the DuckDB file: the dashboard, another run, a notebook | close the other process, then run again |
 
 ## 4. Inspect the last run

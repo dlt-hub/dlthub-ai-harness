@@ -13,12 +13,16 @@ A **job** is a function or a module that `__all__` in `__deployment__.py` lists.
 `dlthub local run` runs it here the same way: it resolves the job from `__deployment__.py`, applies the settings of
 the active profile and runs it. A **job ref** is `jobs.<module>.<name>`. A bare name works when it is unambiguous.
 
+**Handed over from another toolkit?** The pipeline scripts and their destination are in the session already: start
+step 1 with them.
+
 ## 1. Make the code a job
 
 1. Decorate the function that runs the pipeline: `@run.pipeline("<pipeline name>")` (`from dlt.hub import run`).
    Use `@run.job` for other batch work and `@run.interactive` for notebooks, dashboards and MCP servers.
-2. Create the pipeline inside the job, not at the module level. A pipeline takes the profile that is active when it
-   is created.
+2. When other jobs, notebooks or checks read the dataset of the pipeline, create the pipeline at the module level, so
+   they import it and call `pipeline.dataset()`. A job run activates its profile before it imports the module, so the
+   pipeline still runs with the profile of the job run. Otherwise create it inside the job.
 3. If a value changes per profile or per job run, make it a job argument with `dlt.config.value` (for example
    `limit: int = dlt.config.value`). Set it in `[jobs.<module>]` of the profile config files.
 4. If the user runs the file with `uv run python`, keep the `if __name__ == "__main__":` block. The job does not

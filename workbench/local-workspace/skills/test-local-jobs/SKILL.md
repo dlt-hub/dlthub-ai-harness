@@ -16,11 +16,12 @@ pipelines on `dev`. Tests never run with a remote profile.
 1. In `.dlt/tests.config.toml`, point the destinations of the jobs at DuckDB, for example
    `destination_type = "duckdb"` under `[destination.warehouse]`.
 2. Keep the job runs small: set job arguments in `[jobs.<module>]` of `tests.config.toml`, for example `limit = 10`.
-3. Add a `conftest.py` to the tests folder of the workspace (for example `tests/conftest.py`): one fixture makes `tests` the active profile, one empties its folders before each test.
-   See [test-patterns.md](test-patterns.md).
-4. Create the pipelines inside the jobs. pytest imports the test modules before the fixture runs, so a pipeline
-   created at the module level keeps the `dev` profile. If you cannot move the pipeline into the job, run the tests
-   with `WORKSPACE__PROFILE=tests uv run pytest`.
+3. Add a `conftest.py` to the tests folder of the workspace (for example `tests/conftest.py`). Its
+   `pytest_sessionstart` hook makes `tests` the active profile before pytest imports the test modules and the jobs,
+   so pipelines created at the module level run on `tests` too. A fixture empties the folders of `tests` before each
+   test. See [test-patterns.md](test-patterns.md).
+4. A pipeline created at the module level outlives that cleanup: reset it with `pipeline.drop()` in a fixture of the
+   test module.
 
 ## 2. Pick the tests
 
@@ -37,7 +38,8 @@ has an example of each.
 - A call in the test gives the job its settings from `[jobs.<module>]`, but not `run_context`. If the job reads
   `run_context`, pass it yourself.
 - If a source calls an API, give a small `limit`, or mock the HTTP calls.
-- Check the data with `dlt.pipeline("<pipeline name>").dataset()`, for example the row count of a table.
+- Check the data with the dataset of the job's pipeline, for example the row count of a table. Import the pipeline
+  when its module creates it. Otherwise create the same pipeline: the same name, destination and dataset name.
 
 ## 3. Run and debug the tests
 

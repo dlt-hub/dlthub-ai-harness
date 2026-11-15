@@ -10,9 +10,3 @@ This workflow has exactly one step.
 
 ## Onboarding
 When the user asks to be onboarded to dltHub or taught how to use it ("onboard me", "I want to learn dltHub"), ask them to run `uvx dlthub-start@latest` in their own terminal. It scaffolds a separate **playground** workspace, not for production workflows and not for an existing project. **NEVER run it yourself**: it is interactive, requires authentication and works only in a real terminal (not in `!` mode). Wait until the user confirms it finished; this workflow starts in that playground.
-
-## Handover To Other Toolkits
-
-### Outgoing (from one-shot)
-
-- **dlthub-init-skills** — after `deploy-run-sample-pipeline` completes and the user says "Help me get started building and running a data pipeline on dltHub". The user will run `uvx dlthub-init@latest` in a new directory and restart the agent session there, then say "Help me build and deploy a minimal pipeline". Enter at `deploy-minimal-ingestion-pipeline`.

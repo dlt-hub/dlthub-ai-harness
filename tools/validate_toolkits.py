@@ -721,11 +721,7 @@ def validate_workflow(
                 f"[{pname}] workflow.md missing required section: '## {required.title()}'"
             )
 
-    if _WORKFLOW_HANDOVER_SECTION not in sections:
-        warnings.append(
-            f"[{pname}] workflow.md missing section: '## {_WORKFLOW_HANDOVER_SECTION.title()}'"
-        )
-
+    # handovers are optional: only context the next toolkit expects gets a bullet (CLAUDE.md)
     handover_text = sections.get(_WORKFLOW_HANDOVER_SECTION, "")
     if handover_text:
         handover_refs = set(_WORKFLOW_HANDOVER_REF.findall(handover_text))

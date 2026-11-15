@@ -37,7 +37,8 @@ This opens a browser with table schemas, row counts, and sample data.
 ```python
 import dlt
 
-pipeline = dlt.attach("<pipeline_name>")
+# the same pipeline as the pipeline script: name, destination and dataset name
+pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
 dataset = pipeline.dataset()
 
 # Row counts for all tables

@@ -21,7 +21,7 @@ Review each script being deployed and fix patterns that are safe locally but har
 4. **Check `if __name__ == "__main__":` block** — every script must have one or the runtime job does nothing. The block should NOT contain interactive/debug-only code.
 5. **Pin the dlt version exactly** in `pyproject.toml` — use `==` not `>=` to prevent unexpected upgrades on runtime. If user has a pre-release (e.g. `1.23.0a3`), use `uv pip install` to install it and pin with `==` in pyproject (do NOT use `uv add` which may downgrade to latest stable).
 6. **Notebooks (`marimo` apps)**:
-   - Verify they use `dlt.attach()` (not `dlt.pipeline()`) and that **destination** and **dataset_name** are explicitly passed (this is a temporary limitation of the dltHub Platform) <!-- TODO: remove when runtime supports dlt.pipeline() in notebooks — track in github.com/dlt-hub/runtime -->
+   - Verify they take the dataset from the pipeline that loads it: they import the pipeline from its module, or create the same pipeline with the same name, **destination** and **dataset_name**. A runner has no local pipeline state, so a notebook that uses `dlt.attach()` fails there
    - All visualization dependencies (`altair`, `ibis-framework`, `pandas`, etc.) are in `pyproject.toml`
 
 ## Step 2: Deploy, launch, debug

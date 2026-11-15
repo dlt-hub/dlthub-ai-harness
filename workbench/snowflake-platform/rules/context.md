@@ -4,9 +4,10 @@ Snowflake often knows the user's business already: Cortex Sense contexts, Busine
 and how people query them. Use that knowledge before writing code, so the new pipeline or model fits what exists.
 
 1. **Before any code, collect the context.** Run (`collect-snowflake-context`) when another toolkit builds context:
-   - in **`find-source`** (rest-api-pipeline): once the user has said what they want from the data, before step 1;
-   - in **`annotate-sources`** (transformations): after step 3 (the source schemas are extracted), before step 4
-     (the business entities).
+   - in **`find-source`** (rest-api-pipeline): once the user has said what they want from the data, before any
+     pipeline code;
+   - in **`annotate-sources`** (transformations): once the source schemas are extracted, before the business
+     entities.
 
    It writes `.dlthub/ontology/<slug>/context.md`. When that file exists for the topic and the user's intent has not
    changed, read it instead of collecting again. Then go on with the calling skill.
@@ -19,6 +20,3 @@ and how people query them. Use that knowledge before writing code, so the new pi
    (`create-snowflake-semantic-view`), so Cortex Analyst and agents can answer the questions from `context.md`.
 5. **Read only, unless the user says yes.** Never write to Business Ontology, Cortex Sense contexts or the comments
    of tables that other teams own without the user's explicit yes.
-
-Files: `.dlthub/ontology/<name>/` holds the context, the model and the semantic view
-(`snowflake_semantic_view.sql`) of one topic. Commit it.

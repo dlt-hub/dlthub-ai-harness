@@ -25,7 +25,7 @@ rules:
   # instructions to narrate each step to a user, resent on every turn to an agent that has
   # no user, no shell and nothing to install
   - dlthub-platform:job-resources
-  - dlthub-platform:profiles
+  - local-workspace:jobs
 access:
   # read the workspace files, nothing else. no `execute`: the secret deny rules cover the
   # file tools only, so a shell is a way around them, and an instruction not to `cat` a

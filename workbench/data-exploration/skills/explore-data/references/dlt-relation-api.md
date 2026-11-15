@@ -9,10 +9,14 @@ For chart queries, prefer SQL — it's concise and readable for aggregations. Us
 
 ## Getting a dataset and table relations
 
+Take the dataset from the pipeline that loaded the data. Import the pipeline when a module creates it, otherwise
+create the same pipeline: the same name, destination and dataset name. It reads every schema of the pipeline from
+the destination. More in the dataset docs, section "Access a dataset from another script, job or notebook".
+
 ```python
 import dlt
 
-pipeline = dlt.attach("<pipeline_name>")
+pipeline = dlt.pipeline("<pipeline_name>", destination="<destination>", dataset_name="<dataset_name>")
 dataset = pipeline.dataset()
 
 # Get a Relation for a table
@@ -21,17 +25,13 @@ table = dataset["my_table"]
 
 ## Connecting to a standalone DuckDB file
 
-If data exists in a `.duckdb` file but no attached pipeline is available, connect with an explicit destination:
+If data exists in a `.duckdb` file and no pipeline is known, pass the file to `dlt.dataset()`. It loads only the
+schema stored last: pass `schema="<schema name>"` when the file holds several.
 
 ```python
 import dlt
 
-pipeline = dlt.pipeline(
-    pipeline_name="local_duckdb_analysis",
-    destination=dlt.destinations.duckdb("/absolute/path/to/data.duckdb"),
-    dataset_name="github_data",  # optional if known
-)
-dataset = pipeline.dataset()
+dataset = dlt.dataset(dlt.destinations.duckdb("/absolute/path/to/data.duckdb"), "github_data")
 dataset.row_counts().df()
 ```
 

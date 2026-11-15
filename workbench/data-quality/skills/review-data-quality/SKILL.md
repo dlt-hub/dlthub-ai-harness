@@ -21,13 +21,13 @@ Expected from prior steps:
 
 ## Quick summary mode
 
-If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlthub library:
+If this skill is invoked directly (no carry-over context from `run-data-quality`), lead with a compact snapshot before the full review flow. Read results using the dlthub library, from the dataset of the same pipeline as the one that loaded the data: the same name, destination and dataset name (`uv run dlthub local pipeline info <name>` shows them):
 
 ```python
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<name>")
+pipeline = dlt.pipeline("<name>", destination="<destination>", dataset_name="<dataset_name>")
 results = dq.read_check(pipeline.dataset())
 rows = results.fetchall()
 cols = results.columns
@@ -73,7 +73,7 @@ Read check results using internal dlthub functionality:
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<name>")
+pipeline = dlt.pipeline("<name>", destination="<destination>", dataset_name="<dataset_name>")
 results = dq.read_check(pipeline.dataset(), table="<table>")
 rows = results.fetchall()
 cols = results.columns
@@ -107,7 +107,7 @@ For each table, read metric results using the dlthub library:
 import dlt
 from dlt.hub import data_quality as dq  # https://dlthub.com/docs/hub/data-quality.md
 
-pipeline = dlt.attach(pipeline_name="<pipeline-name>")
+pipeline = dlt.pipeline("<pipeline-name>", destination="<destination>", dataset_name="<dataset_name>")
 
 # dataset-level metric (e.g. load_row_count, latest_loaded_at)
 results = dq.read_metric(pipeline.dataset(), metric="<metric-name>")

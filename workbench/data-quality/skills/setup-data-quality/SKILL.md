@@ -17,7 +17,7 @@ Parse `$ARGUMENTS`:
 
 Before any discovery step, check what is already known:
 
-1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS` or the session already has a pipeline context (arriving from `rest-api-pipeline` after `validate-data`, from `sql-database-pipeline` after `validate-sql-database-data`, or from `transformations` after `create-transformation`), skip `list_pipelines` discovery.
+1. **Pipeline already known** — if `pipeline-name` was passed via `$ARGUMENTS`, or another toolkit or skill handed over (the pipeline, its dataset and tables are in the session already), skip `list_pipelines` discovery.
 
 ## Steps
 
@@ -76,14 +76,16 @@ No data tables found in pipeline "<name>". Run the pipeline at least once to loa
 
 ### 3. Inspect schema and auto-detect check candidates
 
-Run a small inline script to generate check candidates directly from the pipeline schema:
+Run a small inline script to generate check candidates directly from the pipeline schema. Create the same pipeline as
+the one that loaded the data (the same name, destination and dataset name; `uv run dlthub local pipeline info <name>`
+shows them) and take the schema from its dataset:
 
 ```python
 import dlt
 from dlthub.data_quality.checks._definitions import create_check_hints_from_schema, _check_hints_to_def
 
-pipeline = dlt.attach(pipeline_name="<name>")
-hints = create_check_hints_from_schema(pipeline.default_schema)
+pipeline = dlt.pipeline("<name>", destination="<destination>", dataset_name="<dataset_name>")
+hints = create_check_hints_from_schema(pipeline.dataset().schema)
 
 # Bug workaround: is_primary_key() hardcodes `value` instead of the actual column name
 # in its SQL template (dlt-hub/dlthub#397) and raises LineageFailedException at runtime.

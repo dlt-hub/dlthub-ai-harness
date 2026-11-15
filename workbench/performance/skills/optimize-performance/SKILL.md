@@ -14,6 +14,8 @@ Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline. If omitted, infer from session context; if ambiguous, ask and stop.
 - `symptom` (optional): what's wrong — "slow extract", "OOM during normalize", "load takes hours", etc.
 
+**Handed over from another toolkit or skill?** The pipeline, the symptom and the tuning already applied are in the session: confirm them in one line and start Step 1 with them.
+
 > Source-specific knobs (DB backends/`chunk_size`, REST async/concurrency, file format/readers) live in a separate pipeline toolkit — see [Source-specific tuning](#source-specific-tuning-separate-toolkits) for the toolkit to install. Apply those **in addition** to the stage levers here.
 >
 > Knobs below are shown as `config.toml`; each has an env-var equivalent — see [Config forms](#config-forms). Start from dlt's defaults and change **one lever at a time**.

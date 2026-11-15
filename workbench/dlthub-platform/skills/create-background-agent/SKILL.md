@@ -250,7 +250,7 @@ each:
 
 - **An agent job must never run on the `prod` profile.** The runtime defaults it to `access`. Pin
   `require={"profile": "access"}` so the declaration says so, and never override it with `prod`.
-  This is rule 4 of the always-loaded `dlthub-platform` profiles rule.
+  The always-loaded jobs rule of `local-workspace` says it too.
 - **`job.fail:*` starts a loop where another agent job can fail.** Name the jobs to watch, or
   tag them.
 - **`agent.verbosity` stays at 1**, the default. At 0 the job log keeps tool names only, and every

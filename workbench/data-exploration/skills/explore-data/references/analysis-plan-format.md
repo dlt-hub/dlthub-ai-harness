@@ -13,9 +13,10 @@ The plan does not depend on the dashboard tool: each chart is a question, a SQL 
 # Analysis Plan: <pipeline_name>
 
 ## Connection
-pipeline: <pipeline_name>
+pipeline: <pipeline_name, or empty for a standalone .duckdb file>
+module: <module that creates the pipeline at the module level, for example pipelines.orders, or empty>
+destination: <the destination of the pipeline: its name, for example warehouse, or its type, for example duckdb; the path of a standalone .duckdb file>
 dataset: <dataset_name>
-destination: <destination_type>
 
 ## Dashboard
 path: <path of the dashboard file, for example orders_pipeline_dashboard.py>

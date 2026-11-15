@@ -243,7 +243,8 @@ def dim_person(dataset: dlt.Dataset):
 
 
 def run_<cdm_name>() -> None:
-    # the source pipeline as it was created; no local state needed, so this also runs on a deployment
+    # the source pipeline: imported from its module (`from <module> import pipeline`) when one creates it,
+    # otherwise the same pipeline created again. Its dataset reads the schemas from the destination
     source_pipeline = dlt.pipeline(
         "<source_pipeline_name>", destination="<destination>", dataset_name="<source_dataset_name>"
     )
@@ -256,9 +257,9 @@ if __name__ == "__main__":
     run_<cdm_name>()
 ```
 
-- **Both pipelines are created inside a function**, never at module level. A pipeline takes the profile that is active when it is created, and a deployment can declare the function as a job without changes.
+- **Take the source dataset from the source pipeline.** Import the source pipeline when a module creates it at the module level. Otherwise create the same pipeline, as above: the same name, destination and dataset name. Either way no local state is needed, so the script runs on a deployment and on another machine, and a deployment can declare `run_<cdm_name>()` as a job without changes.
 - **`<destination>` is the destination the source pipeline loads to**, written the same way (for example the named destination `warehouse` that `setup-profiles` sets up). On DuckDB this matters: a named destination keeps one database file (`<destination name>.duckdb`) for every pipeline, while the plain `duckdb` destination gives each pipeline its own file named after the pipeline. A CDM pipeline whose name equals its dataset then fails with `Ambiguous reference to catalog or schema`.
-- **Never `dlt.attach()`**: it needs the local state of the source pipeline in the active profile, which a deployment and another machine do not have.
+- **`dlt.attach()` comes last**: it needs the local state of the source pipeline in the active profile, which a deployment and another machine do not have. Use it only for a pipeline that ran earlier in the same job run.
 - With several sources, create one source pipeline per source and pass each `.dataset()` to the transformations that need it.
 
 ### 7. Get feedback before running

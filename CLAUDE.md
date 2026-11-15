@@ -45,6 +45,13 @@ A toolkit is a Claude Code plugin. It can contain:
   - No README in the folder: a document beside a definition drifts from it. What an author or an operator needs is in `create-background-agent`, a skill under `workbench/dlthub-platform/skills/` (background agents run on the dltHub platform).
   - Install path: `.claude/dlthub/agents/<toolkit>/<name>/` on dlt 1.31.0, under `dlthub/` so it never mixes with the host's native agents. dlt 1.30.1a1 wrote it flat, without the `<toolkit>` segment.
 
+### Rules hold only what a skill cannot
+Rules are loaded on every turn. A rule **never repeats the procedure of a skill**: no skill steps, commands, checklists, reference detail, or intent → skill tables that restate skill descriptions. It keeps what the agent needs before any skill is open (vocabulary, principles, safety lines, the workflow), with a one-line pointer to the skill for the rest.
+
+- **Not just deduplication.** A rule may repeat a principle that a skill also applies, when the agent needs it before the skill is open or across several skills ("tests never run on a remote profile", "prefer built-in checks"). A rule also shows how the skills form a workflow: their order, the branches between them and what each step is for, even when the skills say it too.
+- **Rules are composable.** Every installed toolkit adds its own rules, so a rule never carries upfront information that another toolkit adds when it is installed. The `init` rule does not describe platform toolkits, their folders or their commands: each platform toolkit's rule says that it is the platform toolkit, what it owns in `.dlthub/` and how commands written without a prefix map to its CLI. A location only one toolkit uses is named in that toolkit's rule.
+- **Rules say how to use toolkits, not how to write them.** Authoring conventions (artifact locations for new kinds, agnostic wording, handover rules) live here and in TOOLKITS.md, and in the validator where they can be checked.
+
 ### Toolkit Workflow (`rules/workflow.md`)
 Each toolkit has a **workflow** rule that shows the order in which the agent uses the skills. It is always loaded so the agent knows the intended skill sequence.
 
@@ -72,14 +79,15 @@ After install, `dlthub ai status` and `dlthub ai toolkit install <name>` display
 1. **Workflow Entry** — declares which skill MUST run first (see above)
 2. **Core workflow** — numbered steps with skill references: `N. **Step name** (`skill-name`) — what it does`
 3. **Extend and harden** (optional) — additional steps for production readiness, iteration, or advanced use cases
-4. **Handover to other toolkits** — when to leave this toolkit. Each entry names the target toolkit, the condition and the skill that the user leaves
+4. **Handover to other toolkits** (optional) — `### Incoming` and `### Outgoing` bullets, only for the situations described below
 
 #### Router vs handovers
 
 Two mechanisms route the user between toolkits — they are complementary, not redundant:
 
-- **Router/index** (the `dlthub-router` skill in `init`, which holds the toolkit index) handles the case where **no matching toolkit is installed**: match intent, install the toolkit, enter at its entry skill. Platform toolkits share one index row, "→ a platform toolkit".
-- **Handovers** (a toolkit's `workflow.md`) move the user to another toolkit **during a workflow**. They pass on context, for example the pipeline name, dataset and destination ("skip discovery"). They name one skill and one condition (for example, Early vs Later deploy), which the index cannot do.
+- **Router/index** (the `dlthub-router` skill in `init`, which holds the toolkit index) handles the case where **no matching toolkit is installed**, and every plain change of goal ("now I want charts"): match intent, install the toolkit, enter at its entry skill. Platform toolkits share one index row, "→ a platform toolkit".
+- **Handovers** (a toolkit's `workflow.md`) get a bullet **only where parts of the session context are expected by the next toolkit and matter**: what is carried, and what to do or skip because of it ("the failing tables are known: focus on them", "a playground workspace is already connected: skip Step 0", "do not restructure the inline `rest_api_source`"). That context deserves its place in the rule.
+- **Everything else is not a handover bullet.** A generic arrival ("the pipeline and tables are already known, skip discovery") is one "Handed over from another toolkit or skill?" paragraph in the entry skill of the receiving toolkit. A handover that a skill already states (a skill's "Next steps") stays only in the skill.
 
 When a handover names a toolkit that is **not installed**, use the index/router to install it, then follow the handover's entry point + context. When the toolkit is installed, the router does not trigger during a workflow. Its `description` excludes that case.
 
@@ -88,7 +96,7 @@ When a handover names a toolkit that is **not installed**, use the index/router 
 - **Internal skills/commands** — reference with backtick-parens: `(`skill-name`)`. The validator checks these resolve to real skill directories.
 - **Planned skills** (not yet implemented) — plain text, no `()` link. Add them to the workflow to show intent.
 - **Handover to external toolkits** — use `**toolkit-name**` (bold) and describe the trigger. Only reference toolkits that are NOT dependencies (dependencies like `init` are always loaded — their skills are local, not handovers). The validator accepts `(`skill-name`)` refs to skills of dependencies.
-- **Handover to a platform toolkit** — a toolkit that is not a platform toolkit never names one. It hands over to "the installed platform toolkit" with the standard line: *a platform toolkit — when the user wants to deploy, schedule or run the jobs in production: follow the workflow entry of the installed platform toolkit, carrying the pipeline name, destination and dataset. When none is installed, `dlthub-router` installs one.* See "Platform toolkits" in TOOLKITS.md.
+- **Handover to a platform toolkit** — a toolkit that is not a platform toolkit never names one. An installed platform toolkit's own rule takes deploy intents, and `dlthub-router` installs one when none is, so a workflow lists no platform handover; a skill's "Next steps" says "follow the workflow entry of the installed platform toolkit". See "Platform toolkits" in TOOLKITS.md.
 
 ### Artifact locations and code paths
 Skills write artifacts only to the artifact locations (`.dlthub/schemas/`, `.dlthub/ontology/<name>/`, `.dlthub/explorations/<name>/`, `.dlthub/<platform>/`) and name the path. Code layout is the user's: a concrete path for sources, pipelines or transformations is an example. Throwaway scripts go to the system temp dir. See "Artifact locations" in TOOLKITS.md.

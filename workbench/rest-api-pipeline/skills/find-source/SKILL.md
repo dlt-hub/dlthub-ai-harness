@@ -12,6 +12,8 @@ Parse `$ARGUMENTS`:
 - `source-name` (required): what the user wants to extract data from (e.g., "alpaca markets", "stripe", "postgres", "csv files", "rest api")
 - everything after that: additional context, i.e. which data the user wants to ingest. In case the user does not specify, ask them which data they want to ingest.
 
+**Handed over from another toolkit or skill?** What that workflow found is in the session already, for example the source, the data the user wants and the destination. Do not ask for it again: confirm it in one line and continue.
+
 ## Steps
 
 ### 1. Classify the request

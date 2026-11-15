@@ -7,6 +7,8 @@ description: Verify dlthub workspace is ready for dltHub Platform. Use when user
 
 Lightweight check that the workspace is ready for runtime work. Run through each check and fix issues as found.
 
+**Handed over from another toolkit?** What it built is in the session already: the pipeline, its destination and dataset, the transformation scripts or the notebook. Carry them into these checks and the deployment without discovering them again.
+
 **Reference**:
 - Workspace intro (install `dlt[hub]`, create a workspace): https://dlthub.com/docs/hub/getting-started/installation.md
 - Workspace setup (convert a Python project, credentials per profile): https://dlthub.com/docs/hub/pipeline-operations/workspace-setup.md
