@@ -13,10 +13,6 @@ Docs:
 - `dlthub-init`: https://pypi.org/project/dlthub-init/
 - uv install: https://docs.astral.sh/uv/getting-started/installation/
 
-> **Onboarding exception.** If the user asks to be onboarded, or to learn how to use dltHub, do not run this skill.
-> Ask the user to run `uvx dlthub-start@latest` in their own terminal. It creates a separate **playground** workspace.
-> Never run `uvx dlthub-start` yourself, and do not use `!` mode for it. It needs interactive authentication.
-
 ## Step 1: Check what is installed
 
 Run these checks in order. Do not install anything yet.
@@ -25,7 +21,7 @@ Run these checks in order. Do not install anything yet.
    - The rules are in your context (project rules or `AGENTS.md`).
    - Claude Code: `.claude/rules/init-dlthub-workspace.md` exists.
    - Cursor: `.cursor/rules/init-dlthub-workspace.mdc` exists.
-   - Codex, Copilot and Gemini: `AGENTS.md` contains `init-dlthub-workspace`.
+   - Codex: `AGENTS.md` contains `init-dlthub-workspace`.
    - If one of these is true, `init` is installed. Stop this skill. Use `dlthub-router` or the entry skill of the matching toolkit.
    - The files are on disk but not in your context after `/reload-skills` and before the restart. They still count.
 2. Run `uv --version`. If it fails, `uv` is missing.
@@ -41,8 +37,6 @@ Run these checks in order. Do not install anything yet.
 | Claude Code | `claude` | |
 | Cursor | `cursor` | |
 | Codex | `codex` | |
-| GitHub Copilot | `codex` | Copilot reads `.agents/skills/`, `AGENTS.md` and `.mcp.json`. |
-| Gemini CLI | `codex` | Also write `.gemini/settings.json` (Step 4). |
 
 ## Step 2: Show the plan
 
@@ -61,8 +55,7 @@ Actions:
   2. uvx dlthub-init@latest                              (if dlt[hub] is missing)
      + uv add "dlt[hub]" "fastmcp>=3.1.0"                (if pyproject.toml exists)
   3. dlthub ai init --agent <agent> --overwrite          (if init is missing)
-  4. Write .gemini/settings.json                         (Gemini only)
-  5. dlthub-router picks and installs the toolkit        (if the user has a task)
+  4. dlthub-router picks and installs the toolkit        (if the user has a task)
 ```
 
 Ask the user to approve the plan. If the user refuses, stop.
@@ -112,20 +105,7 @@ uv run dlthub --non-interactive ai init --agent <agent> --overwrite
 - `--overwrite` replaces the old `init` skills that `dlthub-init` bundles.
 - Use `--overwrite` only when `dlthub ai init` did not run before in this project. Otherwise it replaces files that the user changed.
 
-**4. Gemini only: write `.gemini/settings.json`**
-
-Gemini does not read `AGENTS.md` or `.mcp.json`. If `.gemini/settings.json` exists, add these keys to it and keep the other keys:
-
-```json
-{
-  "context": {"fileName": ["AGENTS.md", "GEMINI.md"]},
-  "mcpServers": {
-    "dlt-workspace-mcp": {"command": "uv", "args": ["run", "dlthub", "ai", "mcp", "--stdio"]}
-  }
-}
-```
-
-**5. Check the status:**
+**4. Check the status:**
 
 Run `uv run dlthub ai status`. If it shows a WARNING about the MCP server, fix it before you continue:
 - If the WARNING says `pip install "fastmcp"`, run `uv add "fastmcp>=3.1.0"`. Then run `uv run dlthub ai status` again.
@@ -142,7 +122,7 @@ The router and the init rules are on disk now, but not in your context until the
 |---|---|---|
 | Claude Code | `.claude/rules/init-dlthub-workspace.md` | `.claude/skills/dlthub-router/SKILL.md` |
 | Cursor | `.cursor/rules/init-dlthub-workspace.mdc` | `.cursor/skills/dlthub-router/SKILL.md` |
-| Codex, Copilot and Gemini | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
+| Codex | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
 
 Follow the router to pick and install the toolkit, with these changes:
 - Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit> --agent <agent>`.
@@ -158,10 +138,8 @@ Tell the user the step for their coding assistant:
 | Coding assistant | Tell the user |
 |---|---|
 | Claude Code | "Run `/reload-skills` to use the new skills now. Restart the session later to load the rules and the MCP server." |
-| Copilot CLI | "Trust this folder if Copilot asks. Run `/skills reload` and `/mcp reload`. Start a new session later to load `AGENTS.md`." |
 | Codex | "Restart the session to load the rules and the MCP server." |
 | Cursor | "Restart the session to load the new skills, rules and MCP server." |
-| Gemini CLI | "Trust this folder, then restart the session. Gemini loads project skills only in a trusted folder." |
 
 ## Step 6: Continue the task
 
