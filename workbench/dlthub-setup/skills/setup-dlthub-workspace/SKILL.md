@@ -8,10 +8,6 @@ description: "Use this skill for setting up a new dltHub workspace in the curren
 Set up dlthub in the current project. Then hand over to `dlthub-router` from the `init` toolkit, which installs the toolkit that the user needs.
 Use the `dlthub` CLI for every install, so that each toolkit has only one copy.
 
-Docs:
-- `dlthub-init`: https://pypi.org/project/dlthub-init/
-- uv install: https://docs.astral.sh/uv/getting-started/installation/
-
 ## Step 1: Check what is installed
 
 Run these checks in order. Do not install anything yet.
@@ -29,13 +25,6 @@ Run these checks in order. Do not install anything yet.
    - `--no-sync` does not install packages and does not write `uv.lock`. It can create an empty `.venv/`. This is expected.
 5. If `dlt[hub]` is installed, run `uv run --no-sync dlthub ai status`. If it shows `dlthub ai init not yet run`, `init` is missing.
    - A project from `uvx dlthub-init@latest` has some `init` skills in `.agents/skills/`, but no rules. That is not enough.
-6. Find the `--agent` value for the coding assistant that runs this skill. If you are not sure, ask the user.
-
-| Coding assistant | `--agent` | Notes |
-|---|---|---|
-| Claude Code | `claude` | |
-| Cursor | `cursor` | |
-| Codex | `codex` | |
 
 ## Step 2: Show the plan
 
@@ -53,7 +42,7 @@ Actions:
   1. Install uv                                          (if missing)
   2. uvx dlthub-init@latest                              (if dlt[hub] is missing)
      + uv add "dlt[hub]" "fastmcp>=3.1.0"                (if pyproject.toml exists)
-  3. dlthub ai init --agent <agent> --overwrite          (if init is missing)
+  3. dlthub ai init --overwrite                          (if init is missing)
   4. dlthub-router picks and installs the toolkit        (if the user has a task)
 ```
 
@@ -97,7 +86,7 @@ Then run `uv run dlthub --version`.
 **3. Install init:**
 
 ```
-uv run dlthub --non-interactive ai init --agent <agent> --overwrite
+uv run dlthub --non-interactive ai init --overwrite
 ```
 
 - It installs the rules, the skills and the MCP config of the `init` toolkit. This includes `dlthub-router` and the toolkit index.
@@ -124,7 +113,7 @@ The router and the init rules are on disk now, but not in your context until the
 | Codex | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
 
 Follow the router to pick and install the toolkit, with these changes:
-- Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit> --agent <agent>`.
+- Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit>`.
 - Until the reload, use the `uv run dlthub ai` CLI instead of the `dlt-workspace-mcp` tools.
 - Stop before the router hands over to the entry skill. Do Step 5 first.
 
