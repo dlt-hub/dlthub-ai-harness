@@ -1,0 +1,276 @@
+[
+  {
+    "query": "set up dlthub in this folder please",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "I want to load our Stripe charges and customers into DuckDB so I can play with them locally. can you get me started with dlt?",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false,
+        "expect": "find-source"
+      }
+    }
+  },
+  {
+    "query": "We're evaluating dltHub at work. Can you create a new dltHub workspace here so I can try building a pipeline from our Postgres replica?",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "init a dlthub workspace",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "i installed the dlthub plugin from the marketplace, what now? I'd like to pull github issues into a database",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false,
+        "expect": "find-source"
+      }
+    }
+  },
+  {
+    "query": "build me a REST API pipeline with dlt that pulls orders from the Shopify admin API into duckdb",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false,
+        "expect": "find-source"
+      }
+    }
+  },
+  {
+    "query": "Need to ingest a bunch of CSVs from s3://acme-raw/exports/ into Snowflake using dlt. nothing is set up yet in this repo",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "can you install dlt and get this project ready for building data pipelines with the dltHub AI tools?",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "what can I build with dlthub? set it up for me and let's start with a hubspot -> bigquery pipeline",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false,
+        "expect": "find-source"
+      }
+    }
+  },
+  {
+    "query": "copy tables from my local mysql db (localhost:3306, db 'shop') to a duckdb file with dlt",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "what's the difference between dlt and Airbyte? we're choosing an ingestion tool and I want a quick comparison",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how incremental loading works in dlt, I'm reading the docs and the cursor_path thing confuses me",
+    "should_trigger": false
+  },
+  {
+    "query": "write a python script that calls the Stripe API with requests and saves all charges to a json file, no libraries beyond requests please",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a new uv project here with pytest and ruff configured",
+    "should_trigger": false
+  },
+  {
+    "query": "my dbt models in models/staging fail with 'relation does not exist' after I renamed a source, can you help?",
+    "should_trigger": false
+  },
+  {
+    "query": "write an Airflow DAG that runs my existing ingestion script ingest.py every night at 2am",
+    "should_trigger": false
+  },
+  {
+    "query": "start a postgres container with docker compose for local dev, user app / password app",
+    "should_trigger": false
+  },
+  {
+    "query": "how do I install the duckdb CLI on my mac?",
+    "should_trigger": false
+  },
+  {
+    "query": "convert this pandas code to polars: df.groupby('user_id')['amount'].sum().reset_index()",
+    "should_trigger": false
+  },
+  {
+    "query": "what does the dlt package on pypi do? is it related to delta lake?",
+    "should_trigger": false
+  },
+  {
+    "query": "rewrite scripts/ingest_orders.py as a dlt pipeline so the shopify orders load incrementally instead of the full dump every night",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false,
+        "expect": "find-source"
+      }
+    }
+  },
+  {
+    "query": "I'd like to replace both scripts in this repo with dlt and load shopify orders straight into snowflake. can we set that up?",
+    "should_trigger": true,
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false,
+        "expect": "find-source"
+      }
+    }
+  },
+  {
+    "query": "use duckdb to get monthly revenue from data/orders.csv, group by currency",
+    "should_trigger": false
+  },
+  {
+    "query": "push_to_snowflake.py fails with '250001: Could not connect to Snowflake backend' since yesterday, what's wrong?",
+    "should_trigger": false
+  },
+  {
+    "query": "add a dbt staging model on top of RAW.SHOPIFY.ORDERS with cleaned column names and a not_null test on id",
+    "should_trigger": false
+  },
+  {
+    "query": "make ingest_orders.py only fetch orders newer than the last run using created_at_min, keep it plain requests",
+    "should_trigger": false
+  },
+  {
+    "query": "I'm completely new to dlthub. can you onboard me and show me how it works?",
+    "should_trigger": false,
+    "tag": "onboarding"
+  },
+  {
+    "query": "teach me dlthub step by step, I want to learn the basics before I touch our real data",
+    "should_trigger": false,
+    "tag": "onboarding"
+  },
+  {
+    "query": "is there a tutorial or guided tour for dltHub? I learn best by doing",
+    "should_trigger": false,
+    "tag": "onboarding"
+  },
+  {
+    "query": "onboard me to dlthub please",
+    "should_trigger": false,
+    "tag": "onboarding"
+  },
+  {
+    "query": "I want to learn how dlt pipelines work, can you give me a hands-on intro with some sample data?",
+    "should_trigger": false,
+    "tag": "onboarding"
+  },
+  {
+    "query": "my manager asked me to get familiar with dltHub this week. where should I start learning?",
+    "should_trigger": false,
+    "tag": "onboarding"
+  },
+  {
+    "query": "I'm new to dlthub but I already know what I need: set it up here and help me load our Zendesk tickets into postgres",
+    "should_trigger": true,
+    "tag": "onboarding-boundary",
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  },
+  {
+    "query": "never used dlt before. please install whatever is needed in this repo so I can start a pipeline from our Jira cloud",
+    "should_trigger": true,
+    "tag": "onboarding-boundary",
+    "by_workspace": {
+      "with-init": {
+        "should_trigger": false,
+        "expect": "dlthub-router"
+      },
+      "with-rest-api": {
+        "should_trigger": false
+      }
+    }
+  }
+]

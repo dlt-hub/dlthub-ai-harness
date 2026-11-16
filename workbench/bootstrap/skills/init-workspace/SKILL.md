@@ -1,6 +1,6 @@
 ---
 name: init-workspace
-description: "Set up dlthub in this project and install the toolkit for the user's task. Use when the dltHub workspace rules of the `init` toolkit are not in your context and not on disk (dlthub is not set up, or `dlthub ai init` has not run) and the user wants to build anything with dlt or dlthub: 'set up dlthub', 'init workspace', 'load data from Stripe', 'build a REST API pipeline', 'ingest from Postgres', 'load CSVs from S3', 'transform my data', 'deploy a pipeline', 'what can I build with dlthub'. Installs uv, dlt[hub] and the init toolkit with the dlthub CLI, then hands over to `dlthub-router` to install the matching workflow toolkit. Works in Claude Code, Cursor, Codex, Copilot and Gemini. Do NOT use when the dltHub workspace rules are in your context, or on disk in `.claude/rules/init-dlthub-workspace.md` or `AGENTS.md`: dlthub is set up, use `dlthub-router` or the entry skill of the toolkit. Do NOT use when the user asks to be onboarded or to learn dlthub: point them to `uvx dlthub-start@latest`."
+description: "Use this skill for setting up a new dltHub workspace in the current project, so the user can build data pipelines with dltHub, for example 'set up dlthub' or 'load data from Stripe into DuckDB' in a project without dltHub. This skill can install dlt and dltHub, create the workspace, and add the dltHub AI harness tools for the user's task, for example loading data from a REST API or a database. Do NOT use when the dltHub workspace is already set up."
 ---
 
 # Set up dlthub and install a toolkit

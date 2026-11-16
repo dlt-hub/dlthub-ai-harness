@@ -1,0 +1,5 @@
+[project]
+name = "acme-analytics"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["pandas>=2.2", "requests>=2.32", "duckdb>=1.1", "snowflake-connector-python>=3.12"]
