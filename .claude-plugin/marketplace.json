@@ -40,7 +40,7 @@
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
       "description": "Prepare and deploy your dlthub workspace and pipelines to the dltHub platform, and debug failed deployments. Requires dlt[hub].",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "deploy", "platform"]
@@ -121,7 +121,7 @@
       "name": "performance",
       "source": "./workbench/performance",
       "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
