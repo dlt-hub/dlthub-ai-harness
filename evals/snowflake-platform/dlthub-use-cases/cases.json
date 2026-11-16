@@ -1,0 +1,288 @@
+{
+  "skill_dir": "workbench/snowflake-platform/skills/dlthub-use-cases",
+  "reference": "SKILL.md",
+  "jev": {
+    "model": "typesafe/jev-1.13",
+    "thresholds": {
+      "use_cases": 0.7,
+      "asks": 0.49,
+      "limits": 0.57,
+      "recommends": 0.77,
+      "why": 0.69,
+      "other_tool": 0.5
+    },
+    "pass_levels": {
+      "use_cases": 1,
+      "asks": 2,
+      "limits": 2,
+      "recommends": 2,
+      "why": 2
+    }
+  },
+  "workspaces": {
+    "empty": {},
+    "code-first": {
+      ".github/workflows/ci.yml": "name: ci\non: [pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: dbt build\n",
+      "dbt_project.yml": "name: analytics\nprofile: snowflake\nmodel-paths: [models]\n",
+      "models/staging/stg_orders.sql": "select * from {{ source('app', 'orders') }}\n"
+    },
+    "pipelines": {
+      ".github/workflows/ci.yml": "name: ci\non: [pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: uv run pytest\n",
+      "pipelines/hubspot_pipeline.py": "import dlt\n\npipeline = dlt.pipeline('hubspot', destination='snowflake', dataset_name='hubspot')\n"
+    }
+  },
+  "cases": [
+    {
+      "id": "regulated-veeva-gxp",
+      "prompt": "We need Veeva Vault in Snowflake for a GxP-validated environment",
+      "use_cases": [
+        "regulated-pipelines"
+      ]
+    },
+    {
+      "id": "regulated-lims-connector",
+      "prompt": "Set up a connector for our LIMS data, it feeds GxP-validated reports",
+      "use_cases": [
+        "regulated-pipelines"
+      ]
+    },
+    {
+      "id": "regulated-clinical-subtle",
+      "prompt": "Get our clinical trial data from Veeva Vault into Snowflake",
+      "use_cases": [],
+      "asks": [
+        "whether the data feeds validated or regulated reports"
+      ]
+    },
+    {
+      "id": "deletes-oracle-gxp",
+      "prompt": "Replicate our Oracle LIMS into Snowflake, it feeds GxP-validated reports",
+      "use_cases": [
+        "regulated-pipelines"
+      ],
+      "asks": [
+        "how the source deletes records"
+      ],
+      "limits": [
+        "Oracle loads by cursor column on a schedule: each run queries the tables for the rows changed since the last run"
+      ],
+      "says": [
+        "dltHub loads Oracle by cursor column"
+      ]
+    },
+    {
+      "id": "deletes-oracle-soft-delete",
+      "prompt": [
+        "Replicate our Oracle LIMS into Snowflake, it feeds GxP-validated reports",
+        "Deleted records keep a status flag"
+      ],
+      "use_cases": [],
+      "says": [
+        "dltHub loads the table with the status flag like any other table, and a delete arrives as a changed row"
+      ]
+    },
+    {
+      "id": "deletes-oracle-subtle",
+      "prompt": "Sync our Oracle tables into Snowflake and keep them current",
+      "use_cases": [],
+      "asks": [
+        "how the source deletes records"
+      ],
+      "says": [
+        "dltHub loads Oracle by cursor column on a schedule"
+      ],
+      "limits": [
+        "Oracle loads by cursor column on a schedule: each run queries the tables for the rows changed since the last run"
+      ]
+    },
+    {
+      "id": "code-first-hubspot-pr",
+      "prompt": "Ingest HubSpot; we review all pipeline changes in pull requests",
+      "use_cases": [
+        "code-first-teams"
+      ]
+    },
+    {
+      "id": "code-first-postgres-git",
+      "prompt": "Load five Postgres tables every night, we keep our pipelines in git",
+      "use_cases": [
+        "code-first-teams"
+      ]
+    },
+    {
+      "id": "code-first-postgres-repo",
+      "prompt": "Load five Postgres tables every night",
+      "use_cases": [
+        "code-first-teams"
+      ],
+      "workspace": "code-first"
+    },
+    {
+      "id": "sources-internal-api",
+      "prompt": "Pull data from our internal billing API",
+      "use_cases": [
+        "sources-and-customization"
+      ],
+      "limits": [
+        "A production-grade custom source for the API is easy to build with dltHub, and the agent writes it on the `rest_api` source"
+      ]
+    },
+    {
+      "id": "sources-inhouse-service",
+      "prompt": "Our order management system is built in-house and has a REST API. Get its orders into Snowflake",
+      "use_cases": [
+        "sources-and-customization"
+      ],
+      "limits": [
+        "A production-grade custom source for the API is easy to build with dltHub, and the agent writes it on the `rest_api` source"
+      ]
+    },
+    {
+      "id": "sources-netsuite",
+      "prompt": "Set up a connector for NetSuite",
+      "use_cases": [
+        "sources-and-customization"
+      ]
+    },
+    {
+      "id": "sources-hubspot-hash",
+      "prompt": "Ingest HubSpot contacts and hash the email addresses before they reach Snowflake",
+      "use_cases": [
+        "sources-and-customization"
+      ]
+    },
+    {
+      "id": "sources-stripe-plain",
+      "prompt": "Get our Stripe data into Snowflake",
+      "use_cases": [
+        "sources-and-customization"
+      ]
+    },
+    {
+      "id": "sources-tickets-subtle",
+      "prompt": "Our support tickets should end up in Snowflake",
+      "use_cases": [],
+      "asks": [
+        "which system holds the support tickets"
+      ]
+    },
+    {
+      "id": "databases-postgres-continuous",
+      "prompt": "Replicate our production Postgres into Snowflake continuously; we review pipeline changes in pull requests",
+      "use_cases": [
+        "code-first-teams"
+      ],
+      "says": [
+        "PostgreSQL loads through logical replication"
+      ]
+    },
+    {
+      "id": "databases-postgres-fresh",
+      "prompt": "I need our Postgres data in Snowflake as fresh as possible",
+      "use_cases": [],
+      "says": [
+        "PostgreSQL loads through logical replication"
+      ]
+    },
+    {
+      "id": "files-s3-csv",
+      "prompt": "Load the CSV files from our S3 bucket",
+      "use_cases": [
+        "files-in-cloud-storage"
+      ]
+    },
+    {
+      "id": "files-sharepoint-spreadsheets",
+      "prompt": "Load the budget spreadsheets from our SharePoint library into tables",
+      "use_cases": [
+        "files-in-cloud-storage"
+      ]
+    },
+    {
+      "id": "files-bucket-subtle",
+      "prompt": "Finance drops files in a bucket every morning, I need them queryable",
+      "use_cases": [
+        "files-in-cloud-storage"
+      ]
+    },
+    {
+      "id": "documents-sharepoint-cortex",
+      "prompt": "Make our SharePoint documents searchable in Cortex",
+      "use_cases": [
+        "documents-for-cortex-search"
+      ],
+      "limits": [
+        "The coding agent writes the document preparation for Cortex Search as pipeline code"
+      ],
+      "workspace": "pipelines"
+    },
+    {
+      "id": "documents-pdfs-subtle",
+      "prompt": "Our policy PDFs live in SharePoint and nobody can find anything",
+      "use_cases": [
+        "documents-for-cortex-search"
+      ],
+      "limits": [
+        "The coding agent writes the document preparation for Cortex Search as pipeline code"
+      ]
+    },
+    {
+      "id": "streaming-kafka-real-time",
+      "prompt": "Load our Kafka clickstream into Snowflake for my real-time dashboards. We keep our pipelines in git",
+      "use_cases": [
+        "streaming-sources",
+        "code-first-teams"
+      ],
+      "limits": [
+        "Latency is minutes"
+      ]
+    },
+    {
+      "id": "streaming-kafka-events",
+      "prompt": "Get our Kafka events into Snowflake",
+      "use_cases": [
+        "streaming-sources"
+      ]
+    },
+    {
+      "id": "miss-copy-into",
+      "prompt": "Write a COPY INTO statement that loads the CSV files from @raw_stage into the ORDERS table",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-snowpipe",
+      "prompt": "Set up Snowpipe with auto-ingest for the JSON files landing in our S3 bucket",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-snowpipe-streaming",
+      "prompt": "Set up Snowpipe Streaming for our Kafka topic",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-files-in-stage",
+      "prompt": "The Parquet files are already in my internal stage, load them into a table",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-dlthub-pipeline-running",
+      "prompt": "My dltHub pipeline for HubSpot fails with a schema contract error, fix it",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-unload",
+      "prompt": "Export the ORDERS table from Snowflake to S3 as Parquet",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-dynamic-table",
+      "prompt": "Create a dynamic table that aggregates ORDERS by day",
+      "should_trigger": false
+    },
+    {
+      "id": "miss-task-failed",
+      "prompt": "Why did my Snowflake task fail last night?",
+      "should_trigger": false
+    }
+  ]
+}
