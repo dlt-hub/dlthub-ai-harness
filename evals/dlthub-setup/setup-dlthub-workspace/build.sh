@@ -3,18 +3,18 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/../../.." && pwd)"
-skill="$root/workbench/bootstrap/skills/init-workspace"
+skill="$root/workbench/dlthub-setup/skills/setup-dlthub-workspace"
 out="$root/evals/.evals"
-rm -rf "$out/bootstrap--init-workspace--bare" "$out/bootstrap--init-workspace--data-project"
-mkdir -p "$out/bootstrap--init-workspace--bare/.claude/skills"
-cp -R "$skill" "$out/bootstrap--init-workspace--bare/.claude/skills/"
-cp -R "$here/fixtures/data-project" "$out/bootstrap--init-workspace--data-project"
-cp -R "$skill" "$out/bootstrap--init-workspace--data-project/.claude/skills/"
+rm -rf "$out/dlthub-setup--setup-dlthub-workspace--bare" "$out/dlthub-setup--setup-dlthub-workspace--data-project"
+mkdir -p "$out/dlthub-setup--setup-dlthub-workspace--bare/.claude/skills"
+cp -R "$skill" "$out/dlthub-setup--setup-dlthub-workspace--bare/.claude/skills/"
+cp -R "$here/fixtures/data-project" "$out/dlthub-setup--setup-dlthub-workspace--data-project"
+cp -R "$skill" "$out/dlthub-setup--setup-dlthub-workspace--data-project/.claude/skills/"
 echo "built bare and data-project in $out"
 
-# Workspaces where dltHub is already set up, plus the bootstrap skill from the marketplace.
+# Workspaces where dltHub is already set up, plus the dlthub-setup skill from the marketplace.
 for spec in "with-init:" "with-rest-api:rest-api-pipeline"; do
-  ws="$out/bootstrap--init-workspace--${spec%%:*}"
+  ws="$out/dlthub-setup--setup-dlthub-workspace--${spec%%:*}"
   (cd "$root" && uv run python -c "
 import sys; sys.path.insert(0, 'tools')
 from pathlib import Path

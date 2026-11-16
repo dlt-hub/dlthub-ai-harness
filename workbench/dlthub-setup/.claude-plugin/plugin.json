@@ -1,5 +1,5 @@
 {
-  "name": "bootstrap",
+  "name": "dlthub-setup",
   "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
   "version": "0.2.0",
   "author": {

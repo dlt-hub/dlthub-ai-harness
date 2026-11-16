@@ -2,7 +2,7 @@
   ".eval-workspaces": {
     "bare": {
       "toolkits": [],
-      "note": "Empty folder with only the bootstrap skill. Build with build.sh."
+      "note": "Empty folder with only the dlthub-setup skill. Build with build.sh."
     },
     "data-project": {
       "toolkits": [],
@@ -10,13 +10,13 @@
     },
     "with-init": {
       "toolkits": [],
-      "note": "dlthub ai init plus the bootstrap skill; dlthub is set up. Build with build.sh."
+      "note": "dlthub ai init plus the dlthub-setup skill; dlthub is set up. Build with build.sh."
     },
     "with-rest-api": {
       "toolkits": [
         "rest-api-pipeline"
       ],
-      "note": "init, rest-api-pipeline and the bootstrap skill. Build with build.sh."
+      "note": "init, rest-api-pipeline and the dlthub-setup skill. Build with build.sh."
     }
   }
 }

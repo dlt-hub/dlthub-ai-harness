@@ -1,5 +1,5 @@
 ---
-name: init-workspace
+name: setup-dlthub-workspace
 description: "Use this skill for setting up a new dltHub workspace in the current project, so the user can build data pipelines with dltHub, for example 'set up dlthub' or 'load data from Stripe into DuckDB' in a project without dltHub. This skill can install dlt and dltHub, create the workspace, and add the dltHub AI harness tools for the user's task, for example loading data from a REST API or a database. Do NOT use when the dltHub workspace is already set up."
 ---
 

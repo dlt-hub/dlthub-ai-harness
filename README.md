@@ -65,7 +65,7 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
 | `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `bootstrap` | Setup | `init-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor, Codex, Copilot and Gemini | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
+| `dlthub-setup` | Setup | `setup-dlthub-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor, Codex, Copilot and Gemini | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/setup-dlthub-workspace` |
 | `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -147,7 +147,7 @@ uvx dlthub-start@latest
 
 ### Browse and install toolkits
 
-> **If `dlthub` is not installed**, do [New project](#new-project-recommended) or [Existing project](#existing-project) first. In a coding assistant, the `bootstrap` plugin's `/init-workspace` skill also works. The toolkit commands below need `dlthub` in your environment.
+> **If `dlthub` is not installed**, do [New project](#new-project-recommended) or [Existing project](#existing-project) first. In a coding assistant, the `dlthub-setup` plugin's `/setup-dlthub-workspace` skill also works. The toolkit commands below need `dlthub` in your environment.
 
 
 ```bash
@@ -182,16 +182,16 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 > **Early Access:** To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub).
 
-Install only the `bootstrap` plugin from the marketplace. Start a Claude Code session and run:
+Install only the `dlthub-setup` plugin from the marketplace. Start a Claude Code session and run:
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-harness
-/plugin install bootstrap@dlthub-ai-harness --scope project
+/plugin install dlthub-setup@dlthub-ai-harness --scope project
 ```
 
-Then say what you want to build, for example *"load data from the Stripe API"*. The `init-workspace` skill installs `uv` and `dlt[hub]`, then installs `init` and the toolkit for your task with the `dlthub` CLI. Every toolkit then comes from one channel, so you do not get two copies.
+Then say what you want to build, for example *"load data from the Stripe API"*. The `setup-dlthub-workspace` skill installs `uv` and `dlt[hub]`, then installs `init` and the toolkit for your task with the `dlthub` CLI. Every toolkit then comes from one channel, so you do not get two copies.
 
-**Toolkit plugins (deprecated).** The marketplace still lists each toolkit as a plugin, so current users keep getting updates. Do not install them together with `bootstrap`: the `dlthub` CLI does not see plugins and installs a second copy.
+**Toolkit plugins (deprecated).** The marketplace still lists each toolkit as a plugin, so current users keep getting updates. Do not install them together with `dlthub-setup`: the `dlthub` CLI does not see plugins and installs a second copy.
 
 ```
 /plugin install init@dlthub-ai-harness --scope project

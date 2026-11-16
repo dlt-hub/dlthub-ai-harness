@@ -28,12 +28,12 @@ workbench/
       rule-name.md
     mcp.json
     .claudeignore
-  bootstrap/                # launcher: the marketplace entry point
+  dlthub-setup/             # launcher: the marketplace entry point
     .claude-plugin/
       plugin.json
       toolkit.json          # {"listed": false}, no dependencies
     skills/
-      init-workspace/
+      setup-dlthub-workspace/
         SKILL.md
 ```
 

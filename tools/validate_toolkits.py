@@ -39,8 +39,8 @@ _INDEX_FILES = (
     "workbench/init/rules/dlthub-workspace.md",
     "workbench/init/AGENTS.md",
 )
-# `init` is the base and `bootstrap` is the launcher, so neither is in the index
-_NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# `init` is the base and `dlthub-setup` is the launcher, so neither is in the index
+_NON_WORKFLOW_TOOLKITS = {"init", "dlthub-setup"}
 # an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 
