@@ -12,19 +12,12 @@ Use the `dlthub` CLI for every install, so that each toolkit has only one copy.
 
 Run these checks in order. Do not install anything yet.
 
-1. Check if the dltHub workspace rules of the `init` toolkit are installed. Check your context and the files on disk:
-   - The rules are in your context (project rules or `AGENTS.md`).
-   - Claude Code: `.claude/rules/init-dlthub-workspace.md` exists.
-   - Cursor: `.cursor/rules/init-dlthub-workspace.mdc` exists.
-   - Codex: `AGENTS.md` contains `init-dlthub-workspace`.
-   - If one of these is true, `init` is installed. Stop this skill. Use `dlthub-router` or the entry skill of the matching toolkit.
-   - The files are on disk but not in your context after `/reload-skills` and before the restart. They still count.
-2. Run `uv --version`. If it fails, `uv` is missing.
-3. Run `test -f pyproject.toml`. Note if `pyproject.toml` exists. Step 3 uses this result.
-4. Run `uv run --no-sync dlthub --version`. If it fails, `dlt[hub]` is missing.
-   - `--no-sync` does not install packages and does not write `uv.lock`. It can create an empty `.venv/`. This is expected.
-5. If `dlt[hub]` is installed, run `uv run --no-sync dlthub ai status`. If it shows `dlthub ai init not yet run`, `init` is missing.
-   - A project from `uvx dlthub-init@latest` has some `init` skills in `.agents/skills/`, but no rules. That is not enough.
+1. Run `uv --version`. If it fails, `uv` is missing.
+2. Run `test -f pyproject.toml`. Note if `pyproject.toml` exists. Step 3 uses this result.
+3. Run `uv run --no-sync dlthub ai status`.
+   - If the command fails, `dlt[hub]` is missing.
+   - If it shows `dlthub ai init not yet run`, `init` is missing.
+   - If neither is true, dlthub is set up. Stop this skill and use `dlthub-router`.
 
 ## Step 2: Show the plan
 
