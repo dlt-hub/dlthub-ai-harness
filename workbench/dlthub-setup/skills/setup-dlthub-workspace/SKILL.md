@@ -9,7 +9,6 @@ Set up dlthub in the current project. Then hand over to `dlthub-router` from the
 Use the `dlthub` CLI for every install, so that each toolkit has only one copy.
 
 Docs:
-- dltHub AI workflow: https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow
 - `dlthub-init`: https://pypi.org/project/dlthub-init/
 - uv install: https://docs.astral.sh/uv/getting-started/installation/
 
