@@ -25,7 +25,9 @@ def get_toolkit_names() -> list[str]:
 def isolated_env(home: Path) -> dict[str, str]:
     """Return an env whose HOME is a temp folder, so no install writes user config."""
     uv_cache = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True).stdout.strip()
-    return {**os.environ, "HOME": str(home), "UV_CACHE_DIR": uv_cache}
+    # The cortex agent reads SNOWFLAKE_HOME before HOME.
+    env = {k: v for k, v in os.environ.items() if k != "SNOWFLAKE_HOME"}
+    return {**env, "HOME": str(home), "UV_CACHE_DIR": uv_cache}
 
 
 def run_dlt(args: list[str], cwd: Path, env: dict[str, str]) -> tuple[bool, str]:
