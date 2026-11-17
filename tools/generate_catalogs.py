@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Generate the launcher catalogs for Cursor, Codex and CoCo.
 
-The launcher (dlthub-setup) installs the other toolkits with the dlthub CLI
-(dlt-hub/dlthub-ai-harness-internal#128). Add --check to fail on stale files.
+The launcher (dlthub-setup) installs the other toolkits with the dlthub CLI.
 CoCo installs a repo root and reads skills/ there, so we copy them.
-Format docs: cursor.com, developers.openai.com/codex, snowflake.
+Add --check to fail on stale files.
 """
 
 import argparse
@@ -34,13 +33,6 @@ _META = (
     "license",
     "keywords",
 )
-
-
-def dumps(data: dict) -> str:
-    """Serialize JSON the way the committed files are formatted."""
-    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-
-
 # Claude directory listing fields and their Codex interface names.
 _LISTING_URLS = {
     "documentationUrl": "websiteURL",
@@ -50,35 +42,35 @@ _LISTING_URLS = {
 }
 
 
-def _listing_urls(plugin: dict) -> dict[str, str]:
-    """Return the Codex listing URLs that the Claude plugin.json sets."""
-    return {codex: plugin[claude] for claude, codex in _LISTING_URLS.items() if claude in plugin}
+def dumps(data: dict) -> str:
+    """Serialize JSON the way the committed files are formatted."""
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
-def _icons(plugin: dict) -> dict[str, str]:
-    """Return the two Codex icons, both set to the Claude listing icon."""
-    return {"logo": plugin["icon"], "composerIcon": plugin["icon"]} if "icon" in plugin else {}
+def meta_of(plugin: dict) -> dict:
+    """Return the _META fields that the Claude plugin.json sets."""
+    return {k: plugin[k] for k in _META if k in plugin}
 
 
 def launcher_manifests(plugin: dict) -> dict[str, dict]:
     """Return the Cursor and Codex manifests keyed by path in the launcher folder."""
-    meta = {k: plugin[k] for k in _META if k in plugin}
     codex = {
-        **meta,
+        **meta_of(plugin),
         "skills": "./skills/",
         "interface": {
-            "displayName": plugin.get("displayName", plugin["name"]),
+            "displayName": plugin["displayName"],
             # The Codex directory caps this at 30 characters.
             "shortDescription": "dltHub toolkit launcher",
             "longDescription": plugin["description"],
-            "developerName": plugin.get("author", {}).get("name", ""),
+            "developerName": plugin["author"]["name"],
             "category": "Data",
             "capabilities": [],
-            **_listing_urls(plugin),
-            **_icons(plugin),
+            **{codex: plugin[claude] for claude, codex in _LISTING_URLS.items()},
+            "logo": plugin["icon"],
+            "composerIcon": plugin["icon"],
         },
     }
-    return {".cursor-plugin/plugin.json": meta, ".codex-plugin/plugin.json": codex}
+    return {".cursor-plugin/plugin.json": meta_of(plugin), ".codex-plugin/plugin.json": codex}
 
 
 def generate(root: Path) -> dict[str, str]:
@@ -101,7 +93,7 @@ def generate(root: Path) -> dict[str, str]:
                         "installation": "AVAILABLE",
                         "authentication": "ON_INSTALL",
                     },
-                    "category": entry.get("category", "data").capitalize(),
+                    "category": entry["category"].capitalize(),
                 }
             ],
         }),
@@ -111,9 +103,7 @@ def generate(root: Path) -> dict[str, str]:
     for name, data in launcher_manifests(plugin).items():
         out[f"{rel}/{name}"] = dumps(data)
     # CoCo reads .cortex-plugin first; root .claude-plugin is only a catalog.
-    meta = {k: plugin[k] for k in _META if k in plugin}
-    cortex = {**meta, "skills": f"./{ROOT_SKILLS}/"}
-    out[".cortex-plugin/plugin.json"] = dumps(cortex)
+    out[".cortex-plugin/plugin.json"] = dumps({**meta_of(plugin), "skills": f"./{ROOT_SKILLS}/"})
     skills_dir = root / rel / "skills"
     for path in tracked_files(root, skills_dir):
         out[f"{ROOT_SKILLS}/{path.relative_to(skills_dir)}"] = path.read_text()
@@ -132,11 +122,10 @@ def tracked_files(root: Path, folder: Path) -> list[Path]:
     return sorted(root / rel for rel in listed.split("\0") if rel)
 
 
-def stale_copies(out_dir: Path, files: dict[str, str]) -> list[str]:
+def stale_copies(root: Path, files: dict[str, str]) -> list[str]:
     """Return files in the root skills folder that the generator no longer makes."""
-    skills_dir = out_dir / ROOT_SKILLS
-    found = (p for p in skills_dir.rglob("*") if p.is_file())
-    return sorted(rel for p in found if (rel := str(p.relative_to(out_dir))) not in files)
+    found = (p for p in (root / ROOT_SKILLS).rglob("*") if p.is_file())
+    return sorted(rel for p in found if (rel := str(p.relative_to(root))) not in files)
 
 
 def report(changed: list[str], stale: list[str]) -> int:
@@ -156,25 +145,24 @@ def main() -> None:
     """Write the generated files, or with --check report the stale ones."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true", help="exit 1 if a file is stale")
-    ap.add_argument("--out", type=Path, default=ROOT, help="write under this folder")
     args = ap.parse_args()
 
     files = generate(ROOT)
     changed = [
         rel
         for rel, text in files.items()
-        if not (args.out / rel).exists() or (args.out / rel).read_text() != text
+        if not (ROOT / rel).exists() or (ROOT / rel).read_text() != text
     ]
-    stale = stale_copies(args.out, files)
+    stale = stale_copies(ROOT, files)
     if args.check:
         sys.exit(report(changed, stale))
     for rel in changed:
-        path = args.out / rel
+        path = ROOT / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(files[rel])
         print(f"  wrote {rel}")
     for rel in stale:
-        (args.out / rel).unlink()
+        (ROOT / rel).unlink()
         print(f"  removed {rel}")
     print(f"{len(files)} files, {len(changed)} changed, {len(stale)} removed.")
 
