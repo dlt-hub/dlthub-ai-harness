@@ -5,9 +5,13 @@
   "author": {
     "name": "ScaleVector GmbH"
   },
-  "homepage": "https://dlthub.com/docs",
+  "homepage": "https://dlthub.com/docs/hub/ai-harness/introduction",
   "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
   "license": "Apache-2.0",
   "keywords": ["dlthub", "workspace", "prepare"],
-  "icon": "./assets/icon.jpeg"
+  "icon": "./assets/icon.jpeg",
+  "documentationUrl": "https://dlthub.com/docs/hub/ai-harness/introduction",
+  "supportUrl": "https://dlthub.com/contact",
+  "privacyPolicyUrl": "https://dlthub.com/privacy-policy",
+  "termsOfServiceUrl": "https://dlthub.com/terms"
 }

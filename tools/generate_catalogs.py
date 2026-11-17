@@ -40,6 +40,20 @@ def dumps(data: dict) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
+# Claude directory listing fields and their Codex interface names.
+_LISTING_URLS = {
+    "documentationUrl": "websiteURL",
+    "supportUrl": "supportURL",
+    "privacyPolicyUrl": "privacyPolicyURL",
+    "termsOfServiceUrl": "termsOfServiceURL",
+}
+
+
+def _listing_urls(plugin: dict) -> dict[str, str]:
+    """Return the Codex listing URLs that the Claude plugin.json sets."""
+    return {codex: plugin[claude] for claude, codex in _LISTING_URLS.items() if claude in plugin}
+
+
 def launcher_manifests(plugin: dict) -> dict[str, dict]:
     """Return the Cursor and Codex manifests keyed by path in the launcher folder."""
     meta = {k: plugin[k] for k in _META if k in plugin}
@@ -54,6 +68,7 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
             "developerName": plugin.get("author", {}).get("name", ""),
             "category": "Data",
             "capabilities": [],
+            **_listing_urls(plugin),
         },
     }
     return {".cursor-plugin/plugin.json": meta, ".codex-plugin/plugin.json": codex}
