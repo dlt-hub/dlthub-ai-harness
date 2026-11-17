@@ -10,6 +10,7 @@ Format docs: cursor.com, developers.openai.com/codex, snowflake.
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,7 +21,7 @@ ROOT_SKILLS = "skills"
 _EDIT_HINT = (
     "Do not edit generated files by hand. Edit .claude-plugin/marketplace.json, "
     f"workbench/{LAUNCHER}/.claude-plugin/plugin.json or workbench/{LAUNCHER}/skills/, "
-    "then run: uv run python tools/generate_catalogs.py"
+    "git add new skill files, then run: uv run python tools/generate_catalogs.py"
 )
 # Fields copied from the Claude plugin.json into every host manifest.
 _META = (
@@ -114,9 +115,21 @@ def generate(root: Path) -> dict[str, str]:
     cortex = {**meta, "skills": f"./{ROOT_SKILLS}/"}
     out[".cortex-plugin/plugin.json"] = dumps(cortex)
     skills_dir = root / rel / "skills"
-    for path in sorted(p for p in skills_dir.rglob("*") if p.is_file()):
+    for path in tracked_files(root, skills_dir):
         out[f"{ROOT_SKILLS}/{path.relative_to(skills_dir)}"] = path.read_text()
     return out
+
+
+def tracked_files(root: Path, folder: Path) -> list[Path]:
+    """Return the files under folder that git tracks, so local junk is not copied."""
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", str(folder.relative_to(root))],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return sorted(root / rel for rel in listed.split("\0") if rel)
 
 
 def stale_copies(out_dir: Path, files: dict[str, str]) -> list[str]:
