@@ -54,6 +54,11 @@ def _listing_urls(plugin: dict) -> dict[str, str]:
     return {codex: plugin[claude] for claude, codex in _LISTING_URLS.items() if claude in plugin}
 
 
+def _icons(plugin: dict) -> dict[str, str]:
+    """Return the two Codex icons, both set to the Claude listing icon."""
+    return {"logo": plugin["icon"], "composerIcon": plugin["icon"]} if "icon" in plugin else {}
+
+
 def launcher_manifests(plugin: dict) -> dict[str, dict]:
     """Return the Cursor and Codex manifests keyed by path in the launcher folder."""
     meta = {k: plugin[k] for k in _META if k in plugin}
@@ -61,7 +66,7 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
         **meta,
         "skills": "./skills/",
         "interface": {
-            "displayName": plugin["name"],
+            "displayName": plugin.get("displayName", plugin["name"]),
             # The Codex directory caps this at 30 characters.
             "shortDescription": "dltHub toolkit launcher",
             "longDescription": plugin["description"],
@@ -69,6 +74,7 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
             "category": "Data",
             "capabilities": [],
             **_listing_urls(plugin),
+            **_icons(plugin),
         },
     }
     return {".cursor-plugin/plugin.json": meta, ".codex-plugin/plugin.json": codex}

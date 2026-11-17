@@ -10,8 +10,11 @@
   "license": "Apache-2.0",
   "keywords": [
     "dlthub",
+    "dlt",
+    "data-pipeline",
+    "etl",
     "workspace",
-    "prepare"
+    "setup"
   ],
   "skills": "./skills/"
 }

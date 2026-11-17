@@ -1,5 +1,6 @@
 {
   "name": "dlthub-setup",
+  "displayName": "dltHub Setup",
   "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
   "version": "0.2.1",
   "author": {
@@ -8,7 +9,7 @@
   "homepage": "https://dlthub.com/docs/hub/ai-harness/introduction",
   "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
   "license": "Apache-2.0",
-  "keywords": ["dlthub", "workspace", "prepare"],
+  "keywords": ["dlthub", "dlt", "data-pipeline", "etl", "workspace", "setup"],
   "icon": "./assets/icon.jpeg",
   "documentationUrl": "https://dlthub.com/docs/hub/ai-harness/introduction",
   "supportUrl": "https://dlthub.com/contact",
