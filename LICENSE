@@ -2,6 +2,11 @@ dltHub License
 
 Copyright 2026 ScaleVector, GmbH. All rights reserved.
 
+This license covers the whole repository, except the `dlthub-setup` launcher.
+The launcher in `workbench/dlthub-setup/` and its generated copy in `skills/`
+are licensed under the Apache License, Version 2.0. See
+`workbench/dlthub-setup/LICENSE`.
+
 
 ## Definitions
 

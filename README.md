@@ -273,4 +273,4 @@ With the MCP server, the assistant can answer questions like "what tables were l
 
 ## License
 
-This project is licensed under the [dltHub AI Harness License](LICENSE).
+This project is licensed under the [dltHub AI Harness License](LICENSE). The `dlthub-setup` launcher is licensed under the [Apache License 2.0](workbench/dlthub-setup/LICENSE).
