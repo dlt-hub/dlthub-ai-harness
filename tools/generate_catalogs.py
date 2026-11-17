@@ -3,19 +3,20 @@
 
 The launcher (dlthub-setup) installs the other toolkits with the dlthub CLI
 (dlt-hub/dlthub-ai-harness-internal#128). Add --check to fail on stale files.
-CoCo installs a repo root and reads skills/ there, so we copy them.
+CoCo installs a repo root and reads skills/ there, so skills/ links to the launcher.
 Format docs: cursor.com, developers.openai.com/codex, snowflake.
 """
 
 import argparse
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = "dlthub-setup"
-# CoCo loads skills only from this folder at the repo root.
+# CoCo loads skills only from this repo-root folder, a symlink to the launcher.
 ROOT_SKILLS = "skills"
 _EDIT_HINT = (
     "Do not edit generated files by hand. Edit .claude-plugin/marketplace.json, "
@@ -80,12 +81,23 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
     return {".cursor-plugin/plugin.json": meta, ".codex-plugin/plugin.json": codex}
 
 
-def generate(root: Path) -> dict[str, str]:
-    """Return the text of each generated file keyed by path relative to root."""
+def _market_and_entry(root: Path) -> tuple[dict, dict]:
+    """Return the Claude catalog and its launcher entry."""
     market = json.loads((root / ".claude-plugin" / "marketplace.json").read_text())
     entry = next((p for p in market["plugins"] if p["name"] == LAUNCHER), None)
     if entry is None:
         sys.exit(f"ERROR: no '{LAUNCHER}' entry in .claude-plugin/marketplace.json")
+    return market, entry
+
+
+def skills_link_target(root: Path) -> str:
+    """Return the launcher skills folder that the root skills symlink points to."""
+    return f"{_market_and_entry(root)[1]['source'].removeprefix('./')}/skills"
+
+
+def generate(root: Path) -> dict[str, str]:
+    """Return the text of each generated file keyed by path relative to root."""
+    market, entry = _market_and_entry(root)
     out = {
         # Cursor reads the Claude catalog format as is.
         ".cursor-plugin/marketplace.json": dumps({**market, "plugins": [entry]}),
@@ -113,27 +125,33 @@ def generate(root: Path) -> dict[str, str]:
     meta = {k: plugin[k] for k in _META if k in plugin}
     cortex = {**meta, "skills": f"./{ROOT_SKILLS}/"}
     out[".cortex-plugin/plugin.json"] = dumps(cortex)
-    skills_dir = root / rel / "skills"
-    for path in sorted(p for p in skills_dir.rglob("*") if p.is_file()):
-        out[f"{ROOT_SKILLS}/{path.relative_to(skills_dir)}"] = path.read_text()
     return out
 
 
-def stale_copies(out_dir: Path, files: dict[str, str]) -> list[str]:
-    """Return files in the root skills folder that the generator no longer makes."""
-    skills_dir = out_dir / ROOT_SKILLS
-    found = (p for p in skills_dir.rglob("*") if p.is_file())
-    return sorted(rel for p in found if (rel := str(p.relative_to(out_dir))) not in files)
+def skills_link_ok(out_dir: Path, target: str) -> bool:
+    """Return True if the root skills folder is a symlink to the launcher skills."""
+    link = out_dir / ROOT_SKILLS
+    return link.is_symlink() and os.readlink(link) == target
 
 
-def report(changed: list[str], stale: list[str]) -> int:
+def write_skills_link(out_dir: Path, target: str) -> None:
+    """Replace the root skills folder with a symlink to the launcher skills."""
+    link = out_dir / ROOT_SKILLS
+    if link.is_symlink() or link.is_file():
+        link.unlink()
+    elif link.is_dir():
+        shutil.rmtree(link)
+    link.symlink_to(target, target_is_directory=True)
+
+
+def report(changed: list[str]) -> int:
     """Print each file that differs from the source and return the exit code."""
-    if not changed and not stale:
+    if not changed:
         print("Catalogs are up to date.")
         return 0
     # GitHub Actions shows these lines as errors on the files in the PR.
     ci = os.environ.get("GITHUB_ACTIONS") == "true"
-    for rel in changed + stale:
+    for rel in changed:
         print(f"::error file={rel}::Generated file. {_EDIT_HINT}" if ci else f"  DIFF  {rel}")
     print(f"These generated files differ from the source. {_EDIT_HINT}")
     return 1
@@ -152,18 +170,19 @@ def main() -> None:
         for rel, text in files.items()
         if not (args.out / rel).exists() or (args.out / rel).read_text() != text
     ]
-    stale = stale_copies(args.out, files)
+    target = skills_link_target(ROOT)
+    link_ok = skills_link_ok(args.out, target)
     if args.check:
-        sys.exit(report(changed, stale))
+        sys.exit(report(changed + ([] if link_ok else [ROOT_SKILLS])))
     for rel in changed:
         path = args.out / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(files[rel])
         print(f"  wrote {rel}")
-    for rel in stale:
-        (args.out / rel).unlink()
-        print(f"  removed {rel}")
-    print(f"{len(files)} files, {len(changed)} changed, {len(stale)} removed.")
+    if not link_ok:
+        write_skills_link(args.out, target)
+        print(f"  linked {ROOT_SKILLS} -> {target}")
+    print(f"{len(files)} files, {len(changed)} changed, symlink {'ok' if link_ok else 'fixed'}.")
 
 
 if __name__ == "__main__":

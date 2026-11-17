@@ -2,16 +2,17 @@
 """Install all toolkits for every supported agent into temp directories.
 
 Verifies that `dlthub ai init` and `dlthub ai toolkit install <name>` succeed
-for claude, cursor, and codex without errors.
+for claude, cursor, codex and cortex without errors.
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-AGENTS = ["claude", "cursor", "codex"]
+AGENTS = ["claude", "cursor", "codex", "cortex"]
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MARKETPLACE = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 
@@ -21,9 +22,15 @@ def get_toolkit_names() -> list[str]:
     return [p["name"] for p in data["plugins"]]
 
 
-def run_dlt(args: list[str], cwd: Path) -> tuple[bool, str]:
+def isolated_env(home: Path) -> dict[str, str]:
+    """Return an env whose HOME is a temp folder, so no install writes user config."""
+    uv_cache = subprocess.run(["uv", "cache", "dir"], capture_output=True, text=True).stdout.strip()
+    return {**os.environ, "HOME": str(home), "UV_CACHE_DIR": uv_cache}
+
+
+def run_dlt(args: list[str], cwd: Path, env: dict[str, str]) -> tuple[bool, str]:
     cmd = ["uv", "run", "dlthub", "--non-interactive"] + args
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=120)
+    result = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, timeout=120)
     output = result.stdout + result.stderr
     return result.returncode == 0, output
 
@@ -36,12 +43,15 @@ def main() -> int:
 
     for agent in AGENTS:
         with tempfile.TemporaryDirectory(prefix=f"lint-{agent}-") as tmpdir:
-            project = Path(tmpdir)
+            project = Path(tmpdir) / "project"
+            project.mkdir()
+            env = isolated_env(Path(tmpdir) / "home")
 
             total += 1
             ok, output = run_dlt(
                 ["ai", "init", "--agent", agent, "--location", location],
                 cwd=project,
+                env=env,
             )
             status = "ok" if ok else "FAIL"
             print(f"  [{agent}] dlthub ai init ... {status}")
@@ -65,6 +75,7 @@ def main() -> int:
                         "--strict",
                     ],
                     cwd=project,
+                    env=env,
                 )
                 status = "ok" if ok else "FAIL"
                 print(f"  [{agent}] dlthub ai toolkit install {name} ... {status}")
