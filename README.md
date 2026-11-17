@@ -219,7 +219,7 @@ A new plugin becomes active after `/reload-plugins` or in a new session.
 
 If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`. An old key does not load the plugin and shows no error.
 
-**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `dlthub-setup` catalogs for Cursor, Codex and CoCo (Snowflake Cortex Code) from the Claude files. CoCo installs a repo root, so `skills/` is a symlink to `workbench/dlthub-setup/skills/`. On Windows, enable git symlinks (`core.symlinks=true`) before you clone. CoCo installs the launcher with `cortex plugin install dlt-hub/dlthub-ai-harness`. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
+**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `dlthub-setup` catalogs for Cursor, Codex and CoCo (Snowflake Cortex Code) from the Claude files. CoCo installs a repo root, so `skills/` is a generated copy of `workbench/dlthub-setup/skills/`. CoCo installs the launcher with `cortex plugin install dlt-hub/dlthub-ai-harness`. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
 
 ```
 SOURCE (you edit these)
@@ -234,7 +234,7 @@ GENERATED (do not edit)
   .agents/plugins/marketplace.json                → Codex catalog
   workbench/dlthub-setup/.codex-plugin/plugin.json   → Codex manifest
   .cortex-plugin/plugin.json                      → CoCo manifest (repo = plugin)
-  skills → workbench/dlthub-setup/skills          → CoCo symlink to the skills
+  skills/setup-dlthub-workspace/SKILL.md          → CoCo copy of the skill
 ```
 
 
