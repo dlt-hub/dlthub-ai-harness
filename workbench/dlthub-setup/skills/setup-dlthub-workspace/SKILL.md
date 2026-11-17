@@ -36,7 +36,9 @@ Actions:
   2. uvx dlthub-init@latest                              (if dlt[hub] is missing)
      + uv add "dlt[hub]" "fastmcp>=3.1.0"                (if pyproject.toml exists)
   3. dlthub ai init --overwrite                          (if init is missing)
-  4. dlthub-router picks and installs the toolkit        (if the user has a task)
+  4. Link .cortex/skills, add the MCP server to
+     ~/.snowflake/cortex/mcp.json                        (CoCo only)
+  5. dlthub-router picks and installs the toolkit        (if the user has a task)
 ```
 
 Ask the user to approve the plan. If the user refuses, stop.
@@ -85,8 +87,35 @@ uv run dlthub --non-interactive ai init --overwrite
 - It installs the rules, the skills and the MCP config of the `init` toolkit. This includes `dlthub-router` and the toolkit index.
 - `--overwrite` replaces the old `init` skills that `dlthub-init` bundles.
 - Use `--overwrite` only when `dlthub ai init` did not run before in this project. Otherwise it replaces files that the user changed.
+- In CoCo, add `--agent codex`. The `dlthub` CLI cannot find CoCo, and CoCo reads `AGENTS.md`.
 
-**4. Check the status:**
+**4. CoCo only: link the skills and register the MCP server**
+
+CoCo reads project skills from `.cortex/skills/` and `.claude/skills/`, not from `.agents/skills/`. If `.cortex/skills` does not exist, link it to `.agents/skills`:
+
+```
+mkdir -p .cortex && ln -s ../.agents/skills .cortex/skills
+```
+
+CoCo reads MCP servers only from `~/.snowflake/cortex/mcp.json`. Add this server to that file and keep the other servers. Set `cwd` to the absolute path of this project:
+
+```json
+{
+  "mcpServers": {
+    "dlt-workspace-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "dlthub", "ai", "mcp", "--stdio"],
+      "cwd": "<absolute path of this project>"
+    }
+  }
+}
+```
+
+- This file applies to all projects of the user. Tell the user this in the plan.
+- If `dlt-workspace-mcp` already exists with a different `cwd`, ask the user before you replace it.
+
+**5. Check the status:**
 
 Run `uv run dlthub ai status`. If it shows a WARNING about the MCP server, fix it before you continue:
 - If the WARNING says `pip install "fastmcp"`, run `uv add "fastmcp>=3.1.0"`. Then run `uv run dlthub ai status` again.
@@ -103,10 +132,10 @@ The router and the init rules are on disk now, but not in your context until the
 |---|---|---|
 | Claude Code | `.claude/rules/init-dlthub-workspace.md` | `.claude/skills/dlthub-router/SKILL.md` |
 | Cursor | `.cursor/rules/init-dlthub-workspace.mdc` | `.cursor/skills/dlthub-router/SKILL.md` |
-| Codex | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
+| Codex and CoCo | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
 
 Follow the router to pick and install the toolkit, with these changes:
-- Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit>`.
+- Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit>`. In CoCo, add `--agent codex`.
 - Until the reload, use the `uv run dlthub ai` CLI instead of the `dlt-workspace-mcp` tools.
 - Stop before the router hands over to the entry skill. Do Step 5 first.
 
@@ -121,6 +150,7 @@ Tell the user the step for their coding assistant:
 | Claude Code | "Run `/reload-skills` to use the new skills now. Restart the session later to load the rules and the MCP server." |
 | Codex | "Restart the session to load the rules and the MCP server." |
 | Cursor | "Restart the session to load the new skills, rules and MCP server." |
+| CoCo | "Restart the session to load the new skills, `AGENTS.md` and the MCP server." |
 
 ## Step 6: Continue the task
 
