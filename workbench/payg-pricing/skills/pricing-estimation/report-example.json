@@ -1,0 +1,36 @@
+{
+  "currency": "USD",
+  "rate_per_hour": 10,
+  "date": "2026-11-11",
+  "title": "Acme analytics (example)",
+  "jobs": [
+    {"name": "orders_sync", "loading": "incremental",
+     "schedule": {"every": 15, "unit": "minutes"},
+     "size": "small", "multiplier": 1,
+     "runs": [{"minutes": 2.1, "status": "ok"}, {"minutes": 1.8, "status": "ok"},
+              {"minutes": 2.4, "status": "ok"}, {"minutes": 0.4, "status": "failed"},
+              {"minutes": 2.0, "status": "ok"}, {"minutes": 3.1, "status": "ok"}]},
+    {"name": "crm_hourly", "loading": "incremental",
+     "schedule": {"every": 1, "unit": "hours"},
+     "size": "medium", "multiplier": 2,
+     "runs": [{"minutes": 5.2, "status": "ok"}, {"minutes": 4.8, "status": "ok"},
+              {"minutes": 6.9, "status": "ok"}, {"minutes": 5.0, "status": "ok"},
+              {"minutes": 7.5, "status": "ok"}]},
+    {"name": "warehouse_daily", "loading": "full",
+     "schedule": {"cron": "0 3 * * *"},
+     "size": "small", "multiplier": 1,
+     "assumed": {"avg_minutes": 20, "slow_minutes": 30}},
+    {"name": "job_inspector",
+     "schedule": {"on_failure_of": ["orders_sync"]},
+     "size": "small", "multiplier": 1,
+     "runs": [{"minutes": 0.7, "status": "ok"}]}
+  ],
+  "cost_options": [
+    {"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}},
+    {"job": "crm_hourly", "schedule": {"every": 2, "unit": "hours"}},
+    {"job": "crm_hourly", "size": "small", "multiplier": 1},
+    {"label": "Incremental loading for warehouse_daily", "unquantified": true}
+  ],
+  "engineering": {"hours_per_month": 40, "hourly_rate": 90},
+  "notes": ["Example data for previewing the report layout; not a real workspace."]
+}

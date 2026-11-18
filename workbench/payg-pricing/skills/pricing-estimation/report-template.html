@@ -65,6 +65,7 @@
   .bar:last-child { margin-bottom: 0; }
   .bar .label { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; margin-bottom: 4px; }
   .bar .label b { color: var(--ink); white-space: nowrap; }
+  [hidden] { display: none !important; }
   .track { background: var(--bg); border-radius: 5px; height: 10px; overflow: hidden; }
   .fill { height: 100%; border-radius: 5px; background: var(--lime); }
   .fill.dlt { background: var(--accent); }
@@ -186,9 +187,27 @@
     </div>
   </section>
 
-  $savings_section
+  <!-- Ways to lower it: always shown by the script. Either the bars of the changes the agent
+       proposed, or the reason it proposed none. Hidden only when cost_options was never given. -->
+  <section$savings_hidden>
+    <h2>Ways to lower it</h2>
+    <div class="bars">
+      <p class="legend"$reason_hidden>No changes to propose: $no_cost_options_reason</p>
+      <p class="legend"$options_hidden>Each bar is today's estimate of $cost_expected / month: <span class="key keep"></span>what you would still pay <span class="key saved"></span>what the change saves</p>
+      $savings_bars
+    </div>
+    <p class="note"$options_hidden>Each option is a choice you make; nothing changes until you decide.</p>
+  </section>
 
-  $engineering_section
+  <!-- Engineering time: only when the user gave their own hours and rate (optional question). -->
+  <section$engineering_hidden>
+    <h2>Engineering time</h2>
+    <div class="bars">
+      $engineering_bars
+    </div>
+    <div class="callout">$engineering_verdict</div>
+    <p class="note">Engineering hours and rate are your own estimate. Doing it yourself also needs servers to run on; their cost is not included here.</p>
+  </section>
 
   <section class="small">
     <h2>Assumptions</h2>

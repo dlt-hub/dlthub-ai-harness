@@ -641,6 +641,11 @@ def _bar(label: str, value: str, pct: float, css: str = "") -> str:
     )
 
 
+def _hidden(hide: bool) -> str:
+    """The template's on/off switch for an optional block."""
+    return " hidden" if hide else ""
+
+
 def _bar_row(label: str, value: str) -> str:
     """A saving with no bar: unknown until measured, or one that costs more."""
     return f'<div class="bar"><div class="label"><span>{label}</span><b>{value}</b></div></div>'
@@ -685,41 +690,25 @@ def report(est: dict) -> str:
             f'<td class="num">{share:.0f}%</td></tr>'
         )
 
-    savings = ""
-    if not est["savings"] and est["no_cost_options_reason"]:
-        savings = (
-            '<section><h2>Ways to lower it</h2><div class="bars"><p class="legend">'
-            f"No changes to propose: {_e(est['no_cost_options_reason'])}</p></div></section>"
-        )
-    if est["savings"]:
-        bars = []
-        for s in est["savings"]:
-            saving = s["cost_per_month"]
-            if saving is None:
-                bars.append(_bar_row(_e(s["label"]), "measure after the change"))
-            elif saving < 0:
-                bars.append(_bar_row(_e(s["label"]), f"+{money(-saving)} / month"))
-            else:
-                after = max(0.0, est["cost_expected"] - saving)
-                note = f"{money(est['cost_expected'])} → {money(after)} per month"
-                value = f"−{money(saving)} / month"
-                if s["break_even_slowdown"]:
-                    note += f"; {_upper_bound_note(s['break_even_slowdown'])}"
-                    value = "up to " + value
-                bars.append(_saving_bar(_e(s["label"]), value, _e(note), 100 * saving / total))
-        savings = (
-            '<section><h2>Ways to lower it</h2><div class="bars">'
-            '<p class="legend">Each bar is today\'s estimate of '
-            f"{money(est['cost_expected'])} / month: "
-            '<span class="key keep"></span>what you would still pay '
-            '<span class="key saved"></span>what the change saves</p>'
-            + "".join(bars)
-            + '</div><p class="note">Each option is a choice you make; nothing changes'
-            " until you decide.</p></section>"
-        )
+    bars = []
+    for s in est["savings"]:
+        saving = s["cost_per_month"]
+        if saving is None:
+            bars.append(_bar_row(_e(s["label"]), "measure after the change"))
+        elif saving < 0:
+            bars.append(_bar_row(_e(s["label"]), f"+{money(-saving)} / month"))
+        else:
+            after = max(0.0, est["cost_expected"] - saving)
+            note = f"{money(est['cost_expected'])} → {money(after)} per month"
+            value = f"−{money(saving)} / month"
+            if s["break_even_slowdown"]:
+                note += f"; {_upper_bound_note(s['break_even_slowdown'])}"
+                value = "up to " + value
+            bars.append(_saving_bar(_e(s["label"]), value, _e(note), 100 * saving / total))
+    reason = est["no_cost_options_reason"] if not est["savings"] else ""
 
-    engineering = ""
     eng = est["engineering"]
+    engineering_bars, verdict = "", ""
     if eng:
         diy = eng["cost_per_month"]
         top = max(diy, est["cost_expected"]) or 1.0
@@ -729,24 +718,17 @@ def report(est: dict) -> str:
             else "In this scenario, running it yourself is estimated to cost less in"
             " engineering time alone."
         )
-        engineering = (
-            '<section><h2>Engineering time</h2><div class="bars">'
-            + _bar(
-                "dltHub",
-                f"{money(est['cost_expected'])} / month",
-                100 * est["cost_expected"] / top,
-                "dlt",
-            )
-            + _bar(
-                f"Doing it yourself: {_num(eng['hours_per_month'])} h × "
-                f"{money(float(eng['hourly_rate']))}",
-                f"{money(diy)} / month",
-                100 * diy / top,
-                "diy",
-            )
-            + f'</div><div class="callout">{verdict}</div>'
-            '<p class="note">Engineering hours and rate are your own estimate. Doing it yourself'
-            " also needs servers to run on; their cost is not included here.</p></section>"
+        engineering_bars = _bar(
+            "dltHub",
+            f"{money(est['cost_expected'])} / month",
+            100 * est["cost_expected"] / top,
+            "dlt",
+        ) + _bar(
+            f"Doing it yourself: {_num(eng['hours_per_month'])} h × "
+            f"{money(float(eng['hourly_rate']))}",
+            f"{money(diy)} / month",
+            100 * diy / top,
+            "diy",
         )
 
     title = f" · {_e(est['title'])}" if est["title"] else ""
@@ -761,8 +743,14 @@ def report(est: dict) -> str:
         "job_rows": "".join(rows),
         "runs_total": _num(est["runs_per_month"]),
         "hours_expected": _num(round(est["hours_expected"], 1)),
-        "savings_section": savings,
-        "engineering_section": engineering,
+        "savings_hidden": _hidden(not est["savings"] and not reason),
+        "options_hidden": _hidden(not est["savings"]),
+        "reason_hidden": _hidden(not reason),
+        "no_cost_options_reason": _e(reason),
+        "savings_bars": "".join(bars),
+        "engineering_hidden": _hidden(not eng),
+        "engineering_bars": engineering_bars,
+        "engineering_verdict": verdict,
         "assumption_items": "".join(f"<li>{_e(a)}</li>" for a in est["assumptions"]),
         "date": _e(est["date"]),
     }

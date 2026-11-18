@@ -167,15 +167,20 @@ After the estimate, ask once: *"Want a one-page report you can share with your t
 manager?"* Only on a yes:
 
 1. Ask, optionally: *"Roughly how many engineer hours a month would running these pipelines
-   yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate?"* Add the
-   answer as `engineering` (`hours_per_month`, `hourly_rate` in the estimate's currency); if they skip it, leave it out — **never invent hours or rates**.
+   yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate? Or skip
+   it."* Ask it as a plain chat message and wait for the reply: the answer is two numbers, not a
+   choice, so don't put it in a multiple-choice question. Add the answer as `engineering`
+   (`hours_per_month`, `hourly_rate` in the estimate's currency); if they skip it, leave it out
+   — **never invent hours or rates**. When it is left out, say so when you hand over the report:
+   the "Engineering time" section is missing because no hours or rate were given.
 2. Run:
    `uv run python <this skill's folder>/payg_estimate.py report reports/payg-estimate.json --out reports/payg-cost-estimate.html`
 3. Tell the user: open the file in a browser, or use Print → Save as PDF to send it on.
 
 The report is one self-contained HTML file (no scripts, nothing downloaded). Its fixed text —
 why the bill is predictable, what's included — lives in `report-template.html`; don't edit it
-per customer.
+per customer. `report-example.json` and `report-example.html` show the report filled with
+made-up data, as a layout preview for maintainers; never read numbers or job names from them.
 
 ## Worked example
 

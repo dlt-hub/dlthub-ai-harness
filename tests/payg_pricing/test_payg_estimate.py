@@ -615,10 +615,17 @@ def test_report_is_self_contained_and_escaped() -> None:
     assert "$cost" not in page and "$job_rows" not in page
 
 
-def test_report_without_engineering_leaves_the_section_out() -> None:
+def test_report_without_engineering_hides_the_section() -> None:
     page = pe.report(pe.estimate(worked_example()))
 
-    assert "Engineering time" not in page
+    assert "<section hidden>\n    <h2>Engineering time</h2>" in page
+
+
+def test_report_with_cost_options_hides_the_reason() -> None:
+    page = pe.report(pe.estimate(worked_example()))
+
+    assert "<section>\n    <h2>Ways to lower it</h2>" in page
+    assert '<p class="legend" hidden>No changes to propose' in page
 
 
 def test_report_marks_size_saving_as_upper_bound() -> None:
@@ -675,3 +682,15 @@ def test_reason_for_no_cost_options_is_shown_to_the_user() -> None:
     page = pe.report(est)
     assert "Ways to lower it" in page
     assert "No changes to propose: Every job already runs daily on the &lt;small&gt; instance." in page
+
+
+def test_report_example_is_up_to_date() -> None:
+    """report-example.html previews the template with mock data; it must match the code."""
+    data = json.loads((SKILL_DIR / "report-example.json").read_text(encoding="utf-8"))
+    pe.check_cost_options(data)
+    expected = pe.report(pe.estimate(data))
+
+    assert (SKILL_DIR / "report-example.html").read_text(encoding="utf-8") == expected, (
+        "report-example.html is stale; regenerate it from the skill folder: uv run python"
+        " payg_estimate.py report report-example.json --out report-example.html"
+    )
