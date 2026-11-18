@@ -29,7 +29,7 @@ from dlt._workspace.deployment.exceptions import InvalidJobSchema
 from dlt._workspace.deployment.reflection import ENTITY_TYPE_KEY, entity_properties
 from dlt._workspace.deployment.typing import THubEntityType
 from dlt._workspace.cli.dlthub.ai.agents import COMPONENT_MARKERS, DLTHUB_AGENTS_DIR
-from dlt._workspace.cli.markdown import MarkdownDocument
+from dlt._workspace.cli.formatters import parse_frontmatter
 from dlt.common.typing import get_args
 
 AI_DIR = "workbench"
@@ -103,7 +103,7 @@ def frontmatter_of(path: Path, label: str, pname: str, errors: list[str]) -> dic
 def split_frontmatter(path: Path) -> tuple[dict, str]:
     """Split a markdown file into (frontmatter, body), `({}, text)` when it has no frontmatter."""
     # the same parser `load_agent_spec` uses; raises yaml.YAMLError on invalid frontmatter
-    return MarkdownDocument(path.read_text(encoding="utf-8")).split_frontmatter()
+    return parse_frontmatter(path.read_text(encoding="utf-8"))
 
 
 def build_component_inventory(root: Path) -> dict[str, dict]:

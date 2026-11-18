@@ -35,7 +35,6 @@ Actions:
   1. Install uv                                          (if missing)
   2. uvx dlthub-init@latest                              (if dlt[hub] is missing)
      + uv add "dlt[hub]" "fastmcp>=3.1.0"                (if pyproject.toml exists)
-     + uv add "dlt[hub]>=1.33.0a1"                       (CoCo only)
   3. dlthub ai init --overwrite                          (if init is missing)
   4. dlthub-router picks and installs the toolkit        (if the user has a task)
 ```
@@ -73,14 +72,6 @@ uv add "dlt[hub]" "fastmcp>=3.1.0"
 - `uv add` adds the two dependencies that `dlthub-init` skipped. `dlt[hub]` gives the `dlthub` command. `fastmcp` runs the MCP server.
 - Fallback, if `dlthub-init` is not available or fails: run `uvx --from "dlt[hub]" dlthub init`.
 
-In CoCo (Snowflake Cortex Code), also run this, even when `dlt[hub]` is already installed:
-
-```
-uv add "dlt[hub]>=1.33.0a1"
-```
-
-- dlt 1.33.0 is the first version that supports CoCo. Until it is released, use this pre-release.
-
 Then run `uv run dlthub --version`.
 - If it fails, stop. Show the error to the user. Do not continue with `ai init`.
 - Do this check every time. The exit code of `dlthub-init` does not show if `dlt[hub]` is installed.
@@ -94,8 +85,6 @@ uv run dlthub --non-interactive ai init --overwrite
 - It installs the rules, the skills and the MCP config of the `init` toolkit. This includes `dlthub-router` and the toolkit index.
 - `--overwrite` replaces the old `init` skills that `dlthub-init` bundles.
 - Use `--overwrite` only when `dlthub ai init` did not run before in this project. Otherwise it replaces files that the user changed.
-- The `dlthub` CLI detects the coding assistant, CoCo too. You do not need `--agent`.
-- In CoCo, it also adds the MCP server to `~/.snowflake/cortex/mcp.json`. This file applies to all projects of the user. Tell the user this in the plan.
 
 **4. Check the status:**
 
@@ -115,7 +104,6 @@ The router and the init rules are on disk now, but not in your context until the
 | Claude Code | `.claude/rules/init-dlthub-workspace.md` | `.claude/skills/dlthub-router/SKILL.md` |
 | Cursor | `.cursor/rules/init-dlthub-workspace.mdc` | `.cursor/skills/dlthub-router/SKILL.md` |
 | Codex | `.agents/skills/init-dlthub-workspace/SKILL.md` | `.agents/skills/dlthub-router/SKILL.md` |
-| CoCo | `.cortex/rules/init-dlthub-workspace.md` | `.cortex/skills/dlthub-router/SKILL.md` |
 
 Follow the router to pick and install the toolkit, with these changes:
 - Run its install command as `uv run dlthub --non-interactive ai toolkit install <toolkit>`.
@@ -133,7 +121,6 @@ Tell the user the step for their coding assistant:
 | Claude Code | "Run `/reload-skills` to use the new skills now. Restart the session later to load the rules and the MCP server." |
 | Codex | "Restart the session to load the rules and the MCP server." |
 | Cursor | "Restart the session to load the new skills, rules and MCP server." |
-| CoCo | "Restart the session to load the new skills, `CORTEX.md` and the MCP server. In CoCo Desktop, trust this folder first." |
 
 ## Step 6: Continue the task
 
