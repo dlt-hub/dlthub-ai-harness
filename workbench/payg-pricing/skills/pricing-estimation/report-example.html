@@ -77,6 +77,13 @@
   .legend { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
   .key { display: inline-block; width: 12px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 4px 0 10px; }
   .note { font-size: 13px; color: var(--muted); }
+  .note.intro { margin: 0 0 10px; }
+  .side + .side { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .side .bar { margin-bottom: 6px; }
+  table.parts { width: 100%; font-size: 13px; }
+  table.parts td { padding: 3px 8px 3px 0; border-bottom: 0; color: var(--muted); }
+  table.parts td:first-child { width: 34%; color: var(--text); }
+  table.parts td.num { padding-right: 0; }
   .callout { background: var(--lime-tint); color: var(--lime-ink); border-radius: 10px; padding: 10px 14px; margin-top: 10px; font-weight: 600; }
   .small { font-size: 13px; color: var(--muted); }
   .small ul { margin: 6px 0 0; padding-left: 18px; }
@@ -199,14 +206,29 @@
     <p class="note">Each option is a choice you make; nothing changes until you decide.</p>
   </section>
 
-  <!-- Engineering time: only when the user gave their own hours and rate (optional question). -->
+  <!-- dltHub vs. doing it yourself: only when the user gave their own hours and rate
+       (optional question). Building is a one-off cost, so both sides are compared over the
+       first year; the second-year line shows the monthly gap after the build. -->
   <section>
-    <h2>Engineering time</h2>
+    <h2>dltHub vs. doing it yourself: first year</h2>
+    <p class="note intro">Running these pipelines without dltHub means building scheduling, deployment and monitoring once, then keeping it running.</p>
     <div class="bars">
-      <div class="bar"><div class="label"><span>dltHub</span><b>$2,546 / month</b></div><div class="track"><div class="fill dlt" style="width:70.7%"></div></div></div><div class="bar"><div class="label"><span>Doing it yourself: 40 h × $90</span><b>$3,600 / month</b></div><div class="track"><div class="fill diy" style="width:100.0%"></div></div></div>
+      <div class="side">
+        <div class="bar"><div class="label"><span>dltHub</span><b>$30,553</b></div><div class="track"><div class="fill dlt" style="width:62.7%"></div></div></div>
+        <table class="parts">
+          <tr><td>Runtime</td><td>12 × $2,546</td><td class="num">$30,553</td></tr>
+          <tr><td>Build &amp; upkeep</td><td></td><td class="num">included</td></tr>
+        </table>
+      </div>
+      <div class="side">
+        <div class="bar"><div class="label"><span>Doing it yourself</span><b>$48,720</b></div><div class="track"><div class="fill diy" style="width:100.0%"></div></div></div>
+        <table class="parts">
+          <tr><td>Build (once)</td><td>200 h × $90</td><td class="num">$18,000</td></tr><tr><td>Maintain</td><td>24 h × $90 × 12</td><td class="num">$25,920</td></tr><tr><td>Servers</td><td>$400 × 12</td><td class="num">$4,800</td></tr>
+        </table>
+      </div>
     </div>
-    <div class="callout">dltHub costs $1,054 less per month than doing it yourself.</div>
-    <p class="note">Engineering hours and rate are your own estimate. Doing it yourself also needs servers to run on; their cost is not included here.</p>
+    <div class="callout">dltHub costs $18,167 less in the first year than doing it yourself.</div>
+    <p class="note">From the second year: dltHub $2,546 vs doing it yourself $2,560 per month. Hours, rate and server cost are your own estimate.</p>
   </section>
 
   <section class="small">

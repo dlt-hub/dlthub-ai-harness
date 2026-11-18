@@ -47,7 +47,10 @@ Input (JSON):
       ],
       # or, when no change fits: "cost_options": [] and
       # "no_cost_options_reason": "Every job already runs daily on the smallest instance."
-      "engineering": {"hours_per_month": 40, "hourly_rate": 100},   # optional
+      "engineering": {"build_hours": 80,                 # optional: doing it yourself,
+                      "maintenance_hours_per_month": 2,  # compared over the first year;
+                      "hourly_rate": 90,                 # rate plus at least one of the
+                      "servers_per_month": 90},          # hours; the rest may be left out
       "notes": ["Durations from the last 20 runs per job."]             # optional, no numbers
     }
 
@@ -325,7 +328,8 @@ def _cost_option(option: dict, jobs: dict[str, dict], counter: _Runs, rate: floa
         label = f"{name} {schedule_label(schedule)} instead of {schedule_label(job['schedule'])}"
     elif "multiplier" in option:
         mult = _need(option, "multiplier", f"cost option for {name!r}")
-        label = f"{name} on {option.get('size', '?')} instead of {job.get('size', '?')} (if it fits)"
+        sizes = f"{option.get('size', '?')} instead of {job.get('size', '?')}"
+        label = f"{name} on {sizes} (if it fits)"
         if 0 < mult < job["multiplier"]:
             break_even = job["multiplier"] / mult
     elif "always_on_hours_per_day" in option:
@@ -418,11 +422,7 @@ def estimate(data: dict) -> dict:
                 stats = _at_cadence(stats, j["runs_month"], runs)
             cells.append(_hours(runs, j["schedule"], stats, j["multiplier"])[0] * rate)
         ladder.append({"job": j["name"], "cost": cells})
-    eng = data.get("engineering")
-    engineering = None
-    if eng:
-        diy = float(eng["hours_per_month"]) * float(eng["hourly_rate"])
-        engineering = {**eng, "cost_per_month": diy, "difference": diy - cost_expected}
+    engineering = _engineering(data.get("engineering"), cost_expected)
 
     return {
         "currency": currency,
@@ -439,11 +439,96 @@ def estimate(data: dict) -> dict:
         "cost_per_run": cost_scheduled / runs_total if runs_total else None,
         "cost_per_day": cost_expected / DAYS_PER_MONTH,
         "ladder": ladder,
-        "savings": [_cost_option(o, by_name, counter, rate) for o in data.get("cost_options") or []],
+        "savings": [
+            _cost_option(o, by_name, counter, rate) for o in data.get("cost_options") or []
+        ],
         "no_cost_options_reason": (data.get("no_cost_options_reason") or "").strip(),
         "engineering": engineering,
         "assumptions": _assumptions(jobs, currency, rate, data.get("notes") or []),
     }
+
+
+def _engineering(eng: dict | None, cost_expected: float) -> dict | None:
+    """dltHub against doing it yourself over the first year: build once, then maintain and
+    run servers every month. Parts the customer didn't give stay None ("not given")."""
+    if not eng:
+        return None
+    if "hours_per_month" in eng:
+        raise ValueError(
+            "engineering: rename 'hours_per_month' to 'maintenance_hours_per_month', and ask"
+            " for 'build_hours' (one-off) and 'servers_per_month' too"
+        )
+    rate = _need(eng, "hourly_rate", "engineering")
+    build_h, maint_h = eng.get("build_hours"), eng.get("maintenance_hours_per_month")
+    if build_h is None and maint_h is None:
+        raise ValueError("engineering needs build_hours or maintenance_hours_per_month")
+    servers = eng.get("servers_per_month")
+    build = None if build_h is None else float(build_h) * rate
+    maintain_month = None if maint_h is None else float(maint_h) * rate
+    parts_month = [v for v in (maintain_month, servers) if v is not None]
+    diy_month_after = float(sum(parts_month)) if parts_month else None
+    diy_year = (build or 0.0) + 12 * (diy_month_after or 0.0)
+    return {
+        "hourly_rate": rate,
+        "build_hours": build_h,
+        "maintenance_hours_per_month": maint_h,
+        "servers_per_month": servers,
+        "build": build,
+        "maintain_year": None if maintain_month is None else 12 * maintain_month,
+        "servers_year": None if servers is None else 12 * float(servers),
+        "diy_year": diy_year,
+        "diy_month_after": diy_month_after,
+        "dlthub_year": 12 * cost_expected,
+        "difference": diy_year - 12 * cost_expected,
+    }
+
+
+def _engineering_parts(eng: dict, money) -> list[tuple[str, str, str | None]]:
+    """The doing-it-yourself breakdown: (part, how it's worked out, amount or None)."""
+    rate = money(eng["hourly_rate"])
+    build_h, maint_h, servers = (
+        eng["build_hours"],
+        eng["maintenance_hours_per_month"],
+        eng["servers_per_month"],
+    )
+    return [
+        (
+            "Build (once)",
+            "" if build_h is None else f"{_num(build_h)} h × {rate}",
+            None if eng["build"] is None else money(eng["build"]),
+        ),
+        (
+            "Maintain",
+            "" if maint_h is None else f"{_num(maint_h)} h × {rate} × 12",
+            None if eng["maintain_year"] is None else money(eng["maintain_year"]),
+        ),
+        (
+            "Servers",
+            "" if servers is None else f"{money(float(servers))} × 12",
+            None if eng["servers_year"] is None else money(eng["servers_year"]),
+        ),
+    ]
+
+
+def _engineering_verdict(eng: dict, money) -> str:
+    if eng["difference"] > 0:
+        return (
+            f"dltHub costs {money(eng['difference'])} less in the first year than doing it"
+            " yourself."
+        )
+    return (
+        f"In this scenario, doing it yourself is estimated to cost {money(-eng['difference'])}"
+        " less in the first year."
+    )
+
+
+def _second_year(eng: dict, cost_expected: float, money) -> str:
+    if eng["diy_month_after"] is None:
+        return ""
+    return (
+        f"From the second year: dltHub {money(cost_expected)} vs doing it yourself"
+        f" {money(eng['diy_month_after'])} per month."
+    )
 
 
 def _assumptions(jobs: list[dict], currency: str, rate: float, notes: list[str]) -> list[str]:
@@ -619,12 +704,20 @@ def summary(est: dict) -> str:
                 out.append(f"- {s['label']}: saves {money(s['cost_per_month'], True)}/month.")
     eng = est["engineering"]
     if eng:
+        parts = []
+        for part, how, amount in _engineering_parts(eng, money):
+            name = part.split(" ")[0].lower()
+            once = " once" if name == "build" else ""
+            parts.append(f"{name} {how} = {amount}{once}" if amount else f"{name} not given")
+        second = _second_year(eng, est["cost_expected"], money)
         out += [
             "",
-            f"**Engineering time:** doing it yourself "
-            f"{_num(eng['hours_per_month'])} h × {money(float(eng['hourly_rate']))} = "
-            f"{money(eng['cost_per_month'], True)}/month, compared with "
-            f"{money(est['cost_expected'], True)} on dltHub (servers not included).",
+            f"**dltHub vs. doing it yourself, first year:** dltHub {money(eng['dlthub_year'])}"
+            f" (12 × {money(est['cost_expected'])} runtime; build and upkeep included). Doing it"
+            f" yourself {money(eng['diy_year'])}: "
+            + "; ".join(parts)
+            + f". {_engineering_verdict(eng, money)}"
+            + (f" {second}" if second else ""),
         ]
     return "\n".join(out) + "\n"
 
@@ -686,7 +779,7 @@ def report(est: dict) -> str:
             f'<td class="num">{_e(avg)}</td>'
             f'<td>{_e(j.get("size", ""))} <span class="tag">{_num(j["multiplier"])}×</span></td>'
             f'<td class="num">{_num(round(j["hours_expected"], 1))}</td>'
-            f"<td class=\"num\">{money(j['cost_expected'])}</td>"
+            f'<td class="num">{money(j["cost_expected"])}</td>'
             f'<td class="num">{share:.0f}%</td></tr>'
         )
 
@@ -708,28 +801,34 @@ def report(est: dict) -> str:
     reason = est["no_cost_options_reason"] if not est["savings"] else ""
 
     eng = est["engineering"]
-    engineering_bars, verdict = "", ""
+    eng_values = {
+        "eng_dlt_bar": "",
+        "eng_dlt_year": "",
+        "eng_diy_bar": "",
+        "eng_diy_rows": "",
+        "engineering_verdict": "",
+        "eng_second_year": "",
+    }
     if eng:
-        diy = eng["cost_per_month"]
-        top = max(diy, est["cost_expected"]) or 1.0
-        verdict = (
-            f"dltHub costs {money(eng['difference'])} less per month than doing it yourself."
-            if eng["difference"] > 0
-            else "In this scenario, running it yourself is estimated to cost less in"
-            " engineering time alone."
-        )
-        engineering_bars = _bar(
-            "dltHub",
-            f"{money(est['cost_expected'])} / month",
-            100 * est["cost_expected"] / top,
-            "dlt",
-        ) + _bar(
-            f"Doing it yourself: {_num(eng['hours_per_month'])} h × "
-            f"{money(float(eng['hourly_rate']))}",
-            f"{money(diy)} / month",
-            100 * diy / top,
-            "diy",
-        )
+        top = max(eng["diy_year"], eng["dlthub_year"]) or 1.0
+        diy_rows = []
+        for part, how, amount in _engineering_parts(eng, money):
+            cell = _e(amount) if amount else '<span class="tag">not given</span>'
+            diy_rows.append(
+                f'<tr><td>{part}</td><td>{_e(how)}</td><td class="num">{cell}</td></tr>'
+            )
+        eng_values = {
+            "eng_dlt_bar": _bar(
+                "dltHub", f"{money(eng['dlthub_year'])}", 100 * eng["dlthub_year"] / top, "dlt"
+            ),
+            "eng_dlt_year": money(eng["dlthub_year"]),
+            "eng_diy_bar": _bar(
+                "Doing it yourself", money(eng["diy_year"]), 100 * eng["diy_year"] / top, "diy"
+            ),
+            "eng_diy_rows": "".join(diy_rows),
+            "engineering_verdict": _engineering_verdict(eng, money),
+            "eng_second_year": _second_year(eng, est["cost_expected"], money),
+        }
 
     title = f" · {_e(est['title'])}" if est["title"] else ""
     values = {
@@ -749,8 +848,7 @@ def report(est: dict) -> str:
         "no_cost_options_reason": _e(reason),
         "savings_bars": "".join(bars),
         "engineering_hidden": _hidden(not eng),
-        "engineering_bars": engineering_bars,
-        "engineering_verdict": verdict,
+        **eng_values,
         "assumption_items": "".join(f"<li>{_e(a)}</li>" for a in est["assumptions"]),
         "date": _e(est["date"]),
     }
@@ -763,11 +861,11 @@ def check_cost_options(data: dict) -> None:
     if "cost_options" not in data:
         raise ValueError(
             "cost_options is missing: choose the changes to propose (SKILL.md Step 4). If none"
-            " fits, pass \"cost_options\": [] and say why in \"no_cost_options_reason\"."
+            ' fits, pass "cost_options": [] and say why in "no_cost_options_reason".'
         )
     if not data["cost_options"] and not (data.get("no_cost_options_reason") or "").strip():
         raise ValueError(
-            "cost_options is empty: say why in \"no_cost_options_reason\" (for example, every"
+            'cost_options is empty: say why in "no_cost_options_reason" (for example, every'
             " job already runs daily on the smallest instance); the report shows it to the user."
         )
 

@@ -520,13 +520,77 @@ def test_cost_option_for_unknown_job_fails() -> None:
         pe.estimate(data)
 
 
-def test_engineering_comparison() -> None:
-    data = worked_example()
-    data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
-    est = pe.estimate(data)
+ENGINEERING = {
+    "build_hours": 80,
+    "maintenance_hours_per_month": 2,
+    "hourly_rate": 90,
+    "servers_per_month": 90,
+}
 
-    assert est["engineering"]["cost_per_month"] == 4000
-    assert round(est["engineering"]["difference"], 2) == 1708.61
+
+def test_engineering_compares_the_first_year() -> None:
+    data = worked_example()
+    data["engineering"] = dict(ENGINEERING)
+    eng = pe.estimate(data)["engineering"]
+
+    assert eng["build"] == 7200  # 80 h x 90, once
+    assert eng["maintain_year"] == 2160  # 2 h x 90 x 12
+    assert eng["servers_year"] == 1080  # 90 x 12
+    assert eng["diy_year"] == 10440
+    assert eng["dlthub_year"] == pytest.approx(12 * pe.estimate(data)["cost_expected"])
+    assert eng["difference"] == pytest.approx(eng["diy_year"] - eng["dlthub_year"])
+    assert eng["diy_month_after"] == 270  # maintain + servers, from the second year
+
+
+def test_engineering_parts_can_be_skipped() -> None:
+    data = worked_example()
+    data["engineering"] = {"maintenance_hours_per_month": 2, "hourly_rate": 90}
+    eng = pe.estimate(data)["engineering"]
+
+    assert eng["build"] is None and eng["servers_year"] is None
+    assert eng["diy_year"] == 2160
+
+
+@pytest.mark.parametrize(
+    "engineering, error",
+    [
+        ({"build_hours": 80}, "hourly_rate"),
+        ({"hourly_rate": 90, "servers_per_month": 50}, "build_hours or maintenance"),
+        ({"hours_per_month": 40, "hourly_rate": 100}, "maintenance_hours_per_month"),
+    ],
+)
+def test_bad_engineering_fails_loudly(engineering: dict, error: str) -> None:
+    data = worked_example()
+    data["engineering"] = engineering
+
+    with pytest.raises(ValueError, match=error):
+        pe.estimate(data)
+
+
+def test_report_shows_the_first_year_breakdown() -> None:
+    data = worked_example()
+    data["currency"] = "EUR"
+    data["cost_options"] = []
+    data["no_cost_options_reason"] = "None."
+    data["jobs"] = data["jobs"][2:]  # warehouse_daily only: about €101 / month
+    data["engineering"] = dict(ENGINEERING)
+    page = pe.report(pe.estimate(data))
+
+    assert "<h2>dltHub vs. doing it yourself: first year</h2>" in page
+    assert "80 h × €90" in page and "€7,200" in page
+    assert "2 h × €90 × 12" in page and "€2,160" in page
+    assert "€90 × 12" in page and "€1,080" in page
+    assert "dltHub costs €9,223 less in the first year than doing it yourself." in page
+    assert "From the second year: dltHub €101 vs doing it yourself €270 per month." in page
+
+
+def test_report_marks_skipped_engineering_parts_and_flips_the_verdict() -> None:
+    data = worked_example()  # about $2,291 / month: more than doing it yourself
+    data["engineering"] = {"maintenance_hours_per_month": 2, "hourly_rate": 90}
+    page = pe.report(pe.estimate(data))
+
+    assert page.count("not given") == 2  # build and servers
+    assert "doing it yourself is estimated to cost $25,337 less in the first year" in page
 
 
 def test_assumptions_are_generated() -> None:
@@ -576,7 +640,7 @@ def test_summary_markdown() -> None:
 def test_eur_workspace_is_priced_in_euros() -> None:
     data = worked_example()
     data["currency"] = "EUR"
-    data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
+    data["engineering"] = dict(ENGINEERING)
     est = pe.estimate(data)
     md = pe.summary(est)
     page = pe.report(est)
@@ -586,7 +650,7 @@ def test_eur_workspace_is_priced_in_euros() -> None:
     assert "| Hours/month | €/month |" in md
     assert "Expected about €2,291.39 per month" in md
     assert "saves €97.33/month" in md
-    assert "40 h × €100 = €4,000.00/month" in md
+    assert "build 80 h × €90 = €7,200 once; maintain 2 h × €90 × 12 = €2,160" in md
     assert "$" not in md
     assert "About €2,291 per month" in page and "Included in the €10/hour" in page
     assert "up to −€608 / month" in page
@@ -604,21 +668,21 @@ def test_report_is_self_contained_and_escaped() -> None:
     data = worked_example()
     data["jobs"][0]["name"] = "<b>orders</b>"
     data["cost_options"][0]["job"] = "<b>orders</b>"
-    data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
+    data["engineering"] = dict(ENGINEERING)
     page = pe.report(pe.estimate(data))
 
     assert page.startswith("<!doctype html>")
     assert "<script" not in page.lower()
     assert "http://" not in page and "https://" not in page
     assert "<b>orders</b>" not in page and "&lt;b&gt;orders&lt;/b&gt;" in page
-    assert "$2,291" in page and "Engineering time" in page
+    assert "$2,291" in page and "doing it yourself: first year" in page
     assert "$cost" not in page and "$job_rows" not in page
 
 
 def test_report_without_engineering_hides_the_section() -> None:
     page = pe.report(pe.estimate(worked_example()))
 
-    assert "<section hidden>\n    <h2>Engineering time</h2>" in page
+    assert "<section hidden>\n    <h2>dltHub vs. doing it yourself: first year</h2>" in page
 
 
 def test_report_with_cost_options_hides_the_reason() -> None:
@@ -681,7 +745,8 @@ def test_reason_for_no_cost_options_is_shown_to_the_user() -> None:
     assert "- None proposed: Every job already runs daily" in pe.summary(est)
     page = pe.report(est)
     assert "Ways to lower it" in page
-    assert "No changes to propose: Every job already runs daily on the &lt;small&gt; instance." in page
+    reason = "Every job already runs daily on the &lt;small&gt; instance."
+    assert f"No changes to propose: {reason}" in page
 
 
 def test_report_example_is_up_to_date() -> None:

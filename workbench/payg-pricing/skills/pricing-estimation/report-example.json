@@ -31,6 +31,7 @@
     {"job": "crm_hourly", "size": "small", "multiplier": 1},
     {"label": "Incremental loading for warehouse_daily", "unquantified": true}
   ],
-  "engineering": {"hours_per_month": 40, "hourly_rate": 90},
+  "engineering": {"build_hours": 200, "maintenance_hours_per_month": 24,
+                  "hourly_rate": 90, "servers_per_month": 400},
   "notes": ["Example data for previewing the report layout; not a real workspace."]
 }

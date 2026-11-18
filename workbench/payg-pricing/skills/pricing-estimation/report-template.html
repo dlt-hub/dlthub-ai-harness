@@ -77,6 +77,13 @@
   .legend { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
   .key { display: inline-block; width: 12px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 4px 0 10px; }
   .note { font-size: 13px; color: var(--muted); }
+  .note.intro { margin: 0 0 10px; }
+  .side + .side { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .side .bar { margin-bottom: 6px; }
+  table.parts { width: 100%; font-size: 13px; }
+  table.parts td { padding: 3px 8px 3px 0; border-bottom: 0; color: var(--muted); }
+  table.parts td:first-child { width: 34%; color: var(--text); }
+  table.parts td.num { padding-right: 0; }
   .callout { background: var(--lime-tint); color: var(--lime-ink); border-radius: 10px; padding: 10px 14px; margin-top: 10px; font-weight: 600; }
   .small { font-size: 13px; color: var(--muted); }
   .small ul { margin: 6px 0 0; padding-left: 18px; }
@@ -199,14 +206,29 @@
     <p class="note"$options_hidden>Each option is a choice you make; nothing changes until you decide.</p>
   </section>
 
-  <!-- Engineering time: only when the user gave their own hours and rate (optional question). -->
+  <!-- dltHub vs. doing it yourself: only when the user gave their own hours and rate
+       (optional question). Building is a one-off cost, so both sides are compared over the
+       first year; the second-year line shows the monthly gap after the build. -->
   <section$engineering_hidden>
-    <h2>Engineering time</h2>
+    <h2>dltHub vs. doing it yourself: first year</h2>
+    <p class="note intro">Running these pipelines without dltHub means building scheduling, deployment and monitoring once, then keeping it running.</p>
     <div class="bars">
-      $engineering_bars
+      <div class="side">
+        $eng_dlt_bar
+        <table class="parts">
+          <tr><td>Runtime</td><td>12 × $cost_expected</td><td class="num">$eng_dlt_year</td></tr>
+          <tr><td>Build &amp; upkeep</td><td></td><td class="num">included</td></tr>
+        </table>
+      </div>
+      <div class="side">
+        $eng_diy_bar
+        <table class="parts">
+          $eng_diy_rows
+        </table>
+      </div>
     </div>
     <div class="callout">$engineering_verdict</div>
-    <p class="note">Engineering hours and rate are your own estimate. Doing it yourself also needs servers to run on; their cost is not included here.</p>
+    <p class="note">$eng_second_year Hours, rate and server cost are your own estimate.</p>
   </section>
 
   <section class="small">

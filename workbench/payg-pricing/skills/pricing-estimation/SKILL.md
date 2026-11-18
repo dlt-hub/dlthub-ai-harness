@@ -166,13 +166,18 @@ Then add, in a sentence or two:
 After the estimate, ask once: *"Want a one-page report you can share with your team or
 manager?"* Only on a yes:
 
-1. Ask, optionally: *"Roughly how many engineer hours a month would running these pipelines
-   yourselves take (scheduler, servers, monitoring, reruns), and at what hourly rate? Or skip
-   it."* Ask it as a plain chat message and wait for the reply: the answer is two numbers, not a
-   choice, so don't put it in a multiple-choice question. Add the answer as `engineering`
-   (`hours_per_month`, `hourly_rate` in the estimate's currency); if they skip it, leave it out
-   — **never invent hours or rates**. When it is left out, say so when you hand over the report:
-   the "Engineering time" section is missing because no hours or rate were given.
+1. Ask, optionally, to compare dltHub with running the pipelines yourselves over the first
+   year: *"If you ran these pipelines yourselves, roughly: how many engineer hours to build the
+   scheduling, deployment and monitoring once, how many hours a month to keep it running, at
+   what hourly rate, and what would servers cost per month? Answer any you know, or skip it."*
+   Ask it as a plain chat message and wait for the reply: the answer is numbers, not a choice,
+   so don't put it in a multiple-choice question. Add the answer as `engineering`:
+   `build_hours` (once), `maintenance_hours_per_month`, `hourly_rate` and `servers_per_month`,
+   in the estimate's currency. The rate and at least one of the hours are needed; leave out any
+   other part they don't know, and the report shows it as "not given". If they skip it, leave
+   `engineering` out — **never invent hours, rates or server costs**. When it is left out, say
+   so when you hand over the report: the "dltHub vs. doing it yourself" section is missing
+   because no hours or rate were given.
 2. Run:
    `uv run python <this skill's folder>/payg_estimate.py report reports/payg-estimate.json --out reports/payg-cost-estimate.html`
 3. Tell the user: open the file in a browser, or use Print → Save as PDF to send it on.
