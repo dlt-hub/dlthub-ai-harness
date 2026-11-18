@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""Generate the launcher catalogs for Cursor and Codex.
+"""Generate the launcher catalogs for Cursor, Codex and CoCo.
 
 The launcher (dlthub-setup) installs the other toolkits with the dlthub CLI.
+CoCo installs a repo root and reads skills/ there, so we copy them.
 Add --check to fail on stale files.
 """
 
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = "dlthub-setup"
+# CoCo loads skills only from this folder at the repo root.
+ROOT_SKILLS = "skills"
 _EDIT_HINT = (
     "Do not edit generated files by hand. Edit .claude-plugin/marketplace.json, "
-    f"workbench/{LAUNCHER}/.claude-plugin/plugin.json, "
-    "then run: uv run python tools/generate_catalogs.py"
+    f"workbench/{LAUNCHER}/.claude-plugin/plugin.json or workbench/{LAUNCHER}/skills/, "
+    "git add new skill files, then run: uv run python tools/generate_catalogs.py"
 )
 # Fields copied from the Claude plugin.json into every host manifest.
 _META = (
@@ -98,17 +102,40 @@ def generate(root: Path) -> dict[str, str]:
     plugin = json.loads((root / rel / ".claude-plugin" / "plugin.json").read_text())
     for name, data in launcher_manifests(plugin).items():
         out[f"{rel}/{name}"] = dumps(data)
+    # CoCo reads .cortex-plugin first; root .claude-plugin is only a catalog.
+    out[".cortex-plugin/plugin.json"] = dumps({**meta_of(plugin), "skills": f"./{ROOT_SKILLS}/"})
+    skills_dir = root / rel / "skills"
+    for path in tracked_files(root, skills_dir):
+        out[f"{ROOT_SKILLS}/{path.relative_to(skills_dir)}"] = path.read_text()
     return out
 
 
-def report(changed: list[str]) -> int:
+def tracked_files(root: Path, folder: Path) -> list[Path]:
+    """Return the files under folder that git tracks, so local junk is not copied."""
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", str(folder.relative_to(root))],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return sorted(root / rel for rel in listed.split("\0") if rel)
+
+
+def stale_copies(root: Path, files: dict[str, str]) -> list[str]:
+    """Return files in the root skills folder that the generator no longer makes."""
+    found = (p for p in (root / ROOT_SKILLS).rglob("*") if p.is_file())
+    return sorted(rel for p in found if (rel := str(p.relative_to(root))) not in files)
+
+
+def report(changed: list[str], stale: list[str]) -> int:
     """Print each file that differs from the source and return the exit code."""
-    if not changed:
+    if not changed and not stale:
         print("Catalogs are up to date.")
         return 0
     # GitHub Actions shows these lines as errors on the files in the PR.
     ci = os.environ.get("GITHUB_ACTIONS") == "true"
-    for rel in changed:
+    for rel in changed + stale:
         print(f"::error file={rel}::Generated file. {_EDIT_HINT}" if ci else f"  DIFF  {rel}")
     print(f"These generated files differ from the source. {_EDIT_HINT}")
     return 1
@@ -126,14 +153,18 @@ def main() -> None:
         for rel, text in files.items()
         if not (ROOT / rel).exists() or (ROOT / rel).read_text() != text
     ]
+    stale = stale_copies(ROOT, files)
     if args.check:
-        sys.exit(report(changed))
+        sys.exit(report(changed, stale))
     for rel in changed:
         path = ROOT / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(files[rel])
         print(f"  wrote {rel}")
-    print(f"{len(files)} files, {len(changed)} changed.")
+    for rel in stale:
+        (ROOT / rel).unlink()
+        print(f"  removed {rel}")
+    print(f"{len(files)} files, {len(changed)} changed, {len(stale)} removed.")
 
 
 if __name__ == "__main__":

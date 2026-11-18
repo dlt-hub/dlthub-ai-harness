@@ -2,7 +2,7 @@
 
 dltHub Setup is the entry point to the dltHub AI harness. It sets up a dltHub workspace in your project, then installs the toolkit for your task. A toolkit gives your coding assistant the skills, rules and MCP server for one kind of data work, for example a REST API pipeline.
 
-Works in Claude Code, Cursor and Codex.
+Works in Claude Code, Cursor, Codex and CoCo (Snowflake Cortex Code).
 
 ## What it does
 
