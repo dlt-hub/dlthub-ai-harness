@@ -28,7 +28,8 @@ copy facts into a JSON file, choose which changes to propose, and paste the scri
 
 Before anything else, ask: *"Does your dltHub workspace run in the US or the EU?"* The answer
 sets the currency of every figure: US → `"currency": "USD"` (dollars), EU → `"currency": "EUR"`
-(euros). Never assume it; the script refuses to run without it.
+(euros). Never assume it; the script refuses to run without it. Ask only the question: don't tell
+the user the hourly price or that it is the same number in both regions.
 
 ## Step 2: Read the workspace
 
@@ -97,13 +98,21 @@ something light") — then pick a value, pass it as `assumed`, and say so in `no
 
 ## Step 4: Choose the changes to propose
 
-Add `levers` — the changes, not their savings. The script prices each one:
+Add `cost_options`: the changes that could lower the bill, not their savings. The script
+prices each one. Look at every job with a time schedule or always-on uptime and consider:
 
 - run less often: `{"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}}`
 - smaller instance, only if the job could fit: `{"job": "crm", "size": "small", "multiplier": 1}`
 - shorter uptime for an always-on job: `{"job": "dashboard", "always_on_hours_per_day": 4}`
 - anything that changes run time, which can't be priced before it's measured — incremental
   loading, merging small jobs: `{"label": "Incremental loading for crm", "unquantified": true}`
+
+If none of these fits, don't leave the key out: pass `"cost_options": []` and say why in
+`"no_cost_options_reason"`, one plain sentence the user will read in the report. Say which case it
+is: nothing can change (e.g. every job is event-triggered, so it follows another job's schedule),
+or a change exists but isn't worth proposing and why (e.g. every job already runs daily on the
+smallest instance). The script refuses to run without `cost_options`, and refuses an empty list
+without a reason.
 
 Put any other context (where durations came from, caveats specific to this workspace) in
 `notes` as plain sentences, without numbers you worked out yourself.
@@ -143,7 +152,7 @@ Then add, in a sentence or two:
   table they move with their upstream jobs.
 - Average run: mean of successful runs. Slow run: 90th percentile, or the longest run when there
   are fewer than 5. Failed runs are billed once, for the time they ran.
-- Another schedule (what-if table and schedule levers): an incremental, time-triggered job's run
+- Another schedule (what-if table and schedule cost options): an incremental, time-triggered job's run
   is about 20% start-up time and 80% loading new data. The new data per run grows with the time
   between runs, so twice as often each run is 40% shorter (hourly at 20 min → every 30 min at
   12 min), and half as often 80% longer. A schedule change only saves or adds the start-up part,
@@ -188,7 +197,7 @@ illustrative — read the docs.
      "size": "small", "multiplier": 1, "loading": "full",
      "assumed": {"avg_minutes": 20, "slow_minutes": 30}}
   ],
-  "levers": [
+  "cost_options": [
     {"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}},
     {"job": "crm_hourly", "schedule": {"every": 2, "unit": "hours"}},
     {"job": "crm_hourly", "size": "small", "multiplier": 1},
@@ -240,4 +249,4 @@ illustrative — read the docs.
 - **Jobs, not pipelines.** Each scheduled job is its own row.
 - **Show a range, not a point.** Expected and heavy-month figures make the price predictable;
   neither is a hard bound.
-- **Propose, never apply.** Cost levers are the user's decision.
+- **Propose, never apply.** Cost options are the user's decision.

@@ -11,7 +11,7 @@
 
 ### Outgoing (from payg-pricing)
 
-- **performance** → `optimize-performance` — when a cost lever is "make runs shorter": tune the slow job before changing the schedule or instance size (install if absent: `uv run dlthub --non-interactive ai toolkit install performance`)
+- **performance** → `optimize-performance` — when a cost option is "make runs shorter": tune the slow job before changing the schedule or instance size (install if absent: `uv run dlthub --non-interactive ai toolkit install performance`)
 - **dlthub-platform** → `deploy-workspace` — when the user decides to change a job's schedule or instance size; that toolkit's `job-resources` rule requires their explicit yes
 
 References:

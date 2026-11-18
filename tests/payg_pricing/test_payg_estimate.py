@@ -56,7 +56,7 @@ def worked_example() -> dict:
                 "assumed": assumed(20, 30),
             },
         ],
-        "levers": [
+        "cost_options": [
             {"job": "orders_sync", "schedule": every(30)},
             {"job": "crm_hourly", "schedule": every(2, "hours")},
             {"job": "crm_hourly", "size": "small", "multiplier": 1},
@@ -324,7 +324,7 @@ def test_report_shows_never_succeeded_and_event_label() -> None:
 
     assert "never succeeded (0.2 min per failed run)</td>" in page
     assert "min per failed run) min" not in page
-    assert "when business_partner or bp_address fails" in page
+    assert "when business_<wbr>partner or bp_<wbr>address fails" in page
     assert '<td class="num">1 min</td>' in page
 
 
@@ -451,7 +451,7 @@ def test_twice_as_often_makes_each_run_40_percent_shorter() -> None:
         "currency": "USD",
         "rate_per_hour": 10,
         "jobs": [job("sync", every(1, "hours"), [{"minutes": 20, "status": "ok"}] * 5)],
-        "levers": [{"job": "sync", "schedule": every(30)}],
+        "cost_options": [{"job": "sync", "schedule": every(30)}],
     }
     est = pe.estimate(data)
 
@@ -464,7 +464,7 @@ def test_twice_as_often_makes_each_run_40_percent_shorter() -> None:
     assert "+$487 / month" in pe.report(est)
 
 
-def test_levers_are_priced_by_the_script() -> None:
+def test_cost_options_are_priced_by_the_script() -> None:
     est = pe.estimate(worked_example())
     savings = [(s["label"], s["cost_per_month"]) for s in est["savings"]]
 
@@ -474,7 +474,7 @@ def test_levers_are_priced_by_the_script() -> None:
     assert savings[3] == ("Incremental loading for warehouse_daily", None)
 
 
-def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
+def test_cadence_option_on_an_upstream_saves_on_its_event_jobs_too() -> None:
     # a daily load that fails 40% of the time, an inspector on failure, a dq check on success
     def pipeline(load_schedule: dict, ok_min: float = 10) -> dict:
         return {
@@ -485,7 +485,7 @@ def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
                 job("inspector", {"on_failure_of": ["load"]}, [{"minutes": 3, "status": "ok"}]),
                 job("dq", {"on_success_of": ["load"]}, [{"minutes": 4, "status": "ok"}]),
             ],
-            "levers": [{"job": "load", "schedule": every(2, "days")}],
+            "cost_options": [{"job": "load", "schedule": every(2, "days")}],
         }
 
     est = pe.estimate(pipeline(every(1, "days")))
@@ -496,7 +496,7 @@ def test_cadence_lever_on_an_upstream_saves_on_its_event_jobs_too() -> None:
     assert est["savings"][0]["cost_per_month"] == round(est["cost_expected"] - after, 2)
 
 
-def test_size_lever_is_an_upper_bound_with_break_even() -> None:
+def test_size_option_is_an_upper_bound_with_break_even() -> None:
     est = pe.estimate(worked_example())
     slowdown = [s["break_even_slowdown"] for s in est["savings"]]
 
@@ -504,17 +504,17 @@ def test_size_lever_is_an_upper_bound_with_break_even() -> None:
     assert slowdown == [None, None, 2, None]
 
 
-def test_size_lever_to_a_bigger_instance_has_no_break_even() -> None:
+def test_size_option_to_a_bigger_instance_has_no_break_even() -> None:
     data = worked_example()
-    data["levers"] = [{"job": "orders_sync", "size": "medium", "multiplier": 2}]
+    data["cost_options"] = [{"job": "orders_sync", "size": "medium", "multiplier": 2}]
     est = pe.estimate(data)
 
     assert est["savings"][0]["break_even_slowdown"] is None
 
 
-def test_lever_for_unknown_job_fails() -> None:
+def test_cost_option_for_unknown_job_fails() -> None:
     data = worked_example()
-    data["levers"] = [{"job": "nope", "schedule": every(30)}]
+    data["cost_options"] = [{"job": "nope", "schedule": every(30)}]
 
     with pytest.raises(ValueError, match="nope"):
         pe.estimate(data)
@@ -603,7 +603,7 @@ def test_currency_must_be_usd_or_eur(currency: str | None) -> None:
 def test_report_is_self_contained_and_escaped() -> None:
     data = worked_example()
     data["jobs"][0]["name"] = "<b>orders</b>"
-    data["levers"][0]["job"] = "<b>orders</b>"
+    data["cost_options"][0]["job"] = "<b>orders</b>"
     data["engineering"] = {"hours_per_month": 40, "hourly_rate": 100}
     page = pe.report(pe.estimate(data))
 
@@ -638,3 +638,40 @@ def test_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
 
     pe.main(["report", str(src), "--out", str(out)])
     assert out.read_text(encoding="utf-8").startswith("<!doctype html>")
+
+
+def test_money_keeps_cents_under_one_unit() -> None:
+    money = pe._money("EUR")
+    assert money(0.36) == "€0.36"
+    assert money(10.88) == "€11"
+    assert money(10.88, True) == "€10.88"
+    assert money(0) == "€0"
+
+
+def test_missing_cost_options_are_refused() -> None:
+    data = worked_example()
+    del data["cost_options"]
+
+    with pytest.raises(ValueError, match="cost_options is missing"):
+        pe.check_cost_options(data)
+
+
+def test_empty_cost_options_need_a_reason() -> None:
+    data = worked_example()
+    data["cost_options"] = []
+
+    with pytest.raises(ValueError, match="no_cost_options_reason"):
+        pe.check_cost_options(data)
+
+
+def test_reason_for_no_cost_options_is_shown_to_the_user() -> None:
+    data = worked_example()
+    data["cost_options"] = []
+    data["no_cost_options_reason"] = "Every job already runs daily on the <small> instance."
+    pe.check_cost_options(data)
+    est = pe.estimate(data)
+
+    assert "- None proposed: Every job already runs daily" in pe.summary(est)
+    page = pe.report(est)
+    assert "Ways to lower it" in page
+    assert "No changes to propose: Every job already runs daily on the &lt;small&gt; instance." in page

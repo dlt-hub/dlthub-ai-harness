@@ -38,12 +38,15 @@ Input (JSON):
          "runs": [{"minutes": 0.7, "status": "ok"}]}         # on_completion_of
       ],                                                    # "schedule" may be a list: any
                                                             # trigger fires its own run
-      "levers": [                                  # changes to price; the script computes savings
+      "cost_options": [                            # required: changes that could lower the bill;
+                                                   # the script computes what each saves
         {"job": "orders_sync", "schedule": {"every": 30, "unit": "minutes"}},
         {"job": "orders_sync", "size": "small", "multiplier": 1},
         {"job": "dashboard", "always_on_hours_per_day": 4},
         {"label": "Incremental loading for orders_sync", "unquantified": true}
       ],
+      # or, when no change fits: "cost_options": [] and
+      # "no_cost_options_reason": "Every job already runs daily on the smallest instance."
       "engineering": {"hours_per_month": 40, "hourly_rate": 100},   # optional
       "notes": ["Durations from the last 20 runs per job."]             # optional, no numbers
     }
@@ -306,33 +309,33 @@ def _need(obj: dict, key: str, what: str) -> float:
     return float(obj[key])
 
 
-def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> dict:
-    if lever.get("unquantified"):
-        return {"label": lever["label"], "cost_per_month": None, "break_even_slowdown": None}
-    name = lever.get("job")
+def _cost_option(option: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> dict:
+    if option.get("unquantified"):
+        return {"label": option["label"], "cost_per_month": None, "break_even_slowdown": None}
+    name = option.get("job")
     if name not in jobs:
-        raise ValueError(f"lever names job {name!r}, which is not in jobs")
+        raise ValueError(f"cost option names job {name!r}, which is not in jobs")
     job = jobs[name]
     schedule, mult = job["schedule"], job["multiplier"]
     # a smaller instance may run slower; the saving assumes the same run time, so it is an
     # upper bound, and it is gone once the run is old/new multiplier times slower
     break_even = None
-    if "schedule" in lever:
-        schedule = lever["schedule"]
+    if "schedule" in option:
+        schedule = option["schedule"]
         label = f"{name} {schedule_label(schedule)} instead of {schedule_label(job['schedule'])}"
-    elif "multiplier" in lever:
-        mult = _need(lever, "multiplier", f"lever for {name!r}")
-        label = f"{name} on {lever.get('size', '?')} instead of {job.get('size', '?')} (if it fits)"
+    elif "multiplier" in option:
+        mult = _need(option, "multiplier", f"cost option for {name!r}")
+        label = f"{name} on {option.get('size', '?')} instead of {job.get('size', '?')} (if it fits)"
         if 0 < mult < job["multiplier"]:
             break_even = job["multiplier"] / mult
-    elif "always_on_hours_per_day" in lever:
-        schedule = {"always_on_hours_per_day": lever["always_on_hours_per_day"]}
+    elif "always_on_hours_per_day" in option:
+        schedule = {"always_on_hours_per_day": option["always_on_hours_per_day"]}
         label = (
-            f"{name} up {_num(lever['always_on_hours_per_day'])} h/day instead of "
+            f"{name} up {_num(option['always_on_hours_per_day'])} h/day instead of "
             f"{_num(job['schedule']['always_on_hours_per_day'])} h/day"
         )
     else:
-        raise ValueError(f"lever for {name!r} changes nothing the script can price")
+        raise ValueError(f"cost option for {name!r} changes nothing the script can price")
     # re-price every job: event-triggered jobs downstream follow a new cadence
     schedules = {**counter.schedules, name: schedule}
     changed = _Runs(schedules, counter.stats)
@@ -344,7 +347,7 @@ def _lever(lever: dict, jobs: dict[str, dict], counter: _Runs, rate: float) -> d
             stats = _at_cadence(stats, j["runs_month"], runs)
         new_total += _hours(runs, schedules[n], stats, mult if n == name else j["multiplier"])[0]
     return {
-        "label": lever.get("label", label),
+        "label": option.get("label", label),
         "cost_per_month": round((old_total - new_total) * rate, 2),
         "break_even_slowdown": break_even,
     }
@@ -436,7 +439,8 @@ def estimate(data: dict) -> dict:
         "cost_per_run": cost_scheduled / runs_total if runs_total else None,
         "cost_per_day": cost_expected / DAYS_PER_MONTH,
         "ladder": ladder,
-        "savings": [_lever(lv, by_name, counter, rate) for lv in data.get("levers") or []],
+        "savings": [_cost_option(o, by_name, counter, rate) for o in data.get("cost_options") or []],
+        "no_cost_options_reason": (data.get("no_cost_options_reason") or "").strip(),
         "engineering": engineering,
         "assumptions": _assumptions(jobs, currency, rate, data.get("notes") or []),
     }
@@ -518,11 +522,16 @@ def _assumptions(jobs: list[dict], currency: str, rate: float, notes: list[str])
 
 
 def _money(currency: str):
-    """A formatter for amounts in the estimate's currency: $1,234 or €1,234."""
+    """A formatter for amounts in the estimate's currency: $1,234 or €1,234.
+
+    Whole units by default, but an amount under 1 keeps its cents (€0.36, not €0).
+    """
     symbol = CURRENCIES[currency]
 
     def money(value: float, cents: bool = False) -> str:
-        return f"{symbol}{value:,.2f}" if cents else f"{symbol}{value:,.0f}"
+        if cents or 0 < abs(value) < 1:
+            return f"{symbol}{value:,.2f}"
+        return f"{symbol}{value:,.0f}"
 
     return money
 
@@ -530,6 +539,11 @@ def _money(currency: str):
 def _num(value: float) -> str:
     value = float(value)
     return f"{value:,.0f}" if value == int(value) else f"{value:,.1f}"
+
+
+def _wrap(value: object) -> str:
+    """Escape, and let snake_case names break after an underscore instead of mid-word."""
+    return _e(value).replace("_", "_<wbr>")
 
 
 def _e(value: object) -> str:
@@ -584,6 +598,8 @@ def summary(est: dict) -> str:
             now = f"{money(job['cost_expected'], True)} ({job['label']})"
             cells = [money(u, True) for u in row["cost"]]
             out.append(f"| {row['job']} | {now} | " + " | ".join(cells) + " |")
+    if not est["savings"] and est["no_cost_options_reason"]:
+        out += ["", "**Ways to cut cost**", f"- None proposed: {est['no_cost_options_reason']}"]
     if est["savings"]:
         out += ["", "**Ways to cut cost**"]
         for s in est["savings"]:
@@ -625,6 +641,22 @@ def _bar(label: str, value: str, pct: float, css: str = "") -> str:
     )
 
 
+def _bar_row(label: str, value: str) -> str:
+    """A saving with no bar: unknown until measured, or one that costs more."""
+    return f'<div class="bar"><div class="label"><span>{label}</span><b>{value}</b></div></div>'
+
+
+def _saving_bar(label: str, value: str, note: str, saved_pct: float) -> str:
+    """Full track = today's bill; split into what is still paid and what the change saves."""
+    saved = max(0.0, min(100.0, saved_pct))
+    return (
+        f'<div class="bar"><div class="label"><span>{label}<br><span class="tag">{note}</span>'
+        f"</span><b>{value}</b></div>"
+        f'<div class="track split"><div class="fill keep" style="width:{100 - saved:.1f}%"></div>'
+        f'<div class="fill saved" style="width:{saved:.1f}%"></div></div></div>'
+    )
+
+
 def report(est: dict) -> str:
     """The one-page HTML report. Every customer-supplied string is escaped."""
     money = _money(est["currency"])
@@ -644,34 +676,43 @@ def report(est: dict) -> str:
             avg = f"{_num(j['stats']['avg_min'])} min"
         share = 100 * j["cost_expected"] / total
         rows.append(
-            f"<tr><td>{_e(j['name'])}</td><td>{_e(j['label'])}</td>"
+            f'<tr><td class="job">{_e(j["name"])}</td><td class="when">{_wrap(j["label"])}</td>'
             f'<td class="num">{"—" if j["stats"] is None else _num(j["runs_month"])}</td>'
             f'<td class="num">{_e(avg)}</td>'
             f'<td>{_e(j.get("size", ""))} <span class="tag">{_num(j["multiplier"])}×</span></td>'
             f'<td class="num">{_num(round(j["hours_expected"], 1))}</td>'
-            f'<td class="num"><span class="share" style="width:{share * 0.6:.0f}px"></span>'
-            f"{money(j['cost_expected'])}</td></tr>"
+            f"<td class=\"num\">{money(j['cost_expected'])}</td>"
+            f'<td class="num">{share:.0f}%</td></tr>'
         )
 
     savings = ""
+    if not est["savings"] and est["no_cost_options_reason"]:
+        savings = (
+            '<section><h2>Ways to lower it</h2><div class="bars"><p class="legend">'
+            f"No changes to propose: {_e(est['no_cost_options_reason'])}</p></div></section>"
+        )
     if est["savings"]:
         bars = []
         for s in est["savings"]:
             saving = s["cost_per_month"]
             if saving is None:
-                bars.append(_bar(_e(s["label"]), "measure after the change", 0))
-            elif s["break_even_slowdown"]:
-                label = (
-                    f'{_e(s["label"])}<br><span class="tag">'
-                    f"{_e(_upper_bound_note(s['break_even_slowdown']))}</span>"
-                )
-                bars.append(_bar(label, f"up to −{money(saving)} / month", 100 * saving / total))
+                bars.append(_bar_row(_e(s["label"]), "measure after the change"))
             elif saving < 0:
-                bars.append(_bar(_e(s["label"]), f"+{money(-saving)} / month", 0))
+                bars.append(_bar_row(_e(s["label"]), f"+{money(-saving)} / month"))
             else:
-                bars.append(_bar(_e(s["label"]), f"−{money(saving)} / month", 100 * saving / total))
+                after = max(0.0, est["cost_expected"] - saving)
+                note = f"{money(est['cost_expected'])} → {money(after)} per month"
+                value = f"−{money(saving)} / month"
+                if s["break_even_slowdown"]:
+                    note += f"; {_upper_bound_note(s['break_even_slowdown'])}"
+                    value = "up to " + value
+                bars.append(_saving_bar(_e(s["label"]), value, _e(note), 100 * saving / total))
         savings = (
             '<section><h2>Ways to lower it</h2><div class="bars">'
+            '<p class="legend">Each bar is today\'s estimate of '
+            f"{money(est['cost_expected'])} / month: "
+            '<span class="key keep"></span>what you would still pay '
+            '<span class="key saved"></span>what the change saves</p>'
             + "".join(bars)
             + '</div><p class="note">Each option is a choice you make; nothing changes'
             " until you decide.</p></section>"
@@ -728,6 +769,21 @@ def report(est: dict) -> str:
     return Template(TEMPLATE.read_text(encoding="utf-8")).substitute(values)
 
 
+def check_cost_options(data: dict) -> None:
+    """Refuse an estimate whose cost options were never decided, so an empty
+    "Ways to lower it" always says why instead of silently disappearing."""
+    if "cost_options" not in data:
+        raise ValueError(
+            "cost_options is missing: choose the changes to propose (SKILL.md Step 4). If none"
+            " fits, pass \"cost_options\": [] and say why in \"no_cost_options_reason\"."
+        )
+    if not data["cost_options"] and not (data.get("no_cost_options_reason") or "").strip():
+        raise ValueError(
+            "cost_options is empty: say why in \"no_cost_options_reason\" (for example, every"
+            " job already runs daily on the smallest instance); the report shows it to the user."
+        )
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -738,7 +794,9 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--out", default="reports/payg-cost-estimate.html", help="HTML file to write")
     args = parser.parse_args(argv)
 
-    est = estimate(json.loads(Path(args.estimate).read_text(encoding="utf-8")))
+    data = json.loads(Path(args.estimate).read_text(encoding="utf-8"))
+    check_cost_options(data)
+    est = estimate(data)
     money = _money(est["currency"])
     if args.command == "summary":
         sys.stdout.write(summary(est))

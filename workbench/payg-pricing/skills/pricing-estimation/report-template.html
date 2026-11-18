@@ -53,12 +53,12 @@
   .inc li::before { content: "✓"; position: absolute; left: 4px; color: var(--teal); font-weight: 700; }
   .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  td:first-child { white-space: normal; overflow-wrap: anywhere; }
-  th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; }
+  td.job { white-space: nowrap; color: var(--ink); font-weight: 600; }
+  td.when { white-space: normal; min-width: 14ch; font-size: 13px; color: var(--muted); }
+  th { white-space: normal; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tr.total td { font-weight: 700; color: var(--ink); border-bottom: 0; }
-  .share { display: inline-block; height: 6px; border-radius: 3px; background: var(--teal); vertical-align: middle; margin-right: 6px; }
   .tag { font-size: 11px; color: var(--muted); }
   .bars { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
   .bar { margin-bottom: 12px; }
@@ -69,6 +69,12 @@
   .fill { height: 100%; border-radius: 5px; background: var(--lime); }
   .fill.dlt { background: var(--accent); }
   .fill.diy { background: var(--muted); }
+  .track.split { display: flex; }
+  .track.split .fill { border-radius: 0; }
+  .fill.keep, .key.keep { background: var(--teal); }
+  .fill.saved, .key.saved { background: repeating-linear-gradient(135deg, var(--lime) 0 4px, var(--lime-tint) 4px 7px); }
+  .legend { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .key { display: inline-block; width: 12px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 4px 0 10px; }
   .note { font-size: 13px; color: var(--muted); }
   .callout { background: var(--lime-tint); color: var(--lime-ink); border-radius: 10px; padding: 10px 14px; margin-top: 10px; font-weight: 600; }
   .small { font-size: 13px; color: var(--muted); }
@@ -97,9 +103,10 @@
     .scroll { overflow: visible; }
     table { font-size: 11px; }
     th, td { padding: 5px 6px; white-space: normal; }
+    td.job { white-space: nowrap; }
     th { font-size: 9px; }
-    .share { display: none; }
     .bars { padding: 10px; }
+    .track, .fill, .key { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .bar { margin-bottom: 8px; }
     .bar .label, .callout { font-size: 12px; }
     .note, .small, footer { font-size: 11px; }
@@ -142,7 +149,7 @@
         <li>How long each run takes</li>
         <li>Instance size (1× small, 2× medium, …)</li>
       </ul></div>
-      <div class="stays"><h3>Doesn't</h3><ul>
+      <div class="stays"><h3>Doesn't impact your bill</h3><ul>
         <li>Number of rows loaded</li>
         <li>Number of sources or connectors</li>
         <li>Data volume, except through run time</li>
@@ -170,10 +177,10 @@
     <h2>Your jobs</h2>
     <div class="scroll">
       <table>
-        <thead><tr><th>Job</th><th>Runs</th><th class="num">Runs / month</th><th class="num">Avg run</th><th>Size</th><th class="num">Hours / month</th><th class="num">Cost / month</th></tr></thead>
+        <thead><tr><th>Job</th><th>Runs</th><th class="num">Runs / month</th><th class="num">Avg run</th><th>Size</th><th class="num">Hours / month</th><th class="num">Cost / month</th><th class="num">Share of bill</th></tr></thead>
         <tbody>
           $job_rows
-          <tr class="total"><td>Total</td><td></td><td class="num">$runs_total</td><td></td><td></td><td class="num">$hours_expected</td><td class="num">$cost_expected</td></tr>
+          <tr class="total"><td>Total</td><td></td><td class="num">$runs_total</td><td></td><td></td><td class="num">$hours_expected</td><td class="num">$cost_expected</td><td class="num">100%</td></tr>
         </tbody>
       </table>
     </div>
