@@ -54,6 +54,8 @@ MAX_DESCRIPTION_CHARS = 1024
 
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
 _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE"
+# Plugins under an open-source license, each with its own LICENSE file.
+_OPEN_SOURCE_LICENSES = {"dlthub-setup": "Apache-2.0"}
 
 # argument-hint tokens use the [bracket] convention: "[pipeline-name] [query]"
 _ARGUMENT_HINT_TOKEN = re.compile(r"^\[[\w-]+\]$")
@@ -970,11 +972,14 @@ def validate(
                 )
 
             license_val = pjson.get("license", "")
-            if license_val != _EXPECTED_LICENSE:
+            expected_license = _OPEN_SOURCE_LICENSES.get(pname, _EXPECTED_LICENSE)
+            if license_val != expected_license:
                 errors.append(
                     f"[{pname}] plugin.json license '{license_val}' "
-                    f"!= expected '{_EXPECTED_LICENSE}'"
+                    f"!= expected '{expected_license}'"
                 )
+            if pname in _OPEN_SOURCE_LICENSES and not (plugin_dir / "LICENSE").is_file():
+                errors.append(f"[{pname}] open-source plugin has no LICENSE file")
 
         all_skills[pname] = validate_toolkit_content(
             pname, plugin_dir, marketplace_names, inventory, errors, warnings

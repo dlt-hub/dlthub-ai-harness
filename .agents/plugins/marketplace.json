@@ -1,0 +1,20 @@
+{
+  "name": "dlthub-ai-harness",
+  "interface": {
+    "displayName": "dlthub-ai-harness"
+  },
+  "plugins": [
+    {
+      "name": "dlthub-setup",
+      "source": {
+        "source": "local",
+        "path": "./workbench/dlthub-setup"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data"
+    }
+  ]
+}

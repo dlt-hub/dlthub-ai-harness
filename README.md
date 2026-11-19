@@ -65,11 +65,11 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
 | `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `dlthub-setup` | Setup | `setup-dlthub-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor and Codex | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/setup-dlthub-workspace` |
-| `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
+| `dlthub-setup` | Setup | `setup-dlthub-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@latest`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor and Codex | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/hub/ai-harness/introduction)<br>Run `/setup-dlthub-workspace` |
+| `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/hub/ai-harness/introduction)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
+| `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/hub/ai-harness/introduction)<br>Run `/explore-data` |
 | `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform                                        | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -219,6 +219,22 @@ A new plugin becomes active after `/reload-plugins` or in a new session.
 
 If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`. An old key does not load the plugin and shows no error.
 
+**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `dlthub-setup` catalogs for Cursor and Codex from the Claude files. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
+
+```
+SOURCE (you edit these)
+  .claude-plugin/marketplace.json
+  workbench/dlthub-setup/.claude-plugin/plugin.json
+  workbench/dlthub-setup/skills/
+            │
+            ▼   uv run python tools/generate_catalogs.py
+GENERATED (do not edit)
+  .cursor-plugin/marketplace.json                 → Cursor catalog
+  workbench/dlthub-setup/.cursor-plugin/plugin.json  → Cursor manifest
+  .agents/plugins/marketplace.json                → Codex catalog
+  workbench/dlthub-setup/.codex-plugin/plugin.json   → Codex manifest
+```
+
 
 ## The `dlthub ai` CLI
 
@@ -255,4 +271,4 @@ With the MCP server, the assistant can answer questions like "what tables were l
 
 ## License
 
-This project is licensed under the [dltHub AI Harness License](LICENSE).
+This project is licensed under the [dltHub AI Harness License](LICENSE). The `dlthub-setup` launcher is licensed under the [Apache License 2.0](workbench/dlthub-setup/LICENSE).
