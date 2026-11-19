@@ -85,6 +85,9 @@ FEW_RUNS = 5
 FIXED_SHARE = 0.2
 LOADING = ("incremental", "full")  # whether a run reads only new data or everything
 CURRENCIES = {"USD": "$", "EUR": "€"}  # the workspace's region decides: US dollars, EU euros
+# pay-as-you-go fits under this many charged runtime hours a month; at or above it the report
+# suggests talking to dltHub about an annual plan. Never printed in the report.
+STEADY_USAGE_HOURS = 120
 
 
 # --- schedules -------------------------------------------------------------------------------
@@ -836,9 +839,9 @@ def report(est: dict) -> str:
         "cost_expected": money(est["cost_expected"]),
         "cost_high": money(est["cost_high"]),
         "chips": "".join(f'<div class="chip"><b>{v}</b><span>{k}</span></div>' for v, k in chips),
-        "rate_line": f"You pay {money(est['rate'])} per runtime hour, times the instance size"
-        " multiplier.",
-        "rate_short": money(est["rate"]),
+        "rate_line": f"1 credit = 1 runtime hour. You pay {money(est['rate'])} per runtime hour,"
+        " times the instance size multiplier, only while a job runs. No minimum, no long-term"
+        " contract.",
         "job_rows": "".join(rows),
         "runs_total": _num(est["runs_per_month"]),
         "hours_expected": _num(round(est["hours_expected"], 1)),
@@ -848,6 +851,7 @@ def report(est: dict) -> str:
         "no_cost_options_reason": _e(reason),
         "savings_bars": "".join(bars),
         "engineering_hidden": _hidden(not eng),
+        "next_step_hidden": _hidden(est["hours_expected"] < STEADY_USAGE_HOURS),
         **eng_values,
         "assumption_items": "".join(f"<li>{_e(a)}</li>" for a in est["assumptions"]),
         "date": _e(est["date"]),

@@ -84,6 +84,8 @@
   table.parts td { padding: 3px 8px 3px 0; border-bottom: 0; color: var(--muted); }
   table.parts td:first-child { width: 34%; color: var(--text); }
   table.parts td.num { padding-right: 0; }
+  .sub.basis { font-size: 13px; margin-top: 6px; }
+  .next { background: var(--lavender); color: var(--ink); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
   .callout { background: var(--lime-tint); color: var(--lime-ink); border-radius: 10px; padding: 10px 14px; margin-top: 10px; font-weight: 600; }
   .small { font-size: 13px; color: var(--muted); }
   .small ul { margin: 6px 0 0; padding-left: 18px; }
@@ -116,7 +118,7 @@
     .bars { padding: 10px; }
     .track, .fill, .key { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .bar { margin-bottom: 8px; }
-    .bar .label, .callout { font-size: 12px; }
+    .bar .label, .callout, .next { font-size: 12px; }
     .note, .small, footer { font-size: 11px; }
   }
 </style>
@@ -144,6 +146,7 @@
     <span class="eyebrow">Estimated monthly cost</span>
     <div class="big">About $2,546 per month</div>
     <p class="sub">Up to about $3,324 in a heavy month, if runs take as long as the slowest 10%.</p>
+    <p class="sub basis">Based on the real schedules, run times and instance sizes in your workspace, not a guess.</p>
     <div class="chips">
       <div class="chip"><b>$637</b><span>per job / month</span></div><div class="chip"><b>$0.61</b><span>per scheduled run</span></div><div class="chip"><b>$84</b><span>per day of fresh data</span></div><div class="chip"><b>254.6</b><span>runtime hours / month</span></div>
     </div>
@@ -161,22 +164,26 @@
         <li>Number of rows loaded</li>
         <li>Number of sources or connectors</li>
         <li>Data volume, except through run time</li>
+        <li>Number of users</li>
+        <li>Time between runs</li>
       </ul></div>
     </div>
-    <p class="note">You pay $10 per runtime hour, times the instance size multiplier.</p>
+    <p class="note">1 credit = 1 runtime hour. You pay $10 per runtime hour, times the instance size multiplier, only while a job runs. No minimum, no long-term contract.</p>
   </section>
 
   <section>
-    <h2>Included in the $10/hour <span class="free">no extra fees</span></h2>
+    <h2>What every runtime hour includes <span class="free">no hidden costs</span></h2>
     <div class="inc">
       <p>Every job you run on dltHub comes with:</p>
       <ul>
         <li>Deployment from your workspace</li>
         <li>Schedules and event triggers</li>
         <li>Run history and logs</li>
-        <li>Instance size per job</li>
         <li>Dashboards, notebooks and MCP servers on the same runtime</li>
-        <li>No servers or scheduler to run yourself</li>
+        <li>Managed runtime: nothing to build or run yourself</li>
+        <li>Security, permissions and GDPR compliance</li>
+        <li>Data lineage and visibility</li>
+        <li>Pipelines carry over when you upgrade</li>
       </ul>
     </div>
   </section>
@@ -204,6 +211,13 @@
       <div class="bar"><div class="label"><span>orders_sync every 30 min instead of every 15 min<br><span class="tag">$2,546 → $2,409 per month</span></span><b>−$137 / month</b></div><div class="track split"><div class="fill keep" style="width:94.6%"></div><div class="fill saved" style="width:5.4%"></div></div></div><div class="bar"><div class="label"><span>crm_hourly every 2 h instead of hourly<br><span class="tag">$2,546 → $2,403 per month</span></span><b>−$143 / month</b></div><div class="track split"><div class="fill keep" style="width:94.4%"></div><div class="fill saved" style="width:5.6%"></div></div></div><div class="bar"><div class="label"><span>crm_hourly on small instead of medium (if it fits)<br><span class="tag">$2,546 → $1,831 per month; if the run time doesn&#x27;t change; no saving if it runs 2× slower or more</span></span><b>up to −$715 / month</b></div><div class="track split"><div class="fill keep" style="width:71.9%"></div><div class="fill saved" style="width:28.1%"></div></div></div><div class="bar"><div class="label"><span>Incremental loading for warehouse_daily</span><b>measure after the change</b></div></div>
     </div>
     <p class="note">Each option is a choice you make; nothing changes until you decide.</p>
+  </section>
+
+  <!-- Next step: only when the estimate is at or above the pay-as-you-go range
+       (STEADY_USAGE_HOURS in the script). The threshold itself is never shown. -->
+  <section>
+    <h2>Next step</h2>
+    <div class="next">At this usage, an annual plan is usually a better fit: lower rates, separate staging and production workspaces, SCIM and a service SLA. Talk to us for a quote.</div>
   </section>
 
   <!-- dltHub vs. doing it yourself: only when the user gave their own hours and rate
@@ -238,7 +252,7 @@
     </ul>
   </section>
 
-  <footer>This is an estimate, not a quote, based on the runs in your workspace on 2026-11-11. Your destination's own costs (for example, your warehouse) are not included. Check dlthub.com for current pricing.</footer>
+  <footer>This is an estimate, not a quote, based on the runs in your workspace on 2026-11-11. Your destination's own costs (for example, your warehouse) are not included. Check dlthub.com for current pricing, or talk to us for a quote based on your own setup.</footer>
 </main>
 </body>
 </html>

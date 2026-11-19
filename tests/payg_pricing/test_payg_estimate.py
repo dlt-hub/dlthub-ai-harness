@@ -652,7 +652,7 @@ def test_eur_workspace_is_priced_in_euros() -> None:
     assert "saves €97.33/month" in md
     assert "build 80 h × €90 = €7,200 once; maintain 2 h × €90 × 12 = €2,160" in md
     assert "$" not in md
-    assert "About €2,291 per month" in page and "Included in the €10/hour" in page
+    assert "About €2,291 per month" in page and "You pay €10 per runtime hour" in page
     assert "up to −€608 / month" in page
 
 
@@ -759,3 +759,16 @@ def test_report_example_is_up_to_date() -> None:
         "report-example.html is stale; regenerate it from the skill folder: uv run python"
         " payg_estimate.py report report-example.json --out report-example.html"
     )
+
+
+def test_next_step_shows_only_at_steady_usage() -> None:
+    """At or above STEADY_USAGE_HOURS the report points to an annual plan; below, it doesn't."""
+    marker = "<section hidden>\n    <h2>Next step</h2>"
+    steady = pe.report(pe.estimate(worked_example()))  # about 229 hours
+    assert "<h2>Next step</h2>" in steady and marker not in steady
+
+    small = worked_example()
+    small["jobs"] = [j for j in small["jobs"] if j["name"] == "warehouse_daily"]
+    small["cost_options"] = [c for c in small["cost_options"] if "warehouse_daily" in c.get("label", "")]
+    light = pe.report(pe.estimate(small))  # about 10 hours
+    assert marker in light
