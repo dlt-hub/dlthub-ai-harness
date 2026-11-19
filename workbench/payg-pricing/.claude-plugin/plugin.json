@@ -1,0 +1,12 @@
+{
+  "name": "payg-pricing",
+  "description": "Estimate the monthly pay-as-you-go cost of a dltHub workspace from its deployed jobs: cadence, run durations and instance size. For PAYG customers. Requires dlt[hub].",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": ["dlthub", "pricing", "cost", "payg"]
+}
