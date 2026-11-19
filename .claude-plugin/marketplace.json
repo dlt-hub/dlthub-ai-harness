@@ -12,7 +12,7 @@
     {
       "name": "rest-api-pipeline",
       "source": "./workbench/rest-api-pipeline",
-      "description": "Build dlt pipelines for REST APIs: find a source, scaffold the pipeline, add endpoints and incremental loading, debug it, validate the data and view it in a report. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Build dlt pipelines for REST APIs: find a source, scaffold the pipeline, add endpoints and incremental loading, debug it, validate the data and view it in a report. Requires dlt[hub].",
       "version": "0.1.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -30,7 +30,7 @@
     {
       "name": "data-exploration",
       "source": "./workbench/data-exploration",
-      "description": "Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Get quick insights from a dlt pipeline: profile its tables, plan charts and assemble a marimo dashboard. Requires dlt[hub].",
       "version": "0.1.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -39,7 +39,7 @@
     {
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
-      "description": "Prepare and deploy your dlthub workspace and pipelines to the dltHub platform, and debug failed deployments. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Prepare and deploy your dlthub workspace and pipelines to the dltHub platform, and debug failed deployments. Requires dlt[hub].",
       "version": "0.3.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -48,7 +48,7 @@
     {
       "name": "init",
       "source": "./workbench/init",
-      "description": "Shared rules, secrets handling, background agent authoring and the workspace MCP server used by the other dlthub toolkits. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Shared rules, secrets handling, background agent authoring and the workspace MCP server used by the other dlthub toolkits. Requires dlt[hub].",
       "version": "0.1.4",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -57,7 +57,7 @@
     {
       "name": "transformations",
       "source": "./workbench/transformations",
-      "description": "Turn raw dlt pipeline data into a Canonical Data Model: annotate sources, build an ontology, design a Kimball-style model and write @dlt.hub.transformation functions. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Turn raw dlt pipeline data into a Canonical Data Model: annotate sources, build an ontology, design a Kimball-style model and write @dlt.hub.transformation functions. Requires dlt[hub].",
       "version": "0.1.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -66,7 +66,7 @@
     {
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
-      "description": "Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
       "version": "0.2.1",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -75,7 +75,7 @@
     {
       "name": "data-quality",
       "source": "./workbench/data-quality",
-      "description": "Add column-level checks and load metrics to dlt pipelines, run them on every load and review failures with diagnosis. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Add column-level checks and load metrics to dlt pipelines, run them on every load and review failures with diagnosis. Requires dlt[hub].",
       "version": "0.1.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -84,7 +84,7 @@
     {
       "name": "filesystem-pipeline",
       "source": "./workbench/filesystem-pipeline",
-      "description": "Load CSV, Parquet, JSONL or custom files from local disk, S3, GCS, Azure or SFTP into a destination with dlt. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Load CSV, Parquet, JSONL or custom files from local disk, S3, GCS, Azure or SFTP into a destination with dlt. Requires dlt[hub].",
       "version": "0.1.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -93,7 +93,7 @@
     {
       "name": "quick-start",
       "source": "./workbench/quick-start",
-      "description": "A guided path from ingestion to visualization, transformation and deployment in 3-5 prompts. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. A guided path from ingestion to visualization, transformation and deployment in 3-5 prompts. Requires dlt[hub].",
       "version": "0.1.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -102,7 +102,7 @@
     {
       "name": "one-shot",
       "source": "./workbench/one-shot",
-      "description": "Build a minimal GitHub issues pipeline and deploy it to the dltHub platform in one go. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Build a minimal GitHub issues pipeline and deploy it to the dltHub platform in one go. Requires dlt[hub].",
       "version": "0.1.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -111,7 +111,7 @@
     {
       "name": "dlthub-init-skills",
       "source": "./workbench/dlthub-init-skills",
-      "description": "Build and deploy a minimal custom REST API pipeline to the dltHub platform after running uvx dlthub-init. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Build and deploy a minimal custom REST API pipeline to the dltHub platform after running uvx dlthub-init. Requires dlt[hub].",
       "version": "0.1.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
@@ -120,7 +120,7 @@
     {
       "name": "performance",
       "source": "./workbench/performance",
-      "description": "Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
+      "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
       "version": "0.2.3",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
