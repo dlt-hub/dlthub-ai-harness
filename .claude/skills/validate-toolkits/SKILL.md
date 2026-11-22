@@ -1,6 +1,6 @@
 ---
 name: validate-toolkits
-description: "Use when the user asks to validate, review or check toolkits, or a PR review needs the toolkits it touches checked: external doc URLs, cross-references, the authoring rules (rules, skill descriptions, artifact locations, platform toolkits, renames), and README.md and CLAUDE.md in sync with the toolkits. Checks one or more toolkits and fixes what can be fixed."
+description: "Use when the user asks to validate, review or check toolkits, or a PR review needs the toolkits it touches checked: external doc URLs, cross-references, the authoring rules (rules, skill descriptions, artifact locations, platform and destination toolkits, renames), and README.md and CLAUDE.md in sync with the toolkits. Checks one or more toolkits and fixes what can be fixed."
 argument-hint: "[toolkit-path ...]"
 metadata:
   internal: true

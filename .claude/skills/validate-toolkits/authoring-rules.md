@@ -73,9 +73,25 @@ below): report its findings and check the rest by reading. Each rule lists mista
     - Seen: both deploy skills carried the production-script checklist and trigger examples; the two entries checked
       different things.
 
+## Destination toolkits
+
+11. **Destination work goes to the destination toolkit, deployment to the platform toolkit.** A destination toolkit
+    (`Destination toolkit (<destination>):`) owns loading into one destination and its ecosystem: the connection, the
+    business context, the semantic layer, the destination's own tables, the destination's own agent. Visible to every
+    agent; agent-specific parts are `components`. It depends on `init` only and never names a platform toolkit;
+    only the platform toolkit of its destination depends on it. Generic toolkits never name it: where a destination
+    is chosen, configured, troubleshot or modeled, they ask for "the destination toolkit" of the destination. The
+    router description names every destination that has one. `validate_destination_agnostic` and
+    `validate_index_drift` check most of it.
+    - Seen: semantic views, connections and the Cortex Code rule inside `snowflake-platform`, which other agents
+      never see; the destination skills pointing back to deploy skills.
+12. **The destination's own agent is a handover.** Outside that agent, offer the task to it and, on yes, run it as a
+    subagent with a brief of the task and its context (`delegate-to-cortex-code`), read-only by default. Never tell
+    the user to switch agents and stop.
+
 ## Renames
 
-11. **After a rename, every reference follows.** The validator resolves `(`name`)` refs in workflow rules only.
+13. **After a rename, every reference follows.** The validator resolves `(`name`)` refs in workflow rules only.
     Grep every file of every toolkit, the agent definitions, `evals/` and the starter's `.cortex` links for the old
     name.
     - Seen: `run-local-jobs` left in `deploy-workspace` and `debug-deployment` after the rename to

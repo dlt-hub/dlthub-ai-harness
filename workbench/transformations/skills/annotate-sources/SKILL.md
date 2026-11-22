@@ -50,7 +50,7 @@ Only continue when **all stated sources are confirmed as Case A or Case B**.
 
 ### 2. Confirm CDM folder name
 
-The folder of a topic may exist already: list `.dlthub/ontology/*/`. When a folder holds a `context.md` for this topic (the business context that a platform toolkit collected before the pipeline was built), or the files of an earlier model of it, reuse its name and say so. Otherwise derive a folder name from the user's stated use cases using the same grain-based naming convention as `dataset_name` in `create-transformation` — what the data mart *is about* (e.g. `person_interactions`, `order_fulfillment`, `event_attendance`). Never use source system names or generic names.
+The folder of a topic may exist already: list `.dlthub/ontology/*/`. When a folder holds a `context.md` for this topic (the business context that a destination toolkit collected before the pipeline was built), or the files of an earlier model of it, reuse its name and say so. Otherwise derive a folder name from the user's stated use cases using the same grain-based naming convention as `dataset_name` in `create-transformation` — what the data mart *is about* (e.g. `person_interactions`, `order_fulfillment`, `event_attendance`). Never use source system names or generic names.
 
 Propose the name and confirm with the user:
 

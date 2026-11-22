@@ -1,0 +1,22 @@
+{
+  "name": "destination-snowflake",
+  "description": "Destination toolkit (Snowflake): connect to Snowflake and load into it, collect the business and semantic context the account already has before building pipelines and models, and build semantic views and dynamic tables from the ontology and the CDM. Suggests Cortex Code for Snowflake internals.",
+  "version": "0.1.0",
+  "author": {
+    "name": "ScaleVector GmbH"
+  },
+  "homepage": "https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake",
+  "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
+  "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+  "keywords": [
+    "dlthub",
+    "snowflake",
+    "destination",
+    "connection",
+    "semantic-view",
+    "dynamic-table",
+    "ontology",
+    "cortex",
+    "cortex-code"
+  ]
+}

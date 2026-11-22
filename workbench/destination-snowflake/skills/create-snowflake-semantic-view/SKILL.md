@@ -28,9 +28,9 @@ When one of the first three is missing, run the transformations skills first. Th
 
 ## 1. Find the target and check it
 
-The CDM tables are in the schema of the dataset `_name`, in the database of the data connection of the
-transformation job: the database of the workspace schema by default, or the `database` that
-`setup-snowflake-data-connection` set. Check the tables and their rows:
+The CDM tables are in the schema of the dataset `_name`, in the database that the Snowflake destination of the
+transformation loads into (`setup-snowflake-destination`). The CDM tables can also be dynamic tables
+(`create-snowflake-dynamic-tables`). Check the tables and their rows:
 
 ```sql
 SELECT table_name, row_count FROM ANALYTICS.INFORMATION_SCHEMA.TABLES
@@ -38,8 +38,8 @@ WHERE table_schema = 'SALES_MODEL' ORDER BY table_name;
 SHOW GRANTS ON SCHEMA ANALYTICS.SALES_MODEL;
 ```
 
-- Every CDM table must exist and have rows. Empty tables: run the transformation job on Snowflake first
-  (`maintain-snowflake-jobs`).
+- Every CDM table must exist and have rows. Empty tables: run the transformation into Snowflake first, locally
+  with a Snowflake profile or as a job of the platform toolkit.
 - The role of this session needs `CREATE SEMANTIC VIEW` on the schema and `SELECT` on the tables. The role that
   loaded the data owns the schema and has both. Another role needs a grant.
 
@@ -143,11 +143,12 @@ Write the DDL to `.dlthub/ontology/<cdm-name>/snowflake_semantic_view.sql`, next
 (`CREATE OR REPLACE SEMANTIC VIEW ANALYTICS.SALES_MODEL.SALES_MODEL_SV ...`). The clause order is fixed:
 [semantic-view-rules.md](semantic-view-rules.md).
 
-Run it with the SQL tool of Cortex Code, or with the Snowflake CLI on the user's connection:
+Run it with the SQL tool of Cortex Code, or with the Snowflake CLI on the user's connection (ask for its name, the
+one the destination uses):
 
 ```sh
-snow sql -c dlthub -f .dlthub/ontology/sales_model/snowflake_semantic_view.sql
-snow sql -c dlthub -q "DESCRIBE SEMANTIC VIEW ANALYTICS.SALES_MODEL.SALES_MODEL_SV"
+snow sql -c <connection> -f .dlthub/ontology/sales_model/snowflake_semantic_view.sql
+snow sql -c <connection> -q "DESCRIBE SEMANTIC VIEW ANALYTICS.SALES_MODEL.SALES_MODEL_SV"
 ```
 
 On an error, read the message, fix the DDL and deploy again. Record each Snowflake limitation you hit as a comment in

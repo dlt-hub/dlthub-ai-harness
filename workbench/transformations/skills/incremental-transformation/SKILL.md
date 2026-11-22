@@ -23,6 +23,8 @@ Reference: https://dlthub.com/docs/hub/transformations.md#incremental-transforma
 
 Ask the user which situation applies if it is not obvious from the transformation.
 
+When the destination has a destination toolkit with tables that the destination refreshes on its own, offer them next to these patterns: the destination then processes the changed rows, without a cursor or a job.
+
 ### 2. Identify cursor column and Python type
 
 | Pattern | Cursor column | Typical type |

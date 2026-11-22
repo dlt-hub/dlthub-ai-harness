@@ -97,7 +97,8 @@ After that continue workflow in `create-rest-api-pipeline` skill
 ### 8. Verified source path
 
 Only when the user picked a verified source in step 5. Do NOT use `create-rest-api-pipeline`:
-1. **Confirm the destination**, then scaffold from the project root:
+1. **Confirm the destination**. When it has a destination toolkit, use it for the connection, and offer it when it
+   is not installed (`dlthub-router`). Then scaffold from the project root:
    ```
    uv run dlthub --non-interactive pipeline init <source> <destination>
    ```

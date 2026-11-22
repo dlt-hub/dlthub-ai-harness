@@ -86,6 +86,8 @@ def my_transform(dataset: dlt.Dataset):
 
 If SQLGlot raises `UnsupportedError` or logs warnings at `unsupported_level`, the construct has no mapping to the target dialect and must be rewritten to an ANSI equivalent or handled in application code.
 
+When the target destination has a destination toolkit, it knows that destination's identifiers, types and load errors; offer it when it is not installed (`dlthub-router`).
+
 References:
 - SQLGlot supported dialects: https://sqlglot.com/sqlglot.html
 - SQLGlot unsupported errors: https://sqlglot.com/sqlglot.html#unsupported-errors

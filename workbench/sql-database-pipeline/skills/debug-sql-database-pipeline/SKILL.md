@@ -171,3 +171,4 @@ Do NOT remove settings the user had before you started.
 - **Load successful** → use `validate-sql-database-data` to inspect schema and data, or hand over to `explore-data` (`data-exploration` toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → revisit `create-sql-database-pipeline` — "Set up config and secrets" section
 - **No pipeline exists yet** → use `create-sql-database-pipeline` to scaffold one first
+- **The load fails on the destination** (credentials, types, names) and the destination has a destination toolkit → the known failures of its connection skill; offer the toolkit when it is not installed (`dlthub-router`)

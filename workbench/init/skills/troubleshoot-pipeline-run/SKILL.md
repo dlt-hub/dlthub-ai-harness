@@ -18,6 +18,7 @@ Troubleshooting that holds for any pipeline in a dltHub workspace, whatever the 
 - SQL database source → `debug-sql-database-pipeline` (**sql-database-pipeline**)
 - Transformations → `debug-transformation` (**transformations**)
 - Slow, or out of memory → `optimize-performance` (**performance**)
+- A destination with a destination toolkit → the known failures of its connection skill
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer it from the session or from `dlt.pipeline(pipeline_name=...)` in the script. If ambiguous, ask the user and stop.

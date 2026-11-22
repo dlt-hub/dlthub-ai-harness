@@ -10,8 +10,8 @@ The dltHub app is a Snowflake Native App. It is the link between a Snowflake acc
 jobs and the commands talk to the app, and the app talks to the control plane. Snowflake roles decide who may use
 it. Your data never leaves Snowflake through it.
 
-**Reference**: `apps/dlthub_app/README.md` (the trusted link, the metadata sharing levels, the roles) ·
-`docs/ARCHITECTURE.md` § The dltHub app
+**Reference**: the README of the app, on its page in Snowsight (the trusted link, the data residency options, the
+roles)
 
 ## 1. Show the link of this workspace
 
@@ -37,14 +37,20 @@ asks for a warehouse to run it.
 
 ## 3. Explain what is shared
 
-Tell the user the metadata sharing level of the app, from `apps/dlthub_app/README.md` § Metadata sharing levels.
-Each level adds to the one before it: only Snowflake, the jobs control plane, traces, logs, code and configs. User
-data is never shared.
+Tell the user the data residency option of the app, from its README. The compute, the data and the code stay in the
+account in every option; each level adds to the one before it:
+- **Isolated, Snowflake only**: nothing leaves Snowflake;
+- **Level 1, control plane**: the jobs, their triggers and schedules, the job runs with their status;
+- **Level 2, observability**: the traces of the pipeline runs and, as an option, the logs;
+- **Level 3, agentic context**: the code and the configs;
+- **Level 4, dual deployment**: access to selected data.
+
+Up to level 3, user data is never shared.
 
 ## 4. Say what the app does not do yet
 
 This version of the app is a **mock**:
-- it works on the **Only Snowflake** level, without a real trusted link;
+- it works in the **isolated** option (Snowflake only), without a real trusted link;
 - it is connected to a placeholder organization and keeps the job runs in this account only;
 - a job run gets no interval, so a job that declares `freshness` does not run;
 - the run authorization is not signed, and the app sends no billing events.

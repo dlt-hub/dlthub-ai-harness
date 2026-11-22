@@ -27,6 +27,8 @@ Parse `$ARGUMENTS`:
 
 **Determine destination** — if the destination is not already known from prior context (prior conversation), ask the user which destination they are using before proceeding.
 
+**Destination toolkit** — when the destination has a destination toolkit, it can also build this model in the destination's own way: tables that the destination refreshes on its own, views, a semantic layer. Offer it next to the dlt transformations of this skill, and install it when the user wants it (`dlthub-router`). It reads the same files of `.dlthub/ontology/<cdm-name>/`.
+
 SQL transformations (the default, step 5) need only `dlthub`. Install an ibis backend only when a transformation uses ibis:
 
 | Destination    | Command                              |
@@ -312,6 +314,7 @@ If all checks pass, ask the user what they'd like to do next:
 Transformation validated successfully. What would you like to do next?
   1. Explore and visualise the CDM output → data-exploration toolkit
   2. Deploy and schedule this transformation → the installed platform toolkit
+  3. A semantic layer on the CDM tables → the destination toolkit of the destination, when it has one
 ```
 
 ## Output

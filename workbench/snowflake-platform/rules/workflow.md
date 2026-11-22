@@ -10,6 +10,10 @@ This is the platform toolkit of the workspace. Other toolkits write platform com
 It owns `.dlthub/snowflake/` in the workspace: deploy writes its records to
 `.dlthub/snowflake/deploy/<environment>/`.
 
+Snowflake as a destination (the connection, loading, the business context of the account, semantic views and
+dynamic tables) belongs to the destination-snowflake toolkit, installed with this one. This toolkit deploys and runs
+the jobs.
+
 ## Workflow Entry
 **ALWAYS** start with **Prepare deployment** (`prepare-deployment`) of the local-workspace toolkit — check that the
 workspace is ready for a deployment; it sends you to (`define-and-debug-jobs`) for jobs, triggers and local debug runs
@@ -34,13 +38,6 @@ after the workspace setup. If the account has no runner yet, an admin runs (`ins
    dltHub app shares
 8. **Install the runner** (`install-snowflake-runner`) — for the account admin: the app, the pool, the warehouse,
    the grants
-9. **Business and semantic context** — what the account already knows before a pipeline or model is built
-   (`collect-snowflake-context`), and a semantic view on the CDM (`create-snowflake-semantic-view`); the
-   `Business and semantic context on Snowflake` rule says when
-10. **Snowflake as a destination** (`setup-snowflake-destination`) — credentials, naming convention, type pins,
-    staging and replace behaviour, the Snowflake load errors, and tables that another tool wrote
-11. **Annotate with Cortex** (`annotate-with-cortex`) — a follow-up job that calls the Cortex Agents REST API: table
-    and column comments grounded in the rows, and a semantic view
 
 ## Ask first
 Schedules, timeouts, the compute pool and the jobs warehouse spend credits on every job run. Never add, change or
@@ -53,8 +50,6 @@ remove them without the user's explicit yes. Show what changes and how often it 
   destination, so carry the dev and the Snowflake destination types into the dialect check
 
 References:
-* **dlt Snowflake destination**: https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake.md
-* **Cortex Agents REST API**: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-rest-api
 * **Commands**: `uv run dlthub snowflake --help` and `uv run dlthub snowflake <command> --help`
 * **Profiles and deployments**: https://dlthub.com/docs/hub/pipeline-operations/profiles.md,
   https://dlthub.com/docs/hub/pipeline-operations/deployments.md

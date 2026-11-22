@@ -123,4 +123,4 @@ Please review `.dlthub/ontology/<cdm-name>/CDM.dbml` — it contains the full da
 Let me know if anything looks wrong or needs changing before we move on.
 ```
 
-Wait for explicit confirmation before handing over to `create-transformation` skill.
+Wait for explicit confirmation before handing over to `create-transformation` skill. It also offers the destination toolkit of the destination, which can build the model in the destination's own way.

@@ -1,7 +1,7 @@
 """Annotate a dlt dataset on Snowflake with a Cortex agent and build a view.
 
 Copy this module into the dlt project and call `annotate(pipeline, business_context)`
-from a dltHub job that follows the load job's success. One agent:run call with the CoCo code
+from a job that follows the load job's success. One agent:run call with the CoCo code
 toolset profiles the tables and answers with JSON; this module applies the answer
 with plain SQL (comments, the semantic view) and loads the agent's report with dlt.
 Adapt TASK to the business; keep the validation, it is what makes the job safe.
@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 import dlt
 import requests
 
+DESTINATION_NAME = "snowflake"
+"""The destination the pipeline loads into: `snowflake`, or the name of a named destination."""
 VIEW_SUFFIX = "_sv"
 REVIEW_TABLE = "cortex_review"
 AGENT_TIMEOUT = 900
@@ -70,8 +72,8 @@ Return one JSON object {{"semantic_view_ddl": "..."}} with the corrected DDL and
 
 
 def _credentials() -> dict:
-    """Return the Snowflake destination credentials from dlt secrets."""
-    return dict(dlt.secrets["destination.snowflake.credentials"])
+    """Return the key-pair or PAT credentials of the destination from dlt secrets."""
+    return dict(dlt.secrets[f"destination.{DESTINATION_NAME}.credentials"])
 
 
 def _jwt(creds: dict) -> str:

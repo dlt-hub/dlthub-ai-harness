@@ -19,7 +19,7 @@ Before scaffolding, check session context — if the user has already stated any
 Collect all unknown inputs in **one round** — never split into separate back-and-forth turns. The inputs split into two kinds:
 
 **Structured choices** (ask in one round with multiple-choice options, up to three parallel questions):
-- **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`.
+- **Destination** — `duckdb` / `postgres` / `bigquery` / `snowflake` / `filesystem` / etc. Default: `duckdb`. Full list: `https://dlthub.com/docs/dlt-ecosystem/destinations/`. When the destination has a destination toolkit, use it for the connection, and offer it when it is not installed (`dlthub-router`).
 - **Backend** — `Local` / `S3` / `GCS` / `Azure` / `SFTP`. Determines the dlt extra (`dlt[s3]`, `dlt[gs]`, `dlt[az]`, `dlt[sftp]`; local needs none) and the credential layout.
 - **File format** — `CSV` / `Parquet` / `JSONL` / `Custom`. Picks the reader: `read_csv` (needs `pandas`), `read_parquet` (needs `pyarrow`), `read_jsonl`, or a custom `@dlt.transformer`.
 

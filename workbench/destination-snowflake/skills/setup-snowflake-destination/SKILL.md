@@ -1,6 +1,6 @@
 ---
 name: setup-snowflake-destination
-description: "Use when a dlt pipeline should load into Snowflake, moves from DuckDB to Snowflake, or fails there: 'Account must be specified', key-pair or PAT credentials, quoted or lower-case column names, a __V_DOUBLE variant column, a leftover _staging dataset, lost grants after a replace, 'Non-nullable column _DLT_LOAD_ID cannot be added', tables another tool wrote. Configures and fixes Snowflake as a destination. Not for comments or semantic views (annotate-with-cortex)."
+description: "Use when a dlt pipeline should load into Snowflake, moves from DuckDB to Snowflake, or fails there: a Snowflake connection in connections.toml (connection_name), the default connection, key-pair or PAT credentials, 'Account must be specified', quoted or lower-case column names, a __V_DOUBLE variant column, a leftover _staging dataset, lost grants after a replace, 'Non-nullable column _DLT_LOAD_ID cannot be added', tables another tool wrote. Configures and fixes Snowflake as a destination. Not for comments or semantic views (annotate-with-cortex)."
 ---
 
 # Set up Snowflake as a dlt destination
@@ -24,11 +24,39 @@ Read the pipeline code and the `.dlt/` config names before you change anything:
 Never read or print the secrets file. Use the `setup-secrets` skill to see the shape of the
 secrets and to set values.
 
-## 2. Credentials
+## 2. Connection
 
-Prefer key-pair authentication. It does not expire and does not need a network policy. A
-programmatic access token (PAT) also works, but it expires and Snowflake usually requires a
-network policy for the user.
+Choose one of three ways. The credentials go under the destination's name: `[destination.snowflake.credentials]`, or
+`[destination.warehouse.credentials]` for a named destination. Each profile can connect its own way (`setup-profiles`),
+for example a personal connection in `dev` and a service user in `prod`.
+
+**A Snowflake connection**, the usual choice on a developer machine. It is a named connection in the user's
+`~/.snowflake/connections.toml`, the same one the Snowflake CLI and Cortex Code use. **Never read that file or a key
+file.** Ask the user for the connection name, and let them test it with `snow connection test -c <name>`.
+
+```toml
+[destination.snowflake.credentials]
+connection_name = "<name>"
+database = "<DB>"                  # optional: overrides the database of the connection
+```
+
+The connection gives the account, the user and the authentication. Only `database`, `warehouse`, `role` and `query`
+can override it: any other credential next to `connection_name` fails.
+
+**No credentials**, only in a Snowpark Container Services job: dlt uses the connection that Snowflake mounts into
+the container. Set `database`, `warehouse` or `role` only where they differ. On a developer machine, dlt never picks
+the default connection by itself: name a connection. A profile that runs both locally and in a job keeps its
+connection and falls back to the mounted one in the container:
+
+```toml
+[destination.snowflake.credentials]
+connection_name = "<name>"
+allow_default_connection_fallback = true   # use the default connection when <name> is not defined
+```
+
+**Explicit credentials**, for a service user without a connection. Prefer a key pair: it does not expire and does not
+need a network policy. A programmatic access token (PAT) also works, but it expires and Snowflake usually requires a
+network policy for the user. Write them with the `setup-secrets` skill:
 
 ```toml
 [destination.snowflake.credentials]
@@ -46,15 +74,17 @@ role = "<ROLE>"
 - For a PAT, set `authenticator = "PROGRAMMATIC_ACCESS_TOKEN"` and `token` in place of the
   private key.
 - A native connection string also works: `snowflake://user:pass@account/db?warehouse=...`.
-- Name the role. Without it Snowflake uses the user's default role, and that role can be
-  different between a laptop and a job.
-- On the dltHub platform, a Snowflake user behind a network policy needs
-  `require={"static_egress_ips": True}` on the job. PAT users always sit behind a policy.
+- A user behind a network policy connects only from the allowed addresses: a job that runs
+  somewhere else needs a fixed egress address from the platform that runs it. PAT users always
+  sit behind a policy.
 
-Then prove the connection with a query, before a full load:
+In every case, name the role. Without it Snowflake uses the user's default role, and that role can be different
+between a laptop and a job.
+
+Then prove the connection with a query, before a full load (`<destination>` is `snowflake` or the destination's name):
 
 ```bash
-uv run python -c "import dlt; p = dlt.pipeline('<pipeline>', destination='snowflake', dataset_name='<dataset>'); print(p.sql_client().__enter__().execute_sql('SELECT CURRENT_ROLE(), CURRENT_WAREHOUSE(), CURRENT_DATABASE()'))"
+uv run python -c "import dlt; p = dlt.pipeline('<pipeline>', destination='<destination>', dataset_name='<dataset>'); print(p.sql_client().__enter__().execute_sql('SELECT CURRENT_ROLE(), CURRENT_WAREHOUSE(), CURRENT_DATABASE()'))"
 ```
 
 Tell the user the role, warehouse and database that come back.
@@ -135,8 +165,9 @@ expect. Each one points back to step 3 or step 4.
 
 ## Next
 
-When the load works, continue with `annotate-with-cortex` to let a Cortex agent write comments
-and a semantic view on the loaded tables.
+When the load works, go back to the skill that sent you here. On a model of the loaded data,
+offer dynamic tables (`create-snowflake-dynamic-tables`) and a semantic view
+(`create-snowflake-semantic-view`); for comments grounded in the rows, `annotate-with-cortex`.
 
 ## Reference docs
 

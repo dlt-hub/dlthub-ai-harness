@@ -32,7 +32,7 @@
 ## workspace artifact locations
 * `.dlthub/` holds what the toolkits produce, one folder per kind. Commit all of it, and never write a secret there:
   * `.dlthub/schemas/`: dlt schemas. It is the default `import_schema_path` of a pipeline. `.dlthub/schemas/export/` is the `export_schema_path`, only when the user wants exported schemas committed.
-  * `.dlthub/ontology/<name>/`: the business knowledge and semantic information of one topic: business context, annotated source schemas, taxonomy, ontology, the data model and the semantic views of any platform. `<name>` is the topic, chosen once and reused by every skill.
+  * `.dlthub/ontology/<name>/`: the business knowledge and semantic information of one topic: business context, annotated source schemas, taxonomy, ontology, the data model, and the semantic views and native tables of any destination. `<name>` is the topic, chosen once and reused by every skill.
 * the layout of sources, pipelines and transformations is the user's. Paths in skills are examples: follow what the workspace already does, or ask.
 * create throwaway scripts (exploration, one-off checks) in the system temp dir, never in the workspace.
 
@@ -52,4 +52,5 @@
 * each toolkit has a workflow rule that you must follow. you **must** start with workflow entry skill if available
 * workflows end with handover to other workflows. Follow a handover through its entry skill, not with web research or manual code edits.
 * use the `dlthub-router` skill to pick the toolkit for the user's goal, and to install a toolkit that a handover names but that is not installed yet. The router holds the toolkit index.
+* a destination can have a **destination toolkit** (connection, loading, semantic layer, native tables). When the user names a destination to load into or to model on and its destination toolkit is not installed, the `dlthub-router` skill offers it.
 * **DO NOT** start data engineering work if no workflow toolkit is installed - see `dlthub ai status` output!

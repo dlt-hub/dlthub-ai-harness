@@ -54,7 +54,8 @@ Common causes when the log points at configuration:
 - **Secrets not configured for the `prod` profile**: the runtime uses `prod`, so ask the user to check `.dlt/prod.secrets.toml`. Never open it yourself.
 - **Script missing `if __name__ == "__main__":`**: the job does nothing without it.
 - **`dev_mode=True` left in**: drops and recreates the dataset on every run.
-- **Wrong destination credentials**: the `prod` profile may point at a different destination than `dev`.
+- **Wrong destination credentials**: the `prod` profile may point at a different destination than `dev`. When the
+  destination has a destination toolkit, its connection skill has the ways to connect and the known failures.
 - **Job timeout**: the default is 120 minutes; override with `execute={"timeout": "6h"}` in the decorator.
 
 ## Step 4: Stop a run that should not continue
