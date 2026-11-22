@@ -1,7 +1,7 @@
 {
   "name": "local-workspace",
   "description": "Prepare a workspace for deployment, declare, run, debug and test dlt jobs on this machine. Platform toolkits depend on it.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "ScaleVector GmbH"
   },
