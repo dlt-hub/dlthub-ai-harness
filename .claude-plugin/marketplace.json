@@ -40,7 +40,7 @@
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
       "description": "Platform toolkit (dltHub): deploy your dlthub workspace and pipelines to the dltHub platform, schedule and debug its jobs, and run background agents on them.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "deploy", "platform"]

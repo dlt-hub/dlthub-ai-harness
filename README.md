@@ -56,7 +56,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 Two MCP servers give the agent context during the workflow. You do not copy and paste output.
 
-**dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `get_table_schema`, `export_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
+**dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `get_table_schema`, `export_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`). With `dlthub-platform` installed, it also serves the `dlthub_*` tools of the dltHub platform, in the groups `dlthub.jobs` (jobs and job runs), `dlthub.logs`, `dlthub.config` (variables and configuration files), `dlthub.telemetry` (pipeline runs, traces, pipelines and datasets) and `dlthub.restore_pipeline` (a deployed pipeline restored locally).
 
 **[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
 
