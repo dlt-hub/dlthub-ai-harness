@@ -2,12 +2,14 @@
 """Generate the launcher catalogs for Cursor and Codex.
 
 The launcher (dlthub-setup) installs the other toolkits with the dlthub CLI.
-Add --check to fail on stale files.
+Add --check to fail on stale files. Both modes also fail when the launcher
+breaks a rule of the Codex (OpenAI) plugin directory.
 """
 
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -36,6 +38,11 @@ _LISTING_URLS = {
     "privacyPolicyUrl": "privacyPolicyURL",
     "termsOfServiceUrl": "termsOfServiceURL",
 }
+# Docs: https://developers.openai.com/plugins/deploy/submission
+_CODEX_MAX_CHARS = 30
+_SEMVER = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
+# Folder entries the skills-only Codex directory rejects.
+_CODEX_REJECTED = ("hooks", ".mcp.json", "commands", "rules")
 
 
 def dumps(data: dict) -> str:
@@ -69,6 +76,24 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
     return {".cursor-plugin/plugin.json": meta_of(plugin), ".codex-plugin/plugin.json": codex}
 
 
+def codex_errors(folder: Path, codex: dict) -> list[str]:
+    """Return the Codex directory rules that the launcher package breaks."""
+    errors = []
+    iface = codex["interface"]
+    for key in ("displayName", "shortDescription"):
+        if len(iface[key]) > _CODEX_MAX_CHARS:
+            errors.append(f"interface.{key} is longer than {_CODEX_MAX_CHARS} characters")
+    if not _SEMVER.match(codex.get("version", "")):
+        errors.append(f"version {codex.get('version')!r} is not semver")
+    for key in ("logo", "composerIcon"):
+        if not (folder / iface[key]).is_file():
+            errors.append(f"interface.{key} file {iface[key]} does not exist")
+    if not list((folder / "skills").glob("*/SKILL.md")):
+        errors.append("skills/ has no <name>/SKILL.md")
+    errors += [f"{name} is not allowed" for name in _CODEX_REJECTED if (folder / name).exists()]
+    return [f"{folder.name}: {e}" for e in errors]
+
+
 def generate(root: Path) -> dict[str, str]:
     """Return the text of each generated file keyed by path relative to root."""
     market = json.loads((root / ".claude-plugin" / "marketplace.json").read_text())
@@ -96,7 +121,11 @@ def generate(root: Path) -> dict[str, str]:
     }
     rel = entry["source"].removeprefix("./")
     plugin = json.loads((root / rel / ".claude-plugin" / "plugin.json").read_text())
-    for name, data in launcher_manifests(plugin).items():
+    manifests = launcher_manifests(plugin)
+    errors = codex_errors(root / rel, manifests[".codex-plugin/plugin.json"])
+    if errors:
+        sys.exit("\n".join(f"ERROR: {e}" for e in errors))
+    for name, data in manifests.items():
         out[f"{rel}/{name}"] = dumps(data)
     return out
 
