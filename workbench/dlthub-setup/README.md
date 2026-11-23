@@ -30,22 +30,7 @@ The skill reads files in your project folder to check what is installed. It does
 
 ## How to use it
 
-In Claude Code 2.1.275 or later, install the plugin in one step:
-
-```
-/plugin install dlthub-setup --marketplace dlt-hub/dlthub-ai-harness
-```
-
-In older versions, add the marketplace first:
-
-```
-/plugin marketplace add dlt-hub/dlthub-ai-harness
-/plugin install dlthub-setup@dlthub-ai-harness
-```
-
-For Cursor and Codex, see the [harness README](https://github.com/dlt-hub/dlthub-ai-harness#marketplace-plugin-early-access).
-
-After the install, say what you want to build, for example:
+Install the plugin, then say what you want to build, for example:
 
 - "Set up dlthub"
 - "Load data from the Stripe API into DuckDB"
