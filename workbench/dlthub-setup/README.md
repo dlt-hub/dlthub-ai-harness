@@ -11,15 +11,41 @@ The plugin has one skill, `setup-dlthub-workspace`. The skill:
 1. Checks what is installed: `uv`, `dlt[hub]` and the `init` toolkit.
 2. Shows you a plan and asks you to approve it.
 3. Installs `uv` if it is missing.
-4. Runs `uvx dlthub-init@latest` to install `dlt[hub]` and create the workspace.
+4. Runs `uvx dlthub-init@0.3.0` to install `dlt[hub]` and create the workspace.
 5. Runs `dlthub ai init` to install the `init` toolkit.
 6. Hands over to `dlthub-router`, which installs the toolkit for your task with `dlthub ai toolkit install`.
 
 All toolkits come from the `dlthub` CLI, so your project gets one copy of each toolkit.
 
+## What it runs and downloads
+
+The plugin holds only instructions. It has no hooks, no MCP server and no code of its own. The skill asks you to approve its plan, then runs these commands in your project:
+
+- To install `uv`, on macOS and Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`. On Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Both scripts come from astral.sh.
+- `uvx dlthub-init@0.3.0` downloads `dlthub-init` 0.3.0 from PyPI. It installs `dlt[hub]` from PyPI and writes `.dlt/`, `.mcp.json` and skills in `.agents/skills/`. It sends usage telemetry. To turn it off, ask the skill to add `--no-telemetry`.
+- If your project already has a `pyproject.toml`, `uv add "dlt[hub]" "fastmcp>=3.1.0"` adds the two dependencies from PyPI.
+- `dlthub ai init` and `dlthub ai toolkit install` download the toolkits from the `dlt-hub/dlthub-ai-harness` repository on GitHub. They write files to your agent config folder, for example `.claude/`.
+
+The skill reads files in your project folder to check what is installed. It does not upload them.
+
 ## How to use it
 
-Install the plugin, then say what you want to build, for example:
+In Claude Code 2.1.275 or later, install the plugin in one step:
+
+```
+/plugin install dlthub-setup --marketplace dlt-hub/dlthub-ai-harness
+```
+
+In older versions, add the marketplace first:
+
+```
+/plugin marketplace add dlt-hub/dlthub-ai-harness
+/plugin install dlthub-setup@dlthub-ai-harness
+```
+
+For Cursor and Codex, see the [harness README](https://github.com/dlt-hub/dlthub-ai-harness#marketplace-plugin-early-access).
+
+After the install, say what you want to build, for example:
 
 - "Set up dlthub"
 - "Load data from the Stripe API into DuckDB"

@@ -33,7 +33,7 @@ dlthub setup:
 
 Actions:
   1. Install uv                                          (if missing)
-  2. uvx dlthub-init@latest                              (if dlt[hub] is missing)
+  2. uvx dlthub-init@0.3.0                              (if dlt[hub] is missing)
      + uv add "dlt[hub]" "fastmcp>=3.1.0"                (if pyproject.toml exists)
   3. dlthub ai init --overwrite                          (if init is missing)
   4. dlthub-router picks and installs the toolkit        (if the user has a task)
@@ -57,13 +57,13 @@ Choose the commands from the result of the `pyproject.toml` check in Step 1.
 If `pyproject.toml` is missing, run:
 
 ```
-uvx dlthub-init@latest
+uvx dlthub-init@0.3.0
 ```
 
 If `pyproject.toml` exists, run:
 
 ```
-uvx dlthub-init@latest
+uvx dlthub-init@0.3.0
 uv add "dlt[hub]" "fastmcp>=3.1.0"
 ```
 
