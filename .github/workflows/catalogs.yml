@@ -1,8 +1,6 @@
 name: Check catalogs
 
 on:
-  push:
-    branches: [master, devel]
   # Every PR, also a PR stacked on another branch.
   pull_request:
 
