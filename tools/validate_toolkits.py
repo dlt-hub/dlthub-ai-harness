@@ -34,14 +34,13 @@ from dlt.common.typing import get_args
 
 AI_DIR = "workbench"
 
-# the intent index lives in the rule (Claude, Cursor) and in AGENTS.md (Codex, where rules
-# are opt-in)
+# the intent index lives in the rule (Claude, Cursor) and in AGENTS.md (Codex)
 _INDEX_FILES = (
     "workbench/init/rules/dlthub-workspace.md",
     "workbench/init/AGENTS.md",
 )
-# `init` is the base itself and `bootstrap` only scaffolds the environment, so neither is indexed
-_NON_WORKFLOW_TOOLKITS = {"init", "bootstrap"}
+# `init` is the base and `dlthub-setup` is the launcher, so neither is in the index
+_NON_WORKFLOW_TOOLKITS = {"init", "dlthub-setup"}
 # an index row: "<intent text> → <toolkit> | <install> | <entry skill>", captures the toolkit
 _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 
@@ -55,6 +54,8 @@ MAX_DESCRIPTION_CHARS = 1024
 
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
 _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE"
+# Plugins under an open-source license, each with its own LICENSE file.
+_OPEN_SOURCE_LICENSES = {"dlthub-setup": "Apache-2.0"}
 
 # argument-hint tokens use the [bracket] convention: "[pipeline-name] [query]"
 _ARGUMENT_HINT_TOKEN = re.compile(r"^\[[\w-]+\]$")
@@ -860,12 +861,11 @@ def validate_index_drift(
             # data rows carry an install command; this skips the column header
             if "ai toolkit" in line and (m := _INDEX_ENTRY.search(line))
         }
-        fname = Path(rel).name
         for name in sorted(expected - indexed):
-            errors.append(f"[init] {fname} intent index is missing workflow toolkit '{name}'")
+            errors.append(f"{rel} intent index is missing workflow toolkit '{name}'")
         for name in sorted(indexed - expected):
             errors.append(
-                f"[init] {fname} intent index lists '{name}' "
+                f"{rel} intent index lists '{name}' "
                 f"which is not a workflow toolkit in marketplace.json"
             )
 
@@ -972,11 +972,14 @@ def validate(
                 )
 
             license_val = pjson.get("license", "")
-            if license_val != _EXPECTED_LICENSE:
+            expected_license = _OPEN_SOURCE_LICENSES.get(pname, _EXPECTED_LICENSE)
+            if license_val != expected_license:
                 errors.append(
                     f"[{pname}] plugin.json license '{license_val}' "
-                    f"!= expected '{_EXPECTED_LICENSE}'"
+                    f"!= expected '{expected_license}'"
                 )
+            if pname in _OPEN_SOURCE_LICENSES and not (plugin_dir / "LICENSE").is_file():
+                errors.append(f"[{pname}] open-source plugin has no LICENSE file")
 
         all_skills[pname] = validate_toolkit_content(
             pname, plugin_dir, marketplace_names, inventory, errors, warnings

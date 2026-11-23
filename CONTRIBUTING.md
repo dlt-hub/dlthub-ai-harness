@@ -38,7 +38,7 @@ Users get the latest commit on `master`, not the tag. The tag marks the release 
 
 | Channel | Reads from | How users get the update |
 |---|---|---|
-| Claude Code | `master` (default branch) | Auto-update is off for third-party marketplaces. Users run `/plugin marketplace update dlthub-ai-harness`, then `/plugin update <toolkit>`. A toolkit updates only if its `version` changed. |
+| Claude Code | `master` (default branch) | Auto-update is off for third-party marketplaces. Users run `/plugin marketplace update dlthub-ai-harness`, then `/plugin update <toolkit>`, or turn on auto-update in `/plugin` > **Marketplaces**. A toolkit updates only if its `version` changed. |
 | `dlthub ai` CLI | `master` | Users run the install or update command again. |
 | Cursor | the repo, after a re-index | We request a re-index (checklist). |
 | OpenAI / Codex directory | the ZIP we upload | We upload a new ZIP, which OpenAI reviews again. |
@@ -60,3 +60,24 @@ To stay on one release, a user can add the marketplace at its tag, for example:
 - [ ] Request a Cursor re-index
 - [ ] Upload the OpenAI ZIP
 - [ ] Announce the release
+
+## Submit to directories
+
+We submit only the launcher, `workbench/dlthub-setup`. It has a README, its own Apache-2.0 `LICENSE`, no hooks and no MCP. The toolkit plugins are deprecated and are not submitted.
+
+**Anthropic directory.** [Submission guide](https://claude.com/docs/plugins/submit), [pre-submission checklist](https://claude.com/docs/plugins/pre-submission-checklist).
+
+1. Run `claude plugin validate ./workbench/dlthub-setup`. It checks only the format, not the directory rules.
+2. Open the [developer portal](https://claude.ai/directory/manage), select **Submit new**, then **Plugin bundle**. Your GitHub account must be connected on claude.ai.
+3. Set the source: repository `dlt-hub/dlthub-ai-harness`, plugin path `workbench/dlthub-setup`, the release tag.
+4. Run the portal's **Validate**, then fill in the listing, data handling and compliance steps.
+
+Each plugin folder is one submission. Raise `version` on every release, or users keep the cached copy. In claude.ai chat, hooks and local MCP servers are ignored; they load in Cowork and Claude Code.
+
+**OpenAI / Codex directory.** [Submission guide](https://developers.openai.com/plugins/deploy/submission). Run `make codex-zip` and upload `dist/dlthub-setup-codex.zip`. The build fails when the launcher breaks a directory rule. Every change to metadata or skills needs a new ZIP.
+
+**Cursor Marketplace.** [Publisher terms](https://cursor.com/marketplace-publisher-terms). Submit the repository link at https://cursor.com/marketplace/publish.
+
+- Plugins are free. A publisher must not charge users.
+- Open-source parts must use a permissive license, such as MIT, BSD or Apache-2.0.
+- Cursor reviews every update. After a change, we request a re-index (see the release checklist).
