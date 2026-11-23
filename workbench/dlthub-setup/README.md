@@ -43,8 +43,6 @@ In older versions, add the marketplace first:
 /plugin install dlthub-setup@dlthub-ai-harness
 ```
 
-For Cursor and Codex, see the [harness README](https://github.com/dlt-hub/dlthub-ai-harness#marketplace-plugin-early-access).
-
 After the install, say what you want to build, for example:
 
 - "Set up dlthub"

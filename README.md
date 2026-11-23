@@ -178,30 +178,18 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 **Codex** — launch the Codex CLI via `codex` or use the Codex chat in the UI. Restart Codex after setup for the MCP server to take effect.
 
-### Marketplace plugin (Early Access)
+### Claude Code marketplace plugin (Early Access)
 
 > **Early Access:** To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub).
 
-Install only the `dlthub-setup` plugin from the marketplace. Then say what you want to build, for example *"load data from the Stripe API"*. The `setup-dlthub-workspace` skill installs `uv` and `dlt[hub]`, then installs `init` and the toolkit for your task with the `dlthub` CLI. Every toolkit then comes from one channel, so you do not get two copies.
-
-**Claude Code.** Start a Claude Code session and run:
+Install only the `dlthub-setup` plugin from the marketplace. Start a Claude Code session and run:
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-harness
 /plugin install dlthub-setup@dlthub-ai-harness --scope project
 ```
 
-To update, run `/plugin marketplace update dlthub-ai-harness`, then `/plugin update dlthub-setup@dlthub-ai-harness`. Auto-update is off for third-party marketplaces. To turn it on, run `/plugin`, open the **Marketplaces** tab, select `dlthub-ai-harness` and turn on auto-update.
-
-**Cursor.** A team admin adds the marketplace. Go to **Dashboard > Plugins & MCPs > Team Marketplaces > Add Marketplace > Import from Repo** and paste `https://github.com/dlt-hub/dlthub-ai-harness`. Team members then open **Customize** in the sidebar, find `dlthub-setup` and select **Install**. Users without a team cannot install from the repo. They get the plugin after it is listed in the Cursor Marketplace. To update, turn on **Enable Auto Refresh** in the marketplace settings (needs the Cursor GitHub App), or click **Refresh**. [Cursor plugin docs](https://cursor.com/docs/plugins)
-
-**Codex.** Add the marketplace:
-
-```bash
-codex plugin marketplace add dlt-hub/dlthub-ai-harness
-```
-
-Then run `codex`, open `/plugins`, select the `dlthub-ai-harness` marketplace and install `dlthub-setup`. Start a new session to load its skill. To update, run `codex plugin marketplace upgrade dlthub-ai-harness`. [Codex plugin docs](https://developers.openai.com/plugins/build/plugins)
+Then say what you want to build, for example *"load data from the Stripe API"*. The `setup-dlthub-workspace` skill installs `uv` and `dlt[hub]`, then installs `init` and the toolkit for your task with the `dlthub` CLI. Every toolkit then comes from one channel, so you do not get two copies.
 
 **Toolkit plugins (deprecated).** The marketplace still lists each toolkit as a plugin, so current users keep getting updates. Do not install them together with `dlthub-setup`: the `dlthub` CLI does not see plugins and installs a second copy.
 
