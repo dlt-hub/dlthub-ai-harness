@@ -86,11 +86,7 @@ source = sql_database().with_resources("family", "clan")
 
 The default `sqlalchemy` backend fetches rows one at a time through Python objects. Switch to a faster backend:
 
-| Backend | Speed | Notes |
-| --- | --- | --- |
-| `sqlalchemy` | baseline | Default; safe but slow |
-| `pyarrow` | ~20–30x faster | Best general upgrade; also needs `numpy` (`uv add numpy`) |
-| `connectorx` | ~2x faster than pyarrow | Rust-based; great for large MySQL/PostgreSQL tables; uses its own connection string format |
+Use `pyarrow` (~15x faster end to end on flat tables in a local benchmark; needs `numpy`). Use `connectorx` only if the table fits in RAM. For trade-offs, see "Faster backend" in `optimize-sql-performance`.
 
 Apply by passing `backend=` to `sql_table` or `sql_database`:
 ```python
