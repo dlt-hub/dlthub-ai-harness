@@ -105,7 +105,7 @@ Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configu
 
 Inspect pipeline state to check the stored cursor value:
 ```
-uv run dlthub local pipeline info <pipeline_name> -v
+uv run dlthub -v local pipeline info <pipeline_name>
 ```
 Look for `last_value` in the resource state — verify it updates between runs. Also check logs for `"Bind incremental on <resource_name>"` to confirm the incremental param was bound.
 Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
@@ -116,7 +116,7 @@ Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 Inspect the last pipeline run:
 
 ```
-uv run dlthub local pipeline trace <pipeline_name> -vv
+uv run dlthub -vv local pipeline trace <pipeline_name>
 ```
 
 Shows credentials resolution, step timing, and failures.
@@ -125,19 +125,22 @@ Shows credentials resolution, step timing, and failures.
 Each pipeline run generated one or more load packages. Use trace tool to find their ids.
 
 ```
-uv run dlthub local pipeline load-package <pipeline_name> -v           # most recent package
-uv run dlthub local pipeline load-package <pipeline_name> <load_id> -v # specific package
+uv run dlthub -v local pipeline load-package <pipeline_name>             # most recent package
+uv run dlthub -v local pipeline load-package <pipeline_name> <load_id>   # specific package
+uv run dlthub local pipeline load-package <pipeline_name> <load_id> job <pattern>   # full error history of matching jobs, across retries
 ```
-Shows package state, per-job details (table, file type, size, timing), and **error messages for failed jobs**. With `-v` also shows schema updates applied.
+Shows package state, per-job details (table, file type, size, timing), and **error messages for failed jobs**, including jobs pending a retry. With `-v` also shows the tables and columns created at the destination.
+
+**A failed load job stays pending.** Since dlt 1.30, a job that fails on load is queued for retry, its package stays pending and the run raises `LoadClientJobTerminalRetry`. Read the job with `load-package` above. To recover a package that cannot load (retry, fail a job, abort), see `troubleshoot-pipeline-run`, section **Recover a failed load**.
 
 ```
 uv run dlthub local pipeline failed-jobs <pipeline_name>
 ```
-Scans all packages for failed jobs and displays error messages from the destination.
+Scans completed packages for failed jobs and displays error messages from the destination. It does not list a job that is pending a retry.
 
 ### Inspecting raw load files
 
-Load packages are stored at `~/.dlt/pipelines/<pipeline_name>/load/loaded/<load_id>/`. Job files live in `completed_jobs/` and `failed_jobs/` subdirectories.
+A pipeline's working directory is `.dlt/state/<profile>/pipelines/<pipeline_name>/`. The profile is `dev` unless another one is pinned (`uv run dlthub profile info`). Completed packages are stored under `load/loaded/<load_id>/`, with job files in `completed_jobs/` and `failed_jobs/` subdirectories.
 
 File format depends on the destination:
 
@@ -150,7 +153,7 @@ File format depends on the destination:
 
 Inspect gzipped files with `zcat`:
 ```
-zcat ~/.dlt/pipelines/<pipeline_name>/load/loaded/<load_id>/completed_jobs/<file>.gz
+zcat .dlt/state/<profile>/pipelines/<pipeline_name>/load/loaded/<load_id>/completed_jobs/<file>.gz
 ```
 Useful for verifying data transformations and debugging destination errors.
 

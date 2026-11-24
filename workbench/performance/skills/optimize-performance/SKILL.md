@@ -31,6 +31,15 @@ progress = "log"     # or PROGRESS=log, or dlt.pipeline(..., progress="log")
 
 Read durations from `pipeline.last_trace` or via the calling pipeline toolkit's debug skill (trace + load packages; `debug-pipeline` in rest-api-pipeline, `debug-sql-database-pipeline` in sql-database-pipeline — use it only if that toolkit is installed, otherwise read `last_trace` directly). Benchmark on a real machine — shared or resource-constrained environments give unreliable numbers.
 
+**See where the rows and files went** (dlt 1.32+; on older versions read `pipeline.last_trace`):
+
+```sh
+uv run dlthub local pipeline trace <pipeline_name> metrics                 # every step, by table
+uv run dlthub local pipeline trace <pipeline_name> metrics --steps extract -v   # one line per extracted file
+```
+
+It reads the last run trace: `extract` shows rows, files and sizes by resource and table; `normalize` by table (nested tables included); `load` shows files, sizes, job time and failed jobs by table (no rows). Use it to spot one table that dominates the run, a table that was never split into several files, or a load step dominated by a few slow jobs. Extract and normalize sizes are bytes before compression — the same unit `file_max_bytes` limits; load sizes are bytes on disk.
+
 **Tune on a representative subset, not the full dataset.** For time tuning a slice (e.g. a few million of tens of millions of rows) reproduces the stage ratios and lever effects while iterating far faster. Size it in a band: big enough that fixed overhead doesn't dominate **and** that enough files/resources exist for parallelism levers to show (too small → a good lever looks useless; a tiny `.add_limit(1)` fails this floor and `.add_limit()` masks pagination), small enough to iterate. **Reduce volume only once you've confirmed the subset is representative** — it reproduces the full-run stage ratios and clears the floor (>1 file, >1 resource); if you can't confirm that, run the full dataset. Memory/OOM work and the final confirmation always run full volume.
 
 Then route to the slowest stage:
@@ -68,7 +77,11 @@ Group related resources into a `@dlt.source` (`return (r1, r2, r3)`) so dlt sche
 
 ### Normalize is slow (CPU-bound)
 
-Normalize runs a **process pool with one worker per extract file** — so more workers only help if **extract produced many files**. Key rule: each stage's `data_writer` rotates the files it *writes* (= the next stage's input), so **rotate extract output to parallelize normalize; rotate normalize output to parallelize load**.
+Normalize runs a **process pool**; each worker gets a group of extract files. dlt sorts the files by name (a table's files stay together), cuts them into groups of similar size, and splits `jsonl` and `parquet` files separately. A worker never shares a file, so more workers only help if **extract produced many files of similar size** — one big file keeps one worker busy while the rest wait. Key rule: each stage's `data_writer` rotates the files it *writes* (= the next stage's input), so **rotate extract output to parallelize normalize; rotate normalize output to parallelize load**.
+
+dlt checks this after extract and logs a warning when the files cannot keep the workers busy (it skips packages under 32 MiB): `Normalize will give files to only N of M workers` or `Normalize will give N of M workers less than half the data of the busiest worker`. The warning names the table to split, says whether to **set** or **lower** `file_max_items` / `file_max_bytes` (with the current values), and prints the `trace metrics` command that lists the extracted files.
+
+**Size the extract files from the data:** aim for about 8–10 files per worker for the largest tables — `[sources.data_writer] file_max_bytes` ≈ extracted size ÷ (workers × 8), reading the size from `trace metrics --steps extract`. Prefer `file_max_bytes` to `file_max_items` when tables have different row widths (equal-size files split evenly). Small extract files do **not** add load jobs: each worker writes one normalized file per table.
 
 | Lever | Default | Effect                                                                                                                                                                         |
 |---|---|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -173,7 +186,8 @@ Apply source-specific tuning **in addition** to the stage levers above. These sk
 
 ## Step 3: Re-measure, then repeat
 
-Re-run with `progress="log"` and compare per-stage durations against Step 1, plus the peak `Memory usage` line it logs (`last_trace` has timings, not RAM). Change **one lever at a time** so you can attribute the effect, and use the pipeline toolkit's debug skill to confirm no new failures (timeouts, type errors) surfaced under higher concurrency. **If a lever regresses — slower, higher peak memory, or a new failure — roll it back to its previous value before trying the next**; changing one at a time is what makes this a clean revert.
+Re-run with `progress="log"` and compare per-stage durations against Step 1, plus the peak `Memory usage` line it logs (`last_trace` has timings, not RAM). Compare file counts and sizes per table with `trace metrics` too — a rotation lever that did not change the number of extract files did not take effect (check the config scope).
+Change **one lever at a time** so you can attribute the effect, and use the pipeline toolkit's debug skill to confirm no new failures (timeouts, type errors) surfaced under higher concurrency. **If a lever regresses — slower, higher peak memory, or a new failure — roll it back to its previous value before trying the next**; changing one at a time is what makes this a clean revert.
 
 **Iterate on one stage — skip the full `run()`.** dlt exposes each stage as its own method (`pipeline.extract(source)`, `pipeline.normalize()`, `pipeline.load()`), and each consumes the previous stage's packages. So when tuning a lever, **re-run from the changed stage's input forward, up to the stage you're timing** — not the whole pipeline:
 

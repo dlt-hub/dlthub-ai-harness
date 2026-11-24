@@ -64,7 +64,7 @@ Key decisions:
 
 Check stored cursor state between runs:
 ```
-uv run dlthub local pipeline info <pipeline_name> -v
+uv run dlthub -v local pipeline info <pipeline_name>
 ```
 Look for `last_value` in the resource state.
 

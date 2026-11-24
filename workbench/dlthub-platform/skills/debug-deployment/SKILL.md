@@ -69,7 +69,10 @@ dlthub job runs cancel <name> [run#]         # cancel a specific run
 
 ```bash
 dlthub run <name_or_file>                    # deploy the change and run the job
+dlthub run <name_or_file> --refresh          # deploy and run as a refresh run: reload the data
 ```
+
+Use a refresh run only when wrong data was already loaded and must be reloaded, and only after the user confirms: it drops or truncates production data. It reloads the pipelines only if the job sets `auto_refresh_pipeline_mode` (see the `deploy-workspace` skill, "Refresh runs"). Otherwise it changes nothing for them.
 
 ## Access production data (read only)
 

@@ -30,7 +30,9 @@ If the request looks like a specific API/service name, run:
 ```
 dlthub --non-interactive pipeline init --list-sources
 ```
-Search the output (case-insensitive) for the source name. If found, ensure that the verified source contains the data that the user needs (ask the user explicitly) skip to **step 5**
+Search the output (case-insensitive) for the source name. If found:
+- **Read its docs page** to check that the source has the data the user needs, then ask the user explicitly. The page is `https://dlthub.com/docs/dlt-ecosystem/verified-sources/<source>.md`. A few pages are named differently from the source: if the URL returns 404, find the source in the index, `https://dlthub.com/docs/dlt-ecosystem/verified-sources.md`.
+- Skip to **step 5**.
 
 ### 3. Search dlthub context
 
@@ -49,24 +51,29 @@ query: <source-name> API documentation
 
 NOTE: we can handle only REST API (**step 5**) and sometimes GraphQL.
 
-### 5. Decide: is this a REST API pipeline?
+### 5. Decide: REST API pipeline, verified source, or another toolkit?
 
-This toolkit builds **REST API pipelines**. Before continuing, check if the user's data source actually fits.
+This toolkit builds **REST API pipelines** and runs **verified sources**. Before continuing, check which one fits the user's data source.
 
-**STOP and hand off** if any of these are true:
-- **Core source is NOT `rest_api`** — the user needs `sql_database`, `filesystem`, or another core source. For `filesystem`, hand off to the **filesystem-pipeline** toolkit (`create-filesystem-pipeline`). For others, tell them which one and the `dlthub pipeline init` command, then suggest a general coding session.
-- **A verified source exists** (from step 2) — a pre-built, maintained connector is almost always better than building from scratch. Tell the user about it and the `dlthub pipeline init <source> <destination>` command. Suggest they try the verified source first.
+**STOP and hand off** if the core source is NOT `rest_api`:
+- `sql_database` → hand off to the **sql-database-pipeline** toolkit, entry skill `find-sql-database-source`. Pass on the database and the destination if they are known.
+- `filesystem` → hand off to the **filesystem-pipeline** toolkit (`create-filesystem-pipeline`).
+- Another core source → tell the user which one and the `dlthub pipeline init` command, then suggest a general coding session.
+
+**A verified source exists** (from step 2): a pre-built, maintained connector is almost always better than building from scratch. Recommend it:
 
 ```
-Found: <verified source or non-REST core source>
+Found verified source: <source>
   Command: dlthub pipeline init <source> <destination>
 
-This is outside the REST API pipeline workflow. You can:
-  1. Use the verified source / core source above (recommended)
-  2. Start a general coding session if you need a custom pipeline
+You can:
+  1. Use the verified source (recommended)
+  2. Build a custom REST API pipeline instead
 ```
 
-**CONTINUE** only when the best path is building a REST API pipeline — either because:
+If the user picks the verified source, skip steps 6–7 and go to **step 8**.
+
+**CONTINUE** with step 6 only when the best path is building a REST API pipeline — either because:
 - The user explicitly asked for REST API / HTTP API
 - The data source is a REST API with no verified source available
 - A dlthub context source was found (these use the `rest_api` core source under the hood)
@@ -84,3 +91,17 @@ Ask user to pick a single endpoint to start the work - do it directly or infer i
 
 Do NOT run `dlthub pipeline init` yet — wait for user confirmation.
 After that continue workflow in `create-rest-api-pipeline` skill
+
+### 8. Verified source path
+
+Only when the user picked a verified source in step 5. Do NOT use `create-rest-api-pipeline`:
+1. **Confirm the destination**, then scaffold from the project root:
+   ```
+   uv run dlthub --non-interactive pipeline init <source> <destination>
+   ```
+   It copies the source code into `<source>/`, adds an example script `<source>_pipeline.py`, and writes config and secret placeholders. Install the dependencies it reports.
+2. **Read the docs page in full before you write or change the pipeline, and follow it like a skill.** Its setup, credentials, resources and arguments are your instructions. `<source>/README.md` links it in its first lines; add `.md` to the URL for the markdown version. Without the link, find the page as in step 2.
+3. **Read `<source>/README.md`.** In a versioned source, **Maintenance & Troubleshooting** (**Operations** in older versions) lists known limits, quirks and their workarounds, and the **Changelog** says what changed in each version.
+4. **Trim `<source>_pipeline.py`** to the resources the user asked for. Do not edit the code in `<source>/`: local changes block later updates of the source.
+5. **Credentials** → `setup-secrets`. Write placeholders only; the user fills in the values.
+6. **Get feedback** on the files you changed, then run it with `debug-pipeline` (it has a section on verified sources), then `validate-data`.

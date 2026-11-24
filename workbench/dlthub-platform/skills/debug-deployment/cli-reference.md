@@ -1,7 +1,5 @@
 # Debugging command reference
 
-The commands outside the core loop in `SKILL.md`.
-
 ## Trigger jobs
 
 ```bash

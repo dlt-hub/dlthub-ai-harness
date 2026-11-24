@@ -138,31 +138,81 @@ Freshness is **not** a trigger. The job still runs on its own schedule, but
 skips if upstream isn't done yet. Use for transforms that shouldn't observe
 mid-load data.
 
-## Refresh cascade
+## Refresh runs and the refresh cascade
 
-Control how a refresh signal propagates downstream:
+A **refresh run** carries the refresh signal: a request to reload the job's data. Start one with `--refresh` (CLI reference: https://dlthub.com/docs/hub/command-line-interface.md):
+
+```bash
+dlthub run <job_or_file> --refresh          # deploy and run on Runtime
+dlthub job trigger <selector> --refresh     # trigger deployed jobs
+dlthub local run <job> --refresh            # simulate locally
+```
+
+A refresh run drops or truncates data in the destination. Confirm with the user before you start one, and never start one on a production profile without their explicit OK.
+
+### Reload every pipeline in the job (recommended)
+
+`auto_refresh_pipeline_mode` applies a refresh mode to every `dlt.pipeline()` that the job creates, in refresh runs only:
+
+```python
+@run.pipeline("my_pipeline", auto_refresh_pipeline_mode="drop_sources")
+def ingest():
+    pipeline = dlt.pipeline(pipeline_name="my_pipeline", destination="warehouse")
+    pipeline.run(my_source())
+```
+
+`@run.job` takes it too. Or set it in config, for one job or for all jobs:
+
+```toml
+[jobs.<section>.<job_name>]   # the job reference, see prepare-deployment "Job references"
+auto_refresh_pipeline_mode = "drop_sources"
+
+[jobs]                        # every job
+auto_refresh_pipeline_mode = "drop_data"
+```
+
+| Mode | What a refresh run does to each pipeline |
+|------|------------------------------------------|
+| `drop_sources` | drops the tables and state of every source in the run and resets their schemas |
+| `drop_resources` | drops the tables and state of the resources in the run, keeps source-level state |
+| `drop_data` | truncates the tables of the resources in the run and resets their state, keeps the schema |
+
+An explicit `refresh=` on `dlt.pipeline()` still wins. The runner needs dlt 1.30.1a0 or later. Without the setting, a refresh run does not reload any pipeline, unless the job code reads the signal itself (below).
+
+### The same by hand (illustration)
+
+This is what `auto_refresh_pipeline_mode` does for you. Write it out only when pipelines in one job need different handling:
+
+```python
+@run.pipeline("my_pipeline")
+def ingest(run_context: TJobRunContext):
+    pipeline = dlt.pipeline(pipeline_name="my_pipeline", destination="warehouse")
+    if run_context["refresh"]:
+        pipeline.refresh = "drop_sources"
+    pipeline.run(my_source())
+```
+
+### Cascade to downstream jobs
+
+`refresh_propagation` decides whether the signal reaches the jobs that follow this one (`trigger=<job>.success`):
 
 | Policy | Behavior |
 |--------|----------|
-| `refresh="always"` | Every success cascades refresh to downstream (originator) |
-| `refresh="auto"` | Passes through if received (default, transparent) |
-| `refresh="block"` | Stops propagation |
+| `refresh_propagation="auto"` | passes the signal on if this run received it (default) |
+| `refresh_propagation="always"` | every successful run sends the signal to its direct downstream jobs (originator) |
+| `refresh_propagation="block"` | stops propagation. `--refresh` on this job is ignored with a warning |
 
-A backfill job with `refresh="always"` triggers a full reprocess cascade:
+`refresh=` is the deprecated name of `refresh_propagation=`. `dlthub deploy` warns about a job that sets `auto_refresh_pipeline_mode` together with `refresh_propagation="block"`, because block prevents its refresh runs.
+
+A backfill job with `refresh_propagation="always"` triggers a full reprocess cascade. Downstream jobs with `auto_refresh_pipeline_mode` reload their pipelines:
 
 ```python
 @run.job(
     expose={"tags": ["backfill"], "display_name": "Full backfill"},
-    refresh="always",
+    refresh_propagation="always",
 )
 def backfill():
     print("cascading refresh to all downstream jobs")
-```
-
-Downstream jobs react via `run_context["refresh"]`:
-```python
-if run_context["refresh"]:
-    pipeline.refresh = "drop_sources"
 ```
 
 ## `@run.job` and `@run.interactive`

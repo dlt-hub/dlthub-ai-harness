@@ -23,6 +23,7 @@
 
 ### Incoming (to sql-database-pipeline)
 
+- From **rest-api-pipeline** (from `find-source`, when the user's data source turns out to be a SQL database) — start at `find-sql-database-source`; the database and destination may already be known.
 - From **dlthub-platform** (from `deploy-workspace` when the pipeline needs modification before deploying) — pipeline name and destination are already known; skip `find-sql-database-source` discovery and go straight to the relevant fix skill (`debug-sql-database-pipeline`, `adjust-table`, or `add-table`).
 
 ### Outgoing (from sql-database-pipeline)

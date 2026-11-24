@@ -74,15 +74,14 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
 
    **Never glob for pipeline files or run the user's original pipeline script.** That re-extracts from the source. `run_checks` is self-contained against the destination.
 
-   **Workspace context gap:** `dlt.attach` looks for pipeline state in `.dlt/.var/dev/pipelines` (the workspace-scoped location) but if the pipeline was run before a `.workspace` file was added to the project, the state is at `~/.dlt/pipelines` instead. If `dlt.attach` raises `CannotRestorePipelineException`, tell the user:
+   **Pipeline state not found:** `dlt.attach` reads the pipeline state of the active profile, in `.dlt/state/<profile>/pipelines` (`dev` unless another profile is pinned). If it raises `CannotRestorePipelineException`, the active profile has no state for this pipeline. Either another profile is active, the script ran from a folder other than the project root, or the pipeline never ran in this workspace. Check with `uv run dlthub profile info` and `uv run dlthub local pipeline list`, then tell the user:
 
    ```
-   The pipeline state isn't in the workspace-scoped location yet. This happens when
-   the pipeline was first run before the .workspace file was added.
+   The pipeline state isn't in the active profile (<profile>) of this workspace.
 
-   Fix: re-run your pipeline once from this directory — that seeds the state in
-   .dlt/.var/dev/pipelines so dlt.attach can find it. After that, the data quality
-   script will work without modification.
+   Fix: run your pipeline once from the project root with this profile, or switch
+   to the profile it ran under (uv run dlthub local profile use <profile>). After
+   that, the data quality script will work without modification.
    ```
 
    **Note on `case()` and NULLs:** `dq.checks.case("col >= 0")` treats NULL as a failing row. If the column is nullable and NULLs are expected, either exclude them in the expression (`case("col IS NULL OR col >= 0")`) or use `is_not_null` as a separate check.

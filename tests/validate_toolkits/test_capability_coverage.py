@@ -83,10 +83,10 @@ def test_workflow_toolkit_without_workflow_rule(tmp_path: Path) -> None:
 
 
 def test_non_workflow_toolkits_are_exempt(tmp_path: Path) -> None:
-    """`init` and `bootstrap` carry no workflow; their skills are reached another way."""
+    """`init` and `dlthub-setup` carry no workflow; their skills are reached another way."""
     root = fake_root(tmp_path, [])
     toolkit(root, "init", skills=("dlthub-router", "setup-secrets"), workflow=False)
-    toolkit(root, "bootstrap", workflow=False)
+    toolkit(root, "dlthub-setup", workflow=False)
 
     assert coverage_errors(root) == []
 

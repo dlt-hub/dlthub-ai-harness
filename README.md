@@ -65,11 +65,11 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | Toolkit | Phase | Workflow entry | What it does                                                                                                              | Example prompts | Availability |
 |---------|-------|---------------|---------------------------------------------------------------------------------------------------------------------------|---------------|--------------|
 | `quick-start` | Setup | `quick-start` | Guided end-to-end run from data to dashboard in 3–5 prompts; routes to the right entry skill based on a chosen depth      | *"Use quick-start to take me through the full workflow with the GitHub API"* | Run `/quick-start:quick-start` |
-| `bootstrap` | Setup | `/init-workspace` | Checks for `uv`, Python venv, and `dlthub`; installs what's missing; initializes the workspace; then runs `dlthub ai init` and lists available toolkits | *"Run /init-workspace to set up a Python environment with dlthub"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/init-workspace` |
-| `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/find-source` |
+| `dlthub-setup` | Setup | `setup-dlthub-workspace` | The marketplace entry point. Installs `uv` and `dlt[hub]` (`uvx dlthub-init@0.3.0`), then `init` (`dlthub ai init`) and the toolkit for your task (`dlthub ai toolkit install`). Works in Claude Code, Cursor and Codex | *"Load data from the Stripe API"* in a project without dlthub | [Try it out yourself!](https://dlthub.com/docs/hub/ai-harness/introduction)<br>Run `/setup-dlthub-workspace` |
+| `rest-api-pipeline` | Build | `find-source` | Scaffold, debug, and validate REST API ingestion pipelines                                                                | *"Use find-source to load data from the Stripe API into DuckDB"* | [Try it out yourself!](https://dlthub.com/docs/hub/ai-harness/introduction)<br>Run `/find-source` |
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
+| `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/hub/ai-harness/introduction)<br>Run `/explore-data` |
 | `dlthub-platform` | Run | `setup-runtime` | Deploy pipelines to the dltHub Platform                                        | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -147,7 +147,7 @@ uvx dlthub-start@latest
 
 ### Browse and install toolkits
 
-> **If `dlthub` is not installed**, do [New project](#new-project-recommended) or [Existing project](#existing-project) first. The `bootstrap` toolkit's `/init-workspace` also works. The toolkit commands below need `dlthub` in your environment.
+> **If `dlthub` is not installed**, do [New project](#new-project-recommended) or [Existing project](#existing-project) first. In a coding assistant, the `dlthub-setup` plugin's `/setup-dlthub-workspace` skill also works. The toolkit commands below need `dlthub` in your environment.
 
 
 ```bash
@@ -158,7 +158,6 @@ If you are not sure which toolkits you need, install all of them:
 
 ```bash
 uv run dlthub ai toolkit install quick-start
-uv run dlthub ai toolkit install bootstrap
 uv run dlthub ai toolkit install rest-api-pipeline
 uv run dlthub ai toolkit install sql-database-pipeline
 uv run dlthub ai toolkit install filesystem-pipeline
@@ -181,15 +180,22 @@ Use one of the example prompts from the [Available toolkits](#available-toolkits
 
 ### Claude Code marketplace plugin (Early Access)
 
-> **Early Access:** The Claude Code plugin does not link toolkits as well as `dlthub ai toolkit install`. To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub). The plugin path is for a project you set up from inside Claude Code with the `bootstrap` toolkit.
+> **Early Access:** To try dltHub for the first time, use [First-time onboarding](#first-time-onboarding-want-to-try-or-learn-dlthub).
 
-The harness is also available as a Claude Code plugin via the marketplace. Start a Claude Code session and run:
+Install only the `dlthub-setup` plugin from the marketplace. Start a Claude Code session and run:
 
 ```
 /plugin marketplace add dlt-hub/dlthub-ai-harness
+/plugin install dlthub-setup@dlthub-ai-harness --scope project
+```
+
+Then say what you want to build, for example *"load data from the Stripe API"*. The `setup-dlthub-workspace` skill installs `uv` and `dlt[hub]`, then installs `init` and the toolkit for your task with the `dlthub` CLI. Every toolkit then comes from one channel, so you do not get two copies.
+
+**Toolkit plugins (deprecated).** The marketplace still lists each toolkit as a plugin, so current users keep getting updates. Do not install them together with `dlthub-setup`: the `dlthub` CLI does not see plugins and installs a second copy.
+
+```
 /plugin install init@dlthub-ai-harness --scope project
 /plugin install quick-start@dlthub-ai-harness --scope project
-/plugin install bootstrap@dlthub-ai-harness --scope project
 /plugin install rest-api-pipeline@dlthub-ai-harness --scope project
 /plugin install sql-database-pipeline@dlthub-ai-harness --scope project
 /plugin install filesystem-pipeline@dlthub-ai-harness --scope project
@@ -200,7 +206,7 @@ The harness is also available as a Claude Code plugin via the marketplace. Start
 /plugin install performance@dlthub-ai-harness --scope project
 ```
 
-Plugins become active only in a new session. Restart Claude Code with `claude`.
+A new plugin becomes active after `/reload-plugins` or in a new session.
 
 **Moving from the `dlthub-ai-workbench` marketplace.** The marketplace was renamed to `dlthub-ai-harness`. If you added it under its old name, your plugins keep working: an update keeps the old local name. But the `@dlthub-ai-harness` commands in this README do not find the marketplace, and teammates who add it now get the new name. To match, remove the marketplace, which also uninstalls its plugins. Then add it again and reinstall `init`, which every toolkit depends on, and the toolkits you use:
 
@@ -212,6 +218,22 @@ Plugins become active only in a new session. Restart Claude Code with `claude`.
 ```
 
 If your project commits `.claude/settings.json`, change each `<toolkit>@dlthub-ai-workbench` key under `enabledPlugins` to `<toolkit>@dlthub-ai-harness`. An old key does not load the plugin and shows no error.
+
+**Other hosts (maintainers).** `tools/generate_catalogs.py` makes the `dlthub-setup` catalogs for Cursor and Codex from the Claude files. Do not edit generated files. Edit the source and run `uv run python tools/generate_catalogs.py`. CI fails when they differ.
+
+```
+SOURCE (you edit these)
+  .claude-plugin/marketplace.json
+  workbench/dlthub-setup/.claude-plugin/plugin.json
+  workbench/dlthub-setup/skills/
+            │
+            ▼   uv run python tools/generate_catalogs.py
+GENERATED (do not edit)
+  .cursor-plugin/marketplace.json                 → Cursor catalog
+  workbench/dlthub-setup/.cursor-plugin/plugin.json  → Cursor manifest
+  .agents/plugins/marketplace.json                → Codex catalog
+  workbench/dlthub-setup/.codex-plugin/plugin.json   → Codex manifest
+```
 
 
 ## The `dlthub ai` CLI
@@ -249,4 +271,4 @@ With the MCP server, the assistant can answer questions like "what tables were l
 
 ## License
 
-This project is licensed under the [dltHub AI Harness License](LICENSE).
+This project is licensed under the [dltHub AI Harness License](LICENSE). The `dlthub-setup` launcher is licensed under the [Apache License 2.0](workbench/dlthub-setup/LICENSE).

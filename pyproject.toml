@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     # first stable pair: the 0.31.0 platform answers an older client with a 426, and dlt's own
     # `hub` extra floors the client at 0.28.3
-    "dlt[hub]>=1.31.0",
+    "dlt[hub]>=1.32.0",
     "dlthub-client>=0.28.7",
     "duckdb>=0.9",
     "ibis-framework>=12.0.0 ; python_version >= '3.10'",
