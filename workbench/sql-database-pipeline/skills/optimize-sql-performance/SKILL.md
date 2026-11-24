@@ -49,7 +49,7 @@ Match the symptom to a lever. They **compose** — apply every one that fits; ju
 | `connectorx` | fastest reads, table fits easily in RAM | own connection string; holds the **whole result in memory** and ignores `chunk_size`; dlt may copy it again for type fixes (see ConnectorX memory) |
 | `pandas` | DataFrame workflow only | loses precision on decimal and date columns |
 
-Arrow backends (`pyarrow`, `connectorx`) skip normalize and keep nested values as JSON/struct columns. They also let dlt load parquet, so much of their gain is outside extract. Local benchmark (Nov 2026, 200k flat rows, DuckDB): `pyarrow` ~8–15x and `connectorx` ~25–30x faster end to end than `sqlalchemy`. Ratios change with data shape, network and destination: measure each stage.
+Arrow backends (`pyarrow`, `connectorx`) skip normalize and keep nested values as JSON/struct columns. They also let dlt load a bulk format (parquet, or csv on Postgres), so most of their gain is outside extract. Local benchmark (dlt 1.32.0, Postgres → DuckDB, 200k flat rows): `pyarrow` ~15x and `connectorx` ~20x faster end to end than `sqlalchemy`, but only ~2.5x and ~4.5x on extract alone. Ratios change with data shape, network and destination: measure each stage.
 
 ```python
 from dlt.sources.sql_database import sql_database, sql_table
@@ -63,7 +63,7 @@ Install `dlt[sql_database]` (SQLAlchemy is not in the base workspace), plus `num
 **ConnectorX memory** — peak memory grows with the table. On a small runner this ends in an OOM kill or a hang. Try in this order:
 1. Switch to `pyarrow` when memory matters more than read speed.
 2. Read less: `included_columns`, a filtering `query_adapter_callback`, incremental loading, or date/id-range slices.
-3. Stream: `backend_kwargs={"return_type": "arrow_stream"}` (`batch_size` defaults to `chunk_size`). **Not proven to bound memory** — a local test (Nov 2026, 300 MB table) showed peak only ~10% below default mode. Measure peak RSS (`resource.getrusage(...).ru_maxrss`, fresh process) on a table larger than the limit first.
+3. Stream: `backend_kwargs={"return_type": "arrow_stream"}` (`batch_size` defaults to `chunk_size`). **Not proven to bound memory** — local test (dlt 1.32.0, 313 MB Postgres table, extract only): peak RSS `pyarrow` 337 MiB, `connectorx` 492 MiB, `arrow_stream` 455 MiB. Measure peak RSS (`resource.getrusage(...).ru_maxrss`, fresh process) on a table larger than the limit first.
 
 **Tune `chunk_size`** — rows per round-trip; larger = fewer round-trips, more memory. Start at `50000`; lower on memory pressure, raise for narrow tables over high-latency links. `connectorx` uses it only in streaming mode.
 
