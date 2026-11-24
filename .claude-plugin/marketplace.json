@@ -67,7 +67,7 @@
       "name": "sql-database-pipeline",
       "source": "./workbench/sql-database-pipeline",
       "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Load tables from any SQLAlchemy-supported database into a destination with dlt, and tune performance with the available backends. Requires dlt[hub].",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "etl", "data-pipeline", "python", "sql", "database"]
@@ -121,10 +121,19 @@
       "name": "performance",
       "source": "./workbench/performance",
       "description": "Deprecated. Install dlthub-setup instead. It installs this toolkit with the dlthub CLI. Find the slow stage of a dlt pipeline (extract, normalize or load) and tune parallelism, workers, buffers, file rotation and batching. Requires dlt[hub].",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
+    },
+    {
+      "name": "payg-pricing",
+      "source": "./workbench/payg-pricing",
+      "description": "Estimate the monthly pay-as-you-go cost of a dltHub workspace from its deployed jobs: cadence, run durations and instance size. For PAYG customers. Requires dlt[hub].",
+      "version": "0.1.0",
+      "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+      "category": "data",
+      "tags": ["dlthub", "pricing", "cost", "payg"]
     }
   ]
 }

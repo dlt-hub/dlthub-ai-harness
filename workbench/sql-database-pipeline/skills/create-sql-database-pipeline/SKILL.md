@@ -256,19 +256,13 @@ Common first-run errors:
 
 ### 11. Suggest backend after a successful test run
 
-Using the data volume noted in step 1, recommend the right backend:
+Size the table (row count × row width) and compare it with the runner's RAM. Then pick:
 
-| Scale | Rows / Size | Recommended backend | chunk_size |
-| --- | --- | --- | --- |
-| Small | < 100k rows / < 500 MB | `sqlalchemy` (default) | any |
-| Medium | 100k – 10M rows / 500 MB – 10 GB | `pyarrow` (needs `numpy`) | 5000 |
-| Large | > 10M rows / > 10 GB | `connectorx` (MySQL/Postgres) or `pyarrow` | 50000 |
+- Small table, or nested data to unnest → `sqlalchemy` (default)
+- Medium/large flat table → `pyarrow` (needs `numpy`), `chunk_size` 5,000–50,000
+- Fastest reads and the table fits easily in RAM → `connectorx`
 
-Backend options:
-- **`sqlalchemy`** — safest, works with every destination, but slowest.
-- **`pyarrow`** — 20–30x faster; preserves decimal/date types precisely. Also requires `numpy`.
-- **`pandas`** — convenient for DataFrame workflows, but loses precision on decimal and date columns.
-- **`connectorx`** — fastest overall (2x over pyarrow, Rust-based); uses its own connection string format, bypasses SQLAlchemy.
+For trade-offs, sizing and out-of-memory fixes, see "Faster backend" in `optimize-sql-performance`.
 
 Ref: https://dlthub.com/docs/dlt-ecosystem/verified-sources/sql_database/configuration#configuring-the-backend
 
