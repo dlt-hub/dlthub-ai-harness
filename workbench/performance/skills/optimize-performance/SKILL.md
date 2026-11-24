@@ -168,7 +168,49 @@ Load runs **one file per thread**, so parallelism needs **many normalize-output 
 
 **Load-stage peak RAM ≈ `[load] workers` × file size**, held in Python, *plus* whatever the destination allocates. This bites with `insert_values` (duckdb's default loader format), where each job is a file of SQL text. With wide rows both extremes overflow a small box: one un-rotated file is a single huge job, and rotating without touching `workers` just hands the default 20 threads a file each. Rotation is therefore a *time* lever and a *memory* lever in opposite directions — rotate for parallelism, then set `workers` so `workers × file size` fits the box.
 
-**Faster loader format (MSSQL / MySQL / Postgres).** If load is slow because the destination uses `insert_values`, switch to **parquet via ADBC** (dlt ≥ 1.19; docs claim large gains, our local benchmark saw ~1.7–4.7x on load time, so measure; Postgres needs `loader_file_format="parquet"`, no `dbc`): `uv add adbc-driver-manager dbc && uv run dbc install mssql` (or `mysql`; MySQL also needs `loader_file_format="parquet"`). SQLite is excluded by design. Full steps and verification in `optimize-sql-performance` ("Fast loading with ADBC + parquet"). The `workers × file size` memory rule above applies to parquet files too (the MSSQL job ingests per row-group to bound memory).
+**Faster loader format (ADBC + parquet, dlt ≥ 1.19)** — for slow loads into MSSQL, MySQL or Postgres. By default these load row by row (`insert_values`; MySQL via `sqlalchemy` uses `typed-jsonl`). An [ADBC](https://arrow.apache.org/adbc/) driver lets dlt bulk-load **parquet** instead. Local benchmark (Nov 2026, 200k rows, loopback): load ~1.7x faster on MySQL, ~4.7x on Postgres. Pair it with an Arrow source (e.g. `sql_database(backend="pyarrow")`) so data stays Arrow end to end. ADBC is load-only; dlt has no ADBC source backend.
+
+| destination | enable | notes |
+|---|---|---|
+| `mssql` | `dbc install mssql` → parquet is **automatic** | dlt converts the ODBC string (`Encrypt=yes` → `true`, `no` → `disable`); ingests per row-group to bound memory; no dictionary encoding |
+| `sqlalchemy` + `mysql+pymysql://…` | `dbc install mysql` **and** `loader_file_format="parquet"` | dlt maps `ssl_*` to `tls-*`; target database = `dataset_name` |
+| `postgres` | `uv add adbc-driver-postgresql` **and** `loader_file_format="parquet"` | no `dbc` needed |
+| `sqlalchemy` + `sqlite` | nothing — ADBC is **disabled on purpose** | the two SQLite builds corrupt the WAL `-shm` file; do not install the sqlite driver |
+
+```sh
+uv add adbc-driver-manager dbc   # dbc is Columnar's ADBC driver installer
+uv run dbc install mssql         # or: uv run dbc install mysql
+```
+`dbc` installs into the venv (`.venv/etc/adbc/drivers`). Run it in **every** environment that loads: CI image, deploy build step, laptop.
+
+```python
+pipeline = dlt.pipeline("p", destination="mssql", dataset_name="raw")
+pipeline.run(source)  # mssql picks parquet when the driver is found
+pipeline.run(source, loader_file_format="parquet")  # mysql and postgres opt in
+```
+
+**Verify — the fallback is silent.** Without a driver dlt drops parquet and uses inserts; it warns only if you asked for parquet.
+```python
+from dlt.destinations._adbc_jobs import has_adbc_driver  # private dlt API
+print(has_adbc_driver("mssql"))  # (True, None) = found
+pkg = pipeline.last_trace.last_load_info.load_packages[0]
+print({j.job_file_info.file_format for j in pkg.jobs["completed_jobs"]})
+```
+Data tables must show `parquet`. dlt's own tables (`_dlt_loads`) always show `insert_values`. For mysql, `(True, "…missing required option uri")` also means found. If not found, check for `disable_adbc_detection = true` in `config.toml`. The `workers × file size` rule above applies to parquet files too.
+
+**Other destinations — loader formats to test.** The defaults below apply to Python-object rows. With an Arrow backend, dlt already writes parquet where the destination supports it. Treat any other format as an experiment: set `loader_file_format=` on `pipeline.run` and compare load time in `last_trace`. Re-test after you change `file_max_items` or `[load] workers`. Check your dlt version with `dlt.destinations.<name>().capabilities()`.
+
+| destination | default | also | notes |
+|---|---|---|---|
+| BigQuery | jsonl | parquet | stage via GCS for bulk; no Avro loader |
+| Snowflake | jsonl | parquet, csv | compare csv (flat rows) with parquet (types) |
+| Databricks | parquet | jsonl | via staging |
+| ClickHouse | jsonl | parquet | |
+| Redshift | insert_values | jsonl, parquet via staging | large loads need a staging bucket |
+| Postgres | insert_values | csv, parquet | parquet via ADBC |
+| MSSQL | insert_values | parquet | parquet via ADBC |
+| MySQL (`sqlalchemy`) | typed-jsonl | parquet | parquet via ADBC |
+| DuckDB | insert_values | parquet, jsonl | Arrow sources load as parquet |
 
 ## Source-specific tuning (separate toolkits)
 
