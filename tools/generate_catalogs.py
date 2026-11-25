@@ -40,6 +40,52 @@ _LISTING_URLS = {
 }
 # Docs: https://developers.openai.com/plugins/deploy/submission
 _CODEX_MAX_CHARS = 30
+# Docs: https://developers.openai.com/plugins/deploy/submission-errors
+_CODEX_CATEGORIES = (
+    "Productivity",
+    "Creativity",
+    "Developer Tools",
+    "Business & Operations",
+    "Data & Analytics",
+    "Communication",
+    "Education & Research",
+    "Security",
+    "Finance",
+    "Healthcare",
+    "Travel",
+    "Entertainment",
+    "Other",
+)
+_CODEX_CATEGORY = "Data & Analytics"
+_CODEX_LONG_MAX = 4000
+_CODEX_PROMPTS_MAX = 3
+_CODEX_PROMPT_MAX_CHARS = 128
+# The Codex listing text: tasks, intended users and limits.
+_CODEX_LONG_DESCRIPTION = """\
+dltHub Setup is the entry point to the dltHub AI harness. \
+It prepares your project to build data pipelines with dlt and dltHub.
+
+What it does:
+- Checks if uv, dlt[hub] and the dltHub workspace are installed.
+- Shows you a plan and asks you to approve it before it runs a command.
+- Installs uv, dlt[hub] and the dltHub workspace (dlthub-init from PyPI).
+- Installs the dltHub toolkit for your task with the dlthub CLI: \
+load data from a REST API, a SQL database or files, explore and transform the data, \
+or deploy the pipeline to the dltHub platform.
+
+Who it is for: data engineers and developers who build dlt pipelines with a coding agent.
+
+Limits:
+- It needs network access to PyPI and GitHub.
+- The plugin has no MCP server of its own. \
+The dlthub CLI adds the dltHub MCP server and the toolkits to your project.
+- dlthub-init sends usage telemetry. Ask the skill to add --no-telemetry to turn it off.
+- Use it once per project. When the workspace is set up, use the installed toolkits."""
+_CODEX_PROMPTS = [
+    "Set up dltHub in this project",
+    "Load data from the GitHub REST API into DuckDB with dlt",
+    "Load tables from my Postgres database into DuckDB with dlt",
+]
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
 # Folder entries the skills-only Codex directory rejects.
 _CODEX_REJECTED = ("hooks", ".mcp.json", "commands", "rules")
@@ -64,10 +110,11 @@ def launcher_manifests(plugin: dict) -> dict[str, dict]:
             "displayName": plugin["displayName"],
             # The Codex directory caps this at 30 characters.
             "shortDescription": "dltHub toolkit launcher",
-            "longDescription": plugin["description"],
+            "longDescription": _CODEX_LONG_DESCRIPTION,
             "developerName": plugin["author"]["name"],
-            "category": "Data",
+            "category": _CODEX_CATEGORY,
             "capabilities": [],
+            "defaultPrompt": _CODEX_PROMPTS,
             **{codex: plugin[claude] for claude, codex in _LISTING_URLS.items()},
             "logo": plugin["icon"],
             "composerIcon": plugin["icon"],
@@ -83,6 +130,18 @@ def codex_errors(folder: Path, codex: dict) -> list[str]:
     for key in ("displayName", "shortDescription"):
         if len(iface[key]) > _CODEX_MAX_CHARS:
             errors.append(f"interface.{key} is longer than {_CODEX_MAX_CHARS} characters")
+    if iface.get("category", "Other") not in _CODEX_CATEGORIES:
+        errors.append(f"interface.category {iface['category']!r} is not a Codex category")
+    if len(iface.get("longDescription", "")) > _CODEX_LONG_MAX:
+        errors.append(f"interface.longDescription is longer than {_CODEX_LONG_MAX} characters")
+    prompts = iface.get("defaultPrompt", [])
+    if len(prompts) > _CODEX_PROMPTS_MAX:
+        errors.append(f"interface.defaultPrompt has more than {_CODEX_PROMPTS_MAX} prompts")
+    if len(set(prompts)) != len(prompts):
+        errors.append("interface.defaultPrompt has duplicate prompts")
+    for prompt in prompts:
+        if not prompt.strip() or "\n" in prompt or len(prompt) > _CODEX_PROMPT_MAX_CHARS:
+            errors.append(f"interface.defaultPrompt {prompt!r} is empty, multi-line or too long")
     if not _SEMVER.match(codex.get("version", "")):
         errors.append(f"version {codex.get('version')!r} is not semver")
     for key in ("logo", "composerIcon"):
@@ -114,7 +173,7 @@ def generate(root: Path) -> dict[str, str]:
                         "installation": "AVAILABLE",
                         "authentication": "ON_INSTALL",
                     },
-                    "category": entry["category"].capitalize(),
+                    "category": _CODEX_CATEGORY,
                 }
             ],
         }),
