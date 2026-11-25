@@ -74,7 +74,7 @@ workspace schema (`DLTHUB_<NAME>`):
 name = "github_actions"
 
 [snowflake.deploy]
-deploy_connection_name = "dlthub"   # else the default Snowflake connection
+connection_name = "dlthub"   # else the default Snowflake connection
 ```
 
 - Pick a short name for what the workspace does. Changing it later creates a new workspace schema.

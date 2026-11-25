@@ -52,7 +52,7 @@ of this environment (`ci-write` instead of `prod`, `ci-read` instead of `access`
 - small data: smaller load limits in `.dlt/ci-write.config.toml`, for example under `[jobs.<module>]`;
 - other data or another role: its own credentials in `.dlt/ci-write.secrets.toml`.
 
-An environment can also deploy as another Snowflake role: set `deploy_connection_name` under
+An environment can also deploy as another Snowflake role: set `connection_name` under
 `[snowflake.deploy]` in the config of its write profile. That role needs the grant of the admin
 (`install-snowflake-runner`, step 5).
 
