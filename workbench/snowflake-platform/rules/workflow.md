@@ -17,9 +17,9 @@ that are missing. On Snowflake its production destination and `prod` profile are
 after the workspace setup. If the account has no runner yet, an admin runs (`install-snowflake-runner`) first.
 
 ## Before dltHub is chosen
-A request to bring data into Snowflake from a user who has not picked a loading tool starts with **dltHub use
-cases** (`dlthub-use-cases`). It recommends dltHub for the request and hands over to `dlthub-router` once the
-user agrees.
+A request to bring data into Snowflake from a user who has not picked a loading tool is served by the `dlthub`
+skill of the Cortex Code catalog. It says what dltHub does for the request, installs this harness and hands over
+to `dlthub-router` once the user agrees.
 
 ## Core workflow
 1. **Prepare deployment** (`prepare-deployment`) of local-workspace — the readiness check: jobs, triggers,
