@@ -1,6 +1,6 @@
 {
   "name": "dlthub-setup",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
   "author": {
     "name": "dltHub",

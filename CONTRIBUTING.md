@@ -74,7 +74,7 @@ We submit only the launcher, `workbench/dlthub-setup`. It has a README, its own 
 
 Each plugin folder is one submission. Raise `version` on every release, or users keep the cached copy. In claude.ai chat, hooks and local MCP servers are ignored; they load in Cowork and Claude Code.
 
-**OpenAI / Codex directory.** [Submission guide](https://developers.openai.com/plugins/deploy/submission). Run `make codex-zip` and upload `dist/dlthub-setup-codex.zip`. The build fails when the launcher breaks a directory rule. Every change to metadata or skills needs a new ZIP.
+**OpenAI / Codex directory.** [Submission guide](https://developers.openai.com/plugins/deploy/submission). Run `make codex-zip` and upload `dist/dlthub-setup-<tag>.zip`, for example `dist/dlthub-setup-v0.4.1.zip`. Run it on `master` after you push the tag, because the name uses the latest tag that `HEAD` reaches. To set the tag, run `make codex-zip RELEASE_TAG=vX.Y.Z`. The build fails when the launcher breaks a directory rule. Every change to metadata or skills needs a new ZIP.
 
 **Cursor Marketplace.** [Publisher terms](https://cursor.com/marketplace-publisher-terms). Submit the repository link at https://cursor.com/marketplace/publish.
 

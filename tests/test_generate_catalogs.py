@@ -78,3 +78,23 @@ def test_rejected_entries(tmp_path: Path) -> None:
         f"{G.LAUNCHER}: hooks is not allowed",
         f"{G.LAUNCHER}: .mcp.json is not allowed",
     ]
+
+
+def test_rejects_unknown_category(tmp_path: Path) -> None:
+    errors = G.codex_errors(valid_folder(tmp_path), manifest(category="Data"))
+    assert errors == [f"{G.LAUNCHER}: interface.category 'Data' is not a Codex category"]
+
+
+def test_rejects_too_many_prompts(tmp_path: Path) -> None:
+    prompts = ["a", "b", "c", "d"]
+    errors = G.codex_errors(
+        valid_folder(tmp_path),
+        {**manifest(), "interface": {**manifest()["interface"], "defaultPrompt": prompts}},
+    )
+    assert errors == [f"{G.LAUNCHER}: interface.defaultPrompt has more than 3 prompts"]
+
+
+def test_rejects_long_prompt(tmp_path: Path) -> None:
+    iface = {**manifest()["interface"], "defaultPrompt": ["x" * 129]}
+    errors = G.codex_errors(valid_folder(tmp_path), {**manifest(), "interface": iface})
+    assert len(errors) == 1 and "too long" in errors[0]

@@ -1,6 +1,6 @@
 {
   "name": "dlthub-setup",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
   "author": {
     "name": "dltHub",
@@ -21,10 +21,15 @@
   "interface": {
     "displayName": "dltHub Setup",
     "shortDescription": "dltHub toolkit launcher",
-    "longDescription": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
+    "longDescription": "dltHub Setup is the entry point to the dltHub AI harness. It prepares your project to build data pipelines with dlt and dltHub.\n\nWhat it does:\n- Checks if uv, dlt[hub] and the dltHub workspace are installed.\n- Shows you a plan and asks you to approve it before it runs a command.\n- Installs uv, dlt[hub] and the dltHub workspace (dlthub-init from PyPI).\n- Installs the dltHub toolkit for your task with the dlthub CLI: load data from a REST API, a SQL database or files, explore and transform the data, or deploy the pipeline to the dltHub platform.\n\nWho it is for: data engineers and developers who build dlt pipelines with a coding agent.\n\nLimits:\n- It needs network access to PyPI and GitHub.\n- The plugin has no MCP server of its own. The dlthub CLI adds the dltHub MCP server and the toolkits to your project.\n- dlthub-init sends usage telemetry. Ask the skill to add --no-telemetry to turn it off.\n- Use it once per project. When the workspace is set up, use the installed toolkits.",
     "developerName": "dltHub",
-    "category": "Data",
+    "category": "Data & Analytics",
     "capabilities": [],
+    "defaultPrompt": [
+      "Set up dltHub in this project",
+      "Load data from the GitHub REST API into DuckDB with dlt",
+      "Load tables from my Postgres database into DuckDB with dlt"
+    ],
     "websiteURL": "https://dlthub.com/docs/hub/ai-harness/introduction",
     "supportURL": "https://dlthub.com/contact",
     "privacyPolicyURL": "https://dlthub.com/privacy-policy",

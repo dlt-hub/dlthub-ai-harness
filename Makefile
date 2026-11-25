@@ -32,9 +32,12 @@ lint-install:
 lint: lint-ruff lint-mypy validate-toolkits lint-install test
 
 # the Codex directory takes a ZIP upload of the launcher plugin folder
-CODEX_ZIP = dist/dlthub-setup-codex.zip
+# The latest release tag reachable from HEAD; override with RELEASE_TAG=vX.Y.Z.
+RELEASE_TAG ?= $(shell git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null)
+CODEX_ZIP = dist/dlthub-setup-$(RELEASE_TAG).zip
 
 codex-zip:
+	@test -n "$(RELEASE_TAG)" || { echo "ERROR: no release tag found, pass RELEASE_TAG=vX.Y.Z"; exit 1; }
 	uv run python tools/generate_catalogs.py --check
 	rm -f $(CODEX_ZIP) && mkdir -p dist
 	cd workbench/dlthub-setup && zip -rqX ../../$(CODEX_ZIP) .codex-plugin skills assets LICENSE README.md -x '*.DS_Store'
