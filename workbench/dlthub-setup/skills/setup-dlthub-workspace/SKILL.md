@@ -46,8 +46,8 @@ Ask the user to approve the plan. If the user refuses, stop.
 Run only the actions that the user approved.
 
 **1. Install uv** (if missing):
-- On macOS and Linux, run `curl -LsSf https://astral.sh/uv/install.sh | sh`.
-- On Windows, run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+- Read the official uv install guide: https://docs.astral.sh/uv/getting-started/installation/
+- Use the standalone installer for the user's OS from that guide. Show the user the command before you run it.
 - If `uv` is still not found, tell the user to open a new shell, because the install changes `PATH`.
 
 **2. Install dlt[hub] and the workspace:**

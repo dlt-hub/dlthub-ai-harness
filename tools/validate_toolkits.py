@@ -53,6 +53,8 @@ _ROUTER_AGENT_ENTRY = re.compile(r"→\s*([a-z][\w-]*:[a-z][\w-]*)\s*\|")
 MAX_DESCRIPTION_CHARS = 1024
 
 _EXPECTED_AUTHOR = "ScaleVector GmbH"
+# The directory checks the publisher name against the GitHub org.
+_AUTHORS = {"dlthub-setup": "dltHub"}
 _EXPECTED_LICENSE = "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE"
 # Plugins under an open-source license, each with its own LICENSE file.
 _OPEN_SOURCE_LICENSES = {"dlthub-setup": "Apache-2.0"}
@@ -975,10 +977,11 @@ def validate(
 
             author = pjson.get("author", {})
             author_name = author.get("name", "") if isinstance(author, dict) else ""
-            if author_name != _EXPECTED_AUTHOR:
+            expected_author = _AUTHORS.get(pname, _EXPECTED_AUTHOR)
+            if author_name != expected_author:
                 errors.append(
                     f"[{pname}] plugin.json author.name '{author_name}' "
-                    f"!= expected '{_EXPECTED_AUTHOR}'"
+                    f"!= expected '{expected_author}'"
                 )
 
             license_val = pjson.get("license", "")

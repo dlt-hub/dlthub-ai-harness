@@ -1,9 +1,10 @@
 {
   "name": "dlthub-setup",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
   "author": {
-    "name": "ScaleVector GmbH"
+    "name": "dltHub",
+    "url": "https://dlthub.com"
   },
   "homepage": "https://dlthub.com/docs/hub/ai-harness/introduction",
   "repository": "https://github.com/dlt-hub/dlthub-ai-harness",
@@ -21,7 +22,7 @@
     "displayName": "dltHub Setup",
     "shortDescription": "dltHub toolkit launcher",
     "longDescription": "Start here. Sets up uv, dlt[hub] and the dlthub workspace, then installs the dltHub toolkit for your task with the dlthub CLI.",
-    "developerName": "ScaleVector GmbH",
+    "developerName": "dltHub",
     "category": "Data",
     "capabilities": [],
     "websiteURL": "https://dlthub.com/docs/hub/ai-harness/introduction",

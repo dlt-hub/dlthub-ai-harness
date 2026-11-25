@@ -21,7 +21,7 @@ All toolkits come from the `dlthub` CLI, so your project gets one copy of each t
 
 The plugin holds only instructions. It has no hooks, no MCP server and no code of its own. The skill asks you to approve its plan, then runs these commands in your project:
 
-- To install `uv`, on macOS and Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`. On Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Both scripts come from astral.sh.
+- If `uv` is missing, the skill installs it with the standalone installer from the [uv install guide](https://docs.astral.sh/uv/getting-started/installation/). The installer comes from astral.sh.
 - `uvx dlthub-init@0.3.0` downloads `dlthub-init` 0.3.0 from PyPI. It installs `dlt[hub]` from PyPI and writes `.dlt/`, `.mcp.json` and skills in `.agents/skills/`. It sends usage telemetry. To turn it off, ask the skill to add `--no-telemetry`.
 - If your project already has a `pyproject.toml`, `uv add "dlt[hub]" "fastmcp>=3.1.0"` adds the two dependencies from PyPI.
 - `dlthub ai init` and `dlthub ai toolkit install` download the toolkits from the `dlt-hub/dlthub-ai-harness` repository on GitHub. They write files to your agent config folder, for example `.claude/`.
