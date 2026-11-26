@@ -1,0 +1,9 @@
+{
+  "dependencies": ["init"],
+  "workflow_entry_skill": "setup-snowflake-destination",
+  "components": {
+    "rules/cortex-code": {"agents": {"include": ["cortex"]}},
+    "rules/use-cortex-code": {"agents": {"exclude": ["cortex"]}},
+    "skills/delegate-to-cortex-code": {"agents": {"exclude": ["cortex"]}}
+  }
+}

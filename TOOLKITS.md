@@ -100,12 +100,26 @@ A **platform toolkit** deploys and runs a workspace on one platform: `dlthub-pla
 - **The label.** A platform toolkit starts its description with `Platform toolkit (<platform>):`, in both `plugin.json` and `marketplace.json`. `dlthub ai toolkit list` shows it, so an agent can tell which toolkits deploy and where. The label is reserved for platform toolkits.
 - **Toolkits that require a platform.** A toolkit that works only with one platform but is not its platform toolkit (`one-shot` and `dlthub-init-skills`, guided first deploys to the dltHub platform) ends its description with `Requires <platform> Platform.`, for example `Requires dltHub Platform.`. It may name its platform, like a platform toolkit, and the router and the generic toolkits do not name it.
 - **Visibility.** A platform toolkit, and a toolkit that requires a platform, names the agents it is made for in `agents` (`snowflake-platform` is for Cortex Code, the dltHub ones are for every other agent). Its MCP tools come through `mcp_features` on `dlt-workspace-mcp`, never a second server.
-- **Dependencies point one way.** A platform toolkit depends on `init` and `local-workspace` (jobs, deployments, local debug runs, the `prod` profile), and may name the generic toolkits in its handovers. No other toolkit depends on a platform toolkit.
+- **Dependencies point one way.** A platform toolkit depends on `init` and `local-workspace` (jobs, deployments, local debug runs, the `prod` profile), and on the destination toolkit of its platform when there is one (`snowflake-platform` → `destination-snowflake`). It may name the generic toolkits in its handovers. No other toolkit depends on a platform toolkit.
 - **One entry for every platform.** Each platform toolkit starts at `prepare-deployment` (local-workspace): it checks that the workspace is ready for a deployment and sends missing jobs, triggers and local runs to `define-and-debug-jobs`. A platform toolkit adds only what is its own (login, connection, its data connection, deploy, operations) and never repeats a local-workspace check.
 - **Generic toolkits name no platform.** They never name a platform toolkit, a toolkit that requires a platform, or their skills, never say "dltHub platform" or "runtime", never run platform commands (`dlthub deploy`, `dlthub job`) and never install `dlt[hub]` or `dlthub-client`. An installed platform toolkit's own rule takes deploy intents, and `dlthub-router` installs one when none is, so their workflows list no platform handover; their skills say "follow the workflow entry of the installed platform toolkit" and write commands that every platform has without a prefix: `deploy`, `job run`, `job logs`.
 - **Routing.** The `dlthub-router` index has one row for all of them: "deploy, schedule or run jobs on a platform → a platform toolkit". The agent picks one from `dlthub ai toolkit list` by the platform the user names. Once installed, a platform toolkit's rule says that it is the platform toolkit of the workspace, takes deploy intents, and maps the commands that other toolkits write without a prefix (`deploy`, `job run`, `job logs`) to its own CLI.
 
 `make validate-toolkits` checks the label, `Requires <platform> Platform`, the router row and that the generic toolkits stay agnostic.
+
+## Destination toolkits
+
+A **destination toolkit** carries what one destination needs, beyond what dlt does for every destination: the connection, loading into it, and the ecosystem around it, such as the business context the destination already has, the semantic layer, and the destination's own ways to build a model (for example dynamic tables on Snowflake). The first is `destination-snowflake`. Platform toolkits are about deployments, jobs and observability; destination toolkits are about the destination and its data:
+
+- **The label.** A destination toolkit starts its description with `Destination toolkit (<destination>):`, in both `plugin.json` and `marketplace.json`. The label is reserved for destination toolkits.
+- **Visibility.** Every agent sees a destination toolkit. What only one agent can use is a component with its own `agents` in `components`: in `destination-snowflake`, the Cortex Code rule only for `cortex`, and the handover to Cortex Code (`use-cortex-code` rule, `delegate-to-cortex-code` skill) for every other agent.
+- **Dependencies point one way.** A destination toolkit depends on `init`. Only a platform toolkit depends on a destination toolkit, its own destination's. A destination toolkit never depends on or names a platform toolkit: it hands jobs and deployment to "the installed platform toolkit".
+- **Generic toolkits name no destination toolkit.** At each hook point they ask for "the destination toolkit" of the destination, and send a missing one to `dlthub-router`. The hook points: where a destination is chosen or configured (pipeline creation, `setup-secrets`, `setup-profiles`, the production destination in `prepare-deployment`), where a load fails on the destination (the debug skills), and where a model is built (`generate-cdm`, `create-transformation`, `incremental-transformation`), so that semantic layers and the destination's own tables plug into the transformations toolkit.
+- **The destination toolkit's rule joins those steps.** Its workflow rule says, by step title and never by number, which steps of other toolkits it takes over or adds to, and that its skills win over the router for intents of its destination.
+- **Routing.** The `dlthub-router` index has one row for all of them: "load into a named destination → a destination toolkit". The router description names each destination that has one (`Snowflake`), so it reacts when the user names it, and the `init` rule says that the router offers it. The agent picks the toolkit from `dlthub ai toolkit list` by the destination; it comes next to the workflow toolkit, which still owns the pipeline or the model.
+- **Artifacts.** A destination toolkit writes next to the model, in `.dlthub/ontology/<name>/` (for example `snowflake_semantic_view.sql`, `snowflake_dynamic_tables.sql`). It has no folder of its own.
+
+`make validate-toolkits` checks the label and its destination, the router row and description, and that only a platform toolkit depends on a destination toolkit and that no other toolkit names one.
 
 ## Artifact locations
 
@@ -115,7 +129,7 @@ Toolkits write their artifacts into a user's workspace only at these locations, 
 |---|---|---|---|
 | `.dlthub/schemas/` | dlt schemas; the default `import_schema_path` | dlt, any toolkit | committed |
 | `.dlthub/schemas/export/` | exported dlt schemas (`export_schema_path`), only when the user wants them committed | dlt | committed |
-| `.dlthub/ontology/<name>/` | business knowledge and semantic information of one topic: `context.md`, annotated source DBML, `taxonomy.json`, `ontology.ison`, `ontology.md`, `CDM.dbml`, semantic views of any platform | transformations, platform toolkits | committed |
+| `.dlthub/ontology/<name>/` | business knowledge and semantic information of one topic: `context.md`, annotated source DBML, `taxonomy.json`, `ontology.ison`, `ontology.md`, `CDM.dbml`, the semantic views and native tables of any destination | transformations, destination toolkits | committed |
 | `.dlthub/explorations/<name>/` | data exploration plans | data-exploration | committed |
 | `.dlthub/<platform>/` | what one platform toolkit keeps, for example deploy records in `deploy/<environment>/` (`.dlthub/snowflake/`, `.dlthub/platform/`) | that platform toolkit only | committed |
 
@@ -123,7 +137,7 @@ Rules for skill authors:
 
 - **Name the path.** A skill that writes or reads an artifact names its location explicitly.
 - **A new kind of artifact gets a location here first.** Do not invent a folder in a skill.
-- **`<name>` in `.dlthub/ontology/<name>/` is chosen once** (`annotate-sources`, or the business context that a platform toolkit collects), and every other skill reads it from the folder.
+- **`<name>` in `.dlthub/ontology/<name>/` is chosen once** (`annotate-sources`, or the business context that a destination toolkit collects), and every other skill reads it from the folder.
 - **Code layout is the user's.** Never prescribe where sources, pipelines or transformations live. A concrete code path is an example ("for example `pipelines/orders.py`"), or the skill asks the user. When a CLI writes a file somewhere (`dlthub pipeline init` writes to the project root), say so, and that the user may move it. transformations keeps `transformations/` as its default folder.
 - **Throwaway scripts go to the system temp dir**, never into the workspace.
 - **No `build/` folder.** The workspace `.gitignore` ignores every folder named `build/`.

@@ -102,7 +102,7 @@ If the profile is ambiguous, ask: "Were the checks added to the pipeline code (d
    | Error pattern | Likely cause | Action |
    |---|---|---|
    | `DestinationTerminalException` containing "database is locked" (DuckDB) | Another process holds the DuckDB file — dlthub dashboard open, a pipeline EL/T run in progress, or a second terminal session | Close the dashboard and any other pipeline processes, then re-run |
-   | `DestinationTerminalException` (other) | Destination config / credential issue | Ask user to check secrets and destination setup |
+   | `DestinationTerminalException` (other) | Destination config / credential issue | Ask user to check secrets and destination setup; a destination with a destination toolkit → the known failures of its connection skill |
    | `LineageFailedException` | SQL generation bug in a check (e.g. `is_primary_key`) | Remove the failing check, use `is_unique` instead, rewrite `<script_path>` |
    | Any other exception | Infrastructure or code error | Surface the full traceback and stop |
 

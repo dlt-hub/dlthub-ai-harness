@@ -56,7 +56,7 @@ All toolkits depend on `init` for shared rules, secrets handling, and the MCP se
 
 Two MCP servers give the agent context during the workflow. You do not copy and paste output.
 
-**dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `get_table_schema`, `export_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`).
+**dlt-workspace-mcp** (local, installed by `dlthub ai init`) exposes: data inspection tools (`list_tables`, `preview_table`, `execute_sql_query`, `get_row_counts`, `get_table_schema`, `export_schema`, `get_local_pipeline_state`), secrets tools (`secrets_view_redacted`, `secrets_update_fragment`), and toolkit discovery (`list_toolkits`, `toolkit_info`). With `dlthub-platform` installed, it also serves the `dlthub_*` tools of the dltHub platform, in the groups `dlthub.jobs` (jobs and job runs), `dlthub.logs`, `dlthub.config` (variables and configuration files), `dlthub.telemetry` (pipeline runs, traces, pipelines and datasets) and `dlthub.restore_pipeline` (a deployed pipeline restored locally).
 
 **[dltHub context](https://dlthub.com/context)** (remote) provides `search_dlthub_sources` — used by the `find-source` skill to search 9,700+ REST API source definitions and return verified connectors with reference links before writing code.
 
@@ -70,8 +70,9 @@ Two MCP servers give the agent context during the workflow. You do not copy and 
 | `sql-database-pipeline` | Build | `find-sql-database-source` | Scaffold, debug, and validate SQL database ingestion pipelines                                                            | *"Use find-sql-database-source to load tables from my Postgres database into DuckDB"* | Run `/find-sql-database-source` |
 | `filesystem-pipeline` | Build | `create-filesystem-pipeline` | Load files (CSV, Parquet, JSONL, or custom) from local disk, S3, GCS, Azure, or SFTP into a destination                   | *"Use create-filesystem-pipeline to load my S3 CSV files into DuckDB"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-exploration` | Explore | `explore-data` | Query loaded data and create marimo dashboards                                                                            | *"Use explore-data to explore my Stripe pipeline and create a dashboard"* | [Try it out yourself!](https://dlthub.com/docs/dlt-ecosystem/llm-tooling/llm-native-workflow)<br>Run `/explore-data` |
-| `dlthub-platform` | Run | `setup-runtime` | Platform toolkit: deploy pipelines to the dltHub Platform, debug deployed jobs, run background agents | *"Use setup-runtime to deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
-| `snowflake-platform` | Run | `setup-snowflake-workspace` | Platform toolkit for Cortex Code: deploy and run jobs on Snowflake with the SPCS Context Runner, business and semantic context | *"Deploy my GitHub pipeline to Snowflake"* | Cortex Code only |
+| `dlthub-platform` | Run | `prepare-deployment` | Platform toolkit: deploy pipelines to the dltHub Platform, debug deployed jobs, run background agents | *"Deploy my pipeline to dltHub"* | [Sign up](https://auth.dlthub.com/sign-up) |
+| `snowflake-platform` | Run | `prepare-deployment` | Platform toolkit for Cortex Code: deploy and run jobs on Snowflake with the SPCS Context Runner | *"Deploy my GitHub pipeline to Snowflake"* | Cortex Code only |
+| `destination-snowflake` | Build | `setup-snowflake-destination` | Destination toolkit: connect to and load into Snowflake, collect the account's business context, build semantic views and dynamic tables from the CDM; hands Snowflake internals to Cortex Code | *"Load my Stripe data into Snowflake"* | Every agent |
 | `transformations` | Transform | `annotate-sources` | Design a Canonical Data Model (CDM) and write dlthub transformation functions from existing pipelines                        | *"Use annotate-sources to start building a CDM from my HubSpot and Luma pipelines"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `data-quality` | Build | `setup-data-quality` | Define, run, and review data quality checks and metrics on dlt pipeline data                                              | *"Use setup-data-quality to add validation checks to my Stripe pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
 | `performance` | Build | `optimize-performance` | Tune a slow or memory-heavy pipeline — diagnose the bottleneck stage and apply parallelism, workers, buffers, and batching | *"Use optimize-performance to speed up my Postgres pipeline"* | [Sign up](https://auth.dlthub.com/sign-up) |
@@ -113,6 +114,8 @@ uv run dlthub ai init --agent <agent>  # <agent>: claude | cursor | codex | cort
 ```
 
 Every toolkit works locally. Deploying is the job of a **platform toolkit**, one per platform: `dlthub-platform` for the dltHub Platform, `snowflake-platform` for Snowflake. The router installs the one that fits, and `dlthub ai toolkit list` marks them `Platform toolkit`.
+
+What one destination needs beyond dlt (its connection, its semantic layer, its own tables) is a **destination toolkit**: `destination-snowflake` for Snowflake. The router offers it when you name the destination, and `dlthub ai toolkit list` marks it `Destination toolkit`.
 
 
 `dlthub ai init` detects your coding assistant from environment variables and config files, then installs skills, rules, and the MCP server in the correct locations for that tool.
@@ -164,6 +167,7 @@ uv run dlthub ai toolkit install bootstrap
 uv run dlthub ai toolkit install rest-api-pipeline
 uv run dlthub ai toolkit install sql-database-pipeline
 uv run dlthub ai toolkit install filesystem-pipeline
+uv run dlthub ai toolkit install destination-snowflake
 uv run dlthub ai toolkit install dlthub-platform
 uv run dlthub ai toolkit install data-exploration
 uv run dlthub ai toolkit install transformations

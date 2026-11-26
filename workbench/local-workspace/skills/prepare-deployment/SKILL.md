@@ -51,6 +51,8 @@ be visible by notebooks: a deployed job runs on a runner whose local storage is 
 
 1. If user is using `duckdb` — offer to set up **MotherDuck** as the production destination.
 2. `dlt` supports most major warehouses, data lakes and pure filesystems.
+3. When the production destination has a destination toolkit, use it for the connection and the destination's own
+   setup, and offer it when it is not installed (`dlthub-router`).
 
 ## 3. Configure the `prod` profile
 

@@ -1,5 +1,5 @@
 {
-  "dependencies": ["init", "local-workspace"],
+  "dependencies": ["init", "local-workspace", "destination-snowflake"],
   "workflow_entry_skill": "prepare-deployment",
   "agents": {"include": ["cortex"]},
   "mcp_features": {

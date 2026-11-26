@@ -26,7 +26,7 @@ The split matters and the user should hear it: the agent's SQL tool in the sandb
 only what it can validate. That is also why the whole thing is safe to run unattended as a job.
 
 Start from `scripts/cortex_annotate.py` in this skill. It is a working, generalised version of a
-module that ran in production on dltHub.
+module that ran in production.
 Copy it into the project, then adapt the prompt and the wiring; do not rewrite it from scratch.
 
 ## Workflow
@@ -38,12 +38,13 @@ Look at the pipeline code and `.dlt/` before writing anything:
 - Pipeline name, destination (`snowflake`), dataset name, and which tables land. If the pipeline
   has run locally, `pipeline.default_schema.tables` is the ground truth; nested child tables show
   up with a `parent` key and join on `_dlt_parent_id = _dlt_id`, position in `_dlt_list_idx`.
-- How Snowflake credentials are configured: `destination.snowflake.credentials` with `private_key`
-  (key pair) or `authenticator = "PROGRAMMATIC_ACCESS_TOKEN"` + `token` (PAT). The module reads
-  them with `dlt.secrets[...]`; never read or print the secrets file. If the destination is
-  named (`[destination.warehouse]` with `destination_type = "snowflake"`), change the key in
-  `_credentials()` to that name. If the load itself does not work yet, go to
-  `setup-snowflake-destination` first.
+- How Snowflake credentials are configured. The REST call authenticates with a key pair
+  (`private_key`) or a PAT (`authenticator = "PROGRAMMATIC_ACCESS_TOKEN"` + `token`) under
+  `destination.<name>.credentials`, which the module reads with `dlt.secrets[...]`; never read or
+  print the secrets file. Set `DESTINATION_NAME` to the destination's name (`snowflake`, or
+  `warehouse` for a named destination). A Snowflake connection (`connection_name`) or the default
+  connection gives the module no key: for this job, use explicit credentials. If the load itself
+  does not work yet, go to `setup-snowflake-destination` first.
 - Business context: rules the user already has (project docs, an ontology, metric definitions, a
   Slack message). This is what the agent cannot know from the rows: what counts as revenue, which
   rows are test data, which time zone a month is in, what the codes mean. Ask for it if there is
@@ -95,7 +96,7 @@ Give the step its own entry point next to the load, for example `annotate_<sourc
 declare it in `__deployment__.py` as a job that follows the load:
 
 ```python
-@run.job(trigger=load_job.success, require={"static_egress_ips": True})
+@run.job(trigger=load_job.success)
 def annotate_job():
     """Cortex agent documents the dataset after a successful load."""
     from annotate_source import run
@@ -103,18 +104,18 @@ def annotate_job():
     run()
 ```
 
-`static_egress_ips` matters when the Snowflake user sits behind a network policy, which PAT users
-always do. Never put the call inside the load function: if the user's pipeline script already does
+A Snowflake user behind a network policy, which PAT users always are, accepts the REST call only
+from the allowed addresses: the job needs a fixed egress address from the platform that runs it.
+Never put the call inside the load function: if the user's pipeline script already does
 `pipeline.run(...)` and then annotates in the same process, split it.
 
-Deployment itself has its own skills, so hand over to them instead of improvising:
-(`define-and-debug-jobs`) declares the job in `__deployment__.py`, and (`deploy-snowflake-workspace`)
-runs the dry run, deploys and shows the logs. Start with (`setup-snowflake-workspace`) when the
-workspace is not set up for Snowflake yet.
+Jobs and deployment have their own skills, so hand over to them instead of improvising:
+(`define-and-debug-jobs`) declares the job in `__deployment__.py` and runs it locally, and the
+workflow entry of the installed platform toolkit deploys it and shows the logs.
 
 Do not add schedules, instance sizes or timeouts to jobs on your own, and do not deploy unless the
-user asked for it; those spend the user's runtime budget and are their call. Tell them what the
-job is triggered by and that nothing is scheduled.
+user asked for it; those spend the user's budget and are their call. Tell them what the job is
+triggered by and that nothing is scheduled.
 
 ### 5. Run it once and show the evidence
 
@@ -158,4 +159,4 @@ table), or an expression that references a logical table name the DDL did not de
 - `CREATE SEMANTIC VIEW`: https://docs.snowflake.com/en/sql-reference/sql/create-semantic-view
 - Key-pair authentication: https://docs.snowflake.com/en/user-guide/key-pair-auth
 - dlt Snowflake destination: https://dlthub.com/docs/dlt-ecosystem/destinations/snowflake.md
-- dltHub deployments and job triggers: https://dlthub.com/docs/hub/pipeline-operations/deployments.md
+- Jobs and job triggers: https://dlthub.com/docs/hub/pipeline-operations/deployments.md

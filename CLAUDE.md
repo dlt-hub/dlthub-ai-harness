@@ -18,6 +18,7 @@ workbench/                                # All toolkits live here
   init/                            # Shared rules, workspace and profiles, secrets handling, and workspace MCP
   local-workspace/                 # Jobs, deployments and local debug runs: adds to the init rules (unlisted, no workflow)
   *-platform/                      # Platform toolkits: deploy and run on one platform (see TOOLKITS.md)
+  destination-*/                   # Destination toolkits: connect, load and model on one destination (see TOOLKITS.md)
 tools/                             # Dev tooling
   validate_toolkits.py             # Marketplace & plugin consistency checker
   extract_refs.py                  # Extract component map & external URLs from a toolkit
@@ -85,7 +86,7 @@ After install, `dlthub ai status` and `dlthub ai toolkit install <name>` display
 
 Two mechanisms route the user between toolkits — they are complementary, not redundant:
 
-- **Router/index** (the `dlthub-router` skill in `init`, which holds the toolkit index) handles the case where **no matching toolkit is installed**, and every plain change of goal ("now I want charts"): match intent, install the toolkit, enter at its entry skill. Platform toolkits share one index row, "→ a platform toolkit".
+- **Router/index** (the `dlthub-router` skill in `init`, which holds the toolkit index) handles the case where **no matching toolkit is installed**, and every plain change of goal ("now I want charts"): match intent, install the toolkit, enter at its entry skill. Platform toolkits share one index row, "→ a platform toolkit", and destination toolkits another, "→ a destination toolkit"; the router description names each destination that has one.
 - **Handovers** (a toolkit's `workflow.md`) get a bullet **only where parts of the session context are expected by the next toolkit and matter**: what is carried, and what to do or skip because of it ("the failing tables are known: focus on them", "a playground workspace is already connected: skip Step 0", "do not restructure the inline `rest_api_source`"). That context deserves its place in the rule.
 - **Everything else is not a handover bullet.** A generic arrival ("the pipeline and tables are already known, skip discovery") is one "Handed over from another toolkit or skill?" paragraph in the entry skill of the receiving toolkit. A handover that a skill already states (a skill's "Next steps") stays only in the skill.
 
@@ -97,6 +98,7 @@ When a handover names a toolkit that is **not installed**, use the index/router 
 - **Planned skills** (not yet implemented) — plain text, no `()` link. Add them to the workflow to show intent.
 - **Handover to external toolkits** — use `**toolkit-name**` (bold) and describe the trigger. Only reference toolkits that are NOT dependencies (dependencies like `init` are always loaded — their skills are local, not handovers). The validator accepts `(`skill-name`)` refs to skills of dependencies.
 - **Handover to a platform toolkit** — a toolkit that is not a platform toolkit never names one. An installed platform toolkit's own rule takes deploy intents, and `dlthub-router` installs one when none is, so a workflow lists no platform handover; a skill's "Next steps" says "follow the workflow entry of the installed platform toolkit". See "Platform toolkits" in TOOLKITS.md.
+- **Handover to a destination toolkit** — a generic toolkit never names one either. Where a destination is chosen, configured, troubleshot or modeled, the skill asks for "the destination toolkit" of the destination and sends a missing one to `dlthub-router`; the destination toolkit's rule says which steps it joins, by title. See "Destination toolkits" in TOOLKITS.md.
 
 ### Artifact locations and code paths
 Skills write artifacts only to the artifact locations (`.dlthub/schemas/`, `.dlthub/ontology/<name>/`, `.dlthub/explorations/<name>/`, `.dlthub/<platform>/`) and name the path. Code layout is the user's: a concrete path for sources, pipelines or transformations is an example. Throwaway scripts go to the system temp dir. See "Artifact locations" in TOOLKITS.md.
@@ -122,9 +124,10 @@ Checks:
 - agent files (access, inputs, agent output, refs, no `defaults.model`)
 - `workflow.md` references
 - root documents (a toolkit file names one only through its URL)
-- index coverage (each skill and agent definition is in its `workflow.md`; the `dlthub-router` index lists every listed workflow toolkit that is not a platform toolkit, plus the platform toolkit row)
+- index coverage (each skill and agent definition is in its `workflow.md`; the `dlthub-router` index lists every listed workflow toolkit that is not a platform or destination toolkit, plus the platform and destination toolkit rows)
 - artifact locations (only the standard `.dlthub/` folders, a platform folder only in its own toolkit, no retired paths)
 - platform toolkits (the `Platform toolkit` label in both descriptions, `Requires <platform> Platform` for a toolkit that works only with one platform; no other toolkit depends on one, names one or its skills, names the dltHub platform, runs platform commands or installs `dlt[hub]`)
+- destination toolkits (the `Destination toolkit (<destination>):` label in both descriptions, the destination named in the router description; only a platform toolkit depends on one, and only a toolkit that depends on it names it or its skills)
 
 ### Maintenance skills
 - `/rename-component <toolkit:old-name> <new-name>` — rename a skill, command, rule, or agent and update all cross-references within the toolkit.

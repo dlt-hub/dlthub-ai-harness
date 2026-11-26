@@ -55,8 +55,8 @@ PAT: `Authorization: Bearer <token>`, no extra header. PATs expire and usually n
 policy. `X-Snowflake-Role: <role>` selects the role for the call; the role needs
 `SNOWFLAKE.CORTEX_USER` or `SNOWFLAKE.CORTEX_AGENT_USER`.
 
-Read the values with `dlt.secrets["destination.snowflake.credentials"]`, never from the TOML file,
-so that the same code works locally and on dltHub where secrets come from the platform store.
+Read the values with `dlt.secrets["destination.<name>.credentials"]`, never from the TOML file,
+so that the same code works locally and in a job, where secrets come from the platform's store.
 
 ## Response handling
 

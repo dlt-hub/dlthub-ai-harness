@@ -29,7 +29,8 @@ If called from another skill, you already know the source, destination, and whic
 If called standalone (e.g. user says "set up secrets" or hit `ConfigFieldMissingException`):
 - Read the exception message — it tells you the exact field name and TOML path
 - Read the pipeline script to find `dlt.secrets.value` parameters on `@dlt.source`/`@dlt.resource` functions
-- Identify the destination type for required credentials
+- Identify the destination type for required credentials. When it has a destination toolkit, its connection skill
+  says which credentials it takes; offer the toolkit when it is not installed (`dlthub-router`).
 
 ## 2. Find the right secrets file and inspect its shape
 

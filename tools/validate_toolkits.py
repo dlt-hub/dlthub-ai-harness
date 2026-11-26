@@ -44,6 +44,13 @@ _INDEX_ENTRY = re.compile(r"→\s*([a-z][\w-]*)\s*\|")
 _INDEX_HEADER = "toolkit"
 # the one row that sends deploy intents to the platform toolkit that fits, so init names none
 _PLATFORM_ROW = re.compile(r"→\s*a platform toolkit\s*\|")
+# the one row that sends the intents of a destination to its destination toolkit
+_DESTINATION_ROW = re.compile(r"→\s*a destination toolkit\s*\|")
+
+# a destination toolkit starts its description with this and its destination:
+# "Destination toolkit (Snowflake):"
+DESTINATION_LABEL = "Destination toolkit"
+_DESTINATION_NAME = re.compile(r"^Destination toolkit \(([^)]+)\):")
 
 # a platform toolkit starts its description with this, which `dlthub ai toolkit list` shows
 PLATFORM_LABEL = "Platform toolkit"
@@ -172,6 +179,8 @@ def build_component_inventory(root: Path) -> dict[str, dict]:
             "listed": meta.get("listed", True) is not False,
             "platform": description.startswith(PLATFORM_LABEL),
             "requires_platform": bool(REQUIRES_PLATFORM.search(description)),
+            "destination": description.startswith(DESTINATION_LABEL),
+            "destination_name": (m.group(1) if (m := _DESTINATION_NAME.match(description)) else ""),
         }
     return inventory
 
@@ -904,8 +913,9 @@ def validate_index_drift(
     inventory: dict[str, dict],
     errors: list[str],
 ) -> None:
-    """Check that the router indexes each listed workflow toolkit for any platform, and has the
-    platform toolkit row."""
+    """Check that the router indexes each listed workflow toolkit for any platform and any
+    destination, has the platform and destination toolkit rows, and names every destination of a
+    destination toolkit in its description."""
     router = root / _ROUTER_SKILL
     if not router.exists():
         errors.append(f"router skill not found: {_ROUTER_SKILL}")
@@ -913,12 +923,14 @@ def validate_index_drift(
 
     platform = {name for name, tk in inventory.items() if tk["platform"]}
     on_platform = _on_a_platform(inventory)
+    destination = {name for name, tk in inventory.items() if tk["destination"]}
     expected = {
         name
         for name in marketplace_names
         if name in inventory
         and name not in _NON_WORKFLOW_TOOLKITS
         and name not in on_platform
+        and name not in destination
         and inventory[name]["listed"]
     }
     lines = router.read_text().splitlines()
@@ -934,7 +946,12 @@ def validate_index_drift(
             f"[init] dlthub-router index lists '{name}', which belongs to a platform; init names"
             " no platform, the platform toolkit row covers it"
         )
-    for name in sorted(indexed - expected - on_platform):
+    for name in sorted((indexed - expected) & destination):
+        errors.append(
+            f"[init] dlthub-router index lists '{name}', which is a destination toolkit; the"
+            " destination toolkit row covers it"
+        )
+    for name in sorted(indexed - expected - on_platform - destination):
         errors.append(
             f"[init] dlthub-router index lists '{name}' "
             "which is not a listed workflow toolkit in marketplace.json"
@@ -944,6 +961,24 @@ def validate_index_drift(
             "[init] dlthub-router index has no '→ a platform toolkit |' row, so no deploy intent"
             " reaches a platform toolkit"
         )
+    if destination and not any(_DESTINATION_ROW.search(line) for line in lines):
+        errors.append(
+            "[init] dlthub-router index has no '→ a destination toolkit |' row, so no destination"
+            " intent reaches a destination toolkit"
+        )
+    # the router reacts to the destination the user names
+    router_description = str(split_frontmatter(router)[0].get("description", "")).lower()
+    for name in sorted(destination):
+        dest_name = inventory[name]["destination_name"]
+        if not dest_name:
+            errors.append(
+                f"[{name}] description must start with '{DESTINATION_LABEL} (<destination>):'"
+            )
+        elif dest_name.lower() not in router_description:
+            errors.append(
+                f"[init] dlthub-router description does not name '{dest_name}', the destination"
+                f" of '{name}', so the router does not react to it"
+            )
 
 
 def _on_a_platform(inventory: dict[str, dict]) -> set[str]:
@@ -992,6 +1027,55 @@ def validate_platform_agnostic(root: Path, inventory: dict[str, dict], errors: l
                 for pattern, reason in _PLATFORM_TEXT:
                     if pattern.search(line):
                         errors.append(f"[{name}] {rel}:{lineno} {reason}")
+
+
+def validate_destination_agnostic(
+    root: Path, inventory: dict[str, dict], errors: list[str]
+) -> None:
+    """Check that only a platform toolkit depends on a destination toolkit, and that a toolkit
+    names a destination toolkit or its components only when it is that toolkit or depends on it.
+    Generic toolkits ask for the destination toolkit of a destination instead."""
+    destination = {name for name, tk in inventory.items() if tk["destination"]}
+    if not destination:
+        return
+    shared = {
+        component
+        for name, tk in inventory.items()
+        if name not in destination
+        for component in tk["skills"] | tk["agents"]
+    }
+    owned: dict[str, str] = {name: name for name in destination}
+    for name in destination:
+        for component in inventory[name]["skills"] | inventory[name]["agents"]:
+            if component not in shared:
+                owned[component] = name
+    alternatives = "|".join(map(re.escape, sorted(owned)))
+    name_pattern = re.compile(rf"(?<![\w-])({alternatives})(?![\w-])")
+
+    for name, tk in sorted(inventory.items()):
+        if name in destination:
+            continue
+        if not tk["platform"]:
+            for dep in sorted(set(tk["dependencies"]) & destination):
+                errors.append(
+                    f"[{name}] depends on '{dep}', a destination toolkit; only a platform toolkit"
+                    " may depend on one"
+                )
+        reachable = _dependency_closure(name, inventory)
+        for path in sorted((root / AI_DIR / name).rglob("*")):
+            if path.suffix not in _SCANNED_SUFFIXES or not path.is_file():
+                continue
+            if path.name == "toolkit.json":
+                continue
+            rel = path.relative_to(root / AI_DIR / name)
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                for m in name_pattern.finditer(line):
+                    if owned[m.group(1)] not in reachable:
+                        errors.append(
+                            f"[{name}] {rel}:{lineno} names '{m.group(1)}', which belongs to the"
+                            f" destination toolkit '{owned[m.group(1)]}'; ask for the destination"
+                            " toolkit of the destination instead"
+                        )
 
 
 def validate_artifact_locations(root: Path, inventory: dict[str, dict], errors: list[str]) -> None:
@@ -1109,12 +1193,13 @@ def validate(
                 )
 
             # `toolkit list` shows plugin.json, the Claude marketplace shows marketplace.json
-            plugin_platform = pjson.get("description", "").startswith(PLATFORM_LABEL)
-            if plugin_platform != entry.get("description", "").startswith(PLATFORM_LABEL):
-                errors.append(
-                    f"[{pname}] '{PLATFORM_LABEL}' must start the description in both"
-                    " plugin.json and marketplace.json, or in neither"
-                )
+            for label in (PLATFORM_LABEL, DESTINATION_LABEL):
+                in_plugin = pjson.get("description", "").startswith(label)
+                if in_plugin != entry.get("description", "").startswith(label):
+                    errors.append(
+                        f"[{pname}] '{label}' must start the description in both"
+                        " plugin.json and marketplace.json, or in neither"
+                    )
 
         all_skills[pname] = validate_toolkit_content(
             pname, plugin_dir, marketplace_names, inventory, errors, warnings
@@ -1138,6 +1223,7 @@ def validate(
         validate_index_drift(root, marketplace_names, inventory, errors)
         validate_capability_coverage(root, inventory, errors)
         validate_platform_agnostic(root, inventory, errors)
+        validate_destination_agnostic(root, inventory, errors)
         validate_artifact_locations(root, inventory, errors)
 
     return errors, warnings, all_skills

@@ -31,9 +31,12 @@ On Snowflake, a destination without credentials uses the connection that Snowfla
 
 | | In a job on Snowflake | In a local run with `prod` |
 |---|---|---|
-| role | the role that deployed (it owns the Snowflake task) | the role of your default Snowflake connection |
+| role | the role that deployed (it owns the Snowflake task) | none: name a connection (below) |
 | database | the database of the workspace schema | the database of that connection |
 | warehouse | the jobs warehouse | the warehouse of that connection |
+
+For local runs with `prod`, name your connection with the fallback (`setup-snowflake-destination`, step 2): the job
+on Snowflake then falls back to its mounted connection.
 
 Run `uv run dlthub snowflake info` and fill in the real values: `Role`, `Database`, `Workspace schema`,
 `Jobs warehouse`. Then ask: **"The jobs will load into `ANALYTICS` as `DATA_ENGINEER`. Is that where the data should
@@ -67,8 +70,9 @@ database = "RAW"
 
 ## 4. Another role or user
 
-The jobs then connect as a separate Snowflake user, with its own role and access. Read
-[another-role.md](another-role.md) now: it has the credentials, the grants and the checks.
+The jobs then connect as a separate Snowflake user, with its own role and access. The ways to give dlt credentials
+are in (`setup-snowflake-destination`), step 2. Read [another-role.md](another-role.md) now: it has what holds for
+jobs on Snowflake, the grants and the checks.
 
 - The user creates the Snowflake user, its key pair and its role, or asks an admin for them.
 - The credentials go to `.dlt/prod.secrets.toml` with (`setup-secrets`), as placeholders that the user fills in.
@@ -87,7 +91,7 @@ jobs only read. Should they use a role that can only read?"**
 
 ## 6. Keep local development local
 
-`dev` stays what it is: DuckDB, or the user's own Snowflake connection.
+`dev` stays what it is: DuckDB, or the user's own Snowflake connection (`setup-snowflake-destination`, step 2).
 - When `dev` is DuckDB and the workspace has transformations, run (`debug-transformation`, transformations toolkit)
   for the SQL dialect check before the first deploy.
 - A local run with `prod` (`WORKSPACE__PROFILE=prod`) writes into the production data with your local connection.

@@ -9,15 +9,26 @@ def write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def fake_root(tmp_path: Path, toolkits: list[str], platform_row: bool = True) -> Path:
-    """A repo root whose router skill indexes `toolkits`, plus the platform toolkit row."""
+def fake_root(
+    tmp_path: Path,
+    toolkits: list[str],
+    platform_row: bool = True,
+    destination_row: bool = True,
+    router_description: str = "Use when the user wants to load into Snowflake.",
+) -> Path:
+    """A repo root whose router skill indexes `toolkits`, plus the platform and destination
+    toolkit rows."""
     rows = [f"intent → {V._INDEX_HEADER} | entry skill"]
     rows += [f"x → {name} | entry" for name in toolkits]
     if platform_row:
         rows.append("deploy → a platform toolkit | its workflow entry")
+    if destination_row:
+        rows.append("load → a destination toolkit | its workflow entry")
     write(
         tmp_path / V._ROUTER_SKILL,
-        "---\nname: dlthub-router\n---\n\n## Toolkits\n\n```\n" + "\n".join(rows) + "\n```\n",
+        f"---\nname: dlthub-router\ndescription: {router_description}\n---\n\n## Toolkits\n\n```\n"
+        + "\n".join(rows)
+        + "\n```\n",
     )
     return tmp_path
 

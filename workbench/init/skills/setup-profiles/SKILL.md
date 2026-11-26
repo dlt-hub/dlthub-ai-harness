@@ -86,7 +86,9 @@ description: "Use when the user wants different credentials or settings for dev,
 
 ## Use case 1: DuckDB locally, a warehouse in production
 
-The pipeline names its destination. Each profile says what the name means. The code never changes.
+The pipeline names its destination. Each profile says what the name means. The code never changes. When the
+production warehouse has a destination toolkit, use it for the connection of `prod`, and offer it when it is not
+installed (`dlthub-router`).
 
 1. In the pipeline, use a named destination: `destination="warehouse"`.
 2. In `.dlt/dev.config.toml`, set `destination_type = "duckdb"` under `[destination.warehouse]`.

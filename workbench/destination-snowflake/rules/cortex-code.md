@@ -1,4 +1,4 @@
-# Toolkits in Cortex Code
+# Cortex Code
 
 Cortex Code reads the skill list and `CORTEX.md` once, when the session starts. After a toolkit install, or when
 new skills appear in `.cortex/skills/`:
@@ -8,3 +8,7 @@ new skills appear in `.cortex/skills/`:
   list.
 - Read the dltHub rules section of `CORTEX.md` again and follow the new rules from now on.
 - Tell the user in one line what is new, and that a new session lists it.
+
+For Snowflake work that the dltHub skills do not cover (objects dlthub did not create, the refresh history and lag
+of dynamic tables, Business Ontology, questions to a semantic view), use the bundled Cortex Code skills
+(`$cortex-sense`, `$business-ontology`, `$query-semantic-view`) and the SQL tool.

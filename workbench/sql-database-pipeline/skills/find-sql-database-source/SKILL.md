@@ -97,7 +97,8 @@ Run this so the user can see what's available. If the database is not yet reacha
 Ask the user — **do not proceed until all five questions are answered**:
 
 1. **Which table(s)** to load first (start with one for the initial pipeline)
-2. **Destination** if not provided (default: `duckdb`)
+2. **Destination** if not provided (default: `duckdb`). When it has a destination toolkit, use it for the connection,
+   and offer it when it is not installed (`dlthub-router`).
 3. **Do you need dlt normalization?** dlt normalizes schema, coerces types, and standardizes column names. Skip it if you want data loaded as-is. **Wait for an explicit yes/no before continuing.**
 4. **Do you need to transform data before or during loading?** (e.g. filter rows, pseudonymize values, apply business logic) **Wait for an explicit yes/no before continuing.**
 5. **What reflection level do you need?** Controls how much schema metadata is read from the database:

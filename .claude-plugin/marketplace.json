@@ -40,7 +40,7 @@
       "name": "dlthub-platform",
       "source": "./workbench/dlthub-platform",
       "description": "Platform toolkit (dltHub): deploy your dlthub workspace and pipelines to the dltHub platform, schedule and debug its jobs, and run background agents on them.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "deploy", "platform"]
@@ -58,7 +58,7 @@
       "name": "local-workspace",
       "source": "./workbench/local-workspace",
       "description": "Prepare a workspace for deployment, declare, run, debug and test dlt jobs on this machine. Platform toolkits depend on it.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
       "tags": ["dlthub", "jobs", "local", "testing", "deployment"]
@@ -136,13 +136,22 @@
       "tags": ["dlthub", "performance", "optimization", "parallelism", "throughput", "memory"]
     },
     {
+      "name": "destination-snowflake",
+      "source": "./workbench/destination-snowflake",
+      "description": "Destination toolkit (Snowflake): connect to Snowflake and load into it, collect the business and semantic context the account already has before building pipelines and models, and build semantic views and dynamic tables from the ontology and the CDM. Suggests Cortex Code for Snowflake internals.",
+      "version": "0.1.0",
+      "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
+      "category": "data",
+      "tags": ["dlthub", "snowflake", "destination", "connection", "semantic-view", "dynamic-table", "ontology", "cortex"]
+    },
+    {
       "name": "snowflake-platform",
       "source": "./workbench/snowflake-platform",
-      "description": "Platform toolkit (Snowflake): deploy, run and maintain dlt jobs on Snowflake with the SPCS Context Runner, set up Snowflake as a destination, collect business and semantic context before building pipelines and models, and create semantic views. Made for Cortex Code.",
+      "description": "Platform toolkit (Snowflake): deploy, run and maintain dlt jobs on Snowflake with the SPCS Context Runner: the runner install, the deploy and data connections of the jobs, environments, job runs, logs and the dltHub control plane. Made for Cortex Code.",
       "version": "0.3.0",
       "license": "https://github.com/dlt-hub/dlthub-ai-harness/blob/master/LICENSE",
       "category": "data",
-      "tags": ["dlthub", "snowflake", "spcs", "deployment", "cortex", "cortex-code", "semantic-view"]
+      "tags": ["dlthub", "snowflake", "spcs", "deployment", "cortex", "cortex-code"]
     }
   ]
 }

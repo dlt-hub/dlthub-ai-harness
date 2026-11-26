@@ -48,6 +48,7 @@ table of failure cases.
 | a Python traceback in the job code: source, schema, load errors | the pipeline | **rest-api-pipeline** → `debug-pipeline`, then redeploy |
 | SQL errors in a transformation that ran locally on DuckDB | the SQL dialect | **transformations** → `debug-transformation` |
 | a connect error or "insufficient privileges" on the destination | the data connection | (`setup-snowflake-data-connection`) |
+| a Snowflake load error: `__V_DOUBLE` columns, quoted names, `_DLT_LOAD_ID` cannot be added | loading into Snowflake | the known failures of (`setup-snowflake-destination`) |
 | a missing config or secret value | the secrets of the profile | `secrets list`, then (`setup-secrets`) and redeploy |
 | a network error to the source host | egress | the external access integration: `egress_hosts`, or an admin |
 | `failed` with no job run in the app, Snowflake task failed | the container failed before the runner started | `job-runs info`, then [snowflake-objects.md](snowflake-objects.md) |

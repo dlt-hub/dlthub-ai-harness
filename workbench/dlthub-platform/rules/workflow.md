@@ -14,8 +14,12 @@ It owns `.dlthub/platform/` in the workspace. It keeps nothing there yet; deploy
 
 ## Extend and harden
 4. **Debug deployment** (`debug-deployment`) — a deployed job run failed: check job status, view logs, diagnose
-5. **Inspect failures unattended** (`job-inspector`) — background agent that diagnoses every future failure of a deployed job; how to declare it: "Background agents" in `advanced-patterns.md` of (`deploy-workspace`)
-6. **Write a background agent** (`create-background-agent`) — a new `AGENT.md` for work that should run on its own after an event
+5. **Daily workspace health** (`daily-workspace-health`) — the daily check: failed job runs, late pipelines, fresh data; investigate a dataset after the user's yes
+6. **New pipeline health** (`new-pipeline-health`) — a deep check of a new pipeline: traces, row metrics, the incremental filter, row counts by load id, experiments against the source
+7. **Inspect failures unattended** (`job-inspector`) — background agent that diagnoses every future failure of a deployed job; how to declare it: "Background agents" in `advanced-patterns.md` of (`deploy-workspace`)
+8. **Write a background agent** (`create-background-agent`) — a new `AGENT.md` for work that should run on its own after an event
+
+A pipeline that runs on the platform has stale local state: restore it before you read its state or data ("Access production data" in (`debug-deployment`)).
 
 ## Handover to other toolkits
 

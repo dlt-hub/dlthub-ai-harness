@@ -38,8 +38,9 @@ is a direct dependency), then run `uv sync`.
 
 ## 2. Pick the Snowflake connection
 
-Deploy uses one connection from `~/.snowflake/connections.toml`. Its role is the role that the admin granted: deploy
-creates the Snowflake tasks as this role, and the jobs run as it.
+Deploy uses one connection from `~/.snowflake/connections.toml`, a Snowflake connection like the ones a destination
+uses (`setup-snowflake-destination`, step 2). Its role is the role that the admin granted: deploy creates the
+Snowflake tasks as this role, and the jobs run as it.
 
 **Never read `~/.snowflake/connections.toml` or a key file.** Ask the user for the connection name (`$ARGUMENTS`
 when given). If they have none, show them the block to add, from `README.md` § Getting started, step 3:
@@ -73,7 +74,7 @@ workspace schema (`DLTHUB_<NAME>`):
 name = "github_actions"
 
 [snowflake.deploy]
-deploy_connection_name = "dlthub"   # else the default Snowflake connection
+connection_name = "dlthub"   # else the default Snowflake connection
 ```
 
 - Pick a short name for what the workspace does. Changing it later creates a new workspace schema.

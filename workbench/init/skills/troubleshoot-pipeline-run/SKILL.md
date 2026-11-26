@@ -18,6 +18,8 @@ Troubleshooting that holds for any pipeline in a dltHub workspace, whatever the 
 - SQL database source → `debug-sql-database-pipeline` (**sql-database-pipeline**)
 - Transformations → `debug-transformation` (**transformations**)
 - Slow, or out of memory → `optimize-performance` (**performance**)
+- A destination with a destination toolkit → the known failures of its connection skill
+- A pipeline that runs in a deployment → the debug skill of the platform toolkit
 
 Parse `$ARGUMENTS`:
 - `pipeline-name` (optional): the dlt pipeline name. If omitted, infer it from the session or from `dlt.pipeline(pipeline_name=...)` in the script. If ambiguous, ask the user and stop.
@@ -29,6 +31,10 @@ Parse `$ARGUMENTS`:
 - **Run from the project root.** dlt looks for `.dlt/.workspace` in the current working directory only, not in parent folders. For example, with a script in `pipelines/my_pipeline.py`, run `uv run python pipelines/my_pipeline.py`, not `cd pipelines && python my_pipeline.py`. Run from another folder, the workspace is not found: `dlt.pipeline()` runs without the profile, config, secrets and state of the workspace, and the `dlthub` CLI fails with `invalid choice: 'local'`.
 - **Check the workspace**: `uv run dlthub ai status`. If the `dlt-workspace-mcp` tools fail, this tells you why.
 - **Check the profile**: `uv run dlthub profile info`. The profile decides which config, secrets and state the run uses (see **Wrong destination, credentials or state** in section 7).
+- **Did the pipeline run somewhere else?** A pipeline that runs in a deployment or on another machine has stale or no
+  local state. Restore it from the destination into the profile it ran with before you read its state, trace or
+  cursors: `uv run dlthub local pipeline sync <pipeline_name> --destination <destination> --dataset-name <dataset>
+  --profile <profile>` (section 5). Never run it on a read-only profile.
 - **Is the source a verified source?** It has its own folder created by `dlthub pipeline init` and an entry in `.dlt/.sources`. Read its maintenance notes first (section 6).
 - **Note the current values** in `.dlt/config.toml` and the pipeline script. You change the user's files while debugging, and at the end you restore only what YOU changed.
 - **No destructive operations without user consent, no destructive operations on remote (non local) profiles** - Always confirm with the user or ask user to do for example: pipeline refresh or database table/column drop/alter.
@@ -62,7 +68,7 @@ A run goes through three steps, and the failing step tells you where to look:
 
 Extract and normalize do not change the destination. A failure there is fixed in code or config, and the next run starts clean. A load failure may leave a partially loaded package (section 5).
 
-**Terminal or transient?** A terminal error does not go away on retry: missing config, most HTTP `4xx`, a missing table, bad data in a job file. A transient one may: a timeout or a dropped connection. Fix the cause of a terminal error before you retry.
+**Terminal or transient?** A terminal error does not go away on retry: missing config, most HTTP `4xx`, a missing table, bad data in a job file. A transient one may: a timeout or a dropped connection. Fix the cause of a terminal error before you retry. Recurrence is the test: the same error in the runs before and after this one is not transient.
 
 Common exceptions:
 
@@ -177,6 +183,8 @@ More detail (what init copies, copies without `version.py`, the dlt version chec
 - **You are looking at another dataset.**
   - With `dev_mode=True`, every run writes to a new dataset with a datetime suffix.
   - `dataset_name` defaults to `<pipeline_name>_dataset`, and `pipeline_name` defaults to the script's file name. Renaming the script starts a new pipeline, with new state and a new dataset.
+- **Another pipeline writes the same dataset or table.** A table that looks wrong may come from it: check which
+  pipelines load into the dataset.
 - **Data fetched in the body of a `@dlt.source` function** runs when the source is created, outside error handling and metrics. Fetch data in resources.
 
 ### A column is missing, or a type or hint change does not apply
@@ -263,6 +271,13 @@ Check the stored cursor with `uv run dlthub -v local pipeline info <pipeline_nam
 - **`write_disposition="replace"` resets the resource state on every run.** The cursor then restarts from `initial_value`.
 - **An `end_value` makes the run a backfill** that does not update the stored cursor.
 - **The cursor does not advance until the package is fully loaded.** This is intended: a failed load does not skip data.
+- **Read what the incremental filtered.** In the extract metrics (`pipeline.last_trace.last_extract_info.metrics`),
+  a resource with an incremental carries `incremental` rows: `unfiltered_items_count` is what the resource yielded,
+  its `items_count` what the cursor kept.
+  - Most items filtered on every run: the source returns everything and the filter runs on this side, a full extract
+    each time. Pass `incremental.last_value` to the source, for example as an API parameter or in the query.
+  - A large `final_unique_hashes_count`: many rows share the last cursor value and are read again on every run. Use a
+    finer cursor.
 - Ref: https://dlthub.com/docs/general-usage/incremental/troubleshooting.md
 
 ### Wrong destination, credentials or state
@@ -304,3 +319,4 @@ Revert the debugging settings YOU introduced, and keep anything the user had bef
 - **Load works** → validate the data with the toolkit that built the pipeline, or hand off to **data-exploration**.
 - **Credentials or config missing** → `setup-secrets`.
 - **The failure is specific to the source or destination** → that toolkit's debug skill (list at the top). If it is not installed, use `dlthub-router` to install it.
+- **The pipeline runs in a deployment** → the debug skill of the platform toolkit. If none is installed, use `dlthub-router`.

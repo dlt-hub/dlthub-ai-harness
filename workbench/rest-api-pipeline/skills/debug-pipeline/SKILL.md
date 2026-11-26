@@ -190,3 +190,4 @@ Do NOT remove settings the user had before you started debugging.
 - **Load successful** → use `validate-data` to inspect schema and data, or hand over to `explore-data` (data-exploration toolkit) to jump straight into charts and analysis
 - **Config/secrets missing** → check TOML sections, revisit `create-rest-api-pipeline` step 6b for credential setup
 - **No pipeline exists** → use `create-rest-api-pipeline` to scaffold one first
+- **The load fails on the destination** (credentials, types, names) and the destination has a destination toolkit → the known failures of its connection skill; offer the toolkit when it is not installed (`dlthub-router`)
