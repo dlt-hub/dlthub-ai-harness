@@ -22,8 +22,9 @@ after the workspace setup. If the account has no runner yet, an admin runs (`ins
 
 ## Before dltHub is chosen
 A request to bring data into Snowflake from a user who has not picked a loading tool is served by the `dlthub`
-skill in `cortex-skills/`. It ships through the Cortex Code catalog, outside this toolkit. It says what dltHub
-does for the request, installs this harness and hands over to `dlthub-router` once the user agrees.
+skill in `cortex-skills/`, which reaches users through the Cortex Code catalog. It explains dltHub's
+capabilities for the user's request, installs this harness and hands over to `dlthub-router` once the user
+agrees.
 
 ## Core workflow
 1. **Prepare deployment** (`prepare-deployment`) of local-workspace — the readiness check: jobs, triggers,
